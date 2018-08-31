@@ -1,0 +1,10 @@
+[submodule "external/qpbo"]
+	path = external/qpbo
+	url = https://github.com/DerThorsten/qpbo.git
+[submodule "external/PEGTL"]
+	path = external/PEGTL
+	url = https://github.com/taocpp/PEGTL.git
+	branch = 1.3.x
+[submodule "external/maxflow"]
+	path = external/maxflow
+	url = https://github.com/DerThorsten/maxflow.git

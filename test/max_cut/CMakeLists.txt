@@ -1,0 +1,4 @@
+add_executable(transform_binary_Potts_test transform_binary_Potts_test.cpp)
+target_link_libraries(transform_binary_Potts_test LPMP)
+add_test(transform_binary_Potts_test transform_binary_Potts_test)
+

@@ -1,0 +1,11 @@
+add_executable(dimacs_max_flow_input_test dimacs_max_flow_input_test.cpp)
+target_link_libraries(dimacs_max_flow_input_test LPMP dimacs_max_flow_input)
+add_test(dimacs_max_flow_input_test dimacs_max_flow_input_test)
+
+add_executable(binary_pairwise_potential_test binary_pairwise_potential_test.cpp)
+target_link_libraries(binary_pairwise_potential_test LPMP)
+add_test(binary_pairwise_potential_test binary_pairwise_potential_test)
+
+add_executable(transform_max_flow_test transform_max_flow_test.cpp)
+target_link_libraries(transform_max_flow_test LPMP)
+add_test(transform_max_flow_test transform_max_flow_test)
