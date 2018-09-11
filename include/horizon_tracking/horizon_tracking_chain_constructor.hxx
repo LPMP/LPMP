@@ -73,10 +73,9 @@ max_potential_factor_container* add_max_potential(ITERATOR max_chain_begin, ITER
     for(auto max_chain_it = max_chain_begin; max_chain_it!=max_chain_end; ++max_chain_it) {
         auto* f = (*max_chain_it)->get_factor();
         f->MaximizePotentialAndComputePrimal();
-        std::vector<max_linear_rep_costs> current_chain_marginals = f->max_potential_marginals();
         std::vector<max_linear_costs> current_chain_marginals_max;
-        for (auto current_marginal_item : current_chain_marginals) {
-            current_chain_marginals_max.push_back({current_marginal_item.MaxCost, current_marginal_item.LinearCost});   // Ignoring the third column in the first iteration. 
+        for (INDEX i = 0; i < f->max_potential_marginals_size(); i++) {
+            current_chain_marginals_max.push_back({f->max_potential_marginal(i).MaxCost, f->max_potential_marginal(i).LinearCost});
         }
         all_marginals.push_back(current_chain_marginals_max);
     }

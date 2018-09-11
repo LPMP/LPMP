@@ -691,12 +691,9 @@ public:
         assert(i < max_potential_marginals_.size());
         assert(max_potential_marginals_valid_);
         return max_potential_marginals_[i];
-    } 
-
-    const std::vector<max_linear_rep_costs>& max_potential_marginals() const 
-    {
-        return max_potential_marginals_;
     }
+    
+    const INDEX max_potential_marginals_size() const {return max_potential_marginals_.size(); }
 
     void SetMaxPotentialIndexFromSolution() const {        
         auto objFromPath = PathSolutionObjective(solution_);
@@ -897,17 +894,9 @@ private:
     virtual void SolveByEdgeAddition() const
     {
         REAL bestSolutionCost = INFINITY;
-        std::vector distanceFromSourceSize(NumNodes, 0.0);
-        REAL initialValue = 0;
-        for (INDEX i = 0 ; i < NumNodes ; i++ )
-        {
-            if (i > 0)
-                initialValue = std::numeric_limits<REAL>::max();
 
-            distanceFromSourceSize[i] = NumLabels[i];
-        }
-
-        two_dim_variable_array<REAL> distanceFromSource(distanceFromSourceSize.begin(), distanceFromSourceSize.end(), initialValue);
+        two_dim_variable_array<REAL> distanceFromSource(NumLabels.begin(), NumLabels.end(), std::numeric_limits<REAL>::max());
+        std::fill(distanceFromSource[0].begin(), distanceFromSource[0].end(), 0);
 
         INDEX currentMaxPotIndex = 0;
         for(const auto& currentEdgeToInsert : MaxPotsSortingOrder)
@@ -1624,7 +1613,7 @@ class max_factor_tree_graph_message {
         template<typename FACTOR, typename MSG>
         void RepamLeft(FACTOR& l, const MSG& msg)
         {
-            assert(msg.size() == l.max_potential_marginals().size());
+            assert(msg.size() == l.max_potential_marginals_size());
             for(INDEX i=0; i<msg.size(); ++i) {
                 l.max_potential_marginal(i).ReparamCost += msg[i]; 
             }
@@ -1633,7 +1622,7 @@ class max_factor_tree_graph_message {
         template<typename LEFT_FACTOR, typename MSG>
         void send_message_to_right(const LEFT_FACTOR& l, MSG& msg, const REAL omega = 1.0)
         {
-            vector<REAL> m(l.max_potential_marginals().size());
+            vector<REAL> m(l.max_potential_marginals_size());
             for(INDEX i=0; i<m.size(); ++i) {
                 m[i] = l.max_potential_marginal(i).LinearCost + l.max_potential_marginal(i).ReparamCost;
             }
