@@ -1,0 +1,5 @@
+add_executable(convert_opengm_multicut_to_text convert_opengm_multicut_to_text.cpp)
+target_link_libraries(convert_opengm_multicut_to_text LPMP HDF5) 
+
+add_executable(convert_simple_multicut_hdf5_to_text convert_simple_multicut_hdf5_to_text.cpp)
+target_link_libraries(convert_simple_multicut_hdf5_to_text LPMP HDF5) 

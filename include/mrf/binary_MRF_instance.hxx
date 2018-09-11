@@ -33,6 +33,32 @@ struct binary_MRF_instance {
             cost[1][1] -= msg_1[1] + msg_2[1];
         }
 
+        bool has_same_support(const binary_pairwise_potential& o) const
+        {
+            return i == o.i && j == o.j;
+        }
+
+        void add_cost(const binary_pairwise_potential& o)
+        {
+            cost[0][0] += o.cost[0][0];
+            cost[0][1] += o.cost[0][1];
+            cost[1][0] += o.cost[1][0];
+            cost[1][1] += o.cost[1][1];
+        }
+
+        void transpose()
+        {
+           std::swap(i,j);
+           std::swap(cost[0][1], cost[1][0]);
+        }
+
+        bool operator<(const binary_pairwise_potential& o) const
+        {
+           std::array<std::size_t,2> idx1 = {i,j};
+           std::array<std::size_t,2> idx2 = {o.i,o.j};
+           return std::lexicographical_compare(idx1.begin(), idx1.end(), idx2.begin(), idx2.end());
+        }
+
         std::size_t i = 0;
         std::size_t j = 0;
         std::array<std::array<double,2>,2> cost = {{ {0.0, 0.0}, {0.0, 0.0} }};
@@ -67,12 +93,15 @@ struct binary_MRF_instance {
         // preamble
         s << "MARKOV\n";
         s << unaries.size() << "\n";
+        // cadinalities
         for(std::size_t i=0; i<unaries.size(); ++i) {
-            s << i;
+            s << 2;
             if(i+1<unaries.size()) s << " ";
             else s << "\n";
         }
+        // number of potentials
         s << unaries.size() + pairwise_potentials.size() << "\n";
+        // variables of potentials
         for(std::size_t i=0; i<unaries.size(); ++i) {
             s << 1 << " " << i << "\n";
         }
@@ -82,7 +111,7 @@ struct binary_MRF_instance {
 
         // function tables
         for(const auto& u : unaries) {
-            s << 2 << " " << u[0] << u[1] << "\n";
+            s << 2 << " " << u[0] << " " << u[1] << "\n";
         }
         for(const auto& p : pairwise_potentials) {
             s << 4 << " " << p.cost[0][0] << " " << p.cost[0][1] << " " << p.cost[1][0] << " " << p.cost[1][1] << "\n";
@@ -128,7 +157,7 @@ struct binary_Potts_instance {
         s << "MARKOV\n";
         s << unaries.size() << "\n";
         for(std::size_t i=0; i<unaries.size(); ++i) {
-            s << i;
+            s << 2;
             if(i+1<unaries.size()) s << " ";
             else s << "\n";
         }
@@ -142,7 +171,7 @@ struct binary_Potts_instance {
 
         // function tables
         for(const auto& u : unaries) {
-            s << 2 << " " << u[0] << u[1] << "\n";
+            s << 2 << " " << u[0] << " " << u[1] << "\n";
         }
         for(const auto& p : pairwise_potentials) {
             s << 4 << " " << 0.0 << " " << p.cost << " " << p.cost << " " << 0.0 << "\n";

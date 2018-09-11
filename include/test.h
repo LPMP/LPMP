@@ -6,6 +6,12 @@
 
 namespace LPMP {
 
+struct test_exception 
+{
+   test_exception(const std::string& s) : error_message(s) {}
+   std::string error_message; 
+};
+
 inline void test(const bool& pred, const std::string& error_message = "")
 {
     std::string msg;

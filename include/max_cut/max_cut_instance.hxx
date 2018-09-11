@@ -1,5 +1,5 @@
-#ifndef LP_MP_MAX_CUT_INSTANCE_HXX
-#define LP_MP_MAX_CUT_INSTANCE_HXX
+#ifndef LPMP_MAX_CUT_INSTANCE_HXX
+#define LPMP_MAX_CUT_INSTANCE_HXX
 
 #include <vector>
 #include <array>
@@ -62,6 +62,6 @@ struct max_cut_instance {
     }
 };
 
-} // namespace LP_MP
+} // namespace LPMP
 
-#endif // LP_MP_MAX_CUT_INSTANCE_HXX
+#endif // LPMP_MAX_CUT_INSTANCE_HXX

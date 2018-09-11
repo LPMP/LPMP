@@ -94,11 +94,11 @@ max_flow_instance generate_random_qpbo_instance(const std::size_t no_nodes, cons
     for(std::size_t i=0; i<no_nodes; ++i) {
         const auto cost = ud(gen);
         if(cost > 0) { // let label 0 have cost
-            output.add_arc(output.source, 2+2*i, 0.5*cost);
-            output.add_arc(2+2*i+1, output.terminal, 0.5*cost);
+            output.add_arc(output.source, 2+i, 0.5*cost);
+            output.add_arc(2+no_nodes+i, output.terminal, 0.5*cost);
         } else if(cost < 0) { // let label 1 have -cost
-            output.add_arc(output.source, 2+2*i+1, -0.5*cost);
-            output.add_arc(2+2*i, output.terminal, -0.5*cost); 
+            output.add_arc(output.source, 2+no_nodes+i, -0.5*cost);
+            output.add_arc(2+i, output.terminal, -0.5*cost); 
         }
     }   
 
@@ -107,19 +107,20 @@ max_flow_instance generate_random_qpbo_instance(const std::size_t no_nodes, cons
     for(const auto& e : edges) {
         const auto i = e[0];
         const auto j = e[1];
+        assert(i<j);
         const auto cost_1 = std::abs(ud(gen));
         const auto cost_2 = std::abs(ud(gen));
         const bool potential_submodular = submodular ? 1 : bd(gen);
         if(potential_submodular) {
-            output.add_arc(2+2*i, 2+2*j, cost_1);
-            output.add_arc(2+2*j, 2+2*i, cost_2);
-            output.add_arc(2+2*i+1, 2+2*j+1, cost_2);
-            output.add_arc(2+2*j+1, 2+2*i+1, cost_1);
+            output.add_arc(2+i, 2+j, cost_1);
+            output.add_arc(2+j, 2+i, cost_2);
+            output.add_arc(2+no_nodes+i, 2+no_nodes+j, cost_2);
+            output.add_arc(2+no_nodes+j, 2+no_nodes+i, cost_1);
         } else {
-            output.add_arc(2+2*i, 2+2*j+1, cost_1);
-            output.add_arc(2+2*j+1, 2+2*i, cost_2);
-            output.add_arc(2+2*i+1, 2+2*j, cost_2);
-            output.add_arc(2+2*j, 2+2*i+1, cost_1); 
+            output.add_arc(2+i, 2+no_nodes+j, cost_1);
+            output.add_arc(2+no_nodes+j, 2+i, cost_2);
+            output.add_arc(2+no_nodes+i, 2+j, cost_2);
+            output.add_arc(2+j, 2+no_nodes+i, cost_1); 
         }
     }
 

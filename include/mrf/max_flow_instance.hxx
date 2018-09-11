@@ -11,15 +11,18 @@ namespace LPMP {
 
 struct max_flow_instance {
     struct capacitated_arc : public std::array<std::size_t,2> { 
-        capacitated_arc() {}
+        capacitated_arc()
+        : std::array<std::size_t,2>({0,0}), capacity(0.0) {}
+
         capacitated_arc(const std::size_t i, const std::size_t j, const double c)
         : std::array<std::size_t,2>({i,j}), capacity(c) {}
 
-        double capacity; 
+        double capacity;
     };
 
-    std::size_t no_nodes;
-    std::size_t source, terminal;
+    std::size_t no_nodes = 0;
+    std::size_t source = std::numeric_limits<std::size_t>::max();
+    std::size_t terminal = std::numeric_limits<std::size_t>::max();
     std::vector<capacitated_arc> arcs;
 
     void add_arc(const std::size_t i, const std::size_t j, const double capacity)
@@ -33,6 +36,8 @@ struct max_flow_instance {
 
     double evaluate(const flow& f) const
     {
+       assert(source != std::numeric_limits<std::size_t>::max());
+       assert(terminal != std::numeric_limits<std::size_t>::max());
         assert(f.size() == arcs.size());
         double total_flow = 0.0;
         std::size_t no_nodes = 0;

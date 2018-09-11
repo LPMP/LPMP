@@ -1,6 +1,7 @@
 #include <fstream>
 #include <cassert>
 #include <stdexcept>
+#include <limits>
 #include "pegtl.hh"
 #include "pegtl_parse_rules.h"
 #include "mrf/dimacs_max_flow_input.h"
@@ -15,18 +16,23 @@ using parsing::mand_whitespace;
 using parsing::positive_integer;
 using parsing::real_number;
 
+struct empty_line : pegtl::seq<opt_whitespace, pegtl::eolf> {};
+struct comment_line : pegtl::seq< opt_whitespace, pegtl::string<'c'>, pegtl::until<pegtl::eolf> > {};
+struct ignore_line : pegtl::sor<comment_line, empty_line> {};
+
 struct init_line : pegtl::seq< opt_whitespace, pegtl::string<'p'>, mand_whitespace, pegtl::string<'m','a','x'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace, pegtl::eol> {};
 struct source_node_line : pegtl::seq< opt_whitespace, pegtl::string<'n'>, mand_whitespace, positive_integer, mand_whitespace, pegtl::string<'s'>, opt_whitespace, pegtl::eol > {};
 struct terminal_node_line : pegtl::seq< opt_whitespace, pegtl::string<'n'>, mand_whitespace, positive_integer, mand_whitespace, pegtl::string<'t'>, opt_whitespace, pegtl::eol > {};
 struct arc_line : pegtl::seq< opt_whitespace, pegtl::string<'a'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, mand_whitespace, real_number, opt_whitespace, pegtl::eolf > {};
 
 struct grammar : pegtl::seq<
+                 pegtl::star<ignore_line>,
                  init_line,
+                 pegtl::star<ignore_line>,
                  source_node_line,
+                 pegtl::star<ignore_line>,
                  terminal_node_line,
-                 //pegtl::opt<source_node_line, terminal_node_line>,
-                 //pegtl::opt<source_node_line, terminal_node_line>,
-                 pegtl::star<arc_line>
+                 pegtl::star< pegtl::sor<ignore_line,arc_line> >
                  > {};
 
 template< typename Rule >
@@ -70,23 +76,25 @@ template<> struct action< arc_line > {
         static void apply(const Input& in, max_flow_instance& mc) 
         {
             std::istringstream iss(in.string());
-            typename max_flow_instance::capacitated_arc arc;
             unsigned char a;
             iss >> a;
             assert(a == 'a');
 
-            iss >> arc[0];
-            assert(arc[0] >= 1);
-            arc[0]--;
-            
-            iss >> arc[1];
-            assert(arc[1] >= 1);
-            arc[1]--;
-            
-            iss >> arc.capacity;
-            assert(arc.capacity >= 0.0); 
+            std::size_t i;
+            iss >> i;
+            assert(i >= 1);
+            i--; 
 
-            mc.arcs.push_back(arc);
+            std::size_t j;
+            iss >> j;
+            assert(j >= 1);
+            j--;
+
+            double capacity = -std::numeric_limits<double>::infinity();
+            iss >> capacity;
+            assert(capacity >= 0.0); 
+
+            mc.add_arc(i,j,capacity);
         }
 };
 

@@ -1,7 +1,9 @@
-#ifndef LP_MP_UNION_FIND_HXX
-#define LP_MP_UNION_FIND_HXX
+#ifndef LPMP_UNION_FIND_HXX
+#define LPMP_UNION_FIND_HXX
 
 #include <vector>
+
+namespace LPMP {
 
 class union_find {
     std::size_t *id, cnt, *sz, N; // it is not necessary to hold sz!
@@ -93,5 +95,7 @@ class union_find {
     }
 };
 
-#endif // LP_MP_UNION_FIND_HXX
+} // namespace LPMP
+
+#endif // LPMP_UNION_FIND_HXX
 
