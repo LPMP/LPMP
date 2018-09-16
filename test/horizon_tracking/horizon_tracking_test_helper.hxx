@@ -59,7 +59,7 @@ bool TestUAIChains(std::vector<std::string> solverOptions, std::string uaiFile, 
     test(solver.GetLP().original_factors_lower_bound(), expectedLb);
     test(solver.primal_cost(), std::numeric_limits<REAL>::infinity());
 
-    round_primal_solution(solver, false);
+    round_primal_solution(solver, true);
     test(solver.primal_cost(), expectedLb);
 
     // Check if the computed solution actually has the correct objective value:

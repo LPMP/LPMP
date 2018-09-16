@@ -23,9 +23,10 @@ std::vector<FactorTypeAdapter*> get_mrf_factors(SOLVER& solver)
 template<typename SOLVER>
 void round_primal_solution(SOLVER& solver, bool send_backward = true)
 {
-    auto prevLb = solver.GetLP().LowerBound();
+    solver.GetLP().write_back_reparametrization();
     auto chain_constructor = solver.template GetProblemConstructor<0>();
     if (send_backward) {
+        auto prevLb = solver.GetLP().LowerBound();
         // for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
         //     m->send_message_to_left(); 
         // }
@@ -41,7 +42,6 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
 			throw std::runtime_error("Lower Bound decreased by send backward!");
         }
     }
-    solver.GetLP().write_back_reparametrization();
 
     //TO ADDRESS: Changing this primal pass make primal solution on 5x5 grid test very weak.
     for(std::size_t i=0; i<3; ++i) {
