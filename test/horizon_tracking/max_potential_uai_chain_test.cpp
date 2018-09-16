@@ -38,7 +38,7 @@ int main()
         test(solver.lower_bound(), 0.085579, 0);
         solver.GetLP().write_back_reparametrization();
         test(solver.GetLP().original_factors_lower_bound(), 0.085579, 0);
-        round_primal_solution(solver);
+        round_primal_solution(solver, false);
         test(solver.GetLP().original_factors_lower_bound(), 0.085579, 0);
         test(solver.primal_cost(), 0.085579, 0);
     }
