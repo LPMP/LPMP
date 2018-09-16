@@ -27,6 +27,14 @@ std::vector<max_potential_factor_container*> max_graph_factors() const {
     return max_graph_factors_;
 }
 
+std::vector<pairwise_max_factor_message_container*> pairwise_to_chain_messages() const {
+    return pairwise_to_chain_messages_;
+}
+
+std::vector<max_chain_max_potential_message_container*> max_chain_to_graph_messages() const {
+    return max_chain_to_graph_messages_;
+}
+
 template <typename ITERATOR>
 max_chain_factor_container* add_max_chain(ITERATOR node_var_begin, ITERATOR node_var_end,
                                     const three_dimensional_variable_array<REAL>& maxPairwisePotentials,
@@ -56,7 +64,7 @@ max_chain_factor_container* add_max_chain(ITERATOR node_var_begin, ITERATOR node
         const INDEX j = *std::next(it, 1);
         auto* pairwise_factor = this->get_pairwise_factor(i,j);
         auto* msg = this->lp_->template add_message<pairwise_max_factor_message_container>(pairwise_factor, chain_factor, pairwise_index, node1_index, node2_index);
-
+        pairwise_to_chain_messages_.push_back(msg);
         if(t != nullptr) {
             t->add_message(msg, Chirality::right); 
         }
@@ -67,8 +75,8 @@ max_chain_factor_container* add_max_chain(ITERATOR node_var_begin, ITERATOR node
 
 template<typename ITERATOR>
 max_potential_factor_container* add_max_potential(ITERATOR max_chain_begin, ITERATOR max_chain_end, factor_tree<FMC>* t = nullptr)
-{
-   // ugly: we first build a std::vector<std::vector<..>> and then convert it to two_dim_variable_array
+{   
+    // ugly: we first build a std::vector<std::vector<..>> and then convert it to two_dim_variable_array
     std::vector<std::vector<max_linear_costs>> all_marginals;
     for(auto max_chain_it = max_chain_begin; max_chain_it!=max_chain_end; ++max_chain_it) {
         auto* f = (*max_chain_it)->get_factor();
@@ -86,7 +94,7 @@ max_potential_factor_container* add_max_potential(ITERATOR max_chain_begin, ITER
         auto* current_chain = *max_chain_it;
 
         auto* msg = this->lp_->template add_message<max_chain_max_potential_message_container>(current_chain, max_factor, chain_index);
-
+        max_chain_to_graph_messages_.push_back(msg);
         if(t != nullptr) {
             t->add_message(msg, Chirality::right);
         } 
@@ -98,6 +106,8 @@ max_potential_factor_container* add_max_potential(ITERATOR max_chain_begin, ITER
 private: 
     std::vector<max_chain_factor_container*> max_chain_factors_;
     std::vector<max_potential_factor_container*> max_graph_factors_;
+    std::vector<max_chain_max_potential_message_container*> max_chain_to_graph_messages_;
+    std::vector<pairwise_max_factor_message_container*> pairwise_to_chain_messages_;
 };
 
 template<typename SOLVER, typename HORIZON_TRACKING_CONSTRUCTOR>
