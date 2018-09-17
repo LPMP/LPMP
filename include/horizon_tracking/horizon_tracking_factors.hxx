@@ -782,6 +782,7 @@ public:
             // at previous index in which case the marginal was not inserted and we only took min:
             bool inserted = InsertMarginal<true>(marginals, MaxPotentials1D[currentEdgeToInsert].value, currentMaxPotIndex, currentLinearCost, false);
             INDEX lastValidIndex = inserted ? currentMaxPotIndex : currentMaxPotIndex - 1;
+            assert(std::abs(marginals[lastValidIndex].MaxCost - max_potential_marginal(lastValidIndex).MaxCost) <= eps);
             if (marginals[lastValidIndex].LinearCost == currentLinearCost) 
             {
                 // Get the edges which constitute the current marginal and move the slack back to them. Assuming that the marginalSlacks 
@@ -852,16 +853,20 @@ protected:
             if(insertEnd) {
                 if(marginals.size() > 0 && marginals.back().MaxCost == maxPotValue) {
                     marginals.back().LinearCost = std::min(marginals.back().LinearCost, currentLinearCost);
+                    return false;
                 } else { 
                     marginals.push_back({maxPotValue, currentLinearCost, 0});
+                    return true;
                 }
             }
             else {
                 if(marginals.size() > 0 && marginals.front().MaxCost == maxPotValue) {
                     marginals.front().LinearCost = std::min(marginals.front().LinearCost, currentLinearCost);
+                    return false;
                 }
                 else {
                     marginals.insert(marginals.begin(), {maxPotValue, currentLinearCost, 0});
+                    return true;
                 }
             }
         }
