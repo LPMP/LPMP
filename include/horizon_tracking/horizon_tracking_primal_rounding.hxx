@@ -28,10 +28,10 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
     if (send_backward) {
         auto prevLb = solver.GetLP().LowerBound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
-        // for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
-        //     m->send_message_to_left(); 
-        // }
-        // assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
+        for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
+            m->send_message_to_left(); 
+        }
+        assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
         for(auto* m : chain_constructor.pairwise_to_chain_messages()) {
             m->send_message_to_left(); 
             assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);

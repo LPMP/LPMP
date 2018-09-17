@@ -790,6 +790,7 @@ public:
                 INDEX numEdges = LinearPairwisePotentials.dim1();
                 for (INDEX n1 = 0; n1 < LinearPairwisePotentials.dim1(); n1++) {
                     REAL currentChunk = marginalSlack_[lastValidIndex] / numEdges;
+                    assert(currentChunk >= 0);
                     LinearPairwisePotentials(n1, path[n1], path[n1 + 1]) += currentChunk;
                     marginalSlack_[lastValidIndex] -= currentChunk;
                     numEdges--;
@@ -1666,7 +1667,7 @@ class pairwise_max_factor_tree_message {
         template<typename RIGHT_FACTOR, typename MSG>
         void send_message_to_left(const RIGHT_FACTOR& r, MSG& msg, const REAL omega = 1.0)
         {
-            // r.ConvertMarginalSlackToPairwiseSlack();
+            r.ConvertMarginalSlackToPairwiseSlack();
             std::vector<REAL> m = r.ComputeMessagesToPairwiseEdge(pairwise_entry);
             const auto min = *std::min_element(m.begin(), m.end());
             vector<REAL> mm(m.size());
@@ -1791,7 +1792,7 @@ class max_factor_tree_graph_message {
                 min = std::min(min, m[i]);
             }
             assert(min <= eps);
-            msg -= -omega*m;
+            msg -= omega*m;
         }
 
         // template<typename RIGHT_FACTOR, typename MSG_ARRAY>
