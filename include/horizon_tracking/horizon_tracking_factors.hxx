@@ -1123,29 +1123,29 @@ private:
         std::fill(distanceFromSource[0].begin(), distanceFromSource[0].end(), 0);
         std::queue<edge> edgeQ;
 
-        // for (INDEX n1 = 0; n1 < NumLabels.size() - 1; ++n1) { // Including terminal node.         
-        //     for (INDEX l1 = 0; l1 < NumLabels[n1]; l1++) {
-        //         for (INDEX l2 = 0; l2 < NumLabels[n1+1]; l2++) {
+        for (INDEX n1 = 0; n1 < NumLabels.size() - 1; ++n1) { // Including terminal node.         
+            for (INDEX l1 = 0; l1 < NumLabels[n1]; l1++) {
+                for (INDEX l2 = 0; l2 < NumLabels[n1+1]; l2++) {
 
-        //             if (n1 == e.n1 && (l1 != e.l1 || l2 != e.l2)) continue;
+                    if (n1 == e.n1 && (l1 != e.l1 || l2 != e.l2)) continue;
 
-        //             // Directly add all the edges which have max pot value lower than e:
-        //             REAL currentM = std::numeric_limits<REAL>::lowest();
-        //             REAL currentL = 0; 
-        //             if (n1 < MaxPairwisePotentials.dim1()) {// excluding terminal node 
-        //                 currentM = MaxPairwisePotentials(n1, l1, l2);
-        //                 currentL = LinearPairwisePotentials(n1, l1, l2);
-        //             }
+                    // Directly add all the edges which have max pot value lower than e:
+                    REAL currentM = std::numeric_limits<REAL>::lowest();
+                    REAL currentL = 0; 
+                    if (n1 < MaxPairwisePotentials.dim1()) {// excluding terminal node 
+                        currentM = MaxPairwisePotentials(n1, l1, l2);
+                        currentL = LinearPairwisePotentials(n1, l1, l2);
+                    }
 
-        //             if (currentM <= maxPotV && distanceFromSource[n1][l1] < std::numeric_limits<REAL>::max() && 
-        //                 distanceFromSource[n1 + 1][l2] > distanceFromSource[n1][l1] + currentL)
-        //                 distanceFromSource[n1 + 1][l2] = distanceFromSource[n1][l1] + currentL;
-        //         }
-        //     }
-        // }
+                    if (currentM <= maxPotV && distanceFromSource[n1][l1] < std::numeric_limits<REAL>::max() && 
+                        distanceFromSource[n1 + 1][l2] > distanceFromSource[n1][l1] + currentL)
+                        distanceFromSource[n1 + 1][l2] = distanceFromSource[n1][l1] + currentL;
+                }
+            }
+        }
 
-        // if (distanceFromSource[NumNodes - 1][0] < std::numeric_limits<REAL>::max())
-        //     minMarginal = maxPotV + distanceFromSource[NumNodes - 1][0];
+        if (distanceFromSource[NumNodes - 1][0] < std::numeric_limits<REAL>::max())
+            minMarginal = maxPotV + distanceFromSource[NumNodes - 1][0];
 
         // Iterative shortest path for higher edges:
         for(const auto& currentEdgeToInsert : MaxPotsSortingOrder) {
