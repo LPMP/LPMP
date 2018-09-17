@@ -1672,7 +1672,7 @@ class pairwise_max_factor_tree_message {
         template<typename RIGHT_FACTOR, typename MSG>
         void send_message_to_left(const RIGHT_FACTOR& r, MSG& msg, const REAL omega = 1.0)
         {
-            r.ConvertMarginalSlackToPairwiseSlack();
+            // r.ConvertMarginalSlackToPairwiseSlack(); // TURNING OFF AS THIS MIGHT NOT BE THE CORRECT WAY.
             std::vector<REAL> m = r.ComputeMessagesToPairwiseEdge(pairwise_entry);
             const auto min = *std::min_element(m.begin(), m.end());
             vector<REAL> mm(m.size());

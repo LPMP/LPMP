@@ -28,10 +28,15 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
     if (send_backward) {
         auto prevLb = solver.GetLP().LowerBound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
-        for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
-            m->send_message_to_left(); 
-        }
-        assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
+        // for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
+        //     m->send_message_to_left(); 
+        //     // This sends messages to marginals of chains. Question is how 
+        //     // to reparameterize Linear Potentials of chain from marginals?
+        //     // Turning off for now.
+        // }
+        // assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
+
+        // Send messages from Chain Linear pairwise potentials to MRF pairwise potentials:
         for(auto* m : chain_constructor.pairwise_to_chain_messages()) {
             m->send_message_to_left(); 
             assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
@@ -45,7 +50,6 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
         std::cout<<"Lower bound after send message left: "<<newLb<<std::endl;
     }
 
-    //TO ADDRESS: Changing this primal pass make primal solution on 5x5 grid test very weak.
     for(std::size_t i=0; i<3; ++i) {
        solver.GetLP().ComputeForwardPassAndPrimal();
        solver.RegisterPrimal();
