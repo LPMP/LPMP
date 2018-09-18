@@ -28,13 +28,13 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
     if (send_backward) {
         auto prevLb = solver.GetLP().LowerBound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
-        // for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
-        //     m->send_message_to_left(); 
-        //     // This sends messages to marginals of chains. Question is how 
-        //     // to reparameterize Linear Potentials of chain from marginals?
-        //     // Turning off for now.
-        // }
-        // assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
+        for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
+            m->send_message_to_left(); 
+            // This sends messages to marginals of chains. Question is how 
+            // to reparameterize Linear Potentials of chain from marginals?
+            // Turning off for now.
+        }
+        assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
 
         // Send messages from Chain Linear pairwise potentials to MRF pairwise potentials:
         for(auto* m : chain_constructor.pairwise_to_chain_messages()) {
