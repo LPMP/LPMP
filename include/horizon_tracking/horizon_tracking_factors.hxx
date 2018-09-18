@@ -1157,7 +1157,7 @@ private:
         for(const auto& currentEdgeToInsert : MaxPotsSortingOrder) {
 
             if (MaxPotentials1D[currentEdgeToInsert].n1 == e.n1 && (MaxPotentials1D[currentEdgeToInsert].l1 != e.l1 ||
-            MaxPotentials1D[currentEdgeToInsert].l2 != e.l2))
+            MaxPotentials1D[currentEdgeToInsert].l2 != e.l2) || MaxPotentials1D[currentEdgeToInsert].value <= maxPotV)
                 continue; // do not consider colliding edges
 
             if (UpdateDistances(currentEdgeToInsert, distanceFromSource, MaxPotentials1D[currentEdgeToInsert].value, e, true)) {
