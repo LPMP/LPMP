@@ -21,7 +21,7 @@ std::vector<FactorTypeAdapter*> get_mrf_factors(SOLVER& solver)
 }
 
 template<typename SOLVER>
-void round_primal_solution(SOLVER& solver, bool send_backward = false)
+void round_primal_solution(SOLVER& solver, bool send_backward = true)
 {
     solver.GetLP().write_back_reparametrization();
     auto chain_constructor = solver.template GetProblemConstructor<0>();
@@ -30,16 +30,12 @@ void round_primal_solution(SOLVER& solver, bool send_backward = false)
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
         for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
             m->send_message_to_left(); 
-            // This sends messages to marginals of chains. Question is how 
-            // to reparameterize Linear Potentials of chain from marginals?
-            // Turning off for now.
         }
         assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
 
         // Send messages from Chain Linear pairwise potentials to MRF pairwise potentials:
         for(auto* m : chain_constructor.pairwise_to_chain_messages()) {
             m->send_message_to_left(); 
-            assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
         }
         auto newLb = solver.GetLP().LowerBound();
         if (prevLb - newLb > eps) {
