@@ -1,0 +1,33 @@
+dist: trusty
+sudo: required
+language:
+    - cpp
+compiler:
+    - gcc
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - gcc-7
+            - g++-7
+            - cmake
+            - libhdf5-serial-dev 
+            - hdf5-tools    
+script:
+    # Link gcc-7 and g++-7 to their standard commands
+    - sudo ln -s /usr/bin/gcc-7 /usr/local/bin/gcc
+    - sudo ln -s /usr/bin/g++-7 /usr/local/bin/g++
+    # Export CC and CXX to tell cmake which compiler to use
+    - export CC=/usr/bin/gcc-7
+    - export CXX=/usr/bin/g++-7
+    # Check versions of gcc, g++ and cmake
+    - gcc -v && g++ -v && cmake --version
+    # Run your build commands next
+    - git submodule update --init --remote --recursive
+    - cmake .
+    - make
+    - make test
+
+notifications:
+email: false
