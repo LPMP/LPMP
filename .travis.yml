@@ -12,6 +12,8 @@ addons:
             - gcc-7
             - g++-7
             - cmake
+            - libhdf5-serial-dev 
+            - hdf5-tools    
 script:
     # Link gcc-7 and g++-7 to their standard commands
     - sudo ln -s /usr/bin/gcc-7 /usr/local/bin/gcc
