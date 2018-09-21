@@ -21,7 +21,7 @@ std::vector<FactorTypeAdapter*> get_mrf_factors(SOLVER& solver)
 }
 
 template<typename SOLVER>
-void round_primal_solution(SOLVER& solver, bool send_backward = true)
+void round_primal_solution(SOLVER& solver, bool send_backward = false)
 {
     solver.GetLP().write_back_reparametrization();
     auto chain_constructor = solver.template GetProblemConstructor<0>();
