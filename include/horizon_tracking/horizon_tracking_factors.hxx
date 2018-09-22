@@ -524,60 +524,38 @@ public:
 
     void ConvertMarginalSlackToPairwiseSlack() const
     {
+#ifndef NDEBUG
+        INDEX bestIndexPrev = GetBestMarginal();
+#endif
         assert(marginalSlack_.size() == max_potential_marginals_.size());
         std::vector<INDEX> slackOrder(marginalSlack_.size());
         std::iota(slackOrder.begin(), slackOrder.end(), 0);
         std::sort(slackOrder.begin(), slackOrder.end(), [&slack = marginalSlack_](INDEX i1, INDEX i2) {return slack[i1] < slack[i2];});
         three_dimensional_variable_array<uint8_t> locked_edges(LinearPairwisePotentials.size_begin(), LinearPairwisePotentials.size_end(), 0);
-        three_dimensional_variable_array<REAL> delta(LinearPairwisePotentials.size_begin(), LinearPairwisePotentials.size_end(), 0);
+        three_dimensional_variable_array<REAL> delta(LinearPairwisePotentials.size_begin(), LinearPairwisePotentials.size_end(), std::numeric_limits<REAL>::max());
         for (const auto& index : slackOrder) {
             //TODO: Can be optimized:
             std::vector<INDEX> path = ComputeSolution(index);
-            INDEX highestMaxPotentialN1;
-            REAL highestMaxPotentialValue = std::numeric_limits<REAL>::lowest();
-            for (INDEX n1 = 0; n1 < locked_edges.dim1(); n1++) {
-                if (MaxPairwisePotentials(n1, path[n1], path[n1 + 1]) > highestMaxPotentialValue && locked_edges(n1, path[n1], path[n1 + 1]) == 0) {
-                    highestMaxPotentialValue = MaxPairwisePotentials(n1, path[n1], path[n1 + 1]);
-                    highestMaxPotentialN1 = n1;
-                }
+            for (INDEX n1 = 0; n1 < LinearPairwisePotentials.dim1(); n1++) {
+                REAL chunk = std::min(delta(n1, path[n1], path[n1 + 1]), marginalSlack_[index] / LinearPairwisePotentials.dim1());
+                delta(n1, path[n1], path[n1 + 1]) = chunk;
+                marginalSlack_[index] -= chunk;
             }
-            if(highestMaxPotentialValue == std::numeric_limits<REAL>::lowest()) continue; // All edges locked!
-            REAL currentSlack = marginalSlack_[index];
-            assert(currentSlack >= 0);
-            INDEX numLocked = 0;
-            for (INDEX n1 = 0; n1 < path.size() - 1; n1++) {
-                currentSlack -= delta(n1, path[n1], path[n1 + 1]); // Subtract the slack which is already covered, because of some edges getting reparameterized previously.
-                numLocked += locked_edges(n1, path[n1], path[n1 + 1]);
-            }
-            if (currentSlack < 0) // Too much slack pushed into current path, remove equally.
-            {
-                REAL totalSlack = currentSlack;
-                for (INDEX n1 = 0; n1 < path.size() - 1; n1++) {
-                    if (locked_edges(n1, path[n1], path[n1 + 1]) == 0) continue;
-                    delta(n1, path[n1], path[n1 + 1]) += totalSlack / numLocked; 
-                    currentSlack -= totalSlack / numLocked;
-                }
-                assert(std::abs(currentSlack) <= eps);
-                marginalSlack_[index] = 0;
-                continue;
-            }
-            // Move slack into the pairwise potential with highest bottleneck potential value. However lock all the edges of the path to ensure that the edges of 
-            // the path are not reparametrized again.
-            delta(highestMaxPotentialN1, path[highestMaxPotentialN1], path[highestMaxPotentialN1 + 1]) += currentSlack;
-            for (INDEX n1 = 0; n1 < locked_edges.dim1(); n1++) { locked_edges(n1, path[n1], path[n1 + 1]) = 1; }
-            auto pathSolutionSlack = PathSolutionObjective(path, delta, MaxPairwisePotentials); 
-            assert(std::abs(pathSolutionSlack.LinearCost - marginalSlack_[index]) <= eps);
-            marginalSlack_[index] = 0;
-            //TODO: Move delta to LinearPots.
         }
         for (INDEX n1 = 0; n1 < LinearPairwisePotentials.dim1(); n1++) {
             for (INDEX l1 = 0; l1 < NumLabels[n1]; l1++) {
                 for (INDEX l2 = 0; l2 < NumLabels[n1 + 1]; l2++) {
+                    assert(delta(n1, l1, l2) >= 0);
                     LinearPairwisePotentials(n1, l1, l2) += delta(n1, l1, l2);
                     delta(n1, l1, l2) = 0;
                 }
             }
         }
+#ifndef NDEBUG
+        SolveByEdgeAddition();
+        INDEX bestIndexNew = GetBestMarginal();
+        assert(bestIndexNew == bestIndexPrev);
+#endif
     }
 
 protected:
@@ -1178,7 +1156,6 @@ class pairwise_max_factor_tree_message {
         template<typename RIGHT_FACTOR, typename MSG>
         void send_message_to_left(const RIGHT_FACTOR& r, MSG& msg, const REAL omega = 1.0)
         {
-            r.ConvertMarginalSlackToPairwiseSlack();
             std::vector<REAL> m = r.ComputeMessagesToPairwiseEdge(pairwise_entry);
             const auto min = *std::min_element(m.begin(), m.end());
             vector<REAL> mm(m.size());

@@ -32,7 +32,10 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
             m->send_message_to_left(); 
         }
         assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
-
+        for(auto* f : chain_constructor.max_chain_factors()) {
+            f->get_factor()->ConvertMarginalSlackToPairwiseSlack();
+        }
+        assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
         // Send messages from Chain Linear pairwise potentials to MRF pairwise potentials:
         for(auto* m : chain_constructor.pairwise_to_chain_messages()) {
             m->send_message_to_left(); 
