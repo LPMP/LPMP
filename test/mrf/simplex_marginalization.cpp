@@ -1,7 +1,9 @@
 #include "test.h"
 #include "mrf/simplex_factor.hxx"
 #include "mrf/simplex_marginalization_message.hxx"
+#include "../test_message.hxx"
 #include <vector>
+#include <random>
 
 using namespace LPMP;
 
@@ -47,6 +49,47 @@ int main()
 
    // do zrobienia: test ComputeLeftFromRightPrimal and reverse, repamLeft,repamRight, Send{Left|Right}Message and also interchange unary and right/left loop
 
+   // randomized message test
+   std::random_device rd;
+   { 
+      for(std::size_t i=1; i<100; ++i) {
+         UnarySimplexFactor s(i);
+         PairwiseSimplexFactor p(i,i);
+         UnaryPairwiseMessage<Chirality::left> msg_left;
+
+         vector<double> msg_vec(i);
+         test_repam_message(s, p, msg_left, msg_vec, rd);
+      }
+   }
+
+   // pairwise triplet message
+   {
+      for(INDEX i=1; i<30; ++i) {
+         for(INDEX j=1; j<30; ++j) {
+            PairwiseSimplexFactor p(i,j);
+            matrix<double> msg_vec(i,j);
+
+            // 0,1
+            {
+               SimpleTighteningTernarySimplexFactor t(i,j, (i+j)/2);
+               PairwiseTripletMessage<0,1> m;
+               test_message(p, t, m, msg_vec, rd);
+            }
+            // 0,2
+            {
+               SimpleTighteningTernarySimplexFactor t(i, (i+j)/2, j);
+               PairwiseTripletMessage<0,2> m;
+               test_message(p, t, m, msg_vec, rd);
+            }
+            // 1,2
+            {
+               SimpleTighteningTernarySimplexFactor t((i+j)/2, i, j);
+               PairwiseTripletMessage<1,2> m;
+               test_message(p, t, m, msg_vec, rd);
+            }
+         }
+      }
+   }
 }
 
 /*

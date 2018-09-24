@@ -11,7 +11,8 @@ struct graph_matching_input {
     std::size_t no_left_nodes_, no_right_nodes_;
 
     struct Assignment {
-        std::size_t left_node_, right_node_; double cost_;
+        std::size_t left_node_, right_node_;
+        double cost_;
         bool operator<(const Assignment& o) const {
             if(left_node_!=o.left_node_) { return left_node_ < o.left_node_; }
             return right_node_ < o.right_node_; 

@@ -61,8 +61,8 @@ namespace FunctionExistence {
 LPMP_FUNCTION_EXISTENCE_CLASS(HasReceiveMessageFromRight,ReceiveMessageFromRight)
 LPMP_FUNCTION_EXISTENCE_CLASS(HasReceiveMessageFromLeft, ReceiveMessageFromLeft)
    
-LPMP_FUNCTION_EXISTENCE_CLASS(HasReceiveRestrictedMessageFromRight,ReceiveRestrictedMessageFromRight)
-LPMP_FUNCTION_EXISTENCE_CLASS(HasReceiveRestrictedMessageFromLeft, ReceiveRestrictedMessageFromLeft)
+LPMP_FUNCTION_EXISTENCE_CLASS(has_receive_restricted_message_from_right,receive_restricted_message_from_right)
+LPMP_FUNCTION_EXISTENCE_CLASS(has_receive_restricted_message_from_left, receive_restricted_message_from_left)
 
 LPMP_FUNCTION_EXISTENCE_CLASS(HasSendMessagesToRight,SendMessagesToRight)
 LPMP_FUNCTION_EXISTENCE_CLASS(HasSendMessagesToLeft, SendMessagesToLeft)
@@ -109,7 +109,7 @@ struct LeftMessageFuncGetter
 
    constexpr static decltype(&MSG_CONTAINER::ReceiveMessageFromRightContainer) GetReceiveFunc() { return &MSG_CONTAINER::ReceiveMessageFromRightContainer; }
 
-   constexpr static decltype(&MSG_CONTAINER::ReceiveRestrictedMessageFromRightContainer) GetReceiveRestrictedFunc() { return &MSG_CONTAINER::ReceiveRestrictedMessageFromRightContainer; }
+   constexpr static decltype(&MSG_CONTAINER::receive_restricted_message_from_right_container) get_receive_restricted_func() { return &MSG_CONTAINER::receive_restricted_message_from_right_container; }
 
    constexpr static decltype(&MSG_CONTAINER::SendMessageToRightContainer) GetSendFunc() { return &MSG_CONTAINER::SendMessageToRightContainer; }
 
@@ -134,9 +134,8 @@ struct LeftMessageFuncGetter
    constexpr static bool adjacent_factor_sends_message() { return MSG_CONTAINER::sends_message_to_left_constexpr(); }
    constexpr static bool adjacent_factor_receives_message() { return MSG_CONTAINER::receives_message_from_left_constexpr(); }
 
-   constexpr static bool
-   CanCallReceiveRestrictedMessage()
-   { return MSG_CONTAINER::CanCallReceiveRestrictedMessageFromRightContainer(); }
+   constexpr static bool can_call_receive_restricted_message()
+   { return MSG_CONTAINER::can_call_receive_restricted_message_from_right_container(); }
 
    constexpr static bool 
    CanCallSendMessages()
@@ -163,7 +162,7 @@ struct RightMessageFuncGetter
 
    constexpr static decltype(&MSG_CONTAINER::ReceiveMessageFromLeftContainer) GetReceiveFunc() { return &MSG_CONTAINER::ReceiveMessageFromLeftContainer; }
 
-   constexpr static decltype(&MSG_CONTAINER::ReceiveRestrictedMessageFromLeftContainer) GetReceiveRestrictedFunc() { return &MSG_CONTAINER::ReceiveRestrictedMessageFromLeftContainer; }
+   constexpr static decltype(&MSG_CONTAINER::receive_restricted_message_from_left_container) get_receive_restricted_func() { return &MSG_CONTAINER::receive_restricted_message_from_left_container; }
 
    constexpr static decltype(&MSG_CONTAINER::SendMessageToLeftContainer) GetSendFunc() { return &MSG_CONTAINER::SendMessageToLeftContainer; }
 
@@ -189,8 +188,8 @@ struct RightMessageFuncGetter
    constexpr static bool adjacent_factor_sends_message() { return MSG_CONTAINER::sends_message_to_right_constexpr(); }
    constexpr static bool adjacent_factor_receives_message() { return MSG_CONTAINER::receives_message_from_right_constexpr(); }
 
-   constexpr static bool CanCallReceiveRestrictedMessage() 
-   { return MSG_CONTAINER::CanCallReceiveRestrictedMessageFromLeftContainer(); }
+   constexpr static bool can_call_receive_restricted_message() 
+   { return MSG_CONTAINER::can_call_receive_restricted_message_from_left_container(); }
 
    constexpr static bool
    CanCallSendMessages()
@@ -225,10 +224,10 @@ struct MessageDispatcher
    }
 #endif
 
-   constexpr static bool CanCallReceiveRestrictedMessage() { return FuncGetter<MSG_CONTAINER>::CanCallReceiveRestrictedMessage(); }
-   static void ReceiveRestrictedMessage(MSG_CONTAINER& t)
+   constexpr static bool can_call_receive_restricted_message() { return FuncGetter<MSG_CONTAINER>::can_call_receive_restricted_message(); }
+   static void receive_restricted_message(MSG_CONTAINER& t)
    {
-      auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::GetReceiveRestrictedFunc();
+      auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::get_receive_restricted_func();
       (t.*staticMemberFunc)();
    }
 
@@ -827,15 +826,14 @@ public:
 #endif
 
    constexpr static bool
-   CanCallReceiveRestrictedMessageFromRightContainer()
+   can_call_receive_restricted_message_from_right_container()
    { 
-      return FunctionExistence::HasReceiveRestrictedMessageFromRight<MessageType, void, 
-      RightFactorType, MessageContainerType>(); // do zrobienia: signature is slighly different: MessageContainerType is not actually used
+      return FunctionExistence::has_receive_restricted_message_from_right<MessageType, void, LeftFactorType, RightFactorType>(); 
    }
-   void ReceiveRestrictedMessageFromRightContainer()
+   void receive_restricted_message_from_right_container()
    {
       rightFactor_->conditionally_init_primal(leftFactor_->primal_access_);
-      msg_op_.ReceiveRestrictedMessageFromRight(*(rightFactor_->get_factor()), *static_cast<OneSideMessageContainerView<MessageContainerType, Chirality::left>*>(this));
+      msg_op_.receive_restricted_message_from_right(*(leftFactor_->get_factor()), *(rightFactor_->get_factor()));
    }
 
    constexpr static bool 
@@ -867,14 +865,14 @@ public:
 #endif
 
    constexpr static bool
-   CanCallReceiveRestrictedMessageFromLeftContainer()
+   can_call_receive_restricted_message_from_left_container()
    { 
-      return FunctionExistence::HasReceiveRestrictedMessageFromLeft<MessageType, void, LeftFactorType, MessageContainerType>(); 
+      return FunctionExistence::has_receive_restricted_message_from_left<MessageType, void, LeftFactorType, RightFactorType>(); 
    }
-   void ReceiveRestrictedMessageFromLeftContainer()
+   void receive_restricted_message_from_left_container()
    {
       leftFactor_->conditionally_init_primal(rightFactor_->primal_access_);
-      msg_op_.ReceiveRestrictedMessageFromLeft(*(leftFactor_->get_factor()), *static_cast<OneSideMessageContainerView<MessageContainerType, Chirality::right>*>(this));
+      msg_op_.receive_restricted_message_from_left(*(leftFactor_->get_factor()), *(rightFactor_->get_factor()));
    }
 
 
@@ -1155,6 +1153,7 @@ public:
            return msg_op.send_messages_to_left_improvement(*r, msg_begin, msg_end);
        } else {
            assert(false); // not implemented yet
+           return 0.0;
        }
    }
 
@@ -2330,14 +2329,11 @@ public:
 
    void UpdateFactorPrimal(const weight_slice& omega, const receive_slice& receive_mask, INDEX primal_access) final
    {
-#ifdef LPMP_PARALLEL
-     std::lock_guard<std::recursive_mutex> lock(mutex_); // only here do we wait for the mutex. In all other places try_lock is allowed only
-#endif
       assert(primal_access > 0); // otherwise primal is not initialized in first iteration
       conditionally_init_primal(primal_access);
-      if(CanComputePrimal()) { // do zrobienia: for now
+      if(CanComputePrimal()) {
          primal_access_ = primal_access;
-         if(false && CanReceiveRestrictedMessage() && ReceivesRestrictedMessage()) {
+         if(can_receive_restricted_message() && receives_restricted_message()) {
 
             serialization_archive ar(get_factor(), get_factor()+1, [](auto& f, auto& ar) { f.serialize_dual(ar); });
             save_archive s_ar(ar);
@@ -2345,7 +2341,7 @@ public:
 
             // now we change the dual information
             // first we compute restricted incoming messages, on which to compute the primal
-            ReceiveRestrictedMessages();
+            receive_restricted_messages(receive_mask);
 
             // now we compute primal w.r.t. the changed dual information!
             MaximizePotentialAndComputePrimal();
@@ -2368,7 +2364,7 @@ public:
          ReceiveMessages(receive_mask);
          MaximizePotential();
          SendMessages(omega);
-      }  
+      }
    }
 
    void MaximizePotential()
@@ -2466,53 +2462,35 @@ public:
             }
             
       });
-
    }
-
-#ifdef LPMP_PARALLEL
-   template<typename WEIGHT_VEC>
-   void ReceiveMessagesSynchronized(const WEIGHT_VEC& omega) 
-   {
-       assert(false); // introduce receive mask
-      // note: currently all messages are received, even if not needed. Change this again.
-      auto omegaIt = omega.begin();
-      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&omegaIt](auto l) {
-            constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
-            if constexpr(l.receives_message_from_adjacent_factor() {
-                  for(auto it = std::get<n>(msg_).begin(); it != std::get<n>(msg_).end(); ++it, ++omegaIt) {
-                     //if(*omegaIt == 0.0) { // makes large difference for cosegmentation_bins, why?
-                     l.ReceiveMessageSynchronized(*it);
-                     //}
-                  }
-            }
-            
-            //std::advance(omegaIt, std::get<n>(msg_).size());
-      });
-   }
-#endif
 
    // we write message change not into original reparametrization, but into temporary one named pot
-   void ReceiveRestrictedMessages() 
+   template<typename WEIGHT_VEC>
+   void receive_restricted_messages(const WEIGHT_VEC& receive_mask)
    {
-      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this](auto l) {
+      auto receive_it = receive_mask.begin();
+
+      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&receive_it](auto l) {
             constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
-            if constexpr(l.CanCallReceiveRestrictedMessage()) {
+            if constexpr(l.can_call_receive_restricted_message()) {
                 auto msg_begin = std::get<n>(msg_).begin();
                 auto msg_end = std::get<n>(msg_).end();
-                  for(auto it = msg_begin; it != msg_end; ++it) {
-                     l.ReceiveRestrictedMessage(*it); 
+                  for(auto it = msg_begin; it != msg_end; ++it, ++receive_it) {
+                     if(*receive_it) {
+                        l.receive_restricted_message(*it); 
+                     }
                   }
             }
       });
    }
 
-   struct can_receive_restricted_message {
+   struct can_receive_restricted_message_type {
       template<typename MESSAGE_DISPATCHER_TYPE>
-         using invoke = typename std::is_same<std::integral_constant<bool,MESSAGE_DISPATCHER_TYPE::CanCallReceiveRestrictedMessage()>, std::integral_constant<bool,true> >::type;
+         using invoke = typename std::is_same<std::integral_constant<bool,MESSAGE_DISPATCHER_TYPE::can_call_receive_restricted_message()>, std::integral_constant<bool,true> >::type;
    };
-   constexpr static bool CanReceiveRestrictedMessage() 
+   constexpr static bool can_receive_restricted_message() 
    {
-      return meta::any_of<MESSAGE_DISPATCHER_TYPELIST, can_receive_restricted_message>{};
+      return meta::any_of<MESSAGE_DISPATCHER_TYPELIST, can_receive_restricted_message_type>{};
    }
 
    // methods used by MessageIterator
@@ -3107,13 +3085,13 @@ public:
        return ReceivesMessage(MESSAGE_DISPATCHER_TYPELIST{}, msg_idx);
    }
 
-   // check whether actually receive restricted messages is called. Can be false, even if CanReceiveRestrictedMessages is true, e.g. when no message is present
-   bool ReceivesRestrictedMessage() const
+   // check whether actually receive restricted messages is called. Can be false, even if can_receive_restricted_messages is true, e.g. when no message is present
+   bool receives_restricted_message() const
    {
       bool calls_receive_restricted = false;
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
             constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
-            if(l.CanCallReceiveRestrictedMessage() && !std::get<n>(msg_).empty()) {
+            if(l.can_call_receive_restricted_message() && !std::get<n>(msg_).empty()) {
                calls_receive_restricted = true;
             }
       });
@@ -3132,7 +3110,7 @@ public:
       if(SendsMessage()) {
          return true;
       }
-      if(ReceivesRestrictedMessage()) {
+      if(receives_restricted_message()) {
          return true;
       }
       return false;
@@ -3292,7 +3270,7 @@ public:
 protected:
    FactorType factor_; // the factor operation
 public:
-   INDEX primal_access_ = 0; // counts when primal was accessed last, do zrobienia: make setter and getter for clean interface or make MessageContainer a friend
+   std::size_t primal_access_ = 0; // counts when primal was accessed last, do zrobienia: make setter and getter for clean interface or make MessageContainer a friend
 
    virtual void init_primal() final
    {

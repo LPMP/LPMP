@@ -769,6 +769,16 @@ public:
       return *this;
    }
 
+   template<typename E>
+   void operator-=(const matrix_expression<T,E>& o) {
+      assert(dim1() == o.dim1() && dim2() == o.dim2());
+      for(INDEX i=0; i<o.dim1(); ++i) { 
+         for(INDEX j=0; j<o.dim2(); ++j) { 
+            (*this)(i,j) -= o(i,j); 
+         } 
+      }
+   }
+
 
    T& operator()(const INDEX x1, const INDEX x2) { assert(x1<dim1() && x2<dim2()); return vec_[x1*padded_dim2() + x2]; }
    const T& operator()(const INDEX x1, const INDEX x2) const { assert(x1<dim1() && x2<dim2()); return vec_[x1*padded_dim2() + x2]; }
@@ -1140,9 +1150,30 @@ operator*(const T omega, const vector_expression<T,E> & v) {
 }
 
 template<typename T, typename E>
-scaled_vector<T,matrix_expression<T,E>> 
+struct scaled_matrix : public matrix_expression<T,scaled_matrix<T,E>> {
+   scaled_matrix(const T& omega, const E& a) : omega_(omega), a_(a) {}
+   const T operator[](const INDEX i) const {
+      return omega_*a_[i];
+   }
+   const T operator()(const INDEX i, const INDEX j) const {
+      return omega_*a_(i,j);
+   }
+   const T operator()(const INDEX i, const INDEX j, const INDEX k) const {
+      return omega_*a_(i,j,k);
+   }
+   INDEX size() const { return a_.size(); }
+   INDEX dim1() const { return a_.dim1(); }
+   INDEX dim2() const { return a_.dim2(); }
+   INDEX dim3() const { return a_.dim3(); }
+   private:
+   const T omega_;
+   const E& a_;
+};
+
+template<typename T, typename E>
+scaled_matrix<T,matrix_expression<T,E>> 
 operator*(const T omega, const matrix_expression<T,E> & v) {
-   return scaled_vector<T,matrix_expression<T,E>>(omega, v);
+   return scaled_matrix<T,matrix_expression<T,E>>(omega, v);
 }
 
 

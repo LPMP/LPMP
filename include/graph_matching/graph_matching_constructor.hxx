@@ -27,9 +27,8 @@ public:
         right_mrf(lp) 
     {}
 
-    void begin()
+    void order_factors()
     {
-       std::cout << "order factors\n";
        left_mrf.order_factors();
        right_mrf.order_factors();
 
@@ -44,7 +43,7 @@ public:
 
     bool CheckPrimalConsistency() const
     {
-        if(debug()) { std::cout << "check assignment\n"; }
+        if(debug()) std::cout << "check graph matching assignment\n";
 
         std::vector<bool> labels_taken(inverse_graph_.size(),false);
         for(std::size_t i=0; i<left_mrf.get_number_of_variables(); ++i) {
@@ -60,7 +59,18 @@ public:
         }  
 
         return true;
-    }  
+    }
+
+    template<typename STREAM>
+    void WritePrimal(STREAM& s) const
+    {
+       for(std::size_t i=0; i<graph_.size(); ++i) {
+          const std::size_t primal_label = left_mrf.get_unary_factor(i)->get_factor()->primal();
+          if(primal_label < graph_[i].size()) {
+             s << i << " -> " << graph_[i][primal_label] << "\n";
+          }
+       }
+    }
 
 
     void set_no_left_nodes(const std::size_t i)
@@ -95,49 +105,62 @@ public:
 
     void construct()
     {
-        for(const auto& v : graph_) { assert(std::is_sorted(v.begin(), v.end())); }
-        for(const auto& v : inverse_graph_) { assert(std::is_sorted(v.begin(), v.end())); }
+        for(auto& v : graph_) { std::sort(v.begin(), v.end()); }
+        for(auto& v : inverse_graph_) { std::sort(v.begin(), v.end()); }
         construct_unary_factors();
         construct_pairwise_factors();
     }
 
     void read_input(const graph_matching_input& gm_input)
     {
-        assert(std::is_sorted( gm_input.assignment_.begin(), gm_input.assignment_.end()));
+        //assert(std::is_sorted( gm_input.assignment_.begin(), gm_input.assignment_.end()));
         set_no_left_nodes(gm_input.no_left_nodes_);
         set_no_right_nodes(gm_input.no_right_nodes_);
+        assert(assignments_.size() == 0);
         for(const auto& a : gm_input.assignment_) { add_assignment(a.left_node_, a.right_node_, a.cost_); }
+        assert(quadratic_.size() == 0);
         for(const auto& q : gm_input.quadratic_) { add_quadratic_cost(q.assignment_1, q.assignment_2, q.cost); }
 
         //constexpr PairwiseConstruction pc = FmcConstruction(typename SOLVER::FMC{});
     }
 
 protected:
-   void construct_empty_unary_factors(MRF_CONSTRUCTOR& mrf, const std::vector<std::vector<std::size_t>>& graph)
+   void construct_empty_unary_factors(MRF_CONSTRUCTOR& mrf, std::vector<std::vector<std::size_t>>& graph)
    {
-       assert(mrf.get_number_of_variables() == 0);
-       for(std::size_t i=0; i<graph.size(); ++i) {
-           std::vector<REAL> costs(graph[i].size()+1, 0.0);
-           mrf.add_unary_factor(costs);
-       }
+      assert(mrf.get_number_of_variables() == 0);
+      for(std::size_t i=0; i<graph.size(); ++i) {
+         std::vector<REAL> costs(graph[i].size()+1, 0.0);
+         mrf.add_unary_factor(costs);
+      }
    }
    void construct_unary_factors()
    {
        construct_empty_unary_factors(left_mrf, graph_);
        construct_empty_unary_factors(right_mrf, inverse_graph_);
 
-       std::vector<std::size_t> left_counter(graph_.size());
-       std::vector<std::size_t> right_counter(inverse_graph_.size());
        for(const auto& assignment : assignments_) {
-           const auto left_node = assignment.left;
-           const auto right_node = assignment.right;
+           const std::size_t left_node = assignment.left;
+           const std::size_t right_node = assignment.right;
+
+           // TODO: binary search
+           const std::size_t left_index = std::lower_bound(graph_[left_node].begin(), graph_[left_node].end(), right_node) - graph_[left_node].begin();
+           assert(std::binary_search(graph_[left_node].begin(), graph_[left_node].end(), right_node));
+           assert(left_index < graph_[left_node].size());
+
+           // TODO: binary search
+           const std::size_t right_index = std::lower_bound(inverse_graph_[right_node].begin(), inverse_graph_[right_node].end(), left_node) - inverse_graph_[right_node].begin();
+           assert(std::binary_search(inverse_graph_[right_node].begin(), inverse_graph_[right_node].end(), left_node));
+           assert(right_index < inverse_graph_[right_node].size());
+
            const auto cost = assignment.cost;
 
            auto* left_factor = left_mrf.get_unary_factor(left_node);
-           (*left_factor->get_factor())[left_counter[left_node]++] = 0.5*cost;
+           assert((*left_factor->get_factor())[left_index] == 0.0);
+           (*left_factor->get_factor())[left_index] = 0.5*cost;
 
            auto* right_factor = right_mrf.get_unary_factor(right_node);
-           (*right_factor->get_factor())[right_counter[right_node]++] = 0.5*cost;
+           (*right_factor->get_factor())[right_index] = 0.5*cost;
+           (*right_factor->get_factor())[right_index] = 0.5*cost;
        }
    }
 

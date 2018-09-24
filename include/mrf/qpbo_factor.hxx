@@ -63,6 +63,21 @@ public:
         return q.ComputeTwiceLowerBound()/2.0; 
     }
 
+    std::size_t no_variables() const
+    {
+       return q.GetNodeNum();
+    }
+    std::size_t no_persistent_labels() const
+    {
+       q.Solve();
+       q.ComputeWeakPersistencies();
+       std::size_t no_persistent_labels = 0;
+       for(std::size_t i=0; i<q.GetNodeNum(); ++i)
+          if(q.GetLabel(i) >= 0)
+             ++no_persistent_labels;
+       return no_persistent_labels;
+    }
+
 private:
     mutable qpbo::QPBO<double> q;
 

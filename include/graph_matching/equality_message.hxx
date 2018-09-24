@@ -42,27 +42,35 @@ public:
       msg[0] -= omega*(repamPot[var_idx] - min_val);
    }
 
-   template<typename RIGHT_FACTOR, typename G1>
-   void ReceiveRestrictedMessageFromRight(const RIGHT_FACTOR& r, G1& msg)
+   template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
+   void receive_restricted_message_from_right(LEFT_FACTOR& l, const RIGHT_FACTOR& r)
    {
       if(r.primal() == rightVar_) {
-         msg[0] -= -std::numeric_limits<REAL>::infinity(); 
+         for(std::size_t i=0; i<l.size(); ++i) {
+            if(i != leftVar_) {
+               l[i] = std::numeric_limits<REAL>::infinity();
+            }
+         }
       } else if(r.primal() < r.size()) {
-         msg[0] -= std::numeric_limits<REAL>::infinity(); 
+         l[leftVar_] = std::numeric_limits<REAL>::infinity();
       } else {
-         MakeFactorUniform(r, msg, rightVar_);
+         //MakeFactorUniform(r, msg, rightVar_);
       }
    }
 
-   template<typename LEFT_FACTOR, typename G1>
-   void ReceiveRestrictedMessageFromLeft(const LEFT_FACTOR& l, G1& msg)
+   template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
+   void receive_restricted_message_from_left(const LEFT_FACTOR& l, RIGHT_FACTOR& r)
    { 
       if(l.primal() == leftVar_) {
-         msg[0] -= -std::numeric_limits<REAL>::infinity(); 
+         for(std::size_t i=0; i<r.size(); ++i) {
+            if(i != rightVar_) {
+               r[i] = std::numeric_limits<REAL>::infinity();
+            }
+         }
       } else if(l.primal() < l.size()) {
-         msg[0] -= std::numeric_limits<REAL>::infinity(); 
+         r[rightVar_] = std::numeric_limits<REAL>::infinity();
       } else {
-         MakeFactorUniform(l, msg, leftVar_);
+         //MakeFactorUniform(l, msg, leftVar_);
       } 
    }
 

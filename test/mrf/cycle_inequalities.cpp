@@ -106,7 +106,7 @@ int main()
       mrf.add_triplets(triplets);
 
       for(std::size_t i=0; i<100; ++i) {
-         s.GetLP().ComputePass(i);
+         s.GetLP().ComputePass();
       }
       test(s.GetLP().LowerBound() > 1.0-eps);
    }
@@ -138,7 +138,7 @@ int main()
       mrf.add_triplets(triplets);
 
       for(INDEX i=0; i<100; ++i) {
-         s.GetLP().ComputePass(i);
+         s.GetLP().ComputePass();
       }
       test(s.GetLP().LowerBound() > 1.0-eps);
       
@@ -184,7 +184,7 @@ int main()
       mrf.add_triplets(triplets);
 
       for(INDEX i=0; i<100; ++i) {
-         s.GetLP().ComputePass(i);
+         s.GetLP().ComputePass();
       }
       test(s.GetLP().LowerBound() > 1.0-eps);
    }
@@ -219,7 +219,7 @@ int main()
       mrf.add_triplets(triplets);
 
       for(INDEX i=0; i<100; ++i) {
-         s.GetLP().ComputePass(i);
+         s.GetLP().ComputePass();
       }
       test(s.GetLP().LowerBound() > 1.0-eps);
    }

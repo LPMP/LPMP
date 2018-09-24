@@ -1,4 +1,5 @@
 #include "test.h"
+#include "../test_message.hxx"
 #include "mrf/simplex_factor.hxx"
 
 using namespace LPMP;
@@ -64,4 +65,12 @@ int main()
    set_potts(potts2,-1.0);
    test_factor_equal(potts, potts2);
 
+   // random test
+   {
+      std::random_device rd;
+      for(std::size_t i=1; i<100; ++i) {
+         pairwise_potts_factor potts(i,1.0);
+         test_factor(potts, rd);
+      }
+   }
 }

@@ -50,6 +50,10 @@ add_executable(mrf_tightening mrf_tightening.cpp)
 target_link_libraries(mrf_tightening LPMP m stdc++ pthread lingeling)
 add_test(mrf_tightening mrf_tightening)
 
+add_executable(mrf_chain_test mrf_chain_test.cpp)
+target_link_libraries(mrf_chain_test LPMP mrf_uai_input)
+add_test(mrf_chain_test mrf_chain_test)
+
 if(WITH_GUROBI)
   add_executable(combiLP combiLP.cpp)
   target_link_libraries(combiLP LPMP m stdc++ pthread GUROBI HDF5 lingeling) #somehow currently needs to be linked against. Remove this!

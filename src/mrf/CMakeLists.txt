@@ -20,6 +20,7 @@ SET(UAI_SOURCE_FILES
    mplp_uai.cpp
    srmp_uai.cpp
    srmp_uai_tightening.cpp
+   qpbo_uai.cpp
    )
 
 foreach( source_file ${UAI_SOURCE_FILES} )
@@ -51,3 +52,6 @@ target_link_libraries(conic_bundle_uai LPMP m stdc++ pthread lingeling cb arbori
 
 add_executable(conic_bundle_opengm conic_bundle_opengm.cpp)
 target_link_libraries(conic_bundle_opengm HDF5 LPMP m stdc++ pthread lingeling cb arboricity mrf_opengm_input)
+
+add_executable(qpbo_dimacs qpbo_dimacs.cpp)
+target_link_libraries(qpbo_dimacs LPMP dimacs_max_flow_input)
