@@ -47,11 +47,14 @@ public:
         populated = true;
     }
 
-    max_linear_costs Get(INDEX j) const { assert(j < M.size()); return M[j]; }
+    const max_linear_costs Get(const INDEX j) const { assert(j < M.size()); return M[j]; }
+    INDEX size() const { return M.size();}
+    // const max_linear_costs operator[](const INDEX j) const { Get(j); }
+
     void Clear() { M.clear(); }
 };
 
-template <bool DoForward>
+template <bool DoForward, bool useStartingNode = false>
 class shortest_distance_calculator {
 private: 
     three_dimensional_variable_array<REAL> LinearPairwisePotentials;
@@ -60,26 +63,37 @@ private:
     two_dim_variable_array<REAL> distance;
     REAL shortestPathDistance;
     struct edge { INDEX n1, l1, l2; }; 
+    INDEX StartingNodeIndex;
+    INDEX StartingLabelIndex;
 
 public:
     shortest_distance_calculator(const three_dimensional_variable_array<REAL>& linearPairwisePotentials, 
                                 const three_dimensional_variable_array<REAL>& maxPairwisePotentials,
-                                const std::vector<INDEX>& numLabels):
+                                const std::vector<INDEX>& numLabels, INDEX startingNode = 0, INDEX startingLabel = 0):
                                 LinearPairwisePotentials(linearPairwisePotentials),
-                                MaxPairwisePotentials(maxPairwisePotentials),
-                                NumLabels(numLabels) {
+                                MaxPairwisePotentials(maxPairwisePotentials), NumLabels(numLabels),
+                                StartingNodeIndex(startingNode), StartingLabelIndex(startingLabel) {
         distance.resize(numLabels.begin(), numLabels.end(), std::numeric_limits<REAL>::max());
         init();
     }
 
     void init() {
-        if(DoForward) { std::fill(distance[0].begin(), distance[0].end(), 0); }
-        else { std::fill(distance[distance.size() - 1].begin(), distance[distance.size() - 1].end(), 0); }
         shortestPathDistance = std::numeric_limits<REAL>::max();
+        if (!useStartingNode) {
+            if(DoForward) { std::fill(distance[0].begin(), distance[0].end(), 0); }
+            else { std::fill(distance[distance.size() - 1].begin(), distance[distance.size() - 1].end(), 0); }
+        }
+        else {
+            distance[StartingNodeIndex][StartingLabelIndex] = 0;
+            if (DoForward && StartingNodeIndex == distance.size() - 1)
+                shortestPathDistance = 0;
+            else if (!DoForward && StartingNodeIndex == 0)
+                shortestPathDistance = 0;
+        }
     }
 
     REAL GetDistance(INDEX n, INDEX l) const { return distance[n][l]; }
-    
+
     //TODO: Only does forward distance calculation!
     void AddEdge(INDEX n1, INDEX l1, INDEX l2) {
         if (DoForward) {
@@ -91,10 +105,13 @@ public:
             assert(false); // not required so far.
         }
     }
-    template <bool checkCollision = false>
-    void AddEdgeWithUpdate(INDEX n1, INDEX l1, INDEX l2, REAL bottleneckThreshold, INDEX cn = 0, INDEX cl1 = 0, INDEX cl2 = 0) {
+    
+    void AddEdgeWithUpdate(INDEX n1, INDEX l1, INDEX l2, REAL bottleneckThreshold) {
         assert(MaxPairwisePotentials(n1, l1, l2) <= bottleneckThreshold);
         std::queue<edge> queue;
+        if (!ToAddEdge(n1, l1, l2))
+            return;
+
         queue.push({n1, l1, l2});
 
         while(!queue.empty()) {
@@ -115,22 +132,27 @@ public:
             }
             INDEX childNode = nextNode + (DoForward ?  + 1 : -1);
             for (INDEX childLabel = 0; childLabel < NumLabels[childNode]; ++childLabel) {
-                if (DoForward) {
-                    if (MaxPairwisePotentials(nextNode, nextLabel, childLabel) > bottleneckThreshold || 
-                        (checkCollision && nextNode == cn && (cl1 != nextLabel || cl2 != childLabel))) 
-                        continue;
-                    
+                if (DoForward && MaxPairwisePotentials(nextNode, nextLabel, childLabel) <= bottleneckThreshold
+                    && ToAddEdge(nextNode, nextLabel, childLabel)) {
                     queue.push({nextNode, nextLabel, childLabel});
                 }
-                else {
-                    if (MaxPairwisePotentials(childNode, childLabel, nextLabel) > bottleneckThreshold || 
-                        (checkCollision && childNode == cn && (cl1 != childLabel || cl2 != nextLabel)))
-                        continue;
-
+                else if (!DoForward && MaxPairwisePotentials(childNode, childLabel, nextLabel) <= bottleneckThreshold
+                        && ToAddEdge(childNode, childLabel, nextLabel)) {
                     queue.push({childNode, childLabel, nextLabel});
                 }
             }
         }
+    }
+
+    bool ToAddEdge(INDEX n1, INDEX l1, INDEX l2) const {
+        if (!useStartingNode) return true;
+        else if (DoForward && (n1 < StartingNodeIndex || (n1 == StartingNodeIndex && l1 != StartingLabelIndex)))  {
+            return false;
+        }
+        else if (!DoForward && (n1 + 1 > StartingNodeIndex || (n1 + 1 == StartingNodeIndex && l2 != StartingLabelIndex))) {
+            return false;
+        }
+        return true;
     }
 
     REAL ShortestDistance() const { return shortestPathDistance; }

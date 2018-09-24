@@ -35,12 +35,12 @@ public:
         std::vector<INDEX> bestLabelsForNodes(numNodes);
         std::vector<INDEX> lablesForNodes(numNodes);
         for(const auto& currentElementToInsert : SortingOrder) {
-            const INDEX& currentNodeIndex = MaxPotentials[currentElementToInsert].nodeIndex;
-            const INDEX& currentLabelIndex = MaxPotentials[currentElementToInsert].labelIndex;
-            const REAL& currentLinearCost = marginals[currentNodeIndex].Get(currentLabelIndex).LinearCost;
+            const INDEX currentNodeIndex = MaxPotentials[currentElementToInsert].nodeIndex;
+            const INDEX currentLabelIndex = MaxPotentials[currentElementToInsert].labelIndex;
+            const REAL currentLinearCost = marginals[currentNodeIndex].Get(currentLabelIndex).LinearCost;
             if (currentLinearCost == std::numeric_limits<REAL>::max())
                 continue; // infeasible label.
-            const REAL& currentMaxCost =  MaxPotentials[currentElementToInsert].value;
+            const REAL currentMaxCost =  MaxPotentials[currentElementToInsert].value;
             assert(currentMaxCost == marginals[currentNodeIndex].Get(currentLabelIndex).MaxCost);
             // If the edge is not yet covered:
             if (!coveredNodes[currentNodeIndex])  {
@@ -222,12 +222,29 @@ public:
     }
 
     std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.9) const {
-        REAL lb = LowerBound();
+        REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
         std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
+        std::vector<Marginals> leftNodeLeftMarginals(LinearPotentials[chain].dim2(e));
+        std::vector<Marginals> rightNodeRightMarginals(LinearPotentials[chain].dim3(e));
+        for (INDEX l1 = 0; l1 < leftNodeLeftMarginals.size(); l1++) 
+            ComputeChainMarginals<false, true>(leftNodeLeftMarginals[l1], chain, e, l1);
+
+        for (INDEX l2 = 0; l2 < rightNodeRightMarginals.size(); l2++) 
+            ComputeChainMarginals<true, true>(rightNodeRightMarginals[l2], chain, e + 1, l2);
+
+        MarginalsValid[chain] = false;
+
         INDEX i = 0;
         for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
             for (INDEX l2 = 0; l2 < LinearPotentials[chain].dim3(e); l2++) {
-                message[i] = OMEGA * (ComputeMinMarginalsForPairwise(chain, e, l1, l2) - lb);
+                // Copy the linear costs of current edge into marginals of current chain, as the original 
+                // ones are not of any use now and will need to be updated anyway.
+                MarginalsChains[chain] = MergeNodeMarginals(leftNodeLeftMarginals[l1], rightNodeRightMarginals[l2],
+                                                             {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
+                UnarySolver.ComputeBestLabels(MarginalsChains); // TO DO: Do not need to store labels.
+                REAL minMarginal = UnarySolver.GetBestCost();
+
+                message[i] = OMEGA * (minMarginal - lb);
                 if (message[i] < 0 && message[i] > -eps)
                     message[i] = 0; // get rid of numerical errors. 
                 assert(message[i] >= 0);
@@ -237,7 +254,7 @@ public:
         assert(*std::min_element(message.begin(), message.end()) <= eps); // one edge should be a part of lower bound solution.
         return message;
     }
-   
+ 
 private:
     std::vector<INDEX> Solve() const {
         for (INDEX c = 0; c < NumChains; c++) {
@@ -283,18 +300,19 @@ private:
         return {maxPotValue, linearCost};
     }
 
-    template <bool blockingEdge = false>
-    void ComputeChainMarginals(Marginals& marginals, const INDEX chainIndex, 
-                               const INDEX blocking_e = 0, const INDEX blocking_l1 = 0, const INDEX blocking_l2 = 0) const
+    template <bool doForward = true, bool directionalNodeMarginal = false>
+    void ComputeChainMarginals(Marginals& marginals, const INDEX chainIndex, INDEX n = 0, INDEX l = 0) const
     {
-        shortest_distance_calculator<true> distCalc(LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex]);
+        shortest_distance_calculator<doForward, directionalNodeMarginal> distCalc
+                                    (LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex], n, l);
+
         for (const auto& e : MaxPotentialsOfChainsOrder[chainIndex]) {
-            const auto& n1 = MaxPotentialsOfChains[chainIndex][e].Edge;
-            const auto& l1 = MaxPotentialsOfChains[chainIndex][e].L1;
-            const auto& l2 = MaxPotentialsOfChains[chainIndex][e].L2;
-            const auto& bottleneckCost = MaxPotentialsOfChains[chainIndex][e].Value;
+            const auto n1 = MaxPotentialsOfChains[chainIndex][e].Edge;
+            const auto l1 = MaxPotentialsOfChains[chainIndex][e].L1;
+            const auto l2 = MaxPotentialsOfChains[chainIndex][e].L2;
+            const auto bottleneckCost = MaxPotentialsOfChains[chainIndex][e].Value;
                
-            distCalc.AddEdgeWithUpdate<blockingEdge>(n1, l1, l2, bottleneckCost, blocking_e, blocking_l1, blocking_l2);
+            distCalc.AddEdgeWithUpdate(n1, l1, l2, bottleneckCost);
 
             REAL l = distCalc.ShortestDistance();
             marginals.insert({bottleneckCost, l}); //storing infinities as well, to ensure consistency with min-marginal computation.
@@ -302,23 +320,30 @@ private:
         marginals.Populated();
     }
 
-    REAL ComputeMinMarginalsForPairwise(INDEX chain, INDEX e, INDEX l1, INDEX l2) const {
-        ComputeChainMarginals<true>(MarginalsChains[chain], chain, e, l1, l2);
-        MarginalsValid[chain] = false;
-        for (INDEX c = 0; c < NumChains; c++) {
-            if (c == chain || MarginalsValid[c]) continue;
-            ComputeChainMarginals(MarginalsChains[c], c);
-            MarginalsValid[c] = true;        
-        }
-        UnarySolver.ComputeBestLabels(MarginalsChains);
-        return UnarySolver.GetBestCost();
-    }
-
     std::vector<INDEX> GetMaxPotentialSortingOrder(const std::vector<MaxPotentialInChain>& pots) const {
         std::vector<INDEX> idx(pots.size());
         std::iota(idx.begin(), idx.end(), 0);
         std::sort(idx.begin(), idx.end(), [&pots](INDEX i1, INDEX i2) {return pots[i1].Value < pots[i2].Value;});
         return idx;
+    }
+
+    Marginals MergeNodeMarginals(const Marginals& leftNode,const  Marginals& rightNode, max_linear_costs edgeCost) const {
+        Marginals merged;
+        assert(leftNode.size() == rightNode.size());
+        for (INDEX i = 0; i < leftNode.size(); i++) {
+            const REAL leftMaxCost = leftNode.Get(i).MaxCost;
+            const REAL rightMaxCost = rightNode.Get(i).MaxCost;
+            assert(leftMaxCost == rightMaxCost);
+            const REAL leftLinearCost = leftNode.Get(i).LinearCost;
+            const REAL rightLinearCost = rightNode.Get(i).LinearCost;
+            if (std::max(leftLinearCost, rightLinearCost) >= std::numeric_limits<REAL>::max()  // no path exists at this bottleneck threshold
+                || leftMaxCost < edgeCost.MaxCost) // below the bottleneck value of edge.
+                merged.insert({leftMaxCost, std::numeric_limits<REAL>::max()});
+            else
+                merged.insert({leftMaxCost, leftLinearCost + rightLinearCost + edgeCost.LinearCost});
+        }
+        merged.Populated();
+        return merged;
     }
 };
 
