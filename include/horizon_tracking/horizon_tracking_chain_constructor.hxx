@@ -7,115 +7,165 @@
 
 namespace LPMP {
 
-template<typename MRF_CONSTRUCTOR, typename MAX_CHAIN_FACTOR, typename MAX_POTENTIAL_FACTOR, typename PAIRWISE_MAX_CHAIN_MESSAGE, typename MAX_CHAIN_MAX_POTENTIAL_MESSAGE>
-class max_chain_constructor : public MRF_CONSTRUCTOR {
+// template<typename MRF_CONSTRUCTOR, typename MAX_CHAIN_FACTOR, typename MAX_POTENTIAL_FACTOR, typename PAIRWISE_MAX_CHAIN_MESSAGE, typename MAX_CHAIN_MAX_POTENTIAL_MESSAGE>
+// class max_chain_constructor : public MRF_CONSTRUCTOR {
+
+// public:
+// using FMC = typename MRF_CONSTRUCTOR::FMC;
+// using mrf_constructor = MRF_CONSTRUCTOR;
+// using max_chain_factor_container = MAX_CHAIN_FACTOR;
+// using max_potential_factor_container = MAX_POTENTIAL_FACTOR;
+// using pairwise_max_factor_message_container = PAIRWISE_MAX_CHAIN_MESSAGE;
+// using max_chain_max_potential_message_container = MAX_CHAIN_MAX_POTENTIAL_MESSAGE;
+// using mrf_constructor::mrf_constructor;
+
+// std::vector<max_chain_factor_container*> max_chain_factors() const { return max_chain_factors_; }
+// std::vector<max_potential_factor_container*> max_graph_factors() const { return max_graph_factors_; }
+// std::vector<pairwise_max_factor_message_container*> pairwise_to_chain_messages() const { return pairwise_to_chain_messages_; }
+// std::vector<max_chain_max_potential_message_container*> max_chain_to_graph_messages() const { return max_chain_to_graph_messages_;}
+
+// template <typename ITERATOR>
+// max_chain_factor_container* add_max_chain(ITERATOR node_var_begin, ITERATOR node_var_end,
+//                                     const three_dimensional_variable_array<REAL>& maxPairwisePotentials,
+//                                     const std::size_t chainIndex,
+//                                     factor_tree<FMC>* t = nullptr)
+// {
+//     std::vector<INDEX> num_labels;
+//     for(auto it = node_var_begin; it!=node_var_end; ++it) {
+//         const INDEX i = (*it);
+//         num_labels.push_back( this->get_number_of_labels(i) );
+//     }
+//     three_dimensional_variable_array<REAL> linearPairwisePotentials(maxPairwisePotentials);
+//     for(std::size_t n1=0; n1<maxPairwisePotentials.dim1(); ++n1) {
+//         for(std::size_t l1=0; l1<maxPairwisePotentials.dim2(n1); ++l1) {
+//             for(std::size_t l2=0; l2<maxPairwisePotentials.dim3(n1); ++l2) {
+//                 linearPairwisePotentials(n1, l1, l2) = 0.0;
+//             }
+//         }
+//     }
+//     auto* chain_factor = this->lp_->template add_factor<max_chain_factor_container>(maxPairwisePotentials, linearPairwisePotentials, num_labels, chainIndex);
+
+//     INDEX pairwise_index=0;
+//     INDEX node1_index = 0;
+//     INDEX node2_index = 1;
+//     for(auto it = node_var_begin; std::next(it, 1)!=node_var_end; ++it, ++pairwise_index, ++node1_index, ++node2_index) {
+//         const INDEX i = (*it);
+//         const INDEX j = *std::next(it, 1);
+//         auto* pairwise_factor = this->get_pairwise_factor(i,j);
+//         auto* msg = this->lp_->template add_message<pairwise_max_factor_message_container>(pairwise_factor, chain_factor, pairwise_index, node1_index, node2_index);
+//         pairwise_to_chain_messages_.push_back(msg);
+//         if(t != nullptr) {
+//             t->add_message(msg, Chirality::right); 
+//         }
+//     }
+//     max_chain_factors_.push_back(chain_factor);
+//     return chain_factor;
+// }
+
+// template<typename ITERATOR>
+// max_potential_factor_container* add_max_potential(ITERATOR max_chain_begin, ITERATOR max_chain_end, factor_tree<FMC>* t = nullptr)
+// {   
+//     // ugly: we first build a std::vector<std::vector<..>> and then convert it to two_dim_variable_array
+//     std::vector<std::vector<max_linear_costs>> all_marginals;
+//     for(auto max_chain_it = max_chain_begin; max_chain_it!=max_chain_end; ++max_chain_it) {
+//         auto* f = (*max_chain_it)->get_factor();
+//         f->MaximizePotentialAndComputePrimal();
+//         std::vector<max_linear_costs> current_chain_marginals_max;
+//         for (INDEX i = 0; i < f->max_potential_marginals_size(); i++) {
+//             current_chain_marginals_max.push_back({f->max_potential_marginal(i).MaxCost, f->max_potential_marginal(i).LinearCost});
+//         }
+//         all_marginals.push_back(current_chain_marginals_max);
+//     }
+
+//     auto* max_factor = this->lp_->template add_factor<max_potential_factor_container>(all_marginals);
+//     for(auto max_chain_it = max_chain_begin; max_chain_it!=max_chain_end; ++max_chain_it) {
+//         const auto chain_index = std::distance(max_chain_begin, max_chain_it);
+//         auto* current_chain = *max_chain_it;
+
+//         auto* msg = this->lp_->template add_message<max_chain_max_potential_message_container>(current_chain, max_factor, chain_index);
+//         max_chain_to_graph_messages_.push_back(msg);
+//         if(t != nullptr) {
+//             t->add_message(msg, Chirality::right);
+//         } 
+//     }
+//     max_graph_factors_.push_back(max_factor);
+//     return max_factor;
+// }
+
+// private: 
+//     std::vector<max_chain_factor_container*> max_chain_factors_;
+//     std::vector<max_potential_factor_container*> max_graph_factors_;
+//     std::vector<max_chain_max_potential_message_container*> max_chain_to_graph_messages_;
+//     std::vector<pairwise_max_factor_message_container*> pairwise_to_chain_messages_;
+// };
+
+template<typename MRF_CONSTRUCTOR, typename MAX_MULTIPLE_CHAINS_FACTOR, typename PAIRWISE_MULTIPLE_CHAINS_MESSAGE>
+class max_multiple_chains_constructor : public MRF_CONSTRUCTOR {
 
 public:
 using FMC = typename MRF_CONSTRUCTOR::FMC;
 using mrf_constructor = MRF_CONSTRUCTOR;
-using max_chain_factor_container = MAX_CHAIN_FACTOR;
-using max_potential_factor_container = MAX_POTENTIAL_FACTOR;
-using pairwise_max_factor_message_container = PAIRWISE_MAX_CHAIN_MESSAGE;
-using max_chain_max_potential_message_container = MAX_CHAIN_MAX_POTENTIAL_MESSAGE;
+using max_multiple_chains_factor_container = MAX_MULTIPLE_CHAINS_FACTOR;
+using pairwise_multiple_chains_message_container = PAIRWISE_MULTIPLE_CHAINS_MESSAGE;
 using mrf_constructor::mrf_constructor;
 
-std::vector<max_chain_factor_container*> max_chain_factors() const {
-    return max_chain_factors_;
-}
+std::vector<max_multiple_chains_factor_container*> max_multiple_chains_factors() const { return max_multiple_chains_factors_; }
+std::vector<pairwise_multiple_chains_message_container*> pairwise_to_multiple_chain_messages() const { return pairwise_multiple_chains_messages_; }
 
-std::vector<max_potential_factor_container*> max_graph_factors() const {
-    return max_graph_factors_;
-}
-
-std::vector<pairwise_max_factor_message_container*> pairwise_to_chain_messages() const {
-    return pairwise_to_chain_messages_;
-}
-
-std::vector<max_chain_max_potential_message_container*> max_chain_to_graph_messages() const {
-    return max_chain_to_graph_messages_;
-}
-
-template <typename ITERATOR>
-max_chain_factor_container* add_max_chain(ITERATOR node_var_begin, ITERATOR node_var_end,
-                                    const three_dimensional_variable_array<REAL>& maxPairwisePotentials,
-                                    const std::size_t chainIndex,
+max_multiple_chains_factor_container* add_multiple_chains_factor(const std::vector<std::vector<INDEX>>& numLabels,
+                                    const std::vector<three_dimensional_variable_array<REAL>>& maxPairwisePotentials,
+                                    const two_dim_variable_array<INDEX>& chainNodeToOriginalNode,
                                     factor_tree<FMC>* t = nullptr)
 {
-    std::vector<INDEX> num_labels;
-    for(auto it = node_var_begin; it!=node_var_end; ++it) {
-        const INDEX i = (*it);
-        num_labels.push_back( this->get_number_of_labels(i) );
+    INDEX numChains = numLabels.size();
+    assert(numChains == maxPairwisePotentials.size());
+    std::vector<three_dimensional_variable_array<REAL>> linearPairwisePotentials;
+    for (std::size_t c=0; c<maxPairwisePotentials.size();c++) {
+        three_dimensional_variable_array<REAL> currentChainLinearPotentials(maxPairwisePotentials[c]);
+        for(std::size_t n1=0; n1<maxPairwisePotentials[c].dim1(); ++n1) {
+            for(std::size_t l1=0; l1<maxPairwisePotentials[c].dim2(n1); ++l1) {
+                for(std::size_t l2=0; l2<maxPairwisePotentials[c].dim3(n1); ++l2) {
+                    currentChainLinearPotentials(n1, l1, l2) = 0.0;
+                }
+            }
+        }
+        linearPairwisePotentials.push_back(currentChainLinearPotentials);
     }
-    three_dimensional_variable_array<REAL> linearPairwisePotentials(maxPairwisePotentials);
-    for(std::size_t n1=0; n1<maxPairwisePotentials.dim1(); ++n1) {
-        for(std::size_t l1=0; l1<maxPairwisePotentials.dim2(n1); ++l1) {
-            for(std::size_t l2=0; l2<maxPairwisePotentials.dim3(n1); ++l2) {
-                linearPairwisePotentials(n1, l1, l2) = 0.0;
+    auto* multiple_chains_factor = this->lp_->template add_factor<max_multiple_chains_factor_container>(linearPairwisePotentials, maxPairwisePotentials, numLabels);
+
+    assert(numChains == chainNodeToOriginalNode.size());
+    for (std::size_t chain_index=0; chain_index<numChains;chain_index++) {
+        INDEX pairwise_index=0;
+        INDEX node1_index = 0;
+        INDEX node2_index = 1;
+        for (INDEX i = 0; i < chainNodeToOriginalNode[chain_index].size() - 1; i++, pairwise_index++, node1_index++, node2_index++) {
+            const INDEX original_node_1 = chainNodeToOriginalNode[chain_index][i];
+            const INDEX original_node_2 = chainNodeToOriginalNode[chain_index][i + 1];
+            auto* pairwise_factor = this->get_pairwise_factor(original_node_1, original_node_2);
+            auto* msg = this->lp_->template add_message<pairwise_multiple_chains_message_container>
+                        (pairwise_factor, multiple_chains_factor, chain_index, pairwise_index, node1_index, node2_index);
+            
+            pairwise_multiple_chains_messages_.push_back(msg);
+            if(t != nullptr) {
+                t->add_message(msg, Chirality::right); 
             }
         }
     }
-    auto* chain_factor = this->lp_->template add_factor<max_chain_factor_container>(maxPairwisePotentials, linearPairwisePotentials, num_labels, chainIndex);
-
-    INDEX pairwise_index=0;
-    INDEX node1_index = 0;
-    INDEX node2_index = 1;
-    for(auto it = node_var_begin; std::next(it, 1)!=node_var_end; ++it, ++pairwise_index, ++node1_index, ++node2_index) {
-        const INDEX i = (*it);
-        const INDEX j = *std::next(it, 1);
-        auto* pairwise_factor = this->get_pairwise_factor(i,j);
-        auto* msg = this->lp_->template add_message<pairwise_max_factor_message_container>(pairwise_factor, chain_factor, pairwise_index, node1_index, node2_index);
-        pairwise_to_chain_messages_.push_back(msg);
-        if(t != nullptr) {
-            t->add_message(msg, Chirality::right); 
-        }
-    }
-    max_chain_factors_.push_back(chain_factor);
-    return chain_factor;
-}
-
-template<typename ITERATOR>
-max_potential_factor_container* add_max_potential(ITERATOR max_chain_begin, ITERATOR max_chain_end, factor_tree<FMC>* t = nullptr)
-{   
-    // ugly: we first build a std::vector<std::vector<..>> and then convert it to two_dim_variable_array
-    std::vector<std::vector<max_linear_costs>> all_marginals;
-    for(auto max_chain_it = max_chain_begin; max_chain_it!=max_chain_end; ++max_chain_it) {
-        auto* f = (*max_chain_it)->get_factor();
-        f->MaximizePotentialAndComputePrimal();
-        std::vector<max_linear_costs> current_chain_marginals_max;
-        for (INDEX i = 0; i < f->max_potential_marginals_size(); i++) {
-            current_chain_marginals_max.push_back({f->max_potential_marginal(i).MaxCost, f->max_potential_marginal(i).LinearCost});
-        }
-        all_marginals.push_back(current_chain_marginals_max);
-    }
-
-    auto* max_factor = this->lp_->template add_factor<max_potential_factor_container>(all_marginals);
-    for(auto max_chain_it = max_chain_begin; max_chain_it!=max_chain_end; ++max_chain_it) {
-        const auto chain_index = std::distance(max_chain_begin, max_chain_it);
-        auto* current_chain = *max_chain_it;
-
-        auto* msg = this->lp_->template add_message<max_chain_max_potential_message_container>(current_chain, max_factor, chain_index);
-        max_chain_to_graph_messages_.push_back(msg);
-        if(t != nullptr) {
-            t->add_message(msg, Chirality::right);
-        } 
-    }
-    max_graph_factors_.push_back(max_factor);
-    return max_factor;
+    max_multiple_chains_factors_.push_back(multiple_chains_factor);
+    return multiple_chains_factor;
 }
 
 private: 
-    std::vector<max_chain_factor_container*> max_chain_factors_;
-    std::vector<max_potential_factor_container*> max_graph_factors_;
-    std::vector<max_chain_max_potential_message_container*> max_chain_to_graph_messages_;
-    std::vector<pairwise_max_factor_message_container*> pairwise_to_chain_messages_;
+    std::vector<max_multiple_chains_factor_container*> max_multiple_chains_factors_;
+    std::vector<pairwise_multiple_chains_message_container*> pairwise_multiple_chains_messages_;
 };
 
 template<typename SOLVER, typename HORIZON_TRACKING_CONSTRUCTOR>
-void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking_input& input, SOLVER& solver, HORIZON_TRACKING_CONSTRUCTOR& chain_constructor)
+void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking_input& input, SOLVER& solver, HORIZON_TRACKING_CONSTRUCTOR& multiple_chain_constructor)
 {
     // construct mrf part
-    chain_constructor.construct(input.mrf); 
-    auto trees = chain_constructor.compute_forest_cover();
+    multiple_chain_constructor.construct(input.mrf); 
+    auto trees = multiple_chain_constructor.compute_forest_cover();
     for(auto& tree : trees) {
         solver.GetLP().add_tree(tree);
     }
@@ -128,8 +178,11 @@ void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking
 
         // allocate space for max potentials on chains
         std::vector<three_dimensional_variable_array<REAL>> max_pairwise_potentials_on_chains(grid.number_of_chains());
+        std::vector<std::vector<INDEX>> nodeIndices;
+        std::vector<std::vector<INDEX>> numLabels(grid.number_of_chains());
         for(std::size_t i=0; i<grid.number_of_chains(); ++i) {
             const auto nodes = grid.chain(i);
+            nodeIndices.push_back(nodes);
             assert(nodes.size() > 0);
             std::vector<std::array<std::size_t,2>> function_table_size;
             function_table_size.reserve(nodes.size()-1);
@@ -137,6 +190,9 @@ void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking
                 const std::size_t l1Size = bottleneck_potential.cardinality(*node_it);
                 const std::size_t l2Size = bottleneck_potential.cardinality(*std::next(node_it, 1));
                 function_table_size.push_back({l1Size, l2Size});
+            }
+            for(auto node_it = nodes.begin(); node_it!=nodes.end(); ++node_it) {
+                numLabels[i].push_back(bottleneck_potential.cardinality(*node_it));
             }
             max_pairwise_potentials_on_chains[i].resize(function_table_size.begin(), function_table_size.end());
         }
@@ -155,19 +211,10 @@ void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking
             }
         }
 
-        // add chain potentials
         using FMC = typename SOLVER::FMC;
         factor_tree<FMC> tree;
-        std::vector<typename std::remove_reference_t<decltype(chain_constructor)>::max_chain_factor_container*> max_chain_potentials;
-        max_chain_potentials.reserve(grid.number_of_chains());
-
-        for(std::size_t i=0; i<grid.number_of_chains(); ++i) {
-            const auto nodes = grid.chain(i);
-            auto* f = chain_constructor.add_max_chain(nodes.begin(), nodes.end(), max_pairwise_potentials_on_chains[i], i, &tree);
-            max_chain_potentials.push_back(f);
-        }
-
-        auto* f = chain_constructor.add_max_potential(max_chain_potentials.begin(), max_chain_potentials.end(), &tree);
+        two_dim_variable_array<INDEX> nodeIndices2D(nodeIndices);
+        multiple_chain_constructor.add_multiple_chains_factor(numLabels, max_pairwise_potentials_on_chains, nodeIndices2D, &tree);
         solver.GetLP().add_tree(tree);
     }
 }

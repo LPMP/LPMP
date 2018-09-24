@@ -27,19 +27,36 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
     auto chain_constructor = solver.template GetProblemConstructor<0>();
     if (send_backward) {
         auto prevLb = solver.GetLP().LowerBound();
+        auto olb1 = solver.GetLP().original_factors_lower_bound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
         for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
-            m->send_message_to_left(); 
+#ifndef NDEBUG
+            const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
+            const REAL before_right_lb = m->GetRightFactor()->LowerBound();
+#endif
+            m->send_message_to_left();
+#ifndef NDEBUG
+            const REAL after_left_lb = m->GetLeftFactor()->LowerBound();
+            const REAL after_right_lb = m->GetRightFactor()->LowerBound();
+            assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps); 
+#endif
         }
-        assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
-        for(auto* f : chain_constructor.max_chain_factors()) {
-            f->get_factor()->ConvertMarginalSlackToPairwiseSlack();
-        }
+        auto olb2 = solver.GetLP().original_factors_lower_bound();
         assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
         // Send messages from Chain Linear pairwise potentials to MRF pairwise potentials:
         for(auto* m : chain_constructor.pairwise_to_chain_messages()) {
-            m->send_message_to_left(); 
+#ifndef NDEBUG
+            const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
+            const REAL before_right_lb = m->GetRightFactor()->LowerBound();
+#endif
+            m->send_message_to_left();
+#ifndef NDEBUG
+            const REAL after_left_lb = m->GetLeftFactor()->LowerBound();
+            const REAL after_right_lb = m->GetRightFactor()->LowerBound();
+            assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps); 
+#endif
         }
+        auto olb3 = solver.GetLP().original_factors_lower_bound();
         auto newLb = solver.GetLP().LowerBound();
         if (prevLb - newLb > eps) {
             std::cout<<"Previous Lower Bound: "<<prevLb<<std::endl;
