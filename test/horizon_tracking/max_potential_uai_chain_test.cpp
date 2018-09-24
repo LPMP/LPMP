@@ -14,7 +14,7 @@ int main()
 {
     // Test on 3 Node Chain:
     {
-        using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_CHAINS>, StandardVisitor>;
+        using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>, StandardVisitor>;
         solver_type solver(solver_options_small);
         auto input = horizon_tracking_uai_input::parse_string(chain_uai_input_small);
         construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.template GetProblemConstructor<0>());
@@ -29,7 +29,7 @@ int main()
 
     // Test on 5 Node Chain:
     {
-        using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_CHAINS>, StandardVisitor>;
+        using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>, StandardVisitor>;
         solver_type solver(solver_options_medium);
         auto input = horizon_tracking_uai_input::parse_string(chain_uai_input_medium);
         construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.template GetProblemConstructor<0>());

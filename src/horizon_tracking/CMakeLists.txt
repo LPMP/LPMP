@@ -9,6 +9,3 @@ target_link_libraries(horizon_tracking_conic_bundle LPMP DD_ILP cb arboricity li
 
 add_executable(horizon_tracking_subgradient horizon_tracking_subgradient.cpp)
 target_link_libraries(horizon_tracking_subgradient LPMP DD_ILP arboricity lingeling m stdc++ pthread horizon_tracking_uai_input)
-
-add_executable(horizon_tracking_fwmap_new horizon_tracking_fwmap_new.cpp)
-target_link_libraries(horizon_tracking_fwmap_new LPMP DD_ILP FW-MAP arboricity lingeling m stdc++ pthread horizon_tracking_uai_input)

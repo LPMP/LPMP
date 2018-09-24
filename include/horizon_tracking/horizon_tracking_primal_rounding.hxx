@@ -13,8 +13,8 @@ std::vector<FactorTypeAdapter*> get_mrf_factors(SOLVER& solver)
     std::vector<FactorTypeAdapter*> mrf_factors;
     for (auto i = 0; i < solver.GetLP().number_of_factors(); i++) {
         auto f = solver.GetLP().get_factor(i);      
-        if (dynamic_cast<FMC_HORIZON_TRACKING_CHAINS::UnaryFactor*>(f) || 
-            dynamic_cast<FMC_HORIZON_TRACKING_CHAINS::PairwiseFactor*>(f))
+        if (dynamic_cast<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryFactor*>(f) || 
+            dynamic_cast<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::PairwiseFactor*>(f))
             mrf_factors.push_back(f);
     }    
     return mrf_factors;
@@ -24,12 +24,13 @@ template<typename SOLVER>
 void round_primal_solution(SOLVER& solver, bool send_backward = true)
 {
     solver.GetLP().write_back_reparametrization();
-    auto chain_constructor = solver.template GetProblemConstructor<0>();
+    auto multiple_chain_constructor = solver.template GetProblemConstructor<0>();
     if (send_backward) {
         auto prevLb = solver.GetLP().LowerBound();
         auto olb1 = solver.GetLP().original_factors_lower_bound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
-        for(auto* m : chain_constructor.max_chain_to_graph_messages()) {
+        // Send messages from Multiple Chain Linear pairwise potentials to MRF pairwise potentials:
+        for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
 #ifndef NDEBUG
             const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
             const REAL before_right_lb = m->GetRightFactor()->LowerBound();
@@ -38,22 +39,8 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
 #ifndef NDEBUG
             const REAL after_left_lb = m->GetLeftFactor()->LowerBound();
             const REAL after_right_lb = m->GetRightFactor()->LowerBound();
-            assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps); 
-#endif
-        }
-        auto olb2 = solver.GetLP().original_factors_lower_bound();
-        assert(std::abs(solver.GetLP().LowerBound() - prevLb) <= eps);
-        // Send messages from Chain Linear pairwise potentials to MRF pairwise potentials:
-        for(auto* m : chain_constructor.pairwise_to_chain_messages()) {
-#ifndef NDEBUG
-            const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
-            const REAL before_right_lb = m->GetRightFactor()->LowerBound();
-#endif
-            m->send_message_to_left();
-#ifndef NDEBUG
-            const REAL after_left_lb = m->GetLeftFactor()->LowerBound();
-            const REAL after_right_lb = m->GetRightFactor()->LowerBound();
-            assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps); 
+            assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps);
+            std::cout<<"LB Change:"<<-before_left_lb - before_right_lb + after_left_lb + after_right_lb <<std::endl;
 #endif
         }
         auto olb3 = solver.GetLP().original_factors_lower_bound();
@@ -72,12 +59,6 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
        solver.GetLP().ComputeBackwardPassAndPrimal();
        solver.RegisterPrimal();
     }
-
-    //auto mrf_factors = get_mrf_factors(solver);
-    //solver.GetLP().template ComputePassAndPrimal<std::vector<FactorTypeAdapter*>::iterator, Direction::forward>(mrf_factors.begin(), mrf_factors.end(), std::numeric_limits<INDEX>::max()-2);
-    //solver.RegisterPrimal();
-    //solver.GetLP().template ComputePassAndPrimal<std::vector<FactorTypeAdapter*>::iterator, Direction::backward>(mrf_factors.begin(), mrf_factors.end(), std::numeric_limits<INDEX>::max()-1);
-    //solver.RegisterPrimal();
 }
 
-#endif //LPMP_HORIZON_TRACKING_PRIMAL_ROUNDING_HXX
+#endif //LPMP_HORIZON_TRACKING_PRIMAL_ROUNDING_NEW_HXX

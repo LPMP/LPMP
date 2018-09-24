@@ -25,7 +25,7 @@ template<typename SOLVER>
 void validate_objective_from_solution(SOLVER& solver, std::vector<std::string> solverOptions, std::string uai_file)
 {
     auto constructor = solver.template GetProblemConstructor<0>();
-    using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_CHAINS>, StandardVisitor>;
+    using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>, StandardVisitor>;
     solver_type solver_reference(solverOptions);
     auto input = horizon_tracking_uai_input::parse_string(uai_file);
     construct_horizon_tracking_problem_on_grid_to_chains(input, solver_reference, solver_reference.template GetProblemConstructor<0>());
@@ -42,7 +42,7 @@ void validate_objective_from_solution(SOLVER& solver, std::vector<std::string> s
     for (std::size_t u = 0; u < constructor_reference.get_number_of_variables(); u++) {
         auto* uf = constructor_reference.get_unary_factor(u);
     }
-    auto max_potential_on_chain_factors_original = constructor_reference.max_chain_factors();
+    auto max_potential_on_chain_factors_original = constructor_reference.max_multiple_chains_factors();
     for (auto* current_chain : max_potential_on_chain_factors_original) {
         current_chain->propagate_primal_through_messages();
     }
@@ -52,7 +52,7 @@ void validate_objective_from_solution(SOLVER& solver, std::vector<std::string> s
 
 bool TestUAIChains(std::vector<std::string> solverOptions, std::string uaiFile, double expectedLb) 
 {
-    using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_CHAINS>, StandardVisitor>;
+    using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>, StandardVisitor>;
     solver_type solver(solverOptions);
     compute_lower_bound_chains(solver, uaiFile, expectedLb, false);
     solver.GetLP().write_back_reparametrization();
@@ -66,15 +66,15 @@ bool TestUAIChains(std::vector<std::string> solverOptions, std::string uaiFile, 
     validate_objective_from_solution(solver, solverOptions, uaiFile);
 }
 
-template<typename SOLVER>
-void compute_lower_bound_trees(SOLVER& solver, std::string uai_file, double expected_lb)
-{
-    auto input = horizon_tracking_uai_input::parse_string(uai_file);
-    construct_horizon_tracking_problem_on_grid_to_trees(input, solver, solver.template GetProblemConstructor<0>());
-    order_nodes_by_label_space_cadinality(solver.template GetProblemConstructor<0>());
-    solver.Solve();
-    test(solver.lower_bound(), expected_lb);
-}
+// template<typename SOLVER>
+// void compute_lower_bound_trees(SOLVER& solver, std::string uai_file, double expected_lb)
+// {
+//     auto input = horizon_tracking_uai_input::parse_string(uai_file);
+//     construct_horizon_tracking_problem_on_grid_to_trees(input, solver, solver.template GetProblemConstructor<0>());
+//     order_nodes_by_label_space_cadinality(solver.template GetProblemConstructor<0>());
+//     solver.Solve();
+//     test(solver.lower_bound(), expected_lb);
+// }
 
 // Not expected to work yet:
 // bool TestUAITrees(std::vector<std::string> solverOptions, std::string uaiFile, double expectedLb) 
