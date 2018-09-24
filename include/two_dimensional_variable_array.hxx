@@ -33,7 +33,7 @@ public:
       std::vector<std::size_t> size_array;
       size_array.reserve(o.size());
       for(const auto& v : o) {
-         size_array.push_back(o.size());
+         size_array.push_back(v.size());
       }
       const std::size_t s = set_dimensions(size_array.begin(), size_array.end());
       data_.resize(s);

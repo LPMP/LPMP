@@ -31,11 +31,9 @@ int main()
         std::vector<std::vector<max_linear_costs>> all_marginals;
         max_potential_on_chain chain = max_potential_on_chain(MaxPairwisePotentials, LinearPairwisePotentials, numLabels, 0);
         chain.MaximizePotentialAndComputePrimal();
-        std::vector<max_linear_rep_costs> current_chain_marginals = chain.max_potential_marginals();
         std::vector<max_linear_costs> current_chain_marginals_max;
-        for (auto current_marginal_item : current_chain_marginals)
-        {
-            current_chain_marginals_max.push_back({current_marginal_item.MaxCost, current_marginal_item.LinearCost});   // Ignoring the third column in the first iteration. 
+        for (INDEX i = 0;i < chain.max_potential_marginals_size(); ++i) {
+            current_chain_marginals_max.push_back({chain.max_potential_marginal(i).MaxCost, chain.max_potential_marginal(i).LinearCost});   // Ignoring the third column in the first iteration. 
         }
         all_marginals.push_back(current_chain_marginals_max);
         max_potential_on_graph graph = max_potential_on_graph(all_marginals);
@@ -63,11 +61,9 @@ int main()
         std::vector<std::vector<max_linear_costs>> all_marginals;
         max_potential_on_chain chain = max_potential_on_chain(MaxPairwisePotentials, LinearPairwisePotentials, numLabels, 0);
         chain.MaximizePotentialAndComputePrimal();
-        std::vector<max_linear_rep_costs> current_chain_marginals = chain.max_potential_marginals();
         std::vector<max_linear_costs> current_chain_marginals_max;
-        for (auto current_marginal_item : current_chain_marginals)
-        {
-            current_chain_marginals_max.push_back({current_marginal_item.MaxCost, current_marginal_item.LinearCost});
+        for (INDEX i = 0;i < chain.max_potential_marginals_size(); ++i) {
+            current_chain_marginals_max.push_back({chain.max_potential_marginal(i).MaxCost, chain.max_potential_marginal(i).LinearCost});   // Ignoring the third column in the first iteration. 
         }
         all_marginals.push_back(current_chain_marginals_max);
         max_potential_on_graph graph = max_potential_on_graph(all_marginals);
@@ -84,13 +80,10 @@ int main()
         std::vector<std::vector<max_linear_costs>> all_marginals;
         max_potential_on_chain chain = max_potential_on_chain(MaxPairwisePotentials, LinearPairwisePotentials, numLabels, 0);
         chain.MaximizePotentialAndComputePrimal();
-        auto current_chain_marginals = chain.max_potential_marginals();
         std::vector<max_linear_costs> current_chain_marginals_max;
-        for (auto current_marginal_item : current_chain_marginals)
-        {
-            current_chain_marginals_max.push_back({current_marginal_item.MaxCost, current_marginal_item.LinearCost});   
-        }
-        all_marginals.push_back(current_chain_marginals_max);
+        for (INDEX i = 0;i < chain.max_potential_marginals_size(); ++i) {
+            current_chain_marginals_max.push_back({chain.max_potential_marginal(i).MaxCost, chain.max_potential_marginal(i).LinearCost});   // Ignoring the third column in the first iteration. 
+        }        all_marginals.push_back(current_chain_marginals_max);
         max_potential_on_graph graph = max_potential_on_graph(all_marginals);
         graph.MaximizePotentialAndComputePrimal();
         chain.set_max_potential_index(graph.max_potential_index(0));

@@ -1,7 +1,7 @@
 add_subdirectory(mrf)
 add_subdirectory(graph_matching)
 add_subdirectory(max_cut)
-#add_subdirectory(horizon_tracking)
+add_subdirectory(horizon_tracking)
 
 add_executable(test_message_passing_schedule test_message_passing_schedule.cpp)
 target_link_libraries(test_message_passing_schedule LPMP m stdc++)
