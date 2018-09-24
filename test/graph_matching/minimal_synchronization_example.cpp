@@ -34,6 +34,7 @@ const std::vector<std::string> options =
 {
 "",
 "--standardReparametrization", "anisotropic",
+"--roundingReparametrization", "anisotropic",
 "--tightenIteration", "10",
 "--tightenInterval", "5",
 "--tightenReparametrization", "uniform:0.5",
@@ -45,10 +46,11 @@ const std::vector<std::string> options =
 
 int main(int argc, char** argv)
 {
-    Solver<LP<FMC_MGM>,StandardTighteningVisitor> solver(options);
+    MpRoundingSolver<Solver<LP<FMC_MGM>,StandardTighteningVisitor>> solver(options);
     auto input = multigraph_matching_input::parse_string(minimal_synchronization_example);
     solver.template GetProblemConstructor<0>().construct(input);
     solver.Solve();
     std::cout << solver.GetLP().number_of_messages() << "\n";
     test( std::abs(-42 - solver.lower_bound()) <= 1e-6 ); 
+    std::cout << solver.get_primal() << "\n";
 }

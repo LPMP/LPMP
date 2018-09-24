@@ -92,9 +92,12 @@ namespace TorresaniEtAlInput {
          std::size_t right_node; iss >> right_node;
          double cost; iss >> cost;
 
-         assert(left_node < gmInput.no_left_nodes_);
-         assert(right_node < gmInput.no_right_nodes_);
-         assert(assignment_no == gmInput.assignment_.size());
+         if(left_node >= gmInput.no_left_nodes_)
+            throw std::runtime_error("error in assignment: left index larger than number of left nodes.");
+         if(right_node >= gmInput.no_right_nodes_)
+            throw std::runtime_error("error in assignment: right index larger than number of right nodes.");
+         if(assignment_no != gmInput.assignment_.size())
+            throw std::runtime_error("error in assignment: assignment numbers must be sequential starting at 0."); 
 
          gmInput.assignment_.push_back({left_node,right_node,cost}); 
       }
@@ -104,14 +107,27 @@ namespace TorresaniEtAlInput {
       static void apply(const INPUT & in, graph_matching_input& gmInput)
       {
          std::istringstream iss(in.string());
-         std::size_t assignment1; iss >> assignment1;
-         std::size_t assignment2; iss >> assignment2;
+         std::size_t assignment_1; iss >> assignment_1;
+         std::size_t assignment_2; iss >> assignment_2;
          double cost; iss >> cost;
 
-         assert(assignment1 < gmInput.assignment_.size());
-         assert(assignment2 < gmInput.assignment_.size());
+         if(assignment_1 >= gmInput.assignment_.size())
+            throw std::runtime_error("assignment number in quadratic infeasible: too large");
+         if(assignment_2 >= gmInput.assignment_.size())
+            throw std::runtime_error("assignment number in quadratic infeasible: too large");
 
-         gmInput.quadratic_.push_back({assignment1, assignment2, cost});
+         // check that quadratic assingment is feasible
+         const std::size_t left_1 = gmInput.assignment_[assignment_1].left_node_;
+         const std::size_t right_1 = gmInput.assignment_[assignment_1].right_node_;
+         const std::size_t left_2 = gmInput.assignment_[assignment_2].left_node_;
+         const std::size_t right_2 = gmInput.assignment_[assignment_2].right_node_;
+
+         if(left_1 == left_2)
+            throw std::runtime_error("assignments in quadratic infeasible: origin from same node");
+         if(right_1 == right_2)
+            throw std::runtime_error("assignments in quadratic infeasible: point to same node");
+
+         gmInput.quadratic_.push_back({assignment_1, assignment_2, cost});
       }
    };
 
@@ -122,7 +138,7 @@ namespace TorresaniEtAlInput {
       std::cout << "parsing " << filename << "\n";
 
       const bool ret = problem.parse< grammar, action >( gmInput );
-      std::sort(gmInput.assignment_.begin(), gmInput.assignment_.end());
+      //std::sort(gmInput.assignment_.begin(), gmInput.assignment_.end());
 
       if(!ret) {
          throw std::runtime_error("could not read file " + filename);
@@ -136,7 +152,7 @@ namespace TorresaniEtAlInput {
       graph_matching_input gm_input;
 
       bool read_success = pegtl::parse<grammar, action>(input,"",gm_input);
-      std::sort(gm_input.assignment_.begin(), gm_input.assignment_.end());
+      //std::sort(gm_input.assignment_.begin(), gm_input.assignment_.end());
 
       if(!read_success) {
          throw std::runtime_error("could not read input");

@@ -11,7 +11,7 @@ namespace LPMP {
 struct FMC_MGM { // factor message connection
    constexpr static const char* name = "multigraph matching";
       
-   using UnaryFactor = FactorContainer<UnarySimplexFactor, FMC_MGM, 0>;
+   using UnaryFactor = FactorContainer<UnarySimplexFactor, FMC_MGM, 0, true>;
    using PairwiseFactor = FactorContainer<PairwiseSimplexFactor, FMC_MGM, 1>;
    using triplet_consistency_factor = FactorContainer<multigraph_matching_triplet_consistency_factor, FMC_MGM, 2>; 
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, triplet_consistency_factor>;

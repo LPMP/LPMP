@@ -26,7 +26,7 @@ public:
       cb_solver_.do_descent_step(); // we need to setup the solver like this as well
    }
 
-   void optimize_decomposition(const INDEX iteration)
+   void optimize_decomposition()
    {
       cb_solver_.do_descent_step();
 

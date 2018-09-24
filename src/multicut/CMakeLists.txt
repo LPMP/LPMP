@@ -1,3 +1,9 @@
+add_library(multicut_text_input multicut_text_input.cpp)
+target_link_libraries(multicut_text_input LPMP)
+
+add_executable(sorted_multicut_sequential_edge_fixation_text sorted_multicut_sequential_edge_fixation_text.cpp)
+target_link_libraries(sorted_multicut_sequential_edge_fixation_text LPMP multicut_text_input)
+
 add_executable(convert_opengm_multicut_to_text convert_opengm_multicut_to_text.cpp)
 target_link_libraries(convert_opengm_multicut_to_text LPMP HDF5) 
 

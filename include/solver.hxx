@@ -108,6 +108,23 @@ public:
       return success;
    }
 
+   LPMP_FUNCTION_EXISTENCE_CLASS(has_order_factors, order_factors)
+   template<typename PC>
+   constexpr static bool
+   can_order_factors()
+   {
+      return has_order_factors<PC, void>(); 
+   }
+   void order_factors()
+   {
+      for_each_tuple(this->problemConstructor_, [this](auto* l) {
+            using pc_type = typename std::remove_pointer<decltype(l)>::type;
+            if constexpr(this->can_order_factors<pc_type>()) {
+               l->order_factors();
+            }
+      }); 
+   }
+
    LPMP_FUNCTION_EXISTENCE_CLASS(HasWritePrimal,WritePrimal)
    template<typename PC>
    constexpr static bool
@@ -121,6 +138,8 @@ public:
    {
       return HasWritePrimal<PC, void, std::stringstream>();
    } 
+
+   const std::string& get_primal() const { return solution_; }
 
    void WritePrimal()
    {
@@ -274,6 +293,7 @@ public:
                      l->begin();
             }
       });
+      order_factors();
    }
 
    // what to do before improving lower bound, e.g. setting reparametrization mode
@@ -317,17 +337,6 @@ public:
             }
       }); 
       lp_.End();
-   }
-
-   // register evaluated primal solution
-   void RegisterPrimal(const REAL cost)
-   {
-      assert(false);
-      if(cost < bestPrimalCost_) {
-         // assume solution is feasible
-         bestPrimalCost_ = cost;
-         solution_ = write_primal_into_string();
-      }
    }
 
    // evaluate and register primal solution

@@ -18,6 +18,10 @@ class UnarySimplexFactor : public vector<REAL> {
 public:
     using vector<REAL>::vector;
 
+    UnarySimplexFactor(std::size_t dim)
+    : vector(dim, 0.0)
+    {}
+
     template<typename VECTOR>
     UnarySimplexFactor(const VECTOR& vec)
     : vector(vec.size())
@@ -249,14 +253,11 @@ public:
       return pairwise_(x1,x2);
    }
    REAL LowerBound() const {
-       //std::cout << "remove me: pairwise " << this << " pot: \n";
       REAL lb = std::numeric_limits<REAL>::infinity();
       for(INDEX x1=0; x1<dim1(); ++x1) {
          for(INDEX x2=0; x2<dim2(); ++x2) {
-             //std::cout << (*this)(x1,x2) << ",";
             lb = std::min(lb, (*this)(x1,x2));
          }
-         //std::cout << "\n";
       }
       assert(std::isfinite(lb));
       return lb;
@@ -489,6 +490,79 @@ public:
       }
       //assert((*this)(primal_[0], primal_[1], primal_[2]) < std::numeric_limits<REAL>::infinity());
       return (*this)(primal_[0], primal_[1], primal_[2]);
+   }
+
+   void MaximizePotentialAndComputePrimal()
+   {
+      if(primal_[0] == std::numeric_limits<std::size_t>::max() && primal_[1] == std::numeric_limits<std::size_t>::max() && primal_[2] == std::numeric_limits<std::size_t>::max()) {
+         REAL cost = std::numeric_limits<REAL>::infinity();
+         for(INDEX x1=0; x1<dim1(); ++x1) {
+            for(INDEX x2=0; x2<dim2(); ++x2) {
+               for(INDEX x3=0; x3<dim3(); ++x3) {
+                  if((*this)(x1,x2,x3) < cost) {
+                     cost = (*this)(x1,x2,x3);
+                     primal_ = {x1,x2,x3};
+                  }
+               }
+            }
+         } 
+      } else if(primal_[0] < dim1() && primal_[1] < dim2() && primal_[2] == std::numeric_limits<std::size_t>::max()) {
+         REAL cost = std::numeric_limits<REAL>::infinity();
+         for(INDEX x3=0; x3<dim3(); ++x3) {
+            if((*this)(primal_[0],primal_[1],x3) < cost) {
+               cost = (*this)(primal_[0],primal_[1],x3);
+               primal_[2] = x3;
+            }
+         }
+      } else if(primal_[0] < dim1() && primal_[1] == std::numeric_limits<std::size_t>::max() && primal_[2] < dim3()) {
+         REAL cost = std::numeric_limits<REAL>::infinity();
+         for(INDEX x2=0; x2<dim2(); ++x2) {
+            if((*this)(primal_[0],x2,primal_[2]) < cost) {
+               cost = (*this)(primal_[0],x2,primal_[2]);
+               primal_[1] = x2;
+            }
+         }
+      } else if(primal_[0] == std::numeric_limits<std::size_t>::max() && primal_[1] < dim2() && primal_[2] < dim3()) {
+         REAL cost = std::numeric_limits<REAL>::infinity();
+         for(INDEX x1=0; x1<dim1(); ++x1) {
+            if((*this)(x1,primal_[1],primal_[2]) < cost) {
+               cost = (*this)(x1,primal_[1],primal_[2]);
+               primal_[0] = x1;
+            }
+         }
+      } else if(primal_[0] < dim1() && primal_[1] == std::numeric_limits<std::size_t>::max() && primal_[2] == std::numeric_limits<std::size_t>::max()) {
+         REAL cost = std::numeric_limits<REAL>::infinity();
+         for(INDEX x2=0; x2<dim2(); ++x2) {
+            for(INDEX x3=0; x3<dim3(); ++x3) {
+               if((*this)(primal_[0],x2,x3) < cost) {
+                  cost = (*this)(primal_[0],x2,x3);
+                  primal_ = {primal_[0],x2,x3};
+               }
+            }
+         } 
+      } else if(primal_[0] == std::numeric_limits<std::size_t>::max() && primal_[1] < dim2() && primal_[2] == std::numeric_limits<std::size_t>::max()) {
+         REAL cost = std::numeric_limits<REAL>::infinity();
+         for(INDEX x1=0; x1<dim1(); ++x1) {
+            for(INDEX x3=0; x3<dim3(); ++x3) {
+               if((*this)(x1,primal_[1],x3) < cost) {
+                  cost = (*this)(x1,primal_[1],x3);
+                  primal_ = {x1,primal_[1],x3};
+               }
+            }
+         } 
+      } else if(primal_[0] == std::numeric_limits<std::size_t>::max() && primal_[1] == std::numeric_limits<std::size_t>::max() && primal_[2] < dim3()) {
+         REAL cost = std::numeric_limits<REAL>::infinity();
+         for(INDEX x1=0; x1<dim1(); ++x1) {
+            for(INDEX x2=0; x2<dim2(); ++x2) {
+               if((*this)(x1,x2,primal_[2]) < cost) {
+                  cost = (*this)(x1,x2,primal_[2]);
+                  primal_ = {x1,x2,primal_[2]};
+               }
+            }
+         } 
+      } else {
+         assert(false);
+      }
    }
 
    REAL operator()(const INDEX x1, const INDEX x2, const INDEX x3) const {
@@ -827,6 +901,39 @@ public:
       }
    }
 
+   void MaximizePotentialAndComputePrimal()
+   {
+      assert(primal_[0] == std::numeric_limits<std::size_t>::max() && primal_[1] == std::numeric_limits<std::size_t>::max());
+      // TODO: make efficient
+      if(primal_[0] == std::numeric_limits<std::size_t>::max() && primal_[1] == std::numeric_limits<std::size_t>::max()) {
+         double min_cost = std::numeric_limits<double>::infinity();
+         for(std::size_t i=0; i<dim(); ++i) {
+            for(std::size_t j=0; j<dim(); ++j) {
+               if((*this)(i,j) < min_cost) {
+                  min_cost = (*this)(i,j);
+                  primal_ = {i,j};
+               }
+            }
+         }
+      } else if(primal_[0] < dim1() && primal_[1] == std::numeric_limits<std::size_t>::max()) {
+         double min_cost = std::numeric_limits<double>::infinity();
+         for(std::size_t j=0; j<dim2(); ++j) {
+            if((*this)(primal_[0],j) < min_cost) {
+               min_cost = (*this)(primal_[0],j);
+               primal_[1] = j;
+            }
+         } 
+      } else if(primal_[1] < dim2() && primal_[0] == std::numeric_limits<std::size_t>::max()) {
+         double min_cost = std::numeric_limits<double>::infinity();
+         for(std::size_t i=0; i<dim1(); ++i) {
+            if((*this)(i,primal_[1]) < min_cost) {
+               min_cost = (*this)(i,primal_[1]);
+               primal_[0] = i;
+            }
+         }
+      }
+   }
+
    vector<REAL> min_marginal_1() const
    {
       vector<REAL> m(dim());
@@ -874,8 +981,8 @@ public:
 
    REAL* msg2_begin() const { return this->begin() + dim(); }
    REAL* msg2_end() const { return this->end(); }
-   REAL msg2(const INDEX x2) const { return (*this)[dim() + x2]; }
-   REAL& msg2(const INDEX x2) { return (*this)[dim() + x2]; }
+   REAL msg2(const INDEX x2) const { assert(x2 < dim()); return (*this)[dim() + x2]; }
+   REAL& msg2(const INDEX x2) { assert(x2 < dim()); return (*this)[dim() + x2]; }
 
    REAL diff_cost() const { return diff_cost_; }
    REAL& diff_cost() { return diff_cost_; }
@@ -886,6 +993,8 @@ public:
 
    template<typename ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar( *static_cast<vector<REAL>*>(this), diff_cost_ ); }
    template<typename ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar( primal_ ); }
+
+   auto export_variables() { return std::tie( *static_cast<vector<REAL>*>(this), diff_cost_ ); }
 
 protected:
    REAL diff_cost_;

@@ -19,6 +19,35 @@ public:
 
    static constexpr INDEX pairwise_index_ = CHIRALITY == Chirality::left ? 0 : 1;
 
+   template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
+   void receive_restricted_message_from_right(LEFT_FACTOR& l, const RIGHT_FACTOR& r)
+   {
+      if(CHIRALITY == Chirality::left) {
+         if(r.primal()[0] >= r.dim1()) {
+            if(r.primal()[1] < r.dim2()) {
+               for(std::size_t i=0; i<r.dim1(); ++i) {
+                  l[i] += r(i, r.primal()[1]);
+               }
+            } else {
+               auto msg = r.min_marginal_1();
+               RepamLeft(l,msg);
+            }
+         }
+      } else {
+         assert(CHIRALITY == Chirality::right);
+         if(r.primal()[1] >= r.dim2()) {
+            if(r.primal()[0] < r.dim1()) {
+               for(std::size_t i=0; i<r.dim2(); ++i) {
+                  l[i] += r(r.primal()[0], i);
+               }
+            } else {
+               auto msg = r.min_marginal_2();
+               RepamLeft(l,msg); 
+            }
+         } 
+      }
+   }
+
    template<typename RIGHT_FACTOR, typename G2>
    void ReceiveRestrictedMessageFromRight(const RIGHT_FACTOR& r, G2& msg) 
    {
@@ -44,7 +73,7 @@ public:
    }
 
    template<typename G>
-   void RepamLeft(G& r, const REAL msg, const INDEX msg_dim)
+   void RepamLeft(G& r, const REAL msg, const INDEX msg_dim) const
    {
       assert(!std::isnan(msg));
       if(SUPPORT_INFINITY) {
@@ -56,7 +85,7 @@ public:
    }
 
    template<typename LEFT_FACTOR, typename MSG>
-   void RepamLeft(LEFT_FACTOR& l, MSG& msg)
+   void RepamLeft(LEFT_FACTOR& l, MSG& msg) const
    {
       for(std::size_t i=0; i<l.size(); ++i) {
           RepamLeft(l, msg[i], i);
@@ -64,7 +93,7 @@ public:
    }
 
    template<typename A1, typename A2>
-   void RepamRight(A1& r, const A2& msgs)
+   void RepamRight(A1& r, const A2& msgs) const
    {
       for(INDEX x=0; x<r.dim(pairwise_index_); ++x) {
          assert(!std::isnan(msgs[x]));
@@ -79,7 +108,7 @@ public:
       }
    }
    template<typename G>
-   void RepamRight(G& r, const REAL msg, const INDEX dim)
+   void RepamRight(G& r, const REAL msg, const INDEX dim) const
    {
       assert(!std::isnan(msg));
       const REAL val = SUPPORT_INFINITY ? normalize(msg) : msg;
@@ -141,27 +170,6 @@ public:
       }
     }
 
-    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-    REAL send_message_to_right_improvement(LEFT_FACTOR& l, RIGHT_FACTOR& r)
-    {
-       const auto before_right_lb = r.LowerBound(); 
-
-       const REAL min = l.LowerBound();
-       for(INDEX x=0; x<l.size(); ++x) {
-           if(!SUPPORT_INFINITY) { assert(!std::isnan(l[x]) && l[x] != std::numeric_limits<REAL>::infinity()); }
-           RepamRight(r, l[x] - min, x);
-       }
-
-       const auto after_right_lb = r.LowerBound();
-
-       for(INDEX x=0; x<l.size(); ++x) {
-           if(!SUPPORT_INFINITY) { assert(!std::isnan(l[x]) && l[x] != std::numeric_limits<REAL>::infinity()); }
-           RepamRight(r, (l[x] - min), x);
-       }
-
-       return after_right_lb - before_right_lb; 
-    }
-
     template<typename RIGHT_FACTOR, typename G2>
     void send_message_to_left(const RIGHT_FACTOR& r, G2& msg, const REAL omega = 1.0)
     {
@@ -186,31 +194,6 @@ public:
        const REAL after_lb = r.LowerBound();
        //assert(before_lb <= after_lb); 
 #endif
-    }
-
-    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-    REAL send_message_to_left_improvement(LEFT_FACTOR& l, RIGHT_FACTOR& r)
-    {
-       vector<REAL> msg;
-       if(CHIRALITY == Chirality::left) {
-          msg = r.min_marginal_1();
-       } else {
-          msg = r.min_marginal_2(); 
-       }
-        
-       const REAL min = msg.min();
-       for(INDEX i=0; i<msg.size(); ++i) { msg[i] -= min; }
-
-       const auto before_left_lb = l.LowerBound();
-
-       RepamLeft(l, msg);
-
-       const auto after_left_lb = l.LowerBound();
-
-       for(auto& x : msg) { x *= -1.0; }
-       RepamLeft(l, msg);
-
-       return after_left_lb - before_left_lb;
     }
 
    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
@@ -238,7 +221,7 @@ public:
       }
 
    template<typename A1, typename A2>
-      void RepamLeft(A1& l, const A2& msgs)
+      void RepamLeft(A1& l, const A2& msgs) const
       {
          // do zrobienia: possibly use counter
          for(INDEX x1=0; x1<l.dim1(); ++x1) {
@@ -249,7 +232,7 @@ public:
          }
       }
    template<typename A1, typename A2>
-      void RepamRight(A1& r, const A2& msgs)
+      void RepamRight(A1& r, const A2& msgs) const
       {
          // do zrobienia: possibly use counter
          if(I1 == 0 && I2 == 1) {
@@ -317,6 +300,18 @@ public:
         } else {
           assert(false);
         }
+      }
+
+   template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
+      bool ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
+      {
+        const bool changed_1 = l.primal()[0] != r.primal()[I1] && r.primal()[I1] < r.dim(I1);
+        const bool changed_2 = l.primal()[1] != r.primal()[I2] && r.primal()[I2] < r.dim(I2);
+
+        l.primal()[0] = r.primal()[I1];
+        l.primal()[1] = r.primal()[I2];
+
+        return changed_1 | changed_2;
       }
 
    template<typename SOLVER, typename LEFT_FACTOR, typename RIGHT_FACTOR>
@@ -391,6 +386,14 @@ public:
              }
          }
          msg -= omega*msgs;
+     }
+
+     template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
+     bool CheckPrimalConsistency(const LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
+     {
+        const bool consistent_1 = l.primal()[0] == r.primal()[I1];
+        const bool consistent_2 = l.primal()[1] == r.primal()[I2];
+        return consistent_1 & consistent_2;
      }
 };
 

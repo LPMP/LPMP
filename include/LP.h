@@ -88,9 +88,9 @@ public:
 protected:
 
    std::unordered_map<lp_reparametrization, message_passing_weight_storage> message_passing_weights_;
-   lp_reparametrization repam_mode_;
-   std::size_t rounding_iteration_ = 0;
-   double constant_ = 0;
+   lp_reparametrization repam_mode_ = lp_reparametrization(lp_reparametrization_mode::Undefined, 0.0);
+   std::size_t rounding_iteration_ = 1;
+   double constant_ = 0.0;
 
    TCLAP::ValueArg<std::string> reparametrization_type_arg_; // shared|residual|partition|overlapping_partition|adaptive
    TCLAP::ValueArg<INDEX> inner_iteration_number_arg_;
@@ -238,7 +238,7 @@ void LP<FMC>::ComputeForwardPassAndPrimal()
 {
   auto mpw = get_message_passing_weight(repam_mode_);
   auto [forward_sorting, forward_update_sorting] = this->get_sorted_factors(Direction::forward);
-  ComputePassAndPrimal(forward_update_sorting.begin(), forward_update_sorting.end(), mpw.omega_forward.begin(), mpw.receive_mask_forward.begin()); // timestamp must be > 0, otherwise in the first iteration primal does not get initialized
+  ComputePassAndPrimal(forward_update_sorting.begin(), forward_update_sorting.end(), mpw.omega_forward.begin(), mpw.receive_mask_forward.begin());
 }
 
 template<typename FMC>

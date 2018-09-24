@@ -2,6 +2,8 @@
 #define LPMP_UNION_FIND_HXX
 
 #include <vector>
+#include <cassert>
+#include <limits>
 
 namespace LPMP {
 
@@ -17,6 +19,12 @@ class union_find {
     ~union_find() {
         delete [] id;
     }
+
+    std::size_t size() const
+    {
+       return N;
+    }
+
     void reset() {
         cnt = N;
         for(std::size_t i=0; i<N; ++i) { id[i] = i; }
