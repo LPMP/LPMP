@@ -76,7 +76,7 @@ namespace LPMP {
       }
    }
 
-   template<typename LEFT_FACTOR, typename RIGHT_FACTOR, typename MESSAGE, typename MESSAGE_VECTOR>
+   template<Chirality C = Chirality::left, typename LEFT_FACTOR, typename RIGHT_FACTOR, typename MESSAGE, typename MESSAGE_VECTOR>
    void test_repam_message(LEFT_FACTOR& l, RIGHT_FACTOR& r, MESSAGE& m, MESSAGE_VECTOR& msg_vec, std::random_device& rd)
    {
       randomly_initialize_factor(l, rd);
@@ -84,9 +84,15 @@ namespace LPMP {
 
       l.init_primal();
       r.init_primal();
-      l.MaximizePotentialAndComputePrimal();
-      m.ComputeRightFromLeftPrimal(l,r);
-      r.MaximizePotentialAndComputePrimal();
+      if constexpr(C == Chirality::left) {
+         l.MaximizePotentialAndComputePrimal();
+         m.ComputeRightFromLeftPrimal(l,r);
+         r.MaximizePotentialAndComputePrimal();
+      } else {
+         r.MaximizePotentialAndComputePrimal();
+         m.ComputeLeftFromRightPrimal(l,r);
+         l.MaximizePotentialAndComputePrimal();
+      }
 
       // test primal on left and right: cost must stay invariant
       const double prev_cost = l.EvaluatePrimal() + r.EvaluatePrimal();

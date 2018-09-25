@@ -183,6 +183,11 @@ public:
       assert(pairwiseIndices_.size() == pairwiseFactor_.size());
    }
 
+   INDEX Tighten(const INDEX no_constraints_to_add)
+   {
+      return 0;
+   }
+
    template<typename STREAM>
    void WritePrimal(STREAM& s) const 
    {

@@ -107,7 +107,7 @@ struct FMC_MP_T {
 
    using mrf = mrf_constructor<FMC_MP_PARAM,0,1,1,2>;
    using tightening_mrf = tightening_mrf_constructor<mrf,2,3,4,5>;
-   using gm_constructor = graph_matching_constructor_tightening< graph_matching_constructor< graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage> >;
+   using gm_constructor = graph_matching_constructor< graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage >;
    using ProblemDecompositionList = meta::list<gm_constructor>;
 };
 
@@ -197,7 +197,7 @@ struct FMC_MCF_T {
    using mrf = mrf_constructor<FMC_MCF_PARAM,1,2,0,1>;
    using tightening_mrf = tightening_mrf_constructor<mrf,3,3,4,5>;
    using gm_constructor = graph_matching_constructor< graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage>;
-   using mcf_gm_constructor = graph_matching_constructor_tightening< graph_matching_mcf_constructor<gm_constructor, MinCostFlowAssignmentFactor, UnaryToAssignmentMessageContainer> >;
+   using mcf_gm_constructor = graph_matching_mcf_constructor<gm_constructor, MinCostFlowAssignmentFactor, UnaryToAssignmentMessageContainer>;
    using ProblemDecompositionList = meta::list<mcf_gm_constructor>;
 };
 
@@ -258,7 +258,7 @@ struct FMC_GM_T {
 
    using mrf = mrf_constructor<FMC_GM_PARAM,0,1,0,1>;
    using tightening_mrf = tightening_mrf_constructor<mrf,2,2,3,4>;
-   using gm_constructor = graph_matching_constructor_tightening< graph_matching_mrf_constructor<tightening_mrf> >;
+   using gm_constructor = graph_matching_mrf_constructor<tightening_mrf>;
    using ProblemDecompositionList = meta::list<gm_constructor>;
 };
 

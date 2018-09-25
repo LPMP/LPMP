@@ -349,12 +349,12 @@ private:
 
 class pairwise_max_potential_on_multiple_chains_message {
     public:
-        pairwise_max_potential_on_multiple_chains_message(const INDEX chain_index, const INDEX pairwise_index,
+        pairwise_max_potential_on_multiple_chains_message(const INDEX chain_index, const INDEX pairwise_index, // TODO: simplify constructor, remove unary_1, unary_2
                                                           const INDEX unary_1, const INDEX unary_2) :
         ChainIndex(chain_index), EdgeIndex(pairwise_index), N1(unary_1), N2(unary_2) {}
 
         template<typename FACTOR, typename MSG>
-        void RepamRight(FACTOR& r, const MSG& msgs)
+        void RepamRight(FACTOR& r, const MSG& msgs) const
         {
             INDEX i = 0;
             for(INDEX l1=0; l1<r.NumNodeLabels(ChainIndex, N1); ++l1) {
@@ -367,7 +367,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         }
 
         template<typename FACTOR, typename MSG>
-        void RepamLeft(FACTOR& l, const MSG& msgs)
+        void RepamLeft(FACTOR& l, const MSG& msgs) const
         {
             INDEX c=0;
             for(INDEX i=0; i<l.dim1(); ++i) {
@@ -378,7 +378,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         }
 
         template<typename LEFT_FACTOR, typename MSG>
-        void send_message_to_right(const LEFT_FACTOR& l, MSG& msg, const REAL omega = 1.0)
+        void send_message_to_right(const LEFT_FACTOR& l, MSG& msg, const REAL omega = 1.0) const
         {
             vector<REAL> m(l.size());
             INDEX c=0;
@@ -391,7 +391,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         }
 
         template<typename RIGHT_FACTOR, typename MSG>
-        void send_message_to_left(const RIGHT_FACTOR& r, MSG& msg, const REAL omega = 1.0)
+        void send_message_to_left(const RIGHT_FACTOR& r, MSG& msg, const REAL omega = 1.0) const
         {
             std::vector<REAL> message = r.ComputeMessageForEdge(ChainIndex, EdgeIndex);
             vector<REAL> m(message.size());
@@ -402,7 +402,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         }
 
         template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-        bool ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r)
+        bool ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
         {
             bool changed_N1 = false;
             if(r.GetSolution(ChainIndex, N1) < l.dim1()) {
@@ -420,7 +420,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         }
 
         template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-        bool ComputeRightFromLeftPrimal(const LEFT_FACTOR& l, RIGHT_FACTOR& r)
+        bool ComputeRightFromLeftPrimal(const LEFT_FACTOR& l, RIGHT_FACTOR& r) const
         {
             bool changed_N1 = false;
             if(l.primal()[0] < l.dim1()) {

@@ -61,6 +61,11 @@ public:
         return true;
     }
 
+    INDEX Tighten(const INDEX no_constraints_to_add)
+    {
+       return this->left_mrf.Tighten(no_constraints_to_add) + this->right_mrf.Tighten(no_constraints_to_add);
+    }
+
     template<typename STREAM>
     void WritePrimal(STREAM& s) const
     {
@@ -325,19 +330,6 @@ public:
                 }
             }
         }
-    }
-};
-
-template<typename GRAPH_MATCHING_CONSTRUCTOR>
-class graph_matching_constructor_tightening : public GRAPH_MATCHING_CONSTRUCTOR {
-public:
-    using FMC = typename GRAPH_MATCHING_CONSTRUCTOR::FMC;
-
-    using GRAPH_MATCHING_CONSTRUCTOR::GRAPH_MATCHING_CONSTRUCTOR;
-
-    INDEX Tighten(const INDEX no_constraints_to_add)
-    {
-        return this->left_mrf.Tighten(no_constraints_to_add+1) + this->right_mrf.Tighten(no_constraints_to_add+1);
     }
 };
 

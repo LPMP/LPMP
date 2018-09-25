@@ -65,4 +65,7 @@ endif()
 
 # multigraph matching
 add_executable(multigraph_matching multigraph_matching.cpp)
-target_link_libraries(multigraph_matching multigraph_matching_input LPMP m stdc++ pthread)
+target_link_libraries(multigraph_matching multigraph_matching_input LPMP)
+
+add_executable(multigraph_matching_tightening multigraph_matching_tightening.cpp)
+target_link_libraries(multigraph_matching_tightening multigraph_matching_input LPMP)

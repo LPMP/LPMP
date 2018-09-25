@@ -521,6 +521,11 @@ public:
             std::cout << "Added " << no_constraints_added << " triplet consistency factor for multigraph matching\n";
         }
 
+        // tighten for graph matching constructors
+        for(auto& c : graph_matching_constructors) {
+           no_constraints_added += c.second->Tighten(no_constraints_to_add);
+        }
+
         return no_constraints_added;
     }
 
