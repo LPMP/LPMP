@@ -63,6 +63,110 @@ max_multiple_chains_factor_container* add_multiple_chains_factor(const std::vect
     return multiple_chains_factor;
 }
 
+void order_factors() const
+{
+   class cardinality_traversal {
+      public:
+         cardinality_traversal(std::size_t num_nodes) {
+            nodes.resize(num_nodes);
+            nodes_covered.resize(num_nodes);
+         }
+
+         struct adjacency_list {
+            std::size_t num_labels;
+            std::vector<std::size_t> neighbors;
+         };
+
+         struct node {
+            std::size_t node_index;
+            std::size_t num_labels;
+            bool operator<(const node& o) const { return num_labels > o.num_labels; }
+         };
+
+         void add_node(std::size_t index, std::size_t num_labels) {
+            nodes[index].num_labels = num_labels;
+            nodes_covered[index] = false;
+            if (num_labels < min_num_labels)
+            {
+               min_num_labels = num_labels;
+               min_label_node_index = index;
+            }
+         }
+
+         void add_edge(std::size_t i, std::size_t j) {
+            nodes[i].neighbors.push_back(j);
+            nodes[j].neighbors.push_back(i);
+        }
+
+        std::vector<std::size_t> get_traversal_order() const {
+           std::vector<std::size_t> traversal_order;
+           std::priority_queue<node, std::vector<node>> nodeIndexAndNodeLabels;
+
+           nodeIndexAndNodeLabels.push({min_label_node_index, min_num_labels});
+           nodes_covered[min_label_node_index] = true;
+
+           while (!nodeIndexAndNodeLabels.empty()) {
+              auto currentBestNode = nodeIndexAndNodeLabels.top();
+              nodeIndexAndNodeLabels.pop();
+              traversal_order.push_back(currentBestNode.node_index);
+
+              for (const auto& currentNeighbourIndex : nodes[currentBestNode.node_index].neighbors) {
+                 if (nodes_covered[currentNeighbourIndex])
+                    continue;
+
+                 nodeIndexAndNodeLabels.push({currentNeighbourIndex, nodes[currentNeighbourIndex].num_labels});
+                 nodes_covered[currentNeighbourIndex] = true;
+              }
+           }
+           return traversal_order;
+        }
+
+      private:
+
+        std::vector<adjacency_list> nodes;
+        mutable std::vector<bool> nodes_covered;
+        std::size_t min_label_node_index;
+        std::size_t min_num_labels = std::numeric_limits<std::size_t>::max();
+   };
+
+    cardinality_traversal traversal(this->get_number_of_variables());
+    for(std::size_t i=0; i<this->get_number_of_variables(); ++i) {
+        const auto no_labels = this->get_number_of_labels(i);
+        traversal.add_node(i, no_labels); 
+    }
+
+    for(std::size_t p=0; p<this->get_number_of_pairwise_factors(); ++p) {
+        const auto [i,j] = this->get_pairwise_variables(p);
+        traversal.add_edge(i,j);
+    }
+
+    std::vector<std::size_t> order = traversal.get_traversal_order();
+    std::vector<std::size_t> inverse_order(order.size());
+    for(std::size_t i=0; i<order.size(); ++i) {
+        inverse_order[order[i]] = i;
+    }
+
+    for (std::size_t i=0; i<order.size()-1; ++i ) {
+        auto* f1 = this->get_unary_factor(order[i]);
+        auto* f2 = this->get_unary_factor(order[i+1]);
+        this->get_lp()->add_factor_relation(f1,f2);
+    }
+
+    for(std::size_t p=0; p<this->get_number_of_pairwise_factors(); ++p) {
+        const auto [i,j] = this->get_pairwise_variables(p);
+        auto* f_p = this->get_pairwise_factor(p);
+        auto f_i = this->get_unary_factor(i);
+        auto f_j = this->get_unary_factor(j);
+        if (inverse_order[i] < inverse_order[j]) {
+            this->get_lp()->add_factor_relation(f_i, f_p);
+            this->get_lp()->add_factor_relation(f_p, f_j);
+        } else {
+            this->get_lp()->add_factor_relation(f_j, f_p);
+            this->get_lp()->add_factor_relation(f_p, f_i);
+        }
+    }
+}
+
 private: 
     std::vector<max_multiple_chains_factor_container*> max_multiple_chains_factors_;
     std::vector<pairwise_multiple_chains_message_container*> pairwise_multiple_chains_messages_;
@@ -127,110 +231,7 @@ void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking
     }
 }
 
-class cardinality_traversal {
-    public:
-        cardinality_traversal(std::size_t num_nodes) {
-            nodes.resize(num_nodes);
-            nodes_covered.resize(num_nodes);
-        }
 
-        struct adjacency_list {
-            std::size_t num_labels;
-            std::vector<std::size_t> neighbors;
-        };
-
-        struct node {
-            std::size_t node_index;
-            std::size_t num_labels;
-            bool operator<(const node& o) const { return num_labels > o.num_labels; }
-        };
-
-        void add_node(std::size_t index, std::size_t num_labels) {
-            nodes[index].num_labels = num_labels;
-            nodes_covered[index] = false;
-            if (num_labels < min_num_labels)
-            {
-                min_num_labels = num_labels;
-                min_label_node_index = index;
-            }
-        }
-
-        void add_edge(std::size_t i, std::size_t j) {
-            nodes[i].neighbors.push_back(j);
-            nodes[j].neighbors.push_back(i);
-        }
-
-        std::vector<std::size_t> get_traversal_order() const {
-            std::vector<std::size_t> traversal_order;
-            std::priority_queue<node, std::vector<node>> nodeIndexAndNodeLabels;
-
-            nodeIndexAndNodeLabels.push({min_label_node_index, min_num_labels});
-            nodes_covered[min_label_node_index] = true;
-
-            while (!nodeIndexAndNodeLabels.empty()) {
-                auto currentBestNode = nodeIndexAndNodeLabels.top();
-                nodeIndexAndNodeLabels.pop();
-                traversal_order.push_back(currentBestNode.node_index);
-
-                for (const auto& currentNeighbourIndex : nodes[currentBestNode.node_index].neighbors) {
-                    if (nodes_covered[currentNeighbourIndex])
-                        continue;
-                    
-                    nodeIndexAndNodeLabels.push({currentNeighbourIndex, nodes[currentNeighbourIndex].num_labels});
-                    nodes_covered[currentNeighbourIndex] = true;
-                }
-            }
-            return traversal_order;
-        }
-
-    private:
-
-    std::vector<adjacency_list> nodes;
-    mutable std::vector<bool> nodes_covered;
-    std::size_t min_label_node_index;
-    std::size_t min_num_labels = std::numeric_limits<std::size_t>::max();
-};
-
-template<typename MRF_CONSTRUCTOR>
-void order_nodes_by_label_space_cadinality(MRF_CONSTRUCTOR& mrf)
-{
-    cardinality_traversal traversal(mrf.get_number_of_variables());
-    for(std::size_t i=0; i<mrf.get_number_of_variables(); ++i) {
-        const auto no_labels = mrf.get_number_of_labels(i);
-        traversal.add_node(i, no_labels); 
-    }
-
-    for(std::size_t p=0; p<mrf.get_number_of_pairwise_factors(); ++p) {
-        const auto [i,j] = mrf.get_pairwise_variables(p);
-        traversal.add_edge(i,j);
-    }
-
-    std::vector<std::size_t> order = traversal.get_traversal_order();
-    std::vector<std::size_t> inverse_order(order.size());
-    for(std::size_t i=0; i<order.size(); ++i) {
-        inverse_order[order[i]] = i;
-    }
-
-    for (std::size_t i=0; i<order.size()-1; ++i ) {
-        auto* f1 = mrf.get_unary_factor(order[i]);
-        auto* f2 = mrf.get_unary_factor(order[i+1]);
-        mrf.get_lp()->add_factor_relation(f1,f2);
-    }
-
-    for(std::size_t p=0; p<mrf.get_number_of_pairwise_factors(); ++p) {
-        const auto [i,j] = mrf.get_pairwise_variables(p);
-        auto* f_p = mrf.get_pairwise_factor(p);
-        auto f_i = mrf.get_unary_factor(i);
-        auto f_j = mrf.get_unary_factor(j);
-        if (inverse_order[i] < inverse_order[j]) {
-            mrf.get_lp()->add_factor_relation(f_i, f_p);
-            mrf.get_lp()->add_factor_relation(f_p, f_j);
-        } else {
-            mrf.get_lp()->add_factor_relation(f_j, f_p);
-            mrf.get_lp()->add_factor_relation(f_p, f_i);
-        }
-    }
-}
 } // namespace LPMP 
 
 #endif // LPMP_HORIZON_TRACKING_CHAIN_CONSTRUCTOR_HXX

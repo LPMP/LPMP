@@ -730,6 +730,11 @@ public:
        }
    }
 
+   LP<FMC>& get_original_lp()
+   {
+      return *static_cast<LP<FMC>*>(this);
+   }
+
    void Begin()
    {
       LP<FMC>::Begin();

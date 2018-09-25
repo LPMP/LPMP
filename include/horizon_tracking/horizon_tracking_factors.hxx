@@ -260,7 +260,7 @@ public:
  
 private:
     std::vector<INDEX> Solve() const {
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic,3)
         for (INDEX c = 0; c < NumChains; c++) {
             if (MarginalsValid[c]) continue;
             ComputeChainMarginals(MarginalsChains[c], c);
