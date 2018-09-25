@@ -714,7 +714,9 @@ template<typename FMC, typename LAGRANGEAN_FACTOR, typename DECOMPOSITION_SOLVER
 class LP_with_trees : public LP<FMC>
 {
 public:
-   using LP<FMC>::LP;
+   LP_with_trees(TCLAP::CmdLine& cmd)
+   : LP<FMC>(cmd)
+   {}
 
    ~LP_with_trees()
    {
@@ -983,7 +985,11 @@ template<typename FMC>
 class LP_subgradient_ascent : public LP_with_trees<FMC, Lagrangean_factor_star, LP_subgradient_ascent<FMC>> // better: perform projected subgradient ascent with Lagrangean_factor_zero_sum
 {
 public:
-   using LP_with_trees<FMC, Lagrangean_factor_star, LP_subgradient_ascent<FMC>>::LP_with_trees;
+   //using LP_with_trees<FMC, Lagrangean_factor_star, LP_subgradient_ascent<FMC>>::LP_with_trees;
+   LP_subgradient_ascent(TCLAP::CmdLine& cmd)
+   : LP_with_trees<FMC, Lagrangean_factor_star, LP_subgradient_ascent<FMC>>(cmd),
+   step_size_scaling_arg_("","subgradientStepSizeScaling","subgradient step size scaling",false,1.0,"real number > 0",cmd)
+   {} 
 
    void construct_decomposition() {}
 
@@ -1001,7 +1007,7 @@ public:
       assert(std::find_if(subgradient.begin(), subgradient.end(), [](auto x) { return x != 0.0 && x != 1.0 && x != -1.0; }) == subgradient.end());
       const REAL subgradient_one_norm = std::accumulate(subgradient.begin(), subgradient.end(), 0.0, [=](REAL s, REAL x) { return s + std::abs(x); });
 
-      const REAL step_size = (best_lower_bound - current_lower_bound + subgradient.size())/REAL(subgradient.size() + subgradient_iteration_) / (eps + subgradient_one_norm);
+      const REAL step_size = step_size_scaling_arg_.getValue() * (best_lower_bound - current_lower_bound + subgradient.size())/REAL(subgradient.size() + subgradient_iteration_) / (eps + subgradient_one_norm);
       subgradient_iteration_++;
 
       std::cout << "stepsize = " << step_size << ", absolute value of subgradient = " << subgradient_one_norm << "\n";
@@ -1009,6 +1015,8 @@ public:
    }
 
 private:
+
+   TCLAP::ValueArg<REAL> step_size_scaling_arg_;
    REAL best_lower_bound;
    std::size_t subgradient_iteration_ = 1;
 };

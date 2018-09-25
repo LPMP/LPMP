@@ -9,6 +9,7 @@
 #include "three_dimensional_variable_array.hxx"
 #include <unordered_set>
 #include <cmath>
+#include "omp.h"
 
 namespace LPMP {
 class max_potential_on_nodes {
@@ -259,6 +260,7 @@ public:
  
 private:
     std::vector<INDEX> Solve() const {
+#pragma omp parallel for schedule(dynamic)
         for (INDEX c = 0; c < NumChains; c++) {
             if (MarginalsValid[c]) continue;
             ComputeChainMarginals(MarginalsChains[c], c);
