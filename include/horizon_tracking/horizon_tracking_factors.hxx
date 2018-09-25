@@ -216,8 +216,10 @@ public:
 
     INDEX GetSolution(INDEX chainIndex, INDEX nodeIndex) const { return Solution[chainIndex][nodeIndex]; }
     void SetSolution(INDEX chainIndex, INDEX nodeIndex, INDEX val) const {
-        if (Solution[chainIndex][nodeIndex] = val)
-            SolutionValid = false; // invalidate the solution computed through the factor itself, assuming this call is made from outside
+        if (Solution[chainIndex][nodeIndex] == val)
+            return;
+                
+        SolutionValid = false; // invalidate the solution computed through the factor itself, assuming this call is made from outside
         Solution[chainIndex][nodeIndex] = val; 
     }
 
