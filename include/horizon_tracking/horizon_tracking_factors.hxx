@@ -121,6 +121,8 @@ private:
     two_dim_variable_array<MaxPotentialInChain> MaxPotentialsOfChains;
     two_dim_variable_array<INDEX> MaxPotentialsOfChainsOrder;
     mutable std::vector<INDEX> BestChainMarginalIndices;
+    mutable INDEX messageNormalizer;
+
 public:
     // TODO: use move semantics
     max_potential_on_multiple_chains(std::vector<three_dimensional_variable_array<REAL>>& linearPotentials,
@@ -139,7 +141,9 @@ public:
         init_primal();
         std::vector<std::vector<MaxPotentialInChain>> maxPotentialsChains(NumChains); 
         std::vector<std::vector<INDEX>> maxPotentialsChainsOrder(NumChains); 
+        messageNormalizer = 0;
         for (INDEX c = 0; c < NumChains; c++) {
+            messageNormalizer += MaxPotentials[c].size();
             for (INDEX e = 0; e < MaxPotentials[c].size(); e++) {
                 for (INDEX l1 = 0; l1 < MaxPotentials[c].dim2(e); l1++) {
                     for (INDEX l2 = 0; l2 < MaxPotentials[c].dim3(e); l2++) {
@@ -230,14 +234,18 @@ public:
         Solution[chainIndex][nodeIndex] = val; 
     }
 
-    std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.9) const {
+    std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 1.0) const {
+        assert(messageNormalizer > 0);
         REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
         std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
         std::vector<Marginals> leftNodeLeftMarginals(LinearPotentials[chain].dim2(e));
         std::vector<Marginals> rightNodeRightMarginals(LinearPotentials[chain].dim3(e));
+
+#pragma omp for schedule(static)
         for (INDEX l1 = 0; l1 < leftNodeLeftMarginals.size(); l1++) 
             ComputeChainMarginals<false, true>(leftNodeLeftMarginals[l1], chain, e, l1);
 
+ #pragma omp for schedule(static)
         for (INDEX l2 = 0; l2 < rightNodeRightMarginals.size(); l2++) 
             ComputeChainMarginals<true, true>(rightNodeRightMarginals[l2], chain, e + 1, l2);
 
@@ -249,17 +257,18 @@ public:
                 // Copy the linear costs of current edge into marginals of current chain, as the original 
                 // ones are not of any use now and will need to be updated anyway.
                 MarginalsChains[chain] = MergeNodeMarginals(leftNodeLeftMarginals[l1], rightNodeRightMarginals[l2],
-                                                             {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
+                                                            {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
                 UnarySolver.ComputeBestLabels(MarginalsChains); // TO DO: Do not need to store labels.
                 REAL minMarginal = UnarySolver.GetBestCost();
 
-                message[i] = OMEGA * (minMarginal - lb);
+                message[i] = OMEGA * (minMarginal - lb) / messageNormalizer;
                 if (message[i] < 0 && message[i] > -eps)
                     message[i] = 0; // get rid of numerical errors. 
                 assert(message[i] >= 0);
                 i++;
             }
         }
+        messageNormalizer--;
         assert(*std::min_element(message.begin(), message.end()) <= eps); // one edge should be a part of lower bound solution.
         return message;
     }
