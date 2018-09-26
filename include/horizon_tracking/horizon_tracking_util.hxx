@@ -63,33 +63,23 @@ private:
     two_dim_variable_array<REAL> distance;
     REAL shortestPathDistance;
     struct edge { INDEX n1, l1, l2; }; 
-    const INDEX StartingNodeIndex;
-    const INDEX StartingLabelIndex;
+    const INDEX EndingNodeIndex;
 
 public:
     shortest_distance_calculator(const three_dimensional_variable_array<REAL>& linearPairwisePotentials, 
                                 const three_dimensional_variable_array<REAL>& maxPairwisePotentials,
-                                const std::vector<INDEX>& numLabels, INDEX startingNode = 0, INDEX startingLabel = 0):
+                                const std::vector<INDEX>& numLabels, INDEX endingNode = 0):
                                 LinearPairwisePotentials(linearPairwisePotentials),
                                 MaxPairwisePotentials(maxPairwisePotentials), NumLabels(numLabels),
-                                StartingNodeIndex(startingNode), StartingLabelIndex(startingLabel) {
+                                EndingNodeIndex(endingNode) {
         distance.resize(numLabels.begin(), numLabels.end(), std::numeric_limits<REAL>::max());
         init();
     }
 
     void init() {
         shortestPathDistance = std::numeric_limits<REAL>::max();
-        if (!useStartingNode) {
-            if(DoForward) { std::fill(distance[0].begin(), distance[0].end(), 0); }
-            else { std::fill(distance[distance.size() - 1].begin(), distance[distance.size() - 1].end(), 0); }
-        }
-        else {
-            distance[StartingNodeIndex][StartingLabelIndex] = 0;
-            if (DoForward && StartingNodeIndex == distance.size() - 1)
-                shortestPathDistance = 0;
-            else if (!DoForward && StartingNodeIndex == 0)
-                shortestPathDistance = 0;
-        }
+        if(DoForward) { std::fill(distance[0].begin(), distance[0].end(), 0); }
+        else { std::fill(distance[distance.size() - 1].begin(), distance[distance.size() - 1].end(), 0); }
     }
 
     REAL GetDistance(INDEX n, INDEX l) const { return distance[n][l]; }
@@ -108,10 +98,10 @@ public:
     
     void AddEdgeWithUpdate(INDEX n1, INDEX l1, INDEX l2, REAL bottleneckThreshold) {
         assert(MaxPairwisePotentials(n1, l1, l2) <= bottleneckThreshold);
-        std::queue<edge> queue;
         if (!ToAddEdge(n1, l1, l2))
             return;
 
+        std::queue<edge> queue;
         queue.push({n1, l1, l2});
 
         while(!queue.empty()) {
@@ -146,10 +136,10 @@ public:
 
     bool ToAddEdge(INDEX n1, INDEX l1, INDEX l2) const {
         if (!useStartingNode) return true;
-        else if (DoForward && (n1 < StartingNodeIndex || (n1 == StartingNodeIndex && l1 != StartingLabelIndex)))  {
+        else if (DoForward && (n1 >= EndingNodeIndex))  {
             return false;
         }
-        else if (!DoForward && (n1 + 1 > StartingNodeIndex || (n1 + 1 == StartingNodeIndex && l2 != StartingLabelIndex))) {
+        else if (!DoForward && (n1 < EndingNodeIndex)) {
             return false;
         }
         return true;

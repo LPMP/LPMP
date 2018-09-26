@@ -238,19 +238,13 @@ public:
         assert(messageNormalizer > 0);
         REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
         std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
-        std::vector<Marginals> leftNodeLeftMarginals(LinearPotentials[chain].dim2(e));
-        std::vector<Marginals> rightNodeRightMarginals(LinearPotentials[chain].dim3(e));
-
-#pragma omp for schedule(static)
-        for (INDEX l1 = 0; l1 < leftNodeLeftMarginals.size(); l1++) 
-            ComputeChainMarginals<false, true>(leftNodeLeftMarginals[l1], chain, e, l1);
-
- #pragma omp for schedule(static)
-        for (INDEX l2 = 0; l2 < rightNodeRightMarginals.size(); l2++) 
-            ComputeChainMarginals<true, true>(rightNodeRightMarginals[l2], chain, e + 1, l2);
+#pragma omp sections
+   #pragma omp section
+        std::vector<Marginals> leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e);
+   #pragma omp section
+        std::vector<Marginals> rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);
 
         MarginalsValid[chain] = false;
-
         INDEX i = 0;
         for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
             for (INDEX l2 = 0; l2 < LinearPotentials[chain].dim3(e); l2++) {
@@ -323,7 +317,7 @@ private:
     void ComputeChainMarginals(Marginals& marginals, const INDEX chainIndex, INDEX n = 0, INDEX l = 0) const
     {
         shortest_distance_calculator<doForward, directionalNodeMarginal> distCalc
-                                    (LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex], n, l);
+                                    (LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex], n);
 
         for (const auto& e : MaxPotentialsOfChainsOrder[chainIndex]) {
             const auto n1 = MaxPotentialsOfChains[chainIndex][e].Edge;
@@ -337,6 +331,29 @@ private:
             marginals.insert({bottleneckCost, l}); //storing infinities as well, to ensure consistency with min-marginal computation.
         }
         marginals.Populated();
+    }
+
+    template <bool leftToRight>
+    std::vector<Marginals> ComputeNodeMarginals(const INDEX chainIndex, INDEX node) const
+    {
+        INDEX numL = NumLabels[chainIndex][node];
+        std::vector<Marginals> nodeMarginals(numL);
+        shortest_distance_calculator<leftToRight, true> distCalc(LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex], node);
+
+        for (const auto& e : MaxPotentialsOfChainsOrder[chainIndex]) {
+            const auto n1 = MaxPotentialsOfChains[chainIndex][e].Edge;
+            const auto l1 = MaxPotentialsOfChains[chainIndex][e].L1;
+            const auto l2 = MaxPotentialsOfChains[chainIndex][e].L2;
+            const auto bottleneckCost = MaxPotentialsOfChains[chainIndex][e].Value;
+               
+            distCalc.AddEdgeWithUpdate(n1, l1, l2, bottleneckCost);
+            for (INDEX currentL = 0; currentL < numL; currentL++) {
+                REAL l = distCalc.GetDistance(node, currentL);
+                nodeMarginals[currentL].insert({bottleneckCost, l});
+                //storing infinities as well, to ensure consistency with min-marginal computation.
+            }
+        }
+        return nodeMarginals;
     }
 
     std::vector<INDEX> GetMaxPotentialSortingOrder(const std::vector<MaxPotentialInChain>& pots) const {
