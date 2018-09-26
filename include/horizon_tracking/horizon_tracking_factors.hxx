@@ -121,6 +121,7 @@ private:
     two_dim_variable_array<MaxPotentialInChain> MaxPotentialsOfChains;
     two_dim_variable_array<INDEX> MaxPotentialsOfChainsOrder;
     mutable std::vector<INDEX> BestChainMarginalIndices;
+    mutable INDEX numEdges;
     mutable INDEX messageNormalizer;
 
 public:
@@ -141,9 +142,9 @@ public:
         init_primal();
         std::vector<std::vector<MaxPotentialInChain>> maxPotentialsChains(NumChains); 
         std::vector<std::vector<INDEX>> maxPotentialsChainsOrder(NumChains); 
-        messageNormalizer = 0;
+        numEdges = 0;
         for (INDEX c = 0; c < NumChains; c++) {
-            messageNormalizer += MaxPotentials[c].size();
+            numEdges += MaxPotentials[c].size();
             for (INDEX e = 0; e < MaxPotentials[c].size(); e++) {
                 for (INDEX l1 = 0; l1 < MaxPotentials[c].dim2(e); l1++) {
                     for (INDEX l2 = 0; l2 < MaxPotentials[c].dim3(e); l2++) {
@@ -153,6 +154,7 @@ public:
             }
             maxPotentialsChainsOrder[c] = GetMaxPotentialSortingOrder(maxPotentialsChains[c]);
         }
+        messageNormalizer = numEdges;
         MaxPotentialsOfChains = two_dim_variable_array<MaxPotentialInChain>(maxPotentialsChains);
         MaxPotentialsOfChainsOrder = two_dim_variable_array<INDEX>(maxPotentialsChainsOrder);
         BestChainMarginalIndices.resize(NumChains);
@@ -235,15 +237,18 @@ public:
     }
 
     std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 1.0) const {
-        assert(messageNormalizer > 0);
+        if (messageNormalizer == 0)
+            messageNormalizer = numEdges; //assuming restart.
+
         REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
         std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
-#pragma omp sections
-   #pragma omp section
-        std::vector<Marginals> leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e);
-   #pragma omp section
-        std::vector<Marginals> rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);
-
+#pragma omp sections {
+   #pragma omp section {
+        std::vector<Marginals> leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e); 
+        }
+   #pragma omp section {
+        std::vector<Marginals> rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);}
+        }
         MarginalsValid[chain] = false;
         INDEX i = 0;
         for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
