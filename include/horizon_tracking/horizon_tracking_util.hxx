@@ -57,14 +57,14 @@ public:
 template <bool DoForward, bool useStartingNode = false>
 class shortest_distance_calculator {
 private: 
-    three_dimensional_variable_array<REAL> LinearPairwisePotentials;
-    three_dimensional_variable_array<REAL> MaxPairwisePotentials;
-    std::vector<INDEX> NumLabels;
+    const three_dimensional_variable_array<REAL>& LinearPairwisePotentials;
+    const three_dimensional_variable_array<REAL>& MaxPairwisePotentials;
+    const std::vector<INDEX>& NumLabels;
     two_dim_variable_array<REAL> distance;
     REAL shortestPathDistance;
     struct edge { INDEX n1, l1, l2; }; 
-    INDEX StartingNodeIndex;
-    INDEX StartingLabelIndex;
+    const INDEX StartingNodeIndex;
+    const INDEX StartingLabelIndex;
 
 public:
     shortest_distance_calculator(const three_dimensional_variable_array<REAL>& linearPairwisePotentials, 
@@ -123,7 +123,7 @@ public:
             INDEX currentLabel = DoForward ? e.l1 : e.l2;
             INDEX nextLabel = DoForward ? e.l2 : e.l1;
             REAL offeredDistance = distance[currentNode][currentLabel] + currentLinearPot;
-            if (distance[nextNode][nextLabel] <= offeredDistance) continue;
+            if (distance[nextNode][nextLabel] <= offeredDistance) continue; // TODO: do not add to queue if that condition holds
 
             distance[nextNode][nextLabel] = offeredDistance;
             if ((DoForward && currentNode == LinearPairwisePotentials.dim1() - 1) || (!DoForward && nextNode == 0))  {
@@ -226,8 +226,8 @@ public:
                 for (INDEX l1 = startLabel; l1 < NumLabels[n1]; l1++) {
                     for (INDEX l2 = 0; l2 < NumLabels[n2]; l2++) {
                         if(MaxPairwisePotentials(n1, l1, l2) > bottleneckThreshold) continue;
-                        if (distance[n2][l2] > distance[n1][l1] + LinearPairwisePotentials(n1, l1, l2))
-                            distance[n2][l2] = distance[n1][l1] + LinearPairwisePotentials(n1, l1, l2);
+                        if (distance(n2,l2) > distance(n1,l1) + LinearPairwisePotentials(n1, l1, l2))
+                            distance(n2,l2) = distance(n1,l1) + LinearPairwisePotentials(n1, l1, l2);
                     }
                     if (specificNode && n1 == startNode)
                         break;
@@ -238,11 +238,12 @@ public:
         else {
             if (!specificNode) startNode = numNodes - 1;  
             for (long int n2 = startNode , n1 = startNode - 1; n1 >= 0; n2--, n1--) {
-                for (INDEX l2 = startLabel; l2 < NumLabels[n2]; l2++) {
-                    for (INDEX l1 = 0; l1 < NumLabels[n2 - 1]; l1++) {
+            // TODO: exchanging iteration order slows down code, even tough it should result in more contiguous access
+               for (INDEX l1 = 0; l1 < NumLabels[n2 - 1]; l1++) {
+                  for (INDEX l2 = startLabel; l2 < NumLabels[n2]; l2++) {
                         if(MaxPairwisePotentials(n1, l1, l2) > bottleneckThreshold) continue;
-                        if (distance[n1][l1] > distance[n2][l2] + LinearPairwisePotentials(n1, l1, l2))
-                            distance[n1][l1] = distance[n2][l2] + LinearPairwisePotentials(n1, l1, l2);
+                        if (distance(n1,l1) > distance(n2,l2) + LinearPairwisePotentials(n1, l1, l2))
+                            distance(n1,l1) = distance(n2,l2) + LinearPairwisePotentials(n1, l1, l2);
                     }
                     if (specificNode && n2 == startNode)
                         break;

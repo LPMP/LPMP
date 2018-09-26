@@ -10,12 +10,15 @@
 #include <unordered_set>
 #include <cmath>
 #include "omp.h"
+#include <chrono>
 
 namespace LPMP {
 class max_potential_on_nodes {
 struct MaxPotentialInUnary { REAL value; INDEX nodeIndex; INDEX labelIndex; };
 public:
+
     max_potential_on_nodes() {}
+
     max_potential_on_nodes(const std::vector<Marginals>& marginals)
     {
         for(INDEX currentNodeIndex = 0; currentNodeIndex < marginals.size(); ++currentNodeIndex) {
@@ -104,10 +107,10 @@ class max_potential_on_multiple_chains {
 struct MaxPotentialInChain { INDEX Edge; INDEX L1; INDEX L2; REAL Value; };
 private:
     mutable std::vector<three_dimensional_variable_array<REAL>> LinearPotentials;
-    std::vector<three_dimensional_variable_array<REAL>> MaxPotentials;
-    std::vector<std::vector<INDEX>> NumLabels;
-    INDEX NumChains;
-    std::vector<INDEX> NumNodes;
+    const std::vector<three_dimensional_variable_array<REAL>> MaxPotentials;
+    const std::vector<std::vector<INDEX>> NumLabels;
+    const INDEX NumChains;
+    std::vector<INDEX> NumNodes; // TODO: make const
     mutable max_potential_on_nodes UnarySolver;
     mutable bool UnarySolverInitialized = false;
 
@@ -119,15 +122,17 @@ private:
     two_dim_variable_array<INDEX> MaxPotentialsOfChainsOrder;
     mutable std::vector<INDEX> BestChainMarginalIndices;
 public:
+    // TODO: use move semantics
     max_potential_on_multiple_chains(std::vector<three_dimensional_variable_array<REAL>>& linearPotentials,
                                      std::vector<three_dimensional_variable_array<REAL>>& maxPotentials, 
-                                     std::vector<std::vector<INDEX>>& numLabels) {
-        LinearPotentials = linearPotentials;
-        MaxPotentials = maxPotentials;
-        NumLabels = numLabels;
+                                     std::vector<std::vector<INDEX>>& numLabels) 
+       : LinearPotentials(linearPotentials), 
+        MaxPotentials(maxPotentials),
+        NumLabels(numLabels),
+        NumChains(NumLabels.size())
+   {
         assert(LinearPotentials.size() == MaxPotentials.size());
         assert(MaxPotentials.size() == NumLabels.size());
-        NumChains = NumLabels.size();
         for (INDEX c = 0; c < NumChains; c++) { NumNodes.push_back(NumLabels[c].size()); }
         Solution.resize(NumNodes.begin(), NumNodes.end(), std::numeric_limits<INDEX>::max());
         MarginalsChains.resize(NumChains);
@@ -159,6 +164,7 @@ public:
 
     void init_primal() {
         std::fill(MarginalsValid.begin(), MarginalsValid.end(), false);
+#pragma omp parallel for
         for (INDEX c = 0; c < NumChains; c++) {
             std::fill(Solution[c].begin(), Solution[c].end(), std::numeric_limits<INDEX>::max());
         }
@@ -260,7 +266,7 @@ public:
  
 private:
     std::vector<INDEX> Solve() const {
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic,3)
         for (INDEX c = 0; c < NumChains; c++) {
             if (MarginalsValid[c]) continue;
             ComputeChainMarginals(MarginalsChains[c], c);
@@ -397,6 +403,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         template<typename RIGHT_FACTOR, typename MSG>
         void send_message_to_left(const RIGHT_FACTOR& r, MSG& msg, const REAL omega = 1.0) const
         {
+           // TODO; avoid extra copy, write with a matrix
             std::vector<REAL> message = r.ComputeMessageForEdge(ChainIndex, EdgeIndex);
             vector<REAL> m(message.size());
             for (INDEX i = 0; i < m.size(); i++)

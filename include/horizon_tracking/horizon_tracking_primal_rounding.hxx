@@ -53,7 +53,8 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
         std::cout<<"Lower bound after send message left: "<<newLb<<std::endl;
     }
 
-    for(std::size_t i=0; i<3; ++i) {
+    solver.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.0));
+    for(std::size_t i=0; i<30; ++i) {
        solver.GetLP().ComputeForwardPassAndPrimal();
        solver.RegisterPrimal();
        solver.GetLP().ComputeBackwardPassAndPrimal();
