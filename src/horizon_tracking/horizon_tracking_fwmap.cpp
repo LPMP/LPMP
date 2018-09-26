@@ -52,7 +52,7 @@ construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.templ
 }
 */
 solver.Solve();
-round_primal_solution(solver,false);
+round_primal_solution(solver,true);
 solver.WritePrimal();
 std::cout<<"\n\n Primal Cost: "<<solver.primal_cost();
 std::cout<<"\n Percentage duality gap: "<<100.0 * (solver.primal_cost() - solver.lower_bound()) / solver.lower_bound() <<"\%\n\n";
