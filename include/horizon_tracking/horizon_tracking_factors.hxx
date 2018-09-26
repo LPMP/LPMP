@@ -242,13 +242,15 @@ public:
 
         REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
         std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
-#pragma omp sections {
-   #pragma omp section {
-        std::vector<Marginals> leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e); 
-        }
-   #pragma omp section {
-        std::vector<Marginals> rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);}
-        }
+        std::vector<Marginals> leftNodeLeftMarginals, rightNodeRightMarginals;
+#pragma omp parallel sections {
+    #pragma omp section {
+        leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e); 
+    }
+    #pragma omp section {
+        rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);
+    }
+}
         MarginalsValid[chain] = false;
         INDEX i = 0;
         for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
