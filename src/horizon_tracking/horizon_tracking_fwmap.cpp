@@ -11,7 +11,6 @@ void PrintObjectives(int argc, char** argv, SOLVER& solver)
     Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>,StandardVisitor> solver_reference(argc,argv);
     auto input = horizon_tracking_uai_input::parse_file(solver_reference.get_input_file());
     construct_horizon_tracking_problem_on_grid_to_chains(input, solver_reference, solver_reference.template GetProblemConstructor<0>());
-    order_nodes_by_label_space_cadinality(solver_reference.template GetProblemConstructor<0>());
     auto constructor = solver.template GetProblemConstructor<0>();
     auto constructor_reference = solver_reference.template GetProblemConstructor<0>();
     auto numberPairwise = constructor_reference.get_number_of_pairwise_factors();
@@ -35,7 +34,7 @@ void PrintObjectives(int argc, char** argv, SOLVER& solver)
     for (const auto& f : constructor_reference.max_multiple_chains_factors()) {
         b_costs += f->EvaluatePrimal();
     }
-    std::cout<<"Bottleneck Cost: "<<b_costs<<std::endl;
+    std::cout<<"Bottleneck Cost: "<<b_costs<<std::endl<<std::endl;
 }
 
 int main(int argc, char** argv) {
