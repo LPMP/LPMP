@@ -236,7 +236,7 @@ public:
         Solution[chainIndex][nodeIndex] = val; 
     }
 
-    std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 1.0) const {
+    std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.95) const {
         if (messageNormalizer == 0)
             messageNormalizer = numEdges; //assuming restart.
 
