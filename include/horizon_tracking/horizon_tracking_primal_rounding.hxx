@@ -30,7 +30,7 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
         auto olb1 = solver.GetLP().original_factors_lower_bound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
         // Send messages from Multiple Chain Linear pairwise potentials to MRF pairwise potentials:
-        for (INDEX p = 0; p < 3; p++) {
+        for (INDEX p = 0; p < 1; p++) {
         for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
 #ifndef NDEBUG
             const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
