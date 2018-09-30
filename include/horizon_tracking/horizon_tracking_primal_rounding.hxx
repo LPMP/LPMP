@@ -4,7 +4,7 @@
 #include "horizon_tracking.h"
 #include "solver.hxx"
 #include "LP.h"
-#include "tree_decomposition.hxx"
+#include "LP_FWMAP.hxx"
 
 using namespace LPMP;
 
@@ -25,7 +25,8 @@ std::vector<FactorTypeAdapter*> get_mrf_factors(SOLVER& solver)
 template<typename SOLVER>
 void PrintObjectives(int argc, char** argv, SOLVER& solver)
 {
-    Solver<LP_subgradient_ascent<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>,StandardVisitor> solver_reference(argc,argv);
+    //TODO : Make it generic to solver type!
+    Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>,StandardVisitor> solver_reference(argc,argv);
     auto input = horizon_tracking_uai_input::parse_file(solver_reference.get_input_file());
     construct_horizon_tracking_problem_on_grid_to_chains(input, solver_reference, solver_reference.template GetProblemConstructor<0>());
     auto constructor = solver.template GetProblemConstructor<0>();
