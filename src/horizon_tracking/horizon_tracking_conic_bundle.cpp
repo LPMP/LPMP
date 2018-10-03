@@ -12,5 +12,4 @@ int main(int argc, char** argv) {
     solver.Solve();
     round_primal_solution(solver,false);
     solver.WritePrimal();
-    PrintObjectives(argc, argv, solver);
 }

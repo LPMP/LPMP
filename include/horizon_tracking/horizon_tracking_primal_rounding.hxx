@@ -63,8 +63,8 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
        solver.GetLP().ComputeBackwardPassAndPrimal();
        solver.RegisterPrimal();
     }
-    std::cout<<"Primal Cost: "<<solver.GetLP().primal_cost()<<std::endl;
-    std::cout<<"Perentage Gap: "<<100*(solver.GetLP().primal_cost() - solver.GetLP.LowerBound())/std::abs(solver.GetLP().LowerBound())<<std::endl;
+    std::cout<<"Primal Cost: "<<solver.primal_cost()<<std::endl;
+    std::cout<<"Perentage Gap: "<<100*(solver.primal_cost() - solver.GetLP().LowerBound())/std::abs(solver.GetLP().LowerBound())<<std::endl;
 }
 
 #endif //LPMP_HORIZON_TRACKING_PRIMAL_ROUNDING_NEW_HXX
