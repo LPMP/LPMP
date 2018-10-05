@@ -56,6 +56,7 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
         std::cout<<"Lower bound after send message left: "<<newLb<<std::endl;
     }
 
+    auto lb = solver.GetLP().LowerBound();
     for(std::size_t i=0; i<multiple_chain_constructor.get_number_of_variables(); ++i) {
         auto* f = multiple_chain_constructor.get_unary_factor(i);
         auto msgs_left = f->template get_messages<typename FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryPairwiseMessageLeftContainer>();
@@ -110,7 +111,7 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
     //    solver.RegisterPrimal();
     // }
     std::cout<<"Primal Cost: "<<solver.primal_cost()<<std::endl;
-    std::cout<<"Perentage Gap: "<<100*(solver.primal_cost() - solver.GetLP().LowerBound())/std::abs(solver.GetLP().LowerBound())<<std::endl;
+    std::cout<<"Perentage Gap: "<<100*(solver.primal_cost() - lb)/std::abs(lb)<<std::endl;
 }
 
 #endif //LPMP_HORIZON_TRACKING_PRIMAL_ROUNDING_NEW_HXX

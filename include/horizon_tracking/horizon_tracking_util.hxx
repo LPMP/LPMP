@@ -298,8 +298,8 @@ public:
         return GetVerticalOffset(ChainNodeToOriginalNode[minIndex][0]);
     }
 
-    INDEX GetHorizontalChainAtOffset(const INDEX hOffset) { return HChainIndices[hOffset]; }
-    INDEX GetVerticalChainAtOffset(const INDEX vOffset) { return VChainIndices[vOffset]; }
+    INDEX GetHorizontalChainAtOffset(const INDEX hOffset) const { return HChainIndices[hOffset]; }
+    INDEX GetVerticalChainAtOffset(const INDEX vOffset) const { return VChainIndices[vOffset]; }
 
     INDEX GetHorizontalOffset(const INDEX gridLoc) const { return gridLoc % NumVerticalChains; }
     INDEX GetVerticalOffset(const INDEX gridLoc) const { return gridLoc / NumVerticalChains; }
