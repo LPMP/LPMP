@@ -3253,10 +3253,11 @@ public:
      //} 
   }
 
+// TODO: add const version
   template<typename MESSAGE_TYPE>
-  auto get_messages() const 
+  auto get_messages()
   {
-      std::vector<const MESSAGE_TYPE*> messages;
+      std::vector<MESSAGE_TYPE*> messages;
       constexpr auto n = get_message_number<MESSAGE_TYPE>();
       messages.reserve(std::get<n>(msg_).size());
       auto msg_begin = std::get<n>(msg_).begin();

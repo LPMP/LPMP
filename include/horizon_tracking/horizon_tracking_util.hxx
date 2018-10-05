@@ -230,7 +230,7 @@ public:
             for (long int n2 = startNode , n1 = startNode - 1; n1 >= 0; n2--, n1--) {
             // TODO: exchanging iteration order slows down code, even tough it should result in more contiguous access
                for (INDEX l1 = 0; l1 < NumLabels[n2 - 1]; l1++) {
-                  for (INDEX l2 = startLabel; l2 < NumLabels[n2]; l2++) {
+                    for (INDEX l2 = startLabel; l2 < NumLabels[n2]; l2++) {
                         if(MaxPairwisePotentials(n1, l1, l2) > bottleneckThreshold) continue;
                         if (distance(n1,l1) > distance(n2,l2) + LinearPairwisePotentials(n1, l1, l2))
                             distance(n1,l1) = distance(n2,l2) + LinearPairwisePotentials(n1, l1, l2);
@@ -242,6 +242,81 @@ public:
             shortestPathDistance = *std::min_element(distance[0].begin(), distance[0].end());
         }
     }
+};
+
+class ChainsInfo {
+public:
+    ChainsInfo(const two_dim_variable_array<INDEX>& chainNodeToOriginalNode) : 
+    ChainNodeToOriginalNode(chainNodeToOriginalNode),
+    NumChains(chainNodeToOriginalNode.size()) {
+        IsHorizontalChain.resize(NumChains);
+        NumHorizontalChains = 0;
+        NumVerticalChains = 0;
+        for (INDEX c = 0; c < NumChains; c++) {
+            if (ChainNodeToOriginalNode[c][1] - ChainNodeToOriginalNode[c][0] == 1) {
+                IsHorizontalChain[c] = true;
+                NumHorizontalChains++;
+            } else {
+                IsHorizontalChain[c] = false;
+                NumVerticalChains++;
+            }
+        }
+        HChainIndices.resize(NumHorizontalChains);
+        VChainIndices.resize(NumVerticalChains);
+        for (INDEX c = 0; c < NumChains; c++) {
+            if (IsHorizontalChain[c]) {
+                INDEX yOffset = ChainNodeToOriginalNode[c][0] / NumVerticalChains;
+                HChainIndices[yOffset] = c;
+            } else {
+                INDEX xOffset = ChainNodeToOriginalNode[c][0] % NumVerticalChains;
+                VChainIndices[xOffset] = c;
+            }
+        }
+    }
+
+    INDEX GetVerticalChainIndexAtGridLoc(const INDEX gridLoc) const {
+        return VChainIndices[gridLoc % NumVerticalChains];
+    }
+
+    INDEX GetHorizontalChainIndexAtGridLoc(const INDEX gridLoc) const {
+        return HChainIndices[gridLoc / NumVerticalChains];
+    }
+
+    // Returns the y-offset for a horizontal chain having a node with minimum number of labels, for 
+    // starting primal computation.
+    INDEX GetPrimalStartChainOffset(const std::vector<std::vector<INDEX>>& numLabels) const {
+        INDEX minIndex;
+        INDEX minValue = std::numeric_limits<INDEX>::max();
+        for (INDEX c = 0; c < NumChains; c++) {
+            if (IsVertical(c)) continue;
+            INDEX currentChainMinLabels = *std::min_element(numLabels[c].begin(), numLabels[c].end());
+            if (minValue > currentChainMinLabels) {
+                minValue = currentChainMinLabels;
+                minIndex = c;
+            }
+        }
+        return GetVerticalOffset(ChainNodeToOriginalNode[minIndex][0]);
+    }
+
+    INDEX GetHorizontalChainAtOffset(const INDEX hOffset) { return HChainIndices[hOffset]; }
+    INDEX GetVerticalChainAtOffset(const INDEX vOffset) { return VChainIndices[vOffset]; }
+
+    INDEX GetHorizontalOffset(const INDEX gridLoc) const { return gridLoc % NumVerticalChains; }
+    INDEX GetVerticalOffset(const INDEX gridLoc) const { return gridLoc / NumVerticalChains; }
+    bool IsHorizontal(const INDEX c) const { return IsHorizontalChain[c]; }
+    bool IsVertical(const INDEX c) const { return !IsHorizontal(c); }
+    INDEX NumHorizontal() const { return NumHorizontalChains; }
+    INDEX NumVertical() const { return NumVerticalChains; }
+
+private:
+    const two_dim_variable_array<INDEX> ChainNodeToOriginalNode;
+    const INDEX NumChains;
+    std::vector<bool> IsHorizontalChain;   // 1 -> horizontal, 0 -> vertical
+    std::vector<INDEX> HChainIndices; // gives horizontal chain index at the given y-offset
+    std::vector<INDEX> VChainIndices; // gives vertical chain index at the given x-offset
+    INDEX NumHorizontalChains;
+    INDEX NumVerticalChains;
+
 };
 }
 #endif //HORIZON_TRACKING_UTIL_HXX

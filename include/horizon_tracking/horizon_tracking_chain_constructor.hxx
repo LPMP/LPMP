@@ -39,7 +39,8 @@ max_multiple_chains_factor_container* add_multiple_chains_factor(const std::vect
         }
         linearPairwisePotentials.push_back(currentChainLinearPotentials);
     }
-    auto* multiple_chains_factor = this->lp_->template add_factor<max_multiple_chains_factor_container>(linearPairwisePotentials, maxPairwisePotentials, numLabels);
+    auto* multiple_chains_factor = this->lp_->template add_factor<max_multiple_chains_factor_container>
+                                   (linearPairwisePotentials, maxPairwisePotentials, numLabels, chainNodeToOriginalNode);
 
     assert(numChains == chainNodeToOriginalNode.size());
     for (std::size_t chain_index=0; chain_index<numChains;chain_index++) {
