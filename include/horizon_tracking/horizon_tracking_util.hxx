@@ -263,14 +263,20 @@ public:
         }
         HChainIndices.resize(NumHorizontalChains);
         VChainIndices.resize(NumVerticalChains);
-        for (INDEX c = 0; c < NumChains; c++) {
-            if (IsHorizontalChain[c]) {
-                INDEX yOffset = ChainNodeToOriginalNode[c][0] / NumVerticalChains;
-                HChainIndices[yOffset] = c;
-            } else {
-                INDEX xOffset = ChainNodeToOriginalNode[c][0] % NumVerticalChains;
-                VChainIndices[xOffset] = c;
+        if (NumVerticalChains > 0) {
+            for (INDEX c = 0; c < NumChains; c++) {
+                if (IsHorizontalChain[c]) {
+                    INDEX yOffset = ChainNodeToOriginalNode[c][0] / NumVerticalChains;
+                    HChainIndices[yOffset] = c;
+                } else {
+                    INDEX xOffset = ChainNodeToOriginalNode[c][0] % NumVerticalChains;
+                    VChainIndices[xOffset] = c;
+                }
             }
+        }
+        else
+        {
+            HChainIndices[0] = 0;
         }
     }
 
@@ -301,8 +307,8 @@ public:
     INDEX GetHorizontalChainAtOffset(const INDEX hOffset) const { return HChainIndices[hOffset]; }
     INDEX GetVerticalChainAtOffset(const INDEX vOffset) const { return VChainIndices[vOffset]; }
 
-    INDEX GetHorizontalOffset(const INDEX gridLoc) const { return gridLoc % NumVerticalChains; }
-    INDEX GetVerticalOffset(const INDEX gridLoc) const { return gridLoc / NumVerticalChains; }
+    INDEX GetHorizontalOffset(const INDEX gridLoc) const {return NumVerticalChains > 0 ? gridLoc % NumVerticalChains : gridLoc; }
+    INDEX GetVerticalOffset(const INDEX gridLoc) const { return NumVerticalChains > 0 ? gridLoc / NumVerticalChains : gridLoc; }
     bool IsHorizontal(const INDEX c) const { return IsHorizontalChain[c]; }
     bool IsVertical(const INDEX c) const { return !IsHorizontal(c); }
     INDEX NumHorizontal() const { return NumHorizontalChains; }
