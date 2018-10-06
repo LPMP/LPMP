@@ -301,13 +301,15 @@ private:
     two_dim_variable_array<INDEX> ComputeLabelling(const std::vector<INDEX>& marginalIndices) const { 
         two_dim_variable_array<INDEX> solution(NumNodes.begin(), NumNodes.end(), std::numeric_limits<INDEX>::max());
         for (INDEX c = 0; c < NumChains; c++) {
-            solution[c] = ComputeLabellingForOneChain(c, MarginalsChains[c].Get(marginalIndices[c]).MaxCost);
+            solution[c] = ComputeLabellingForOneChain(c, MarginalsChains[c].Get(marginalIndices[c]).MaxCost, MaxPotentials[c], LinearPotentials[c]);
         }
         return solution;
     }
 
-    std::vector<INDEX> ComputeLabellingForOneChain(INDEX chainIndex, REAL maxPotentialThresh) const {
-        shortest_distance_calculator<true> distCalc(LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex]);
+    std::vector<INDEX> ComputeLabellingForOneChain(const INDEX chainIndex, const REAL maxPotentialThresh,
+                                                    const three_dimensional_variable_array<REAL>& maxPots, 
+                                                    const three_dimensional_variable_array<REAL>& linearPots) const {
+        shortest_distance_calculator<true> distCalc(linearPots, maxPots, NumLabels[chainIndex]);
         distCalc.CalculateDistances(maxPotentialThresh);
         return distCalc.ShortestPath(maxPotentialThresh);
     }
@@ -404,7 +406,7 @@ private:
         const INDEX startingChainIndex = chainInfo.GetHorizontalChainAtOffset(startingChainYOffset);
         REAL optimalB = ComputeChainMarginals<true, true>(MarginalsChains[startingChainIndex], MaxPotentials[startingChainIndex], LinearPotentials[startingChainIndex],
                                                             MaxPotentialsOfChains[startingChainIndex], MaxPotentialsOfChainsOrder[startingChainIndex], startingChainIndex);
-        allChainsLabels[startingChainIndex] = ComputeLabellingForOneChain(startingChainIndex, optimalB);   
+        allChainsLabels[startingChainIndex] = ComputeLabellingForOneChain(startingChainIndex, optimalB, MaxPotentials[startingChainIndex], LinearPotentials[startingChainIndex]);   
         PropagateChainSolutionToOtherChains(startingChainIndex, gridSolution, allChainsLabels);  
 
         // Solve Downward:
@@ -415,7 +417,7 @@ private:
             auto modifiedMaxP1D = GetMaxPotentials1D(modifiedMaxP);
             auto modifiedMaxP1DSortingOrder = GetMaxPotentialSortingOrder(modifiedMaxP1D);
             REAL optimalB = ComputeChainMarginals<true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder, cDest);
-            allChainsLabels[cDest] = ComputeLabellingForOneChain(cDest, optimalB);   
+            allChainsLabels[cDest] = ComputeLabellingForOneChain(cDest, optimalB, modifiedMaxP, modifiedLinearP);   
             PropagateChainSolutionToOtherChains(cDest, gridSolution, allChainsLabels);  
         }
 
@@ -427,7 +429,7 @@ private:
             auto modifiedMaxP1D = GetMaxPotentials1D(modifiedMaxP);
             auto modifiedMaxP1DSortingOrder = GetMaxPotentialSortingOrder(modifiedMaxP1D);
             REAL optimalB = ComputeChainMarginals<true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder, cDest);
-            allChainsLabels[cDest] = ComputeLabellingForOneChain(cDest, optimalB);   
+            allChainsLabels[cDest] = ComputeLabellingForOneChain(cDest, optimalB, modifiedMaxP, modifiedLinearP);   
             PropagateChainSolutionToOtherChains(cDest, gridSolution, allChainsLabels);  
         }
         return allChainsLabels;
@@ -449,7 +451,7 @@ private:
             INDEX gridIndex = ChainNodeToOriginalNode[destC][n]; //Grid Index of node to reparameterize
             INDEX vertC = chainInfo.GetVerticalChainIndexAtGridLoc(gridIndex);
             INDEX destNodeInVert = vOffsetDest;
-            if (destC < sourceC) { // Reparametrize downwards
+            if (vOffsetDest < vOffsetSource) { // Reparametrize downwards
                 assert(NumLabels[vertC][destNodeInVert] == unaryPot.size());
                 for (INDEX ld = 0; ld < NumLabels[vertC][destNodeInVert]; ld++) {
                     unaryPot[ld] = { MaxPotentials[vertC](destNodeInVert, ld, sourceLabels[n]), LinearPotentials[vertC](destNodeInVert, ld, sourceLabels[n])};
