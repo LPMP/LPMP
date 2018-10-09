@@ -11,3 +11,7 @@ target_link_libraries(horizon_tracking_conic_bundle LPMP DD_ILP cb arboricity li
 
 add_executable(horizon_tracking_subgradient horizon_tracking_subgradient.cpp)
 target_link_libraries(horizon_tracking_subgradient LPMP DD_ILP arboricity lingeling m stdc++ pthread horizon_tracking_uai_input OpenMP::OpenMP_CXX)
+
+add_executable(horizon_tracking_MST horizon_tracking_MST.cpp)
+target_link_libraries(horizon_tracking_MST LPMP DD_ILP arboricity lingeling m stdc++ pthread mrf_uai_input)
+
