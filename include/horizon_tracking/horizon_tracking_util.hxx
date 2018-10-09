@@ -202,6 +202,10 @@ public:
                 n2++;
             }
         }
+        if (*std::max_element(path.begin(), path.end()) == std::numeric_limits<INDEX>::max()) {
+            std::runtime_error("Shortest path not found!");
+            std::exit(1);
+        }
         assert(*std::max_element(path.begin(), path.end()) < std::numeric_limits<INDEX>::max());
         return path;
     }
