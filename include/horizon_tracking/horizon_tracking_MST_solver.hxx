@@ -44,6 +44,7 @@ public:
         }
         if (pQ.empty()) {
             std::runtime_error("No seed present");
+            std::exit(0);
         }
         while (!pQ.empty()) {
             const auto bestN = pQ.top();
