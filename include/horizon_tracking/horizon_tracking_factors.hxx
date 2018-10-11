@@ -151,6 +151,7 @@ public:
             for (INDEX e = 0; e < MaxPotentials[c].size(); e++) {
                 for (INDEX l1 = 0; l1 < MaxPotentials[c].dim2(e); l1++) {
                     for (INDEX l2 = 0; l2 < MaxPotentials[c].dim3(e); l2++) {
+                        if (std::isinf(MaxPotentials[c](e, l1, l2))) continue;
                         MaxPotentialsOfChains[c].push_back({e, l1, l2, MaxPotentials[c](e, l1, l2)});
                     }
                 }
@@ -500,6 +501,7 @@ private:
         for (INDEX e = 0; e < maxPotentials.size(); e++) {
             for (INDEX l1 = 0; l1 < maxPotentials.dim2(e); l1++) {
                 for (INDEX l2 = 0; l2 < maxPotentials.dim3(e); l2++) {
+                    if (std::isinf(maxPotentials(e, l1, l2))) continue;
                     maxPotentials1D.push_back({e, l1, l2, maxPotentials(e, l1, l2)});
                 }
             }
@@ -589,7 +591,12 @@ class pairwise_max_potential_on_multiple_chains_message {
                 for(INDEX l2=0; l2<r.NumNodeLabels(ChainIndex, N2); ++l2, ++i) {
                     chain_edge e = {EdgeIndex, l1, l2};
                     REAL currentPot = r.GetLinearPotential(ChainIndex, e);
-                    r.SetLinearPotential(ChainIndex, e, currentPot + msgs[i]);
+                    if (std::isinf(currentPot))
+                        continue;
+                    else if (std::isinf(msgs[i]))
+                        r.SetLinearPotential(ChainIndex, e, msgs[i]);
+                    else                         
+                        r.SetLinearPotential(ChainIndex, e, currentPot + msgs[i]);
                 }
             }
         }
@@ -599,8 +606,13 @@ class pairwise_max_potential_on_multiple_chains_message {
         {
             INDEX c=0;
             for(INDEX i=0; i<l.dim1(); ++i) {
-                for(INDEX j=0; j<l.dim2(); ++j) {
-                    l.cost(i,j) += msgs[c++];
+                for(INDEX j=0; j<l.dim2(); ++j, ++c) {
+                    if (std::isinf(l.cost(i,j)))
+                        continue;
+                    else if (std::isinf(msgs[c]))
+                        l.cost(i,j) = msgs[c];
+                    else
+                        l.cost(i,j) += msgs[c];
                 }
             } 
         }
