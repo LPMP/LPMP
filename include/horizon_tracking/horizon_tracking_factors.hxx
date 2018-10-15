@@ -471,8 +471,8 @@ private:
 
     void ReparameterizePairwiseFromUnary(three_dimensional_variable_array<REAL>& maxPots, three_dimensional_variable_array<REAL>& linearPots,
                                          const std::vector<max_linear_costs>& unary, INDEX c, INDEX n) const {
-        REAL normalizer = 0.5;
-        if (n == 0 || n == NumNodes[c] - 1)
+        REAL normalizer = 2.0;
+        if (n == 0 || n == NumNodes[c] - 1) 
             normalizer = 1;
 
         if (n < NumNodes[c] - 1) {
@@ -480,8 +480,8 @@ private:
             assert(NumLabels[c][n] == unary.size());
             for (INDEX l1 = 0; l1 < NumLabels[c][n]; l1++) {
                 for (INDEX l2 = 0; l2 < NumLabels[c][n+1]; l2++) {
-                    maxPots(n, l1, l2) = std::max(MaxPotentials[c](n, l1, l2), unary[l1].MaxCost);
-                    linearPots(n, l1, l2) = LinearPotentials[c](n, l1, l2) + (unary[l1].LinearCost / normalizer);
+                    maxPots(n, l1, l2) = std::max(maxPots(n, l1, l2), unary[l1].MaxCost);
+                    linearPots(n, l1, l2) = linearPots(n, l1, l2) + (unary[l1].LinearCost / normalizer);
                 }
             }
         } 
@@ -489,8 +489,8 @@ private:
             assert(NumLabels[c][n] == unary.size());
             for (INDEX l1 = 0; l1 < NumLabels[c][n-1]; l1++) {
                 for (INDEX l2 = 0; l2 < NumLabels[c][n]; l2++) {
-                    maxPots(n-1, l1, l2) = std::max(MaxPotentials[c](n-1, l1, l2), unary[l2].MaxCost);
-                    linearPots(n-1, l1, l2) = LinearPotentials[c](n-1, l1, l2) + (unary[l2].LinearCost / normalizer);
+                    maxPots(n-1, l1, l2) = std::max(maxPots(n-1, l1, l2), unary[l2].MaxCost);
+                    linearPots(n-1, l1, l2) = linearPots(n-1, l1, l2) + (unary[l2].LinearCost / normalizer);
                 }
             }
         }
