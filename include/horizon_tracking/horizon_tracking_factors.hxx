@@ -307,10 +307,12 @@ private:
         return solution;
     }
 
+    template <bool useFixedNode = false>
     std::vector<INDEX> ComputeLabellingForOneChain(const INDEX chainIndex, const REAL maxPotentialThresh,
                                                     const three_dimensional_variable_array<REAL>& maxPots, 
-                                                    const three_dimensional_variable_array<REAL>& linearPots) const {
-        shortest_distance_calculator<true> distCalc(linearPots, maxPots, NumLabels[chainIndex]);
+                                                    const three_dimensional_variable_array<REAL>& linearPots,
+                                                    const INDEX fixedNode = 0, const INDEX fixedNodeLabel = 0) const {
+        shortest_distance_calculator<true, false, useFixedNode> distCalc(linearPots, maxPots, NumLabels[chainIndex], 0, fixedNode, fixedNodeLabel);
         distCalc.CalculateDistances(maxPotentialThresh);
         return distCalc.ShortestPath(maxPotentialThresh);
     }
@@ -332,17 +334,18 @@ private:
         return {maxPotValue, linearCost};
     }
 
-    template <bool doForward = true, bool onlyComputeB = false>
+    template <bool doForward = true, bool onlyComputeB = false, bool useFixedNode = false>
     REAL ComputeChainMarginals(Marginals& marginals, const three_dimensional_variable_array<REAL>& maxPotentials, 
                                 const three_dimensional_variable_array<REAL>& linearPotentials, 
                                 const std::vector<MaxPotentialInChain>& maxPotentials1D,
                                 const std::vector<INDEX>& maxPotentials1DOrder,
-                                const INDEX chainIndex) const
+                                const INDEX chainIndex, const INDEX fixedNode = 0, const INDEX fixedNodeLabel = 0) const
     {
+        assert(fixedNodeLabel < NumLabels[chainIndex][fixedNode]);
         REAL optimalB = std::numeric_limits<REAL>::max();
         REAL optimalCost = std::numeric_limits<REAL>::max();
-        shortest_distance_calculator<doForward> distCalc
-                                    (linearPotentials, maxPotentials, NumLabels[chainIndex]);
+        shortest_distance_calculator<doForward, false, useFixedNode> distCalc
+                                    (linearPotentials, maxPotentials, NumLabels[chainIndex], 0, fixedNode, fixedNodeLabel);
 
         for (const auto& e : maxPotentials1DOrder) {
             const auto n1 = maxPotentials1D[e].Edge;
@@ -394,43 +397,64 @@ private:
 
     std::vector<std::vector<INDEX>> ComputePrimal() const {
         std::vector<std::vector<INDEX>> allChainsLabels(NumChains);
-        INDEX lastNodeIndex = 0;
         for (INDEX c = 0; c < NumChains; c++) {
             allChainsLabels[c].resize(NumNodes[c], std::numeric_limits<INDEX>::max());
-            lastNodeIndex = std::max(lastNodeIndex, *std::max_element(ChainNodeToOriginalNode[c].begin(), ChainNodeToOriginalNode[c].end()));
         }
-        std::vector<INDEX> gridSolution(lastNodeIndex + 1, std::numeric_limits<INDEX>::max());
-
-        // Compute solution on a chain containing node of minimum cardinality:
+        INDEX totalNumNodes = std::accumulate(NumNodes.begin(), NumNodes.end(), 0);
+        std::vector<INDEX> gridSolution(totalNumNodes, std::numeric_limits<INDEX>::max());
         ChainsInfo chainInfo(ChainNodeToOriginalNode);
-        const INDEX startingChainYOffset = chainInfo.GetPrimalStartChainOffset(NumLabels);
-        const INDEX startingChainIndex = chainInfo.GetHorizontalChainAtOffset(startingChainYOffset);
-        REAL optimalB = ComputeChainMarginals<true, true>(MarginalsChains[startingChainIndex], MaxPotentials[startingChainIndex], LinearPotentials[startingChainIndex],
-                                                            MaxPotentialsOfChains[startingChainIndex], MaxPotentialsOfChainsOrder[startingChainIndex], startingChainIndex);
-        allChainsLabels[startingChainIndex] = ComputeLabellingForOneChain(startingChainIndex, optimalB, MaxPotentials[startingChainIndex], LinearPotentials[startingChainIndex]);   
-        PropagateChainSolutionToOtherChains(startingChainIndex, gridSolution, allChainsLabels);  
 
-        // Solve Downward:
-        for (long int currentYOffset = startingChainYOffset - 1; currentYOffset >= 0; currentYOffset--) {
+        // Compute solution on - and | chain intersecting at node of minimum cardinality
+        std::pair<INDEX, INDEX> h_v_chains = chainInfo.GetSeedChains(NumLabels);
+        INDEX hStartingChain = h_v_chains.first;
+        INDEX vStartingChain = h_v_chains.second;
+        INDEX fixedNodeIndexInHorizontalChains = vStartingChain - chainInfo.NumHorizontal();
+
+        INDEX seedGridLoc = ChainNodeToOriginalNode[hStartingChain][fixedNodeIndexInHorizontalChains];
+        // Solve on horizontal:
+        REAL optimalBH = ComputeChainMarginals<true, true>(MarginalsChains[hStartingChain], MaxPotentials[hStartingChain], LinearPotentials[hStartingChain],
+                                                            MaxPotentialsOfChains[hStartingChain], MaxPotentialsOfChainsOrder[hStartingChain], hStartingChain);
+
+        allChainsLabels[hStartingChain] = ComputeLabellingForOneChain(hStartingChain, optimalBH, MaxPotentials[hStartingChain], LinearPotentials[hStartingChain]);   
+        PropagateChainSolutionToOtherChains(hStartingChain, gridSolution, allChainsLabels);
+
+        // Solve on vertical:
+        REAL optimalBV = ComputeChainMarginals<true, true>(MarginalsChains[vStartingChain], MaxPotentials[vStartingChain], LinearPotentials[vStartingChain],
+                                                            MaxPotentialsOfChains[vStartingChain], MaxPotentialsOfChainsOrder[vStartingChain], vStartingChain);
+
+        allChainsLabels[vStartingChain] = ComputeLabellingForOneChain(vStartingChain, optimalBV, MaxPotentials[vStartingChain], LinearPotentials[vStartingChain]);   
+        PropagateChainSolutionToOtherChains(vStartingChain, gridSolution, allChainsLabels);  
+        // Solve Downward: 
+        for (long int currentYOffset = hStartingChain - 1, fixedGridLoc = seedGridLoc - chainInfo.HorizontalSize(); 
+            currentYOffset >= 0; currentYOffset--, fixedGridLoc -= chainInfo.HorizontalSize()) 
+        {
             INDEX cDest = chainInfo.GetHorizontalChainAtOffset(currentYOffset);
             INDEX cSource = chainInfo.GetHorizontalChainAtOffset(currentYOffset + 1);
             auto [modifiedMaxP, modifiedLinearP] = ReparametrizeHorizontalChainFromFixedLabels(currentYOffset + 1, currentYOffset, chainInfo, allChainsLabels[cSource]);
             auto modifiedMaxP1D = GetMaxPotentials1D(modifiedMaxP);
             auto modifiedMaxP1DSortingOrder = GetMaxPotentialSortingOrder(modifiedMaxP1D);
-            REAL optimalB = ComputeChainMarginals<true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder, cDest);
-            allChainsLabels[cDest] = ComputeLabellingForOneChain(cDest, optimalB, modifiedMaxP, modifiedLinearP);   
+            REAL optimalB = ComputeChainMarginals<true, true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder,
+                                                                    cDest, fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);
+            allChainsLabels[cDest] = ComputeLabellingForOneChain<true>(cDest, optimalB, modifiedMaxP, modifiedLinearP, 
+                                                                        fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);   
+
             PropagateChainSolutionToOtherChains(cDest, gridSolution, allChainsLabels);  
         }
 
         // Solve Upward:
-        for (long int currentYOffset = startingChainYOffset + 1; currentYOffset < chainInfo.NumHorizontal(); currentYOffset++) {
+        for (long int currentYOffset = hStartingChain + 1, fixedGridLoc = seedGridLoc + chainInfo.HorizontalSize(); 
+            currentYOffset < chainInfo.NumHorizontal(); currentYOffset++, fixedGridLoc += chainInfo.HorizontalSize()) 
+        {
             INDEX cDest = chainInfo.GetHorizontalChainAtOffset(currentYOffset);
             INDEX cSource = chainInfo.GetHorizontalChainAtOffset(currentYOffset - 1);
             auto [modifiedMaxP, modifiedLinearP] = ReparametrizeHorizontalChainFromFixedLabels(currentYOffset - 1, currentYOffset, chainInfo, allChainsLabels[cSource]);
             auto modifiedMaxP1D = GetMaxPotentials1D(modifiedMaxP);
             auto modifiedMaxP1DSortingOrder = GetMaxPotentialSortingOrder(modifiedMaxP1D);
-            REAL optimalB = ComputeChainMarginals<true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder, cDest);
-            allChainsLabels[cDest] = ComputeLabellingForOneChain(cDest, optimalB, modifiedMaxP, modifiedLinearP);   
+            REAL optimalB = ComputeChainMarginals<true, true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder,
+                                                                    cDest, fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);
+            allChainsLabels[cDest] = ComputeLabellingForOneChain<true>(cDest, optimalB, modifiedMaxP, modifiedLinearP, 
+                                                                        fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);   
+                                                                        
             PropagateChainSolutionToOtherChains(cDest, gridSolution, allChainsLabels);  
         }
         return allChainsLabels;

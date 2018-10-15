@@ -54,7 +54,7 @@ public:
     void Clear() { M.clear(); }
 };
 
-template <bool DoForward, bool useStartingNode = false>
+template <bool DoForward, bool useStartingNode = false, bool useFixedLabel = false>
 class shortest_distance_calculator {
 private: 
     const three_dimensional_variable_array<REAL>& LinearPairwisePotentials;
@@ -64,14 +64,18 @@ private:
     REAL shortestPathDistance;
     struct edge { INDEX n1, l1, l2; }; 
     const INDEX EndingNodeIndex;
+    const INDEX FixedNode;
+    const INDEX FixedNodeLabel;
 
 public:
     shortest_distance_calculator(const three_dimensional_variable_array<REAL>& linearPairwisePotentials, 
                                 const three_dimensional_variable_array<REAL>& maxPairwisePotentials,
-                                const std::vector<INDEX>& numLabels, INDEX endingNode = 0):
+                                const std::vector<INDEX>& numLabels, INDEX endingNode = 0,
+                                const INDEX fixedNode = 0, const INDEX fixedNodeLabel = 0):
                                 LinearPairwisePotentials(linearPairwisePotentials),
                                 MaxPairwisePotentials(maxPairwisePotentials), NumLabels(numLabels),
-                                EndingNodeIndex(endingNode) {
+                                EndingNodeIndex(endingNode), FixedNode(fixedNode), FixedNodeLabel(fixedNodeLabel) 
+    {
         distance.resize(numLabels.begin(), numLabels.end(), std::numeric_limits<REAL>::max());
         init();
     }
@@ -135,12 +139,19 @@ public:
     }
 
     bool ToAddEdge(INDEX n1, INDEX l1, INDEX l2) const {
-        if (!useStartingNode) return true;
-        else if (DoForward && (n1 >= EndingNodeIndex))  {
-            return false;
+        if (!useStartingNode && !useFixedLabel) return true;
+        else if (useStartingNode) {
+            if (DoForward && (n1 >= EndingNodeIndex))  {
+                return false;
+            }
+            if (!DoForward && (n1 < EndingNodeIndex)) {
+                return false;
+            }
         }
-        else if (!DoForward && (n1 < EndingNodeIndex)) {
-            return false;
+        else if (useFixedLabel) {
+            if ((n1 == FixedNode && l1 != FixedNodeLabel) || 
+                (n1 + 1 == FixedNode && l2 != FixedNodeLabel))
+                return false;
         }
         return true;
     }
@@ -219,7 +230,8 @@ public:
             for (INDEX n1 = startNode, n2 = startNode + 1; n2 < numNodes; n1++, n2++) {
                 for (INDEX l1 = startLabel; l1 < NumLabels[n1]; l1++) {
                     for (INDEX l2 = 0; l2 < NumLabels[n2]; l2++) {
-                        if(MaxPairwisePotentials(n1, l1, l2) > bottleneckThreshold) continue;
+                        if (MaxPairwisePotentials(n1, l1, l2) > bottleneckThreshold ||
+                            !ToAddEdge(n1, l1, l2)) continue;
                         if (distance(n2,l2) > distance(n1,l1) + LinearPairwisePotentials(n1, l1, l2))
                             distance(n2,l2) = distance(n1,l1) + LinearPairwisePotentials(n1, l1, l2);
                     }
@@ -248,6 +260,8 @@ public:
     }
 };
 
+struct EdgeIndex {INDEX chainIndex; INDEX n1;}; // contains the chain containing the edge and the left node of the edge 
+
 class ChainsInfo {
 public:
     ChainsInfo(const two_dim_variable_array<INDEX>& chainNodeToOriginalNode) : 
@@ -260,9 +274,11 @@ public:
             if (ChainNodeToOriginalNode[c][1] - ChainNodeToOriginalNode[c][0] == 1) {
                 IsHorizontalChain[c] = true;
                 NumHorizontalChains++;
+                SizeH = ChainNodeToOriginalNode[c].size();
             } else {
                 IsHorizontalChain[c] = false;
                 NumVerticalChains++;
+                SizeV = ChainNodeToOriginalNode[c].size();
             }
         }
         HChainIndices.resize(NumHorizontalChains);
@@ -278,10 +294,24 @@ public:
                 }
             }
         }
-        else
-        {
+        else {
             HChainIndices[0] = 0;
         }
+    }
+
+    /// Returns the chain index, and node index where the node index corresponds to n1GridLoc
+    EdgeIndex GetEdgeIndexFromGridEdge(INDEX n1GridLoc, INDEX n2GridLoc) const {
+        assert(n1GridLoc < n2GridLoc); // reversion should be handled outside.
+        assert(n2GridLoc < SizeH * SizeV);
+        INDEX chainIndex, n1;
+        if (n2GridLoc - n1GridLoc == 1) { // horizontal edge
+            chainIndex = GetHorizontalChainIndexAtGridLoc(n1GridLoc);
+            n1 = n1GridLoc % SizeH;
+        } else {
+            chainIndex = GetVerticalChainAtOffset(n1GridLoc);
+            n1 = n1GridLoc - SizeH * (n1GridLoc / SizeH);
+        }
+        return {chainIndex, n1};
     }
 
     INDEX GetVerticalChainIndexAtGridLoc(const INDEX gridLoc) const {
@@ -292,20 +322,27 @@ public:
         return HChainIndices[gridLoc / NumVerticalChains];
     }
 
-    // Returns the y-offset for a horizontal chain having a node with minimum number of labels, for 
-    // starting primal computation.
-    INDEX GetPrimalStartChainOffset(const std::vector<std::vector<INDEX>>& numLabels) const {
-        INDEX minIndex;
-        INDEX minValue = std::numeric_limits<INDEX>::max();
+    // Returns the horizontal and vertical chain intersecting at a node containing the minimum number of labels
+    std::pair<INDEX, INDEX> GetSeedChains(const std::vector<std::vector<INDEX>>& numLabels) const {
+        INDEX minIndexH, minIndexV;
+        INDEX minValueH = std::numeric_limits<INDEX>::max();
+        INDEX minValueV = std::numeric_limits<INDEX>::max();
         for (INDEX c = 0; c < NumChains; c++) {
-            if (IsVertical(c)) continue;
             INDEX currentChainMinLabels = *std::min_element(numLabels[c].begin(), numLabels[c].end());
-            if (minValue > currentChainMinLabels) {
-                minValue = currentChainMinLabels;
-                minIndex = c;
+            if (IsVertical(c)) {
+                if (minValueV > currentChainMinLabels) {
+                    minValueV = currentChainMinLabels;
+                    minIndexV = c;
+                }
+            }
+            else {
+                if (minValueH > currentChainMinLabels) {
+                    minValueH = currentChainMinLabels;
+                    minIndexH = c;
+                }
             }
         }
-        return GetVerticalOffset(ChainNodeToOriginalNode[minIndex][0]);
+        return std::pair<INDEX, INDEX>(minIndexH, minIndexV);
     }
 
     INDEX GetHorizontalChainAtOffset(const INDEX hOffset) const { return HChainIndices[hOffset]; }
@@ -317,6 +354,8 @@ public:
     bool IsVertical(const INDEX c) const { return !IsHorizontal(c); }
     INDEX NumHorizontal() const { return NumHorizontalChains; }
     INDEX NumVertical() const { return NumVerticalChains; }
+    INDEX HorizontalSize() const { return SizeH; }
+    INDEX VerticalSize() const { return SizeV; }
 
 private:
     const two_dim_variable_array<INDEX> ChainNodeToOriginalNode;
@@ -326,6 +365,7 @@ private:
     std::vector<INDEX> VChainIndices; // gives vertical chain index at the given x-offset
     INDEX NumHorizontalChains;
     INDEX NumVerticalChains;
+    INDEX SizeH = 1, SizeV = 1;     // SizeV=1 if single horizontal chain
 
 };
 }
