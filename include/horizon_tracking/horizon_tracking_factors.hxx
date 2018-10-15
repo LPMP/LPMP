@@ -410,12 +410,14 @@ private:
         INDEX vStartingChain = h_v_chains.second;
         INDEX fixedNodeIndexInHorizontalChains = vStartingChain - chainInfo.NumHorizontal();
 
-        INDEX seedGridLoc = ChainNodeToOriginalNode[hStartingChain][fixedNodeIndexInHorizontalChains];
         // Solve on horizontal:
         REAL optimalBH = ComputeChainMarginals<true, true>(MarginalsChains[hStartingChain], MaxPotentials[hStartingChain], LinearPotentials[hStartingChain],
                                                             MaxPotentialsOfChains[hStartingChain], MaxPotentialsOfChainsOrder[hStartingChain], hStartingChain);
 
         allChainsLabels[hStartingChain] = ComputeLabellingForOneChain(hStartingChain, optimalBH, MaxPotentials[hStartingChain], LinearPotentials[hStartingChain]);   
+        if (NumChains == 1)
+            return allChainsLabels;
+            
         PropagateChainSolutionToOtherChains(hStartingChain, gridSolution, allChainsLabels);
 
         // Solve on vertical:
@@ -424,7 +426,9 @@ private:
 
         allChainsLabels[vStartingChain] = ComputeLabellingForOneChain(vStartingChain, optimalBV, MaxPotentials[vStartingChain], LinearPotentials[vStartingChain]);   
         PropagateChainSolutionToOtherChains(vStartingChain, gridSolution, allChainsLabels);  
-        // Solve Downward: 
+        INDEX seedGridLoc = ChainNodeToOriginalNode[hStartingChain][fixedNodeIndexInHorizontalChains];
+
+        // Solve Downward:         
         for (long int currentYOffset = hStartingChain - 1, fixedGridLoc = seedGridLoc - chainInfo.HorizontalSize(); 
             currentYOffset >= 0; currentYOffset--, fixedGridLoc -= chainInfo.HorizontalSize()) 
         {
