@@ -3205,6 +3205,12 @@ public:
       factor_.serialize_dual(ar);
    }
 
+   virtual void set_to_value(const REAL val) final
+   {
+      arithmetic_archive<operation::set_to_value> ar(val);
+      factor_.serialize_dual(ar);
+   }
+
    virtual void add(FactorTypeAdapter* other) final
    {
        assert(dynamic_cast<FactorContainer*>(other) != nullptr);

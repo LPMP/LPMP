@@ -425,7 +425,7 @@ private:
 
 // add numeric values stored in archive to variables
 // do arithmetic on values stored in archive
-enum class operation {addition, subtraction, multiplication, division};
+enum class operation {addition, subtraction, multiplication, division, set_to_value};
 
 template<operation OPERATION>
 class arithmetic_archive {
@@ -502,9 +502,14 @@ public:
         } else if(OPERATION == operation::subtraction) {
            assert(false);
         } else if(OPERATION == operation::multiplication) {
-           assert(false);
+           auto op = [](auto a, auto b) { return a * b; };
+           serialize(t, op);
         } else if(OPERATION == operation::division) {
            auto op = [](auto a, auto b) { return a / b; };
+           serialize(t, op);
+        } 
+        else if(OPERATION == operation::set_to_value) {
+           auto op = [](auto a, auto b) { return b; };
            serialize(t, op);
         } else {
            assert(false);
