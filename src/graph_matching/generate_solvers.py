@@ -47,10 +47,10 @@ for e in solvers:
    lp_type = e.LP + "<" + e.FMC + ">"
    solver_type = "Solver<" + lp_type + ",StandardTighteningVisitor>"
    f.write(e.preamble)
-   f.write("\nusing namespace LPMP;\nint main(int argc, char** argv) {\nMpRoundingSolver<" + solver_type + ">")
+   f.write("\nusing namespace LPMP;\nint main(int argc, char** argv) {\n")
+   f.write("ProblemConstructorRoundingSolver<" + solver_type + ">")
    f.write("solver(argc,argv);\n")
    f.write("auto input = LPMP::TorresaniEtAlInput::parse_file(solver.get_input_file());\n")
-   f.write("solver.template GetProblemConstructor<0>().read_input(input);\n")
-   f.write("solver.template GetProblemConstructor<0>().construct();\n")
+   f.write("solver.template GetProblemConstructor<0>().construct(input);\n")
    f.write("return solver.Solve();\n}")
    f.close()

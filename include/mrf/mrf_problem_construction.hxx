@@ -35,6 +35,15 @@ public:
 
    mrf_constructor(LP<FMC>* lp) : lp_(lp) {}
 
+   std::vector<FactorTypeAdapter*> get_factors()
+   {
+      std::vector<FactorTypeAdapter*> factors;
+      factors.reserve(get_number_of_variables() + get_number_of_pairwise_factors());
+      for(auto* f : unaryFactor_) { factors.push_back(f); }
+      for(auto* f : pairwiseFactor_) { factors.push_back(f); }
+      return factors;
+   }
+
    template<typename T>
    UnaryFactorContainer* add_unary_factor(const std::initializer_list<T> c)
    {

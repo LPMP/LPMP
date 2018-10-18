@@ -252,8 +252,8 @@ public:
          std::cout << "lower bound before optimization = " << lp_.LowerBound() << "\n";
       }
 
-      this->Begin();
       LpControl c = visitor_.begin(this->lp_);
+      this->Begin();
       while(!c.end && !c.error) {
          this->PreIterate(c);
          this->Iterate(c);
@@ -287,8 +287,7 @@ public:
    virtual void Begin() 
    {
       lp_.Begin(); 
-      for_each_tuple(this->problemConstructor_, [this](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
+      for_each_tuple(this->problemConstructor_, [this](auto* l) { using pc_type = typename std::remove_pointer<decltype(l)>::type;
             if constexpr(this->has_begin<pc_type>()) {
                      l->begin();
             }
@@ -296,10 +295,23 @@ public:
       order_factors();
    }
 
+   LPMP_FUNCTION_EXISTENCE_CLASS(has_pre_iterate, pre_iterate)
+   template<typename PROBLEM_CONSTRUCTOR>
+   constexpr static bool has_pre_iterate()
+   {
+      return has_pre_iterate<PROBLEM_CONSTRUCTOR, void>();
+   }
+
    // what to do before improving lower bound, e.g. setting reparametrization mode
    virtual void PreIterate(LpControl c) 
    {
       lp_.set_reparametrization(c.lp_repam);
+      for_each_tuple(this->problemConstructor_, [this](auto* l) {
+            using pc_type = typename std::remove_pointer<decltype(l)>::type;
+            if constexpr(this->has_pre_iterate<pc_type>()) {
+                     l->pre_iterate();
+            }
+      });
    } 
 
    // what to do for improving lower bound, typically ComputePass or ComputePassAndPrimal
@@ -429,20 +441,21 @@ public:
    using SOLVER::SOLVER;
 
    LPMP_FUNCTION_EXISTENCE_CLASS(HasComputePrimal,ComputePrimal)
+
    template<typename PROBLEM_CONSTRUCTOR>
-   constexpr static bool
-   CanComputePrimal()
+   constexpr static bool can_compute_primal()
    {
       return HasComputePrimal<PROBLEM_CONSTRUCTOR, void>();
    }
 
    void ComputePrimal()
    {
+      SOLVER::lp_.init_primal();
       // compute the primal in parallel.
       // for this, first we have to wait until the rounding procedure has read off everything from the LP model before optimizing further
-      for_each_tuple(this->problemConstructor_, [this](auto* l) {
+      for_each_tuple(this->problemConstructor_, [&](auto* l) {
             using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(ProblemConstructorRoundingSolver<SOLVER>::CanComputePrimal<pc_type>()) {
+            if constexpr(this->can_compute_primal<pc_type>()) {
                   l->ComputePrimal();
             }
       });

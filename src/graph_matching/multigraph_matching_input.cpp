@@ -1,10 +1,11 @@
-#include "graph_matching/multigraph_matching_input.h"
+#include "graph_matching/matching_problem_input.h"
+#include "graph_matching/graph_matching_input.h"
 #include "pegtl_parse_rules.h"
 #include <cassert>
 
 namespace LPMP {
 
-namespace multigraph_matching_input {
+namespace Torresani_et_al_multigraph_matching_input {
 
     // file consists of multiple graph matching problems. Each graph matching section beings with
     // gm x y
@@ -17,7 +18,6 @@ namespace multigraph_matching_input {
 
     struct graph_matching_line : pegtl::seq< opt_whitespace, pegtl::string<'g','m'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace, pegtl::eol > {};
     struct graph_matching : pegtl::star<pegtl::not_at<graph_matching_line>, pegtl::any> {};
-    //: pegtl::until<graph_matching_line> {};
 
     struct grammar :
         pegtl::star<
@@ -33,7 +33,7 @@ namespace multigraph_matching_input {
 
    template<> struct action< graph_matching_line > {
       template<typename INPUT>
-      static void apply(const INPUT& in, mgm_input& input)
+      static void apply(const INPUT& in, multigraph_matching_input& input)
       {
          std::istringstream iss(in.string());
          char l; 
@@ -51,33 +51,33 @@ namespace multigraph_matching_input {
 
    template<> struct action< graph_matching > {
       template<typename INPUT>
-      static void apply(const INPUT& in, mgm_input& input)
+      static void apply(const INPUT& in, multigraph_matching_input& input)
       {
           graph_matching_input gm_input = TorresaniEtAlInput::parse_string(in.string());
-          input.back().gm_input = gm_input;
+          input.back().gm_input = std::move(gm_input);
       }
    };
 
-   mgm_input parse_file(const std::string& filename)
+   multigraph_matching_input parse_file(const std::string& filename)
    {
-      mgm_input input;
+      multigraph_matching_input input;
       pegtl::file_parser problem(filename);
       std::cout << "parsing " << filename << "\n";
 
       const bool read_success = problem.parse< grammar, action >( input );
-      assert(read_success);
+      if(!read_success) throw std::runtime_error(std::string("could not read multigraph matching problem from file ") + filename);
 
       return input;
    }
 
-   mgm_input parse_string(const std::string& problem_input)
+   multigraph_matching_input parse_string(const std::string& problem_input)
    {
-      mgm_input input;
+      multigraph_matching_input input;
       const bool read_success = pegtl::parse<grammar, action>(problem_input,"",input);
-      assert(read_success);
+      if(!read_success) throw std::runtime_error("could not read multigraph matching problem from string");
       return input;
    }
 
-} // namespace multigraph_matching_input 
+} // namespace Torresani_et_al_multigraph_matching_input
 
 } // namespace LPMP

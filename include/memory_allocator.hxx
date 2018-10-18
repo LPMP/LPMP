@@ -106,7 +106,7 @@ class stack_arena{
 		size_t current_reserved;
 		size_t current_used;
 		int alloc_count;
-    spinlock lock_;
+      spinlock lock_;
 	private:
 		void took_mem(size_t size_bytes);
 		void released_mem(size_t size_bytes);

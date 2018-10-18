@@ -5,13 +5,15 @@
 #include <array>
 #include <cassert>
 #include <H5Cpp.h>
+#include "multicut/multicut_instance.hxx"
 
 using namespace std;
 using namespace H5;
 
 int main(int argc, char** argv)
 {
-   assert(argc == 3); // first arg input in opengm format, second is output in text format
+   if(argc != 3)
+      throw std::runtime_error("two input arguments expected: input file, output file.");
 
    const std::string input_file = argv[1];
 
@@ -60,19 +62,14 @@ int main(int argc, char** argv)
    // close the HDF5 file
    fp.close();
 
+
+   LPMP::multicut_instance output;
+   output.transform_to_multicut();
+   for(std::size_t e=0; e<edge_ids.size(); ++e)
+      output.add_edge(edge_ids[e][0], edge_ids[e][1], edge_values[e]);
+
    const std::string output_file = argv[2];
    std::ofstream file_stream(output_file, std::ofstream::out);
-   file_stream << "MULTICUT\n";
-
-   for(std::size_t e=0; e<edge_ids.size(); ++e) {
-     const std::size_t i = edge_ids[e][0];
-     const std::size_t j = edge_ids[e][1];
-     assert(i < j);
-
-     const double cost = edge_values[e];
-
-     file_stream << i << " " << j << " " << cost << "\n";
-   }
-
+   output.write_problem(file_stream);
    file_stream.close();
 }

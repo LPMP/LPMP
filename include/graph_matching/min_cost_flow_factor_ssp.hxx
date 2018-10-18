@@ -2,13 +2,12 @@
 #define LPMP_MIN_COST_FLOW_FACTOR_CS2_HXX
 
 #include "mcf_ssp.hxx"
+#include "graph_matching/matching_problem_input.h"
 #include "config.hxx"
 
 // do zrobienia: rename
 
 namespace LPMP {
-
-//enum class MessagePassingType {SRMP,HUNGARIAN}; // to distinguish between hungarian bp and our variant
 
 // mcf holds reverse copies of edges. arcs are ordered lexicographically by (tail,node).
 // this creates problems for some applications, where only one direction of arcs is needed, but it may be advantageous for other applications.
@@ -33,6 +32,12 @@ public:
       }
       mcf_.order();
       mcf_.solve();
+   }
+
+   min_cost_flow_factor(const linear_assignment_problem_input& input, const double scaling = 1.0)
+   : mcf_(input.no_mcf_nodes(), input.no_mcf_edges())
+   {
+      input.initialize_mcf(mcf_);
    }
 
    REAL EvaluatePrimal() const

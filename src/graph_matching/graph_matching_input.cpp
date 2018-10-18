@@ -35,7 +35,7 @@ namespace TorresaniEtAlInput {
    struct init_line : pegtl::seq< opt_whitespace, pegtl::string<'p'>, mand_whitespace, no_left_nodes, mand_whitespace, no_right_nodes, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace > {};
    // numbers mean: assignment number (consecutive), then comes left node number, right node number, cost
    struct assignment : pegtl::seq < positive_integer, mand_whitespace, positive_integer, mand_whitespace, positive_integer, mand_whitespace, real_number > {};
-   struct assignment_line : pegtl::seq< opt_whitespace, pegtl::string<'a'>, mand_whitespace, assignment, opt_whitespace> {};
+   struct assignmentsline : pegtl::seq< opt_whitespace, pegtl::string<'a'>, mand_whitespace, assignment, opt_whitespace> {};
    // numbers mean: number of left assignment, number of right assignment, cost
    struct quadratic_pot : pegtl::seq< positive_integer, mand_whitespace, positive_integer, mand_whitespace, real_number > {};
    struct quadratic_pot_line : pegtl::seq<opt_whitespace, pegtl::string<'e'>, mand_whitespace, quadratic_pot, opt_whitespace > {};
@@ -52,7 +52,7 @@ namespace TorresaniEtAlInput {
                     init_line,pegtl::eol,
                     pegtl::star< pegtl::sor<
                        pegtl::seq<quadratic_pot_line,pegtl::eol>,
-                       pegtl::seq<assignment_line,pegtl::eol>,
+                       pegtl::seq<assignmentsline,pegtl::eol>,
                        comment_line,
                        neighbor_line,
                        coordinate_line,
@@ -70,7 +70,7 @@ namespace TorresaniEtAlInput {
       template<typename INPUT>
       static void apply(const INPUT& in, graph_matching_input& gmInput)
       {
-         gmInput.no_left_nodes_ = std::stoul(in.string());
+         gmInput.no_left_nodes = std::stoul(in.string());
       }
    };
     
@@ -78,7 +78,7 @@ namespace TorresaniEtAlInput {
       template<typename INPUT>
       static void apply(const INPUT& in, graph_matching_input& gmInput)
       {
-         gmInput.no_right_nodes_ = std::stoul(in.string());
+         gmInput.no_right_nodes = std::stoul(in.string());
       }
    };
     
@@ -87,19 +87,19 @@ namespace TorresaniEtAlInput {
       static void apply(const INPUT& in, graph_matching_input& gmInput)
       {
          std::istringstream iss(in.string());
-         std::size_t assignment_no; iss >> assignment_no;
+         std::size_t assignmentsno; iss >> assignmentsno;
          std::size_t left_node; iss >> left_node;
          std::size_t right_node; iss >> right_node;
          double cost; iss >> cost;
 
-         if(left_node >= gmInput.no_left_nodes_)
+         if(left_node >= gmInput.no_left_nodes)
             throw std::runtime_error("error in assignment: left index larger than number of left nodes.");
-         if(right_node >= gmInput.no_right_nodes_)
+         if(right_node >= gmInput.no_right_nodes)
             throw std::runtime_error("error in assignment: right index larger than number of right nodes.");
-         if(assignment_no != gmInput.assignment_.size())
+         if(assignmentsno != gmInput.assignments.size())
             throw std::runtime_error("error in assignment: assignment numbers must be sequential starting at 0."); 
 
-         gmInput.assignment_.push_back({left_node,right_node,cost}); 
+         gmInput.add_assignment(left_node, right_node, cost);
       }
    };
    template<> struct action< quadratic_pot > {
@@ -107,27 +107,27 @@ namespace TorresaniEtAlInput {
       static void apply(const INPUT & in, graph_matching_input& gmInput)
       {
          std::istringstream iss(in.string());
-         std::size_t assignment_1; iss >> assignment_1;
-         std::size_t assignment_2; iss >> assignment_2;
+         std::size_t assignments1; iss >> assignments1;
+         std::size_t assignments2; iss >> assignments2;
          double cost; iss >> cost;
 
-         if(assignment_1 >= gmInput.assignment_.size())
+         if(assignments1 >= gmInput.assignments.size())
             throw std::runtime_error("assignment number in quadratic infeasible: too large");
-         if(assignment_2 >= gmInput.assignment_.size())
+         if(assignments2 >= gmInput.assignments.size())
             throw std::runtime_error("assignment number in quadratic infeasible: too large");
 
          // check that quadratic assingment is feasible
-         const std::size_t left_1 = gmInput.assignment_[assignment_1].left_node_;
-         const std::size_t right_1 = gmInput.assignment_[assignment_1].right_node_;
-         const std::size_t left_2 = gmInput.assignment_[assignment_2].left_node_;
-         const std::size_t right_2 = gmInput.assignment_[assignment_2].right_node_;
+         const std::size_t left_1 = gmInput.assignments[assignments1].left_node;
+         const std::size_t right_1 = gmInput.assignments[assignments1].right_node;
+         const std::size_t left_2 = gmInput.assignments[assignments2].left_node;
+         const std::size_t right_2 = gmInput.assignments[assignments2].right_node;
 
          if(left_1 == left_2)
             throw std::runtime_error("assignments in quadratic infeasible: origin from same node");
          if(right_1 == right_2)
             throw std::runtime_error("assignments in quadratic infeasible: point to same node");
 
-         gmInput.quadratic_.push_back({assignment_1, assignment_2, cost});
+         gmInput.quadratic_terms.push_back({assignments1, assignments2, cost});
       }
    };
 
@@ -138,7 +138,7 @@ namespace TorresaniEtAlInput {
       std::cout << "parsing " << filename << "\n";
 
       const bool ret = problem.parse< grammar, action >( gmInput );
-      //std::sort(gmInput.assignment_.begin(), gmInput.assignment_.end());
+      //std::sort(gmInput.assignments.begin(), gmInput.assignments.end());
 
       if(!ret) {
          throw std::runtime_error("could not read file " + filename);
@@ -152,7 +152,7 @@ namespace TorresaniEtAlInput {
       graph_matching_input gm_input;
 
       bool read_success = pegtl::parse<grammar, action>(input,"",gm_input);
-      //std::sort(gm_input.assignment_.begin(), gm_input.assignment_.end());
+      //std::sort(gm_input.assignments.begin(), gm_input.assignments.end());
 
       if(!read_success) {
          throw std::runtime_error("could not read input");

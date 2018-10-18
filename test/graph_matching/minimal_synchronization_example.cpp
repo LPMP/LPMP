@@ -1,4 +1,6 @@
+#include "graph_matching/matching_problem_input.h"
 #include "graph_matching/multigraph_matching.hxx"
+#include "multicut/transform_multigraph_matching.h"
 #include "visitors/standard_visitor.hxx"
 #include "solver.hxx"
 #include <string>
@@ -33,8 +35,8 @@ a 3 1 1 -1
 const std::vector<std::string> options = 
 {
 "",
-"--standardReparametrization", "anisotropic",
-"--roundingReparametrization", "anisotropic",
+"--standardReparametrization", "anisotropic:0.5",
+"--roundingReparametrization", "uniform:0.5",
 "--tightenIteration", "10",
 "--tightenInterval", "5",
 "--tightenReparametrization", "uniform:0.5",
@@ -46,11 +48,21 @@ const std::vector<std::string> options =
 
 int main(int argc, char** argv)
 {
-    MpRoundingSolver<Solver<LP<FMC_MGM>,StandardTighteningVisitor>> solver(options);
-    auto input = multigraph_matching_input::parse_string(minimal_synchronization_example);
-    solver.template GetProblemConstructor<0>().construct(input);
+    ProblemConstructorRoundingSolver<Solver<LP<FMC_MGM>,StandardTighteningVisitor>> solver(options);
+    auto input = Torresani_et_al_multigraph_matching_input::parse_string(minimal_synchronization_example);
+    auto& mgm_constructor = solver.template GetProblemConstructor<0>();
+    mgm_constructor.construct(input);
     solver.Solve();
     std::cout << solver.GetLP().number_of_messages() << "\n";
     test( std::abs(-42 - solver.lower_bound()) <= 1e-6 ); 
     std::cout << solver.get_primal() << "\n";
+
+    mgm_constructor.WritePrimal(std::cout);
+    mgm_constructor.ComputePrimal();
+    auto mgm_sol = mgm_constructor.write_out_labeling();
+    mgm_sol.write_primal_matching(std::cout);
+    test( std::abs(solver.lower_bound() - input.evaluate(mgm_sol)) <= eps );
+
+    // test transformation to correlation clustering
+    auto cc = transform_multigraph_matching_to_correlation_clustering(input);
 }

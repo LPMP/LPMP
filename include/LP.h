@@ -18,6 +18,7 @@
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
+#include <atomic>
 #include "template_utilities.hxx"
 #include <assert.h>
 #include "topological_sort.hxx"
@@ -29,6 +30,17 @@
 #include "tclap/CmdLine.h"
 
 namespace LPMP {
+
+template<typename FACTOR_ITERATOR, typename OMEGA_ITERATOR, typename RECEIVE_MASK_ITERATOR>
+void compute_pass(FACTOR_ITERATOR factorIt, const FACTOR_ITERATOR factorItEnd, OMEGA_ITERATOR omegaIt, RECEIVE_MASK_ITERATOR receive_it)
+{
+   std::size_t n = std::distance(factorIt,factorItEnd);
+   for(std::size_t i=0; i<n; ++i) {
+      auto* f = *(factorIt + i);
+      assert(f->FactorUpdated());
+      f->UpdateFactor(*(omegaIt + i), *(receive_it + i));
+   } 
+}
 
 template<typename FMC_TYPE>
 class LP : public factors_storage<FMC_TYPE>, public messages_storage<FMC_TYPE> {
@@ -52,6 +64,7 @@ public:
    lp_reparametrization get_repam_mode() const { return repam_mode_; }
 
    double LowerBound() const;
+   void init_primal();
    double EvaluatePrimal();
 
    bool CheckPrimalConsistency() const;
@@ -83,7 +96,12 @@ public:
 
    message_passing_weight_storage& get_message_passing_weight(const lp_reparametrization repam);
 
-   void add_to_constant(const REAL x) { constant_ += x; }
+   void add_to_constant(const REAL x) { 
+#pragma omp critical
+      {
+         constant_ += x; 
+      }
+   }
 
 protected:
 
@@ -326,7 +344,7 @@ LP<FMC>::get_message_passing_weight(const lp_reparametrization repam)
 template<typename FMC>
 bool LP<FMC>::CheckPrimalConsistency() const
 {
-   bool consistent=true; // or use std::atomic<bool> for multithreading?
+   std::atomic<bool> consistent=true; // or use std::atomic<bool> for multithreading?
 
    this->for_each_factor([&consistent](auto& f) {
          if(consistent && !f.check_primal_consistency()) {
@@ -343,7 +361,12 @@ double LP<FMC>::LowerBound() const
 {
     double lb = constant_;
     this->for_each_factor([&lb](const auto& f) { 
-       lb += f.LowerBound();
+       const double delta = f.LowerBound();
+       assert(delta < std::numeric_limits<double>::max());
+#pragma omp critical
+       {
+         lb += delta;
+       }
        assert(std::isfinite(lb));
     });
 
@@ -352,15 +375,32 @@ double LP<FMC>::LowerBound() const
 }
 
 template<typename FMC>
+void LP<FMC>::init_primal()
+{
+    this->for_each_factor([](auto& f) { 
+       f.init_primal();
+    }); 
+}
+
+template<typename FMC>
 double LP<FMC>::EvaluatePrimal() 
 {
     const bool consistent = CheckPrimalConsistency();
-    if(consistent == false) return std::numeric_limits<REAL>::infinity();
+    if(consistent == false)
+       return std::numeric_limits<REAL>::infinity();
 
     double cost = constant_;
+    std::cout << "constant = " << constant_ << "\n";
     this->for_each_factor([&cost](const auto& f) {
-          cost += f.EvaluatePrimal();
+          const double delta = f.EvaluatePrimal();
+          assert(delta < std::numeric_limits<double>::max());
+#pragma omp critical
+          {
+            cost += delta;
+          }
     });
+    if(debug())
+       std::cout << "primal cost = " << cost << "\n";
     return cost;
 }
 

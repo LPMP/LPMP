@@ -35,3 +35,6 @@
 [submodule "external/MCF-SSP"]
 	path = external/MCF-SSP
 	url = https://github.com/pawelswoboda/MCF-SSP.git
+[submodule "external/andres-graph"]
+	path = external/andres-graph
+	url = https://github.com/bjoern-andres/graph.git
