@@ -4,6 +4,7 @@
 #include "horizon_tracking.h"
 #include "solver.hxx"
 #include "LP.h"
+#include "LP_FWMAP.hxx"
 
 using namespace LPMP;
 
@@ -21,7 +22,7 @@ std::vector<FactorTypeAdapter*> get_mrf_factors(SOLVER& solver)
 }
 
 template<typename SOLVER>
-void round_primal_solution(SOLVER& solver, bool send_backward = true)
+void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool send_backward = false)
 {
     solver.GetLP().write_back_reparametrization();
     auto multiple_chain_constructor = solver.template GetProblemConstructor<0>();
@@ -30,6 +31,7 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
         auto olb1 = solver.GetLP().original_factors_lower_bound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
         // Send messages from Multiple Chain Linear pairwise potentials to MRF pairwise potentials:
+        for (INDEX p = 0; p < 1; p++) {
         for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
 #ifndef NDEBUG
             const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
@@ -43,6 +45,7 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
             std::cout<<"LB Change:"<<-before_left_lb - before_right_lb + after_left_lb + after_right_lb <<std::endl;
 #endif
         }
+        }
         auto olb3 = solver.GetLP().original_factors_lower_bound();
         auto newLb = solver.GetLP().LowerBound();
         if (prevLb - newLb > eps) {
@@ -53,13 +56,69 @@ void round_primal_solution(SOLVER& solver, bool send_backward = true)
         std::cout<<"Lower bound after send message left: "<<newLb<<std::endl;
     }
 
-    solver.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.0));
-    for(std::size_t i=0; i<30; ++i) {
-       solver.GetLP().ComputeForwardPassAndPrimal();
-       solver.RegisterPrimal();
-       solver.GetLP().ComputeBackwardPassAndPrimal();
-       solver.RegisterPrimal();
+    auto lb = solver.GetLP().LowerBound();
+    if (!do_rounding_on_mrf) {
+        for(std::size_t p=0; p<multiple_chain_constructor.get_number_of_pairwise_factors(); ++p) {
+            auto [i, j] = multiple_chain_constructor.get_pairwise_variables(p);
+            if (j - i > 1)
+                continue;
+
+            auto* f = multiple_chain_constructor.get_pairwise_factor(p);
+            auto msgs_left = f->template get_messages<typename FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryPairwiseMessageLeftContainer>();
+            auto msgs_right =  f->template get_messages<typename FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryPairwiseMessageRightContainer>();
+            for(auto* m : msgs_left) {
+                m->send_message_to_right(1.0);
+            }
+            for(auto* m : msgs_right) {
+                m->send_message_to_right(1.0);
+            }
+        }
+
+        for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
+            m->send_message_to_right();
+        }
+
+        for(std::size_t i=0; i<multiple_chain_constructor.get_number_of_variables(); ++i) {
+            auto* f = multiple_chain_constructor.get_unary_factor(i);
+            f->init_primal();
+        }
+        
+        for(std::size_t p=0; p<multiple_chain_constructor.get_number_of_pairwise_factors(); ++p) {
+            auto* f = multiple_chain_constructor.get_pairwise_factor(p);
+            f->init_primal();
+        }
+
+        for (const auto& chainsFactor : multiple_chain_constructor.max_multiple_chains_factors()) {
+            chainsFactor->init_primal();
+            chainsFactor->get_factor()->ComputeAndSetPrimal();
+        }
+        for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
+            m->ComputeLeftFromRightPrimal();
+        }
+        for(std::size_t i=0; i<multiple_chain_constructor.get_number_of_variables(); ++i) {
+            auto* f = multiple_chain_constructor.get_unary_factor(i);
+            for(auto* m : f->template get_messages<typename FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryPairwiseMessageLeftContainer>()) {
+                m->ComputeLeftFromRightPrimal();
+            }
+            for(auto* m : f->template get_messages<typename FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryPairwiseMessageRightContainer>()) {
+                m->ComputeLeftFromRightPrimal();
+            }
+        }
+        solver.RegisterPrimal();
     }
+    
+    else {
+        solver.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.0));
+        for(std::size_t i=0; i<30; ++i) {
+        solver.GetLP().ComputeForwardPassAndPrimal();
+        solver.RegisterPrimal();
+        solver.GetLP().ComputeBackwardPassAndPrimal();
+        solver.RegisterPrimal();
+        }
+    }
+
+    std::cout<<"Primal Cost: "<<solver.primal_cost()<<std::endl;
+    std::cout<<"Perentage Gap: "<<100*(solver.primal_cost() - lb)/std::abs(lb)<<std::endl;
 }
 
 #endif //LPMP_HORIZON_TRACKING_PRIMAL_ROUNDING_NEW_HXX

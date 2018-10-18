@@ -57,6 +57,7 @@ public:
    virtual void serialize_dual(addition_archive&) = 0;
 
    virtual void divide(const REAL val) = 0; // divide potential by value
+   virtual void set_to_value(const REAL val) = 0; // set potential to given value
    virtual void add(FactorTypeAdapter*) = 0; // add potential values of other factor
 
    virtual INDEX dual_size() = 0;

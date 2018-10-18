@@ -3205,6 +3205,12 @@ public:
       factor_.serialize_dual(ar);
    }
 
+   virtual void set_to_value(const REAL val) final
+   {
+      arithmetic_archive<operation::set_to_value> ar(val);
+      factor_.serialize_dual(ar);
+   }
+
    virtual void add(FactorTypeAdapter* other) final
    {
        assert(dynamic_cast<FactorContainer*>(other) != nullptr);
@@ -3253,10 +3259,11 @@ public:
      //} 
   }
 
+// TODO: add const version
   template<typename MESSAGE_TYPE>
-  auto get_messages() const 
+  auto get_messages()
   {
-      std::vector<const MESSAGE_TYPE*> messages;
+      std::vector<MESSAGE_TYPE*> messages;
       constexpr auto n = get_message_number<MESSAGE_TYPE>();
       messages.reserve(std::get<n>(msg_).size());
       auto msg_begin = std::get<n>(msg_).begin();

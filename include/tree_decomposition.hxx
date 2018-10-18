@@ -967,7 +967,7 @@ public:
       for(auto& t : trees_) {
           assert(t.original_factors_.size() == t.Lagrangean_factors_.size());
           for(std::size_t i=0; i<t.original_factors_.size(); ++i) {
-              t.original_factors_[i]->divide(std::numeric_limits<REAL>::infinity()); 
+              t.original_factors_[i]->set_to_value(0.0);
           }
       } 
       // now add up reparametrizations from all factors in decomposition

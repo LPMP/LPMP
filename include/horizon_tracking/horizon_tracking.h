@@ -22,8 +22,8 @@ struct FMC_HORIZON_TRACKING_MULTIPLE_CHAINS {
 
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, MultipleChainsContainer>;
 
-   using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_HORIZON_TRACKING_MULTIPLE_CHAINS, 0 >;
-   using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_HORIZON_TRACKING_MULTIPLE_CHAINS, 1 >;
+   using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,true>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_HORIZON_TRACKING_MULTIPLE_CHAINS, 0 >;
+   using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,true>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_HORIZON_TRACKING_MULTIPLE_CHAINS, 1 >;
    using PairwiseMultipleChainsMessageContainer = MessageContainer<pairwise_max_potential_on_multiple_chains_message, 1, 2, message_passing_schedule::none, variableMessageNumber, variableMessageNumber, FMC_HORIZON_TRACKING_MULTIPLE_CHAINS, 2>;
 
    using MessageList = meta::list<UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer, PairwiseMultipleChainsMessageContainer>;

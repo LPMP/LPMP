@@ -107,9 +107,10 @@ class max_potential_on_multiple_chains {
 struct MaxPotentialInChain { INDEX Edge; INDEX L1; INDEX L2; REAL Value; };
 private:
     mutable std::vector<three_dimensional_variable_array<REAL>> LinearPotentials;
-    const std::vector<three_dimensional_variable_array<REAL>> MaxPotentials;
+    mutable std::vector<three_dimensional_variable_array<REAL>> MaxPotentials;
     const std::vector<std::vector<INDEX>> NumLabels;
     const INDEX NumChains;
+    const two_dim_variable_array<INDEX> ChainNodeToOriginalNode;
     std::vector<INDEX> NumNodes; // TODO: make const
     mutable max_potential_on_nodes UnarySolver;
     mutable bool UnarySolverInitialized = false;
@@ -118,18 +119,23 @@ private:
     mutable bool SolutionValid;
     mutable two_dim_variable_array<INDEX> Solution;
     mutable std::vector<Marginals> MarginalsChains;
-    two_dim_variable_array<MaxPotentialInChain> MaxPotentialsOfChains;
-    two_dim_variable_array<INDEX> MaxPotentialsOfChainsOrder;
+    mutable std::vector<std::vector<MaxPotentialInChain>> MaxPotentialsOfChains;
+    mutable std::vector<std::vector<INDEX>> MaxPotentialsOfChainsOrder;
     mutable std::vector<INDEX> BestChainMarginalIndices;
+    mutable INDEX numEdges;
+    mutable INDEX messageNormalizer;
+
 public:
     // TODO: use move semantics
     max_potential_on_multiple_chains(std::vector<three_dimensional_variable_array<REAL>>& linearPotentials,
                                      std::vector<three_dimensional_variable_array<REAL>>& maxPotentials, 
-                                     std::vector<std::vector<INDEX>>& numLabels) 
+                                     std::vector<std::vector<INDEX>>& numLabels,
+                                     two_dim_variable_array<INDEX>& chainNodeToOriginalNode) 
        : LinearPotentials(linearPotentials), 
         MaxPotentials(maxPotentials),
         NumLabels(numLabels),
-        NumChains(NumLabels.size())
+        NumChains(NumLabels.size()),
+        ChainNodeToOriginalNode(chainNodeToOriginalNode)
    {
         assert(LinearPotentials.size() == MaxPotentials.size());
         assert(MaxPotentials.size() == NumLabels.size());
@@ -137,20 +143,22 @@ public:
         Solution.resize(NumNodes.begin(), NumNodes.end(), std::numeric_limits<INDEX>::max());
         MarginalsChains.resize(NumChains);
         init_primal();
-        std::vector<std::vector<MaxPotentialInChain>> maxPotentialsChains(NumChains); 
-        std::vector<std::vector<INDEX>> maxPotentialsChainsOrder(NumChains); 
+        numEdges = 0;
+        MaxPotentialsOfChains.resize(NumChains);
+        MaxPotentialsOfChainsOrder.resize(NumChains);
         for (INDEX c = 0; c < NumChains; c++) {
+            numEdges += MaxPotentials[c].size();
             for (INDEX e = 0; e < MaxPotentials[c].size(); e++) {
                 for (INDEX l1 = 0; l1 < MaxPotentials[c].dim2(e); l1++) {
                     for (INDEX l2 = 0; l2 < MaxPotentials[c].dim3(e); l2++) {
-                        maxPotentialsChains[c].push_back({e, l1, l2, MaxPotentials[c](e, l1, l2)});
+                        if (std::isinf(MaxPotentials[c](e, l1, l2))) continue;
+                        MaxPotentialsOfChains[c].push_back({e, l1, l2, MaxPotentials[c](e, l1, l2)});
                     }
                 }
             }
-            maxPotentialsChainsOrder[c] = GetMaxPotentialSortingOrder(maxPotentialsChains[c]);
+            MaxPotentialsOfChainsOrder[c] = GetMaxPotentialSortingOrder(MaxPotentialsOfChains[c]);
         }
-        MaxPotentialsOfChains = two_dim_variable_array<MaxPotentialInChain>(maxPotentialsChains);
-        MaxPotentialsOfChainsOrder = two_dim_variable_array<INDEX>(maxPotentialsChainsOrder);
+        messageNormalizer = numEdges;
         BestChainMarginalIndices.resize(NumChains);
         MarginalsValid.resize(NumChains);
         init_primal();
@@ -230,46 +238,58 @@ public:
         Solution[chainIndex][nodeIndex] = val; 
     }
 
-    std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.9) const {
+    std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.95) const {
+        if (messageNormalizer == 0)
+            messageNormalizer = numEdges; //assuming restart.
+
         REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
         std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
-        std::vector<Marginals> leftNodeLeftMarginals(LinearPotentials[chain].dim2(e));
-        std::vector<Marginals> rightNodeRightMarginals(LinearPotentials[chain].dim3(e));
-        for (INDEX l1 = 0; l1 < leftNodeLeftMarginals.size(); l1++) 
-            ComputeChainMarginals<false, true>(leftNodeLeftMarginals[l1], chain, e, l1);
-
-        for (INDEX l2 = 0; l2 < rightNodeRightMarginals.size(); l2++) 
-            ComputeChainMarginals<true, true>(rightNodeRightMarginals[l2], chain, e + 1, l2);
-
+        std::vector<Marginals> leftNodeLeftMarginals, rightNodeRightMarginals;
+        #pragma omp parallel sections 
+        {
+            #pragma omp section 
+            {
+                leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e); 
+            }
+            #pragma omp section 
+            {
+                rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);
+            }
+        }
         MarginalsValid[chain] = false;
-
         INDEX i = 0;
         for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
             for (INDEX l2 = 0; l2 < LinearPotentials[chain].dim3(e); l2++) {
                 // Copy the linear costs of current edge into marginals of current chain, as the original 
                 // ones are not of any use now and will need to be updated anyway.
                 MarginalsChains[chain] = MergeNodeMarginals(leftNodeLeftMarginals[l1], rightNodeRightMarginals[l2],
-                                                             {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
+                                                            {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
                 UnarySolver.ComputeBestLabels(MarginalsChains); // TO DO: Do not need to store labels.
                 REAL minMarginal = UnarySolver.GetBestCost();
 
-                message[i] = OMEGA * (minMarginal - lb);
+                message[i] = OMEGA * (minMarginal - lb) / messageNormalizer;
                 if (message[i] < 0 && message[i] > -eps)
                     message[i] = 0; // get rid of numerical errors. 
                 assert(message[i] >= 0);
                 i++;
             }
         }
+        messageNormalizer--;
         assert(*std::min_element(message.begin(), message.end()) <= eps); // one edge should be a part of lower bound solution.
         return message;
     }
- 
+
+    void ComputeAndSetPrimal() const {
+        Solution = ComputePrimal();
+    }
+
 private:
     std::vector<INDEX> Solve() const {
 #pragma omp parallel for schedule(dynamic,3)
         for (INDEX c = 0; c < NumChains; c++) {
             if (MarginalsValid[c]) continue;
-            ComputeChainMarginals(MarginalsChains[c], c);
+            ComputeChainMarginals(MarginalsChains[c], MaxPotentials[c], LinearPotentials[c], 
+            MaxPotentialsOfChains[c], MaxPotentialsOfChainsOrder[c], c);
             MarginalsValid[c] = true;
         }
         if (!UnarySolverInitialized) {
@@ -282,13 +302,17 @@ private:
     two_dim_variable_array<INDEX> ComputeLabelling(const std::vector<INDEX>& marginalIndices) const { 
         two_dim_variable_array<INDEX> solution(NumNodes.begin(), NumNodes.end(), std::numeric_limits<INDEX>::max());
         for (INDEX c = 0; c < NumChains; c++) {
-            solution[c] = ComputeLabellingForOneChain(c, MarginalsChains[c].Get(marginalIndices[c]).MaxCost);
+            solution[c] = ComputeLabellingForOneChain(c, MarginalsChains[c].Get(marginalIndices[c]).MaxCost, MaxPotentials[c], LinearPotentials[c]);
         }
         return solution;
     }
 
-    std::vector<INDEX> ComputeLabellingForOneChain(INDEX chainIndex, REAL maxPotentialThresh) const {
-        shortest_distance_calculator<true> distCalc(LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex]);
+    template <bool useFixedNode = false>
+    std::vector<INDEX> ComputeLabellingForOneChain(const INDEX chainIndex, const REAL maxPotentialThresh,
+                                                    const three_dimensional_variable_array<REAL>& maxPots, 
+                                                    const three_dimensional_variable_array<REAL>& linearPots,
+                                                    const INDEX fixedNode = 0, const INDEX fixedNodeLabel = 0) const {
+        shortest_distance_calculator<true, false, useFixedNode> distCalc(linearPots, maxPots, NumLabels[chainIndex], 0, fixedNode, fixedNodeLabel);
         distCalc.CalculateDistances(maxPotentialThresh);
         return distCalc.ShortestPath(maxPotentialThresh);
     }
@@ -310,11 +334,233 @@ private:
         return {maxPotValue, linearCost};
     }
 
-    template <bool doForward = true, bool directionalNodeMarginal = false>
-    void ComputeChainMarginals(Marginals& marginals, const INDEX chainIndex, INDEX n = 0, INDEX l = 0) const
+    template <bool doForward = true, bool onlyComputeB = false, bool useFixedNode = false>
+    REAL ComputeChainMarginals(Marginals& marginals, const three_dimensional_variable_array<REAL>& maxPotentials, 
+                                const three_dimensional_variable_array<REAL>& linearPotentials, 
+                                const std::vector<MaxPotentialInChain>& maxPotentials1D,
+                                const std::vector<INDEX>& maxPotentials1DOrder,
+                                const INDEX chainIndex, const INDEX fixedNode = 0, const INDEX fixedNodeLabel = 0) const
     {
-        shortest_distance_calculator<doForward, directionalNodeMarginal> distCalc
-                                    (LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex], n, l);
+        assert(fixedNodeLabel < NumLabels[chainIndex][fixedNode]);
+        REAL optimalB = std::numeric_limits<REAL>::max();
+        REAL optimalCost = std::numeric_limits<REAL>::max();
+        shortest_distance_calculator<doForward, false, useFixedNode> distCalc
+                                    (linearPotentials, maxPotentials, NumLabels[chainIndex], 0, fixedNode, fixedNodeLabel);
+
+        for (const auto& e : maxPotentials1DOrder) {
+            const auto n1 = maxPotentials1D[e].Edge;
+            const auto l1 = maxPotentials1D[e].L1;
+            const auto l2 = maxPotentials1D[e].L2;
+            const auto bottleneckCost = maxPotentials1D[e].Value;
+               
+            distCalc.AddEdgeWithUpdate(n1, l1, l2, bottleneckCost);
+
+            REAL l = distCalc.ShortestDistance();
+            if (optimalCost > bottleneckCost + l) {
+                optimalCost = bottleneckCost + l;
+                optimalB = bottleneckCost;
+            }
+            if (!onlyComputeB)
+                marginals.insert({bottleneckCost, l}); //storing infinities as well, to ensure consistency with min-marginal computation.
+        }
+        if (!onlyComputeB)
+            marginals.Populated();
+
+        return optimalB;
+    }
+
+    // Assumes the solution in chain 'c' should be propagated
+    void PropagateChainSolutionToOtherChains(const INDEX c, std::vector<INDEX>& gridSolution, std::vector<std::vector<INDEX>>& allChainsSolution) const {
+        // Set the solution in grid first:
+        for (INDEX n = 0; n < NumNodes[c]; n++) {
+            // Either the solution is not set, or if it is set then it must be the same as incoming chain Solution:
+            assert(gridSolution[ChainNodeToOriginalNode[c][n]] == std::numeric_limits<INDEX>::max() || 
+                    gridSolution[ChainNodeToOriginalNode[c][n]] == allChainsSolution[c][n]);
+            if (gridSolution[ChainNodeToOriginalNode[c][n]] == allChainsSolution[c][n])
+                continue;
+
+            gridSolution[ChainNodeToOriginalNode[c][n]] = allChainsSolution[c][n];
+        }
+
+        // Now propagate the grid solution to chains:
+        for (INDEX otherC = 0; otherC < NumChains; otherC++) {
+            for (INDEX n = 0; n < NumNodes[otherC]; n++) {
+                if (gridSolution[ChainNodeToOriginalNode[otherC][n]] == std::numeric_limits<INDEX>::max()) continue;
+                
+                assert(allChainsSolution[otherC][n] == std::numeric_limits<INDEX>::max() ||
+                allChainsSolution[otherC][n] == gridSolution[ChainNodeToOriginalNode[otherC][n]]);
+
+                allChainsSolution[otherC][n] = gridSolution[ChainNodeToOriginalNode[otherC][n]];
+            }
+        }
+    }
+
+    std::vector<std::vector<INDEX>> ComputePrimal() const {
+        std::vector<std::vector<INDEX>> allChainsLabels(NumChains);
+        for (INDEX c = 0; c < NumChains; c++) {
+            allChainsLabels[c].resize(NumNodes[c], std::numeric_limits<INDEX>::max());
+        }
+        INDEX totalNumNodes = std::accumulate(NumNodes.begin(), NumNodes.end(), 0);
+        std::vector<INDEX> gridSolution(totalNumNodes, std::numeric_limits<INDEX>::max());
+        ChainsInfo chainInfo(ChainNodeToOriginalNode);
+
+        // Compute solution on - and | chain intersecting at node of minimum cardinality
+        std::pair<INDEX, INDEX> h_v_chains = chainInfo.GetSeedChains(NumLabels);
+        INDEX hStartingChain = h_v_chains.first;
+        INDEX vStartingChain = h_v_chains.second;
+        INDEX fixedNodeIndexInHorizontalChains = vStartingChain - chainInfo.NumHorizontal();
+
+        // Solve on horizontal:
+        REAL optimalBH = ComputeChainMarginals<true, true>(MarginalsChains[hStartingChain], MaxPotentials[hStartingChain], LinearPotentials[hStartingChain],
+                                                            MaxPotentialsOfChains[hStartingChain], MaxPotentialsOfChainsOrder[hStartingChain], hStartingChain);
+
+        allChainsLabels[hStartingChain] = ComputeLabellingForOneChain(hStartingChain, optimalBH, MaxPotentials[hStartingChain], LinearPotentials[hStartingChain]);   
+        if (NumChains == 1)
+            return allChainsLabels;
+            
+        PropagateChainSolutionToOtherChains(hStartingChain, gridSolution, allChainsLabels);
+
+        // Solve on vertical:
+        REAL optimalBV = ComputeChainMarginals<true, true>(MarginalsChains[vStartingChain], MaxPotentials[vStartingChain], LinearPotentials[vStartingChain],
+                                                            MaxPotentialsOfChains[vStartingChain], MaxPotentialsOfChainsOrder[vStartingChain], vStartingChain);
+
+        allChainsLabels[vStartingChain] = ComputeLabellingForOneChain(vStartingChain, optimalBV, MaxPotentials[vStartingChain], LinearPotentials[vStartingChain]);   
+        PropagateChainSolutionToOtherChains(vStartingChain, gridSolution, allChainsLabels);  
+        INDEX seedGridLoc = ChainNodeToOriginalNode[hStartingChain][fixedNodeIndexInHorizontalChains];
+
+        // Solve Downward:         
+        for (long int currentYOffset = hStartingChain - 1, fixedGridLoc = seedGridLoc - chainInfo.HorizontalSize(); 
+            currentYOffset >= 0; currentYOffset--, fixedGridLoc -= chainInfo.HorizontalSize()) 
+        {
+            INDEX cDest = chainInfo.GetHorizontalChainAtOffset(currentYOffset);
+            INDEX cSource = chainInfo.GetHorizontalChainAtOffset(currentYOffset + 1);
+            auto [modifiedMaxP, modifiedLinearP] = ReparametrizeHorizontalChainFromFixedLabels(currentYOffset + 1, currentYOffset, chainInfo, allChainsLabels[cSource]);
+            auto modifiedMaxP1D = GetMaxPotentials1D(modifiedMaxP);
+            auto modifiedMaxP1DSortingOrder = GetMaxPotentialSortingOrder(modifiedMaxP1D);
+            REAL optimalB = ComputeChainMarginals<true, true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder,
+                                                                    cDest, fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);
+            allChainsLabels[cDest] = ComputeLabellingForOneChain<true>(cDest, optimalB, modifiedMaxP, modifiedLinearP, 
+                                                                        fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);   
+
+            PropagateChainSolutionToOtherChains(cDest, gridSolution, allChainsLabels);  
+        }
+
+        // Solve Upward:
+        for (long int currentYOffset = hStartingChain + 1, fixedGridLoc = seedGridLoc + chainInfo.HorizontalSize(); 
+            currentYOffset < chainInfo.NumHorizontal(); currentYOffset++, fixedGridLoc += chainInfo.HorizontalSize()) 
+        {
+            INDEX cDest = chainInfo.GetHorizontalChainAtOffset(currentYOffset);
+            INDEX cSource = chainInfo.GetHorizontalChainAtOffset(currentYOffset - 1);
+            auto [modifiedMaxP, modifiedLinearP] = ReparametrizeHorizontalChainFromFixedLabels(currentYOffset - 1, currentYOffset, chainInfo, allChainsLabels[cSource]);
+            auto modifiedMaxP1D = GetMaxPotentials1D(modifiedMaxP);
+            auto modifiedMaxP1DSortingOrder = GetMaxPotentialSortingOrder(modifiedMaxP1D);
+            REAL optimalB = ComputeChainMarginals<true, true, true>(MarginalsChains[cDest], modifiedMaxP, modifiedLinearP, modifiedMaxP1D, modifiedMaxP1DSortingOrder,
+                                                                    cDest, fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);
+            allChainsLabels[cDest] = ComputeLabellingForOneChain<true>(cDest, optimalB, modifiedMaxP, modifiedLinearP, 
+                                                                        fixedNodeIndexInHorizontalChains, gridSolution[fixedGridLoc]);   
+                                                                        
+            PropagateChainSolutionToOtherChains(cDest, gridSolution, allChainsLabels);  
+        }
+        return allChainsLabels;
+    }
+
+    std::pair<three_dimensional_variable_array<REAL>, three_dimensional_variable_array<REAL>>
+    ReparametrizeHorizontalChainFromFixedLabels(const INDEX vOffsetSource, const INDEX vOffsetDest, const ChainsInfo& chainInfo, const std::vector<INDEX>& sourceLabels) const 
+    {
+        assert(std::abs((long)vOffsetSource - (long)vOffsetDest) == 1);
+        INDEX sourceC = chainInfo.GetHorizontalChainAtOffset(vOffsetSource);
+        INDEX destC = chainInfo.GetHorizontalChainAtOffset(vOffsetDest);
+    
+        three_dimensional_variable_array<REAL> modifiedLinearPots(LinearPotentials[destC]);
+        three_dimensional_variable_array<REAL> modifiedMaxPots(MaxPotentials[destC]); 
+
+        assert(NumNodes[sourceC] == NumNodes[destC]);
+        for (INDEX n = 0; n < NumNodes[destC]; n++) {
+            std::vector<max_linear_costs> unaryPot(NumLabels[destC][n]);
+            INDEX gridIndex = ChainNodeToOriginalNode[destC][n]; //Grid Index of node to reparameterize
+            INDEX vertC = chainInfo.GetVerticalChainIndexAtGridLoc(gridIndex);
+            INDEX destNodeInVert = vOffsetDest;
+            if (vOffsetDest < vOffsetSource) { // Reparametrize downwards
+                assert(NumLabels[vertC][destNodeInVert] == unaryPot.size());
+                for (INDEX ld = 0; ld < NumLabels[vertC][destNodeInVert]; ld++) {
+                    unaryPot[ld] = { MaxPotentials[vertC](destNodeInVert, ld, sourceLabels[n]), LinearPotentials[vertC](destNodeInVert, ld, sourceLabels[n])};
+                }
+            }
+            else { // Reparametrize upwards
+                assert(NumLabels[vertC][destNodeInVert] == unaryPot.size());
+                for (INDEX ld = 0; ld < NumLabels[vertC][destNodeInVert]; ld++) {
+                    unaryPot[ld] = { MaxPotentials[vertC](destNodeInVert - 1, sourceLabels[n], ld), LinearPotentials[vertC](destNodeInVert - 1, sourceLabels[n], ld)};
+                }
+            }
+            ReparameterizePairwiseFromUnary(modifiedMaxPots, modifiedLinearPots, unaryPot, destC, n);
+        }
+        return std::make_pair(modifiedMaxPots, modifiedLinearPots);
+    }
+
+    void ReparameterizePairwiseFromUnary(three_dimensional_variable_array<REAL>& maxPots, three_dimensional_variable_array<REAL>& linearPots,
+                                         const std::vector<max_linear_costs>& unary, INDEX c, INDEX n) const {
+        REAL normalizer = 2.0;
+        if (n == 0 || n == NumNodes[c] - 1) 
+            normalizer = 1;
+
+        if (n < NumNodes[c] - 1) {
+            // reparam right:
+            assert(NumLabels[c][n] == unary.size());
+            for (INDEX l1 = 0; l1 < NumLabels[c][n]; l1++) {
+                for (INDEX l2 = 0; l2 < NumLabels[c][n+1]; l2++) {
+                    maxPots(n, l1, l2) = std::max(maxPots(n, l1, l2), unary[l1].MaxCost);
+                    linearPots(n, l1, l2) = linearPots(n, l1, l2) + (unary[l1].LinearCost / normalizer);
+                }
+            }
+        } 
+        if (n > 0) { // reparam left:
+            assert(NumLabels[c][n] == unary.size());
+            for (INDEX l1 = 0; l1 < NumLabels[c][n-1]; l1++) {
+                for (INDEX l2 = 0; l2 < NumLabels[c][n]; l2++) {
+                    maxPots(n-1, l1, l2) = std::max(maxPots(n-1, l1, l2), unary[l2].MaxCost);
+                    linearPots(n-1, l1, l2) = linearPots(n-1, l1, l2) + (unary[l2].LinearCost / normalizer);
+                }
+            }
+        }
+    }
+
+    std::vector<MaxPotentialInChain> GetMaxPotentials1D(const three_dimensional_variable_array<REAL>& maxPotentials) const {
+        std::vector<MaxPotentialInChain> maxPotentials1D;
+        for (INDEX e = 0; e < maxPotentials.size(); e++) {
+            for (INDEX l1 = 0; l1 < maxPotentials.dim2(e); l1++) {
+                for (INDEX l2 = 0; l2 < maxPotentials.dim3(e); l2++) {
+                    if (std::isinf(maxPotentials(e, l1, l2))) continue;
+                    maxPotentials1D.push_back({e, l1, l2, maxPotentials(e, l1, l2)});
+                }
+            }
+        }
+        return maxPotentials1D;
+    }
+
+    std::vector<INDEX> ComputeGridSolution(const two_dim_variable_array<INDEX>& chainsSolution) const {
+        INDEX numNodesGrid = 0;
+        for (INDEX c = 0; c < NumChains; c++) {
+            numNodesGrid = std::max(numNodesGrid, *std::max_element(ChainNodeToOriginalNode[c].begin(), ChainNodeToOriginalNode[c].end()));
+        }
+        std::vector<INDEX> gridSolution(numNodesGrid, std::numeric_limits<INDEX>::max());
+        for (INDEX c = 0; c < NumChains; c++) {
+            for (INDEX n = 0; n < NumNodes[c]; n++) {
+                INDEX& currentGridLabel = gridSolution[ChainNodeToOriginalNode[c][n]];
+                if (currentGridLabel == std::numeric_limits<INDEX>::max())      // solution not set
+                    currentGridLabel = chainsSolution[c][n];
+                else if (currentGridLabel != chainsSolution[c][n])
+                    currentGridLabel = std::numeric_limits<INDEX>::infinity(); // Store disagreements as infinities   
+            }
+        }
+        return gridSolution;
+    }
+
+    template <bool leftToRight>
+    std::vector<Marginals> ComputeNodeMarginals(const INDEX chainIndex, INDEX node) const
+    {
+        INDEX numL = NumLabels[chainIndex][node];
+        std::vector<Marginals> nodeMarginals(numL);
+        shortest_distance_calculator<leftToRight, true> distCalc(LinearPotentials[chainIndex], MaxPotentials[chainIndex], NumLabels[chainIndex], node);
 
         for (const auto& e : MaxPotentialsOfChainsOrder[chainIndex]) {
             const auto n1 = MaxPotentialsOfChains[chainIndex][e].Edge;
@@ -323,11 +569,13 @@ private:
             const auto bottleneckCost = MaxPotentialsOfChains[chainIndex][e].Value;
                
             distCalc.AddEdgeWithUpdate(n1, l1, l2, bottleneckCost);
-
-            REAL l = distCalc.ShortestDistance();
-            marginals.insert({bottleneckCost, l}); //storing infinities as well, to ensure consistency with min-marginal computation.
+            for (INDEX currentL = 0; currentL < numL; currentL++) {
+                REAL l = distCalc.GetDistance(node, currentL);
+                nodeMarginals[currentL].insert({bottleneckCost, l});
+                //storing infinities as well, to ensure consistency with min-marginal computation.
+            }
         }
-        marginals.Populated();
+        return nodeMarginals;
     }
 
     std::vector<INDEX> GetMaxPotentialSortingOrder(const std::vector<MaxPotentialInChain>& pots) const {
@@ -371,7 +619,12 @@ class pairwise_max_potential_on_multiple_chains_message {
                 for(INDEX l2=0; l2<r.NumNodeLabels(ChainIndex, N2); ++l2, ++i) {
                     chain_edge e = {EdgeIndex, l1, l2};
                     REAL currentPot = r.GetLinearPotential(ChainIndex, e);
-                    r.SetLinearPotential(ChainIndex, e, currentPot + msgs[i]);
+                    if (std::isinf(currentPot))
+                        continue;
+                    else if (std::isinf(msgs[i]))
+                        r.SetLinearPotential(ChainIndex, e, msgs[i]);
+                    else                         
+                        r.SetLinearPotential(ChainIndex, e, currentPot + msgs[i]);
                 }
             }
         }
@@ -381,8 +634,13 @@ class pairwise_max_potential_on_multiple_chains_message {
         {
             INDEX c=0;
             for(INDEX i=0; i<l.dim1(); ++i) {
-                for(INDEX j=0; j<l.dim2(); ++j) {
-                    l.cost(i,j) += msgs[c++];
+                for(INDEX j=0; j<l.dim2(); ++j, ++c) {
+                    if (std::isinf(l.cost(i,j)))
+                        continue;
+                    else if (std::isinf(msgs[c]))
+                        l.cost(i,j) = msgs[c];
+                    else
+                        l.cost(i,j) += msgs[c];
                 }
             } 
         }
