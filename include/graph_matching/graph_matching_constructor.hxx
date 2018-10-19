@@ -273,6 +273,7 @@ public:
     {
        assert(node_left < no_left_nodes());
        assert(node_right < no_right_nodes());
+       assert(std::binary_search(graph_[node_left].begin(), graph_[node_left].end(), node_right) == std::binary_search(inverse_graph_[node_right].begin(), inverse_graph_[node_right].end(), node_left));
        return std::binary_search(graph_[node_left].begin(), graph_[node_left].end(), node_right);
     } 
 

@@ -35,7 +35,7 @@ a 3 1 1 -1
 const std::vector<std::string> options = 
 {
 "",
-"--standardReparametrization", "anisotropic:0.5",
+"--standardReparametrization", "anisotropic",
 "--roundingReparametrization", "uniform:0.5",
 "--tightenIteration", "10",
 "--tightenInterval", "5",

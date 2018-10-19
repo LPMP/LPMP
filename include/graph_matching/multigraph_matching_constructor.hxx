@@ -91,33 +91,30 @@ class multigraph_matching_constructor {
         {
            assert(triplet_consistency_factor_matches(t));
            auto* pq_constructor = get_pq_constructor(t);
-           if(t.p < t.q) {
+           if(t.p < t.q)
               return pq_constructor->left_mrf.get_unary_factor(t.p_node);
-           } else {
+           else
               return pq_constructor->right_mrf.get_unary_factor(t.p_node);
-           }
         }
         const auto& get_pq_factor_labels(const triplet_consistency_factor& t) const
         {
            assert(triplet_consistency_factor_matches(t));
            auto* pq_constructor = get_pq_constructor(t);
            auto* f_pq = get_pq_factor(t);
-           if(t.p < t.q) {
+           if(t.p < t.q)
               return pq_constructor->graph_[t.p_node]; 
-           } else {
+           else
               return pq_constructor->inverse_graph_[t.p_node]; 
-           } 
         }
 
         auto* get_qr_factor(const triplet_consistency_factor& t) const
         {
            assert(triplet_consistency_factor_matches(t));
            auto* qr_constructor = get_qr_constructor(t);
-           if(t.q < t.r) {
+           if(t.q < t.r)
               return qr_constructor->right_mrf.get_unary_factor(t.r_node);
-           } else {
+           else
               return qr_constructor->left_mrf.get_unary_factor(t.r_node);
-           }
         }
         const auto& get_qr_factor_labels(const triplet_consistency_factor& t) const
         {
@@ -125,11 +122,10 @@ class multigraph_matching_constructor {
            auto* qr_constructor = get_qr_constructor(t);
            auto* f_qr = get_qr_factor(t);
            // TODO: correct way around?
-           if(t.q < t.r) {
+           if(t.q < t.r)
               return qr_constructor->inverse_graph_[t.r_node]; 
-           } else {
+           else
               return qr_constructor->graph_[t.r_node]; 
-           }
         }
 
         auto get_pq_qr_indices(const triplet_consistency_factor& t) const
@@ -172,9 +168,9 @@ class multigraph_matching_constructor {
         GRAPH_MATCHING_CONSTRUCTOR* get_pr_constructor(const triplet_consistency_factor& t) const
         {
            assert(triplet_consistency_factor_matches(t));
-           if(t.p == p && t.r == r) { return pr_constructor; }
-           if(t.p == p && t.r == q) { return pq_constructor; }
-           if(t.p == q && t.r == r) { return qr_constructor; }
+           if(t.p == p && t.r == r) return pr_constructor;
+           if(t.p == p && t.r == q) return pq_constructor;
+           if(t.p == q && t.r == r) return qr_constructor;
            assert(false);
            return nullptr;
         }
@@ -183,14 +179,14 @@ class multigraph_matching_constructor {
         {
            assert(triplet_consistency_factor_matches(t));
 
-           if(t.p == p && t.q == q) { return pq_constructor; }
-           if(t.p == q && t.q == p) { return pq_constructor; }
+           if(t.p == p && t.q == q) return pq_constructor;
+           if(t.p == q && t.q == p) return pq_constructor;
 
-           if(t.p == p && t.q == r) { return pr_constructor; }
-           if(t.p == r && t.q == p) { return pr_constructor; }
+           if(t.p == p && t.q == r) return pr_constructor;
+           if(t.p == r && t.q == p) return pr_constructor;
 
-           if(t.p == q && t.q == r) { return qr_constructor; }
-           if(t.p == r && t.q == q) { return qr_constructor; }
+           if(t.p == q && t.q == r) return qr_constructor;
+           if(t.p == r && t.q == q) return qr_constructor;
 
            assert(false);
            return nullptr;
@@ -200,14 +196,14 @@ class multigraph_matching_constructor {
         {
            assert(triplet_consistency_factor_matches(t));
 
-           if(t.q == p && t.r == q) { return pq_constructor; }
-           if(t.q == q && t.r == p) { return pq_constructor; }
+           if(t.q == p && t.r == q) return pq_constructor;
+           if(t.q == q && t.r == p) return pq_constructor;
 
-           if(t.q == p && t.r == r) { return pr_constructor; }
-           if(t.q == r && t.r == p) { return pr_constructor; }
+           if(t.q == p && t.r == r) return pr_constructor;
+           if(t.q == r && t.r == p) return pr_constructor;
 
-           if(t.q == q && t.r == r) { return qr_constructor; }
-           if(t.q == r && t.r == q) { return qr_constructor; }
+           if(t.q == q && t.r == r) return qr_constructor;
+           if(t.q == r && t.r == q) return qr_constructor;
 
            assert(false);
            return nullptr;
@@ -360,11 +356,11 @@ public:
        auto* f_qr = get_matching_factor(t.r, t.q, t.r_node);
 
        const auto pq_labels = get_triplet_consistency_labels(t.p, t.q, t.p_node);
+       assert(pq_labels.size() == f_pq->get_factor()->size()-1);
        const auto qr_labels = get_triplet_consistency_labels(t.r, t.q, t.r_node);
+       assert(qr_labels.size() == f_qr->get_factor()->size()-1);
 
-       if(pr_c->has_edge(t.p_node, t.r_node)) { // check increase for triplet consistency factor
-          assert(t.p<t.r);
-
+       if(pr_c->has_edge(t.p_node, t.r_node)) { 
           auto* f_pr_left = get_matching_factor(t.p, t.r, t.p_node);
           auto* f_pr_right = get_matching_factor(t.r, t.p, t.r_node);
 
@@ -605,9 +601,8 @@ public:
         for_each_triplet_consistency_factor(compute_dual_increase);
 
         std::vector<std::pair<triplet_consistency_factor, double>> triplet_consistency_candidates = std::move(triplet_consistency_candidates_local[0]);
-        for(std::size_t i=1; i<triplet_consistency_candidates_local.size(); ++i) {
+        for(std::size_t i=1; i<triplet_consistency_candidates_local.size(); ++i)
            triplet_consistency_candidates.insert(triplet_consistency_candidates.end(), triplet_consistency_candidates_local[i].begin(), triplet_consistency_candidates_local[i].end());
-        } 
 
         std::sort(triplet_consistency_candidates.begin(), triplet_consistency_candidates.end(), [](const auto& t1, const auto& t2) { return t1.second > t2.second; });
 
@@ -616,9 +611,8 @@ public:
             if(!has_triplet_consistency_factor(t)) {
                 add_triplet_consistency_factor(t);
                 no_constraints_added++;
-                if(no_constraints_added >= no_constraints_to_add) {
+                if(no_constraints_added >= no_constraints_to_add)
                     break;
-                }
             } 
         }
 
@@ -780,9 +774,8 @@ public:
        multigraph_matching_input::labeling output;
        output.reserve(graph_matching_constructors.size());
 
-       for(auto& c : graph_matching_constructors) {
+       for(auto& c : graph_matching_constructors)
           output.push_back( {c.first.p, c.first.q, c.second->write_out_labeling()} );
-       }
 
        return output;
     }
@@ -799,9 +792,8 @@ private:
     multigraph_matching_input export_linear_multigraph_matching_input() const
     {
        multigraph_matching_input mgm;
-       for(const auto& gm : graph_matching_constructors) {
+       for(const auto& gm : graph_matching_constructors)
           mgm.push_back({gm.first.p, gm.first.q, gm.second->export_graph_matching_input(false)});
-       }
        return mgm;
     }
 
@@ -831,11 +823,10 @@ private:
 
     std::size_t get_matching_index(const std::size_t p, const std::size_t q, const std::size_t p_node, const std::size_t q_node) const
     {
-       if(p < q) {
+       if(p < q)
           return get_graph_matching_constructor(p,q)->get_left_index(p_node,q_node);
-       } else {
-          return get_graph_matching_constructor(q,p)->get_right_index(q_node,p_node);
-       } 
+       else
+          return get_graph_matching_constructor(q,p)->get_right_index(p_node,q_node);
     }
 
     LP<FMC>* lp_;

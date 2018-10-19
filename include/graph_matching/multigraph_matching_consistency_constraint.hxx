@@ -16,16 +16,39 @@ namespace {
 // TODO: put detail into separate file
 namespace detail {
 
+template<typename COST_X, typename COST_Y, typename LABELS_X, typename LABELS_Y>
+std::array<double,2> min_diagonal_off_diagonal_sum_naive(const COST_X& cost_x, const COST_Y& cost_y, const LABELS_X& labels_x, const LABELS_Y& labels_y)
+{
+   double min_same_labels = std::numeric_limits<double>::infinity();
+   double min_different_labels = std::numeric_limits<double>::infinity();
+   for(std::size_t i=0; i<cost_x.size(); ++i) {
+      for(std::size_t j=0; j<cost_y.size(); ++j) {
+         if(labels_x[i] == labels_y[j])
+            min_same_labels = std::min(min_same_labels, cost_x[i] + cost_y[j]);
+         else
+            min_different_labels = std::min(min_different_labels, cost_x[i] + cost_y[j]);
+      }
+   }
+
+   return {min_same_labels, min_different_labels}; 
+}
+
 // compute minimum over configuration with same labels and minimum over sum with different labels
 template<typename COST_X, typename COST_Y, typename LABELS_X, typename LABELS_Y>
 std::array<double,2> min_diagonal_off_diagonal_sum(const COST_X& cost_x, const COST_Y& cost_y, const LABELS_X& labels_x, const LABELS_Y& labels_y)
 {
    // TODO: possibly add fast version for small label space
-
    assert(std::is_sorted(labels_x.begin(), labels_x.end()));
    assert(std::is_sorted(labels_y.begin(), labels_y.end()));
    assert(cost_x.size() == labels_x.size());
    assert(cost_y.size() == labels_y.size());
+
+   if(cost_x.size() == 1) {
+      return min_diagonal_off_diagonal_sum_naive(cost_x, cost_y, labels_x, labels_y); 
+   } else if(cost_y.size() == 1) {
+      return min_diagonal_off_diagonal_sum_naive(cost_y, cost_x, labels_y, labels_x); 
+   }
+
    assert(cost_x.size() >= 2);
    assert(cost_y.size() >= 2);
 
@@ -173,6 +196,12 @@ public:
       labels_x(labels_x_begin, labels_x_end),
       labels_y(labels_y_begin, labels_y_end)
    {
+      assert(*std::max_element(cost_x.begin(), cost_x.end()) == 0.0);
+      assert(*std::min_element(cost_x.begin(), cost_x.end()) == 0.0);
+      assert(*std::max_element(cost_y.begin(), cost_y.end()) == 0.0);
+      assert(*std::min_element(cost_y.begin(), cost_y.end()) == 0.0);
+      assert(cost_x.size() == labels_x.size());
+      assert(cost_y.size() == labels_y.size());
       assert(std::is_sorted(labels_x.begin(), labels_x.end()));
       assert(std::is_sorted(labels_y.begin(), labels_y.end()));
    }
@@ -200,6 +229,7 @@ public:
 
     REAL evaluate(const std::size_t _x, const std::size_t _y, const std::size_t _z) const
     {
+       assert(primal_feasible(_x,_y,_z));
        double cost = 0.0;
        if(_x < cost_x.size()) cost += cost_x[_x];
        if(_y < cost_y.size()) cost += cost_y[_y];
@@ -293,33 +323,32 @@ public:
         //
     }
 
-    vector<REAL> x_marginals() const { return marginals(cost_x, cost_y, labels_x, labels_y); }
-    vector<REAL> y_marginals() const { return marginals(cost_y, cost_x, labels_y, labels_x); }
+    vector<double> x_marginals() const { return marginals(cost_x, cost_y, labels_x, labels_y); }
+    vector<double> y_marginals() const { return marginals(cost_y, cost_x, labels_y, labels_x); }
 
     REAL LowerBound() const
     {
         const auto z_marg = z_marginals();
-        return std::min(z_marg[0], z_marg[1]);
-        // z = multigraph_matching_triplet_consistency_factor::primal_inactive
+#ifndef NDEBUG
         const auto x_min = cost_x.min();
         const auto y_min = cost_y.min();
-        REAL cost_0 = std::min({0.0, cost_x.min(), cost_y.min()});
+        // cost for z ==0/1
+        double cost_0 = std::min({0.0, cost_x.min(), cost_y.min()});
+        double cost_1 = 0.0;
         for(std::size_t i=0; i<cost_x.size(); ++i) {
             for(std::size_t j=0; j<cost_y.size(); ++j) {
-                if(i != j) {
+                if(labels_x[i] != labels_y[j]) {
                     cost_0 = std::min(cost_0, cost_x[i] + cost_y[j]);
-                } 
+                } else {
+                   cost_1 = std::min(cost_1, cost_x[i] + cost_y[j]); 
+                }
             }
-        }
-
-        // z = 1
-        REAL cost_1 = std::numeric_limits<REAL>::infinity();
-        for(std::size_t i=0; i<cost_x.size(); ++i) {
-            cost_1 = std::min(cost_1, cost_x[i] + cost_y[i]); 
         }
         cost_1 += cost_z;
 
-        return std::min(cost_0, cost_1);
+        assert(std::min(cost_0, cost_1) == std::min(z_marg[0], z_marg[1]));
+#endif
+        return std::min(z_marg[0], z_marg[1]);
     }
 
    template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(x,y); }
@@ -337,17 +366,18 @@ public:
    // if two primal variables are set, we must set the third one accordingly
    void PropagatePrimal()
    {
+      return; //TODO: activate again
       const std::size_t no_variables_set = std::size_t(x != primal_not_set) + std::size_t(x != primal_not_set) + std::size_t(z != primal_not_set);
       if(no_variables_set == 2) {
-         if(x == std::numeric_limits<std::size_t>::max()) {
+         if(x == primal_not_set) {
             if(z == 1)
                x = y;
-         } else if(y == std::numeric_limits<std::size_t>::max()) {
+         } else if(y == primal_not_set) {
             if(z == 1)
                y = x; 
          } else {
-            assert(z == std::numeric_limits<std::size_t>::max());
-            if(x == y)
+            assert(z == primal_not_set);
+            if(labels_x[x] == labels_y[y])
                z = 1;
             else
                z = primal_inactive;
@@ -360,38 +390,48 @@ private:
     template<typename COST_1, typename COST_2, typename LABELS_1, typename LABELS_2>
     vector<double> marginals(const COST_1& cost_1, const COST_2& cost_2, const LABELS_1& labels_1, const LABELS_2& labels_2) const
     {
-        const auto [min_idx_2, second_min_idx_2] = detail::two_min_indices(cost_2);
-        vector<double> marginals(cost_1.size());
+       vector<double> marginals(cost_1.size());
+       if(cost_2.size() == 1) {
 
-        double cost_0 = std::min({0.0, cost_z, cost_2[min_idx_2]});
+          const double cost_0 = std::min({0.0, cost_z, cost_2[0]});
+          for(std::size_t i=0; i<cost_1.size(); ++i) {
+             if(labels_1[i] == labels_2[0])
+                marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[0] + cost_z);
+             else
+                marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[0]);
+             marginals[i] -= cost_0; 
+          }
 
-        std::size_t j=0;
-        for(std::size_t i=0; i<cost_1.size(); ++i) {
-           if(labels_1[i] == labels_2[min_idx_2]) {
-              marginals[i] = std::min({cost_1[i], cost_1[i] + cost_2[second_min_idx_2]});
-           } else {
-              marginals[i] = std::min({cost_1[i], cost_1[i] + cost_2[min_idx_2]});
-           }
+       } else {
 
-           while(j<labels_2.size() && labels_2[j] < labels_1[i]) {
-              ++j; 
-           }
+          const auto [min_idx_2, second_min_idx_2] = detail::two_min_indices(cost_2);
 
-           if(j<labels_2.size() && labels_1[i] == labels_2[j]) {
-              marginals[i] = std::min(marginals[i], cost_1[i] + cost_2[j] + cost_z); 
-              ++j;
-           }
-        }
+          double cost_0 = std::min({0.0, cost_z, cost_2[min_idx_2]});
 
-        for(std::size_t i=0; i<marginals.size(); ++i)
-           marginals[i] -= cost_0; 
+          std::size_t j=0;
+          for(std::size_t i=0; i<cost_1.size(); ++i) {
+             if(labels_1[i] == labels_2[min_idx_2]) 
+                marginals[i] = std::min({cost_1[i], cost_1[i] + cost_2[second_min_idx_2]});
+             else
+                marginals[i] = std::min({cost_1[i], cost_1[i] + cost_2[min_idx_2]});
 
-        return marginals;
+             while(j<labels_2.size() && labels_2[j] < labels_1[i])
+                ++j; 
+
+             if(j<labels_2.size() && labels_1[i] == labels_2[j]) {
+                marginals[i] = std::min(marginals[i], cost_1[i] + cost_2[j] + cost_z); 
+                ++j;
+             }
+             marginals[i] -= cost_0; 
+          }
+
+       }
+       return marginals;
     }
 
-   // TODO: add const
-   vector<std::size_t> labels_x;
-   vector<std::size_t> labels_y; 
+    // TODO: add const
+    vector<std::size_t> labels_x;
+    vector<std::size_t> labels_y; 
 };
 
 // when edge is not present, we require X_ip Y_pj = 0
@@ -411,6 +451,9 @@ public:
       labels_x(labels_x_begin, labels_x_end),
       labels_y(labels_y_begin, labels_y_end)
    {
+      assert(cost_x.size() == labels_x.size());
+      assert(cost_y.size() == labels_y.size());
+
       assert(std::is_sorted(labels_x.begin(), labels_x.end()));
       assert(std::is_sorted(labels_y.begin(), labels_y.end()));
    }
@@ -519,15 +562,30 @@ private:
    static vector<REAL> marginals(const COST_1& cost_1, const COST_2& cost_2, const LABELS_1& labels_1, const LABELS_2& labels_2)
    {
       vector<double> marginals(cost_1.size());
-      const auto [min_index_2, second_min_index_2] = detail::two_min_indices(cost_2);
+      if(cost_2.size() == 1) {
 
-      const double cost_zero = std::min(0.0, cost_2[min_index_2]);
-      for(std::size_t i=0; i<cost_1.size(); ++i) {
-         if(labels_1[i] == labels_2[min_index_2])
-            marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[second_min_index_2]);
-         else
-            marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[min_index_2]);
-         marginals[i] -= cost_zero; 
+         const double cost_zero = std::min(0.0, cost_2[0]);
+         for(std::size_t i=0; i<cost_1.size(); ++i) {
+            if(labels_1[i] == labels_2[0])
+               marginals[i] = cost_1[i];
+            else
+               marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[0]);
+            marginals[i] -= cost_zero;
+         }
+
+      } else {
+
+         const auto [min_index_2, second_min_index_2] = detail::two_min_indices(cost_2);
+
+         const double cost_zero = std::min(0.0, cost_2[min_index_2]);
+         for(std::size_t i=0; i<cost_1.size(); ++i) {
+            if(labels_1[i] == labels_2[min_index_2])
+               marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[second_min_index_2]);
+            else
+               marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[min_index_2]);
+            marginals[i] -= cost_zero; 
+         }
+
       }
       return marginals;
    }
@@ -672,8 +730,8 @@ public:
        } else {
            assert(C == Chirality::right);
            assert(msg.size() == r.cost_y.size());
-           for(std::size_t i=0; i<r.cost_y.size(); ++i)
-               r.cost_y[i] += msg[i]; 
+           for(std::size_t j=0; j<r.cost_y.size(); ++j)
+               r.cost_y[j] += msg[j]; 
        }
    }
    

@@ -10,24 +10,27 @@ int main(int argc, char** argv)
 {
    std::random_device rd;
 
-   const std::size_t no_max_labels = 20;
+   const std::size_t no_max_labels = 10;
 
-   for(std::size_t no_x_labels_total = 2; no_x_labels_total<no_max_labels; ++no_x_labels_total) {
-      for(std::size_t no_y_labels_total = 2; no_y_labels_total<no_max_labels; ++no_y_labels_total) {
-         for(std::size_t no_x_labels_matched = 2; no_x_labels_matched<=no_x_labels_total; ++no_x_labels_matched) {
-            for(std::size_t no_y_labels_matched = 2; no_y_labels_matched<=no_y_labels_total; ++no_y_labels_matched) {
+   for(std::size_t no_x_labels_total = 1; no_x_labels_total<no_max_labels; ++no_x_labels_total) {
+      for(std::size_t no_y_labels_total = 1; no_y_labels_total<no_max_labels; ++no_y_labels_total) {
+         for(std::size_t no_x_labels_matched = 1; no_x_labels_matched<=no_x_labels_total; ++no_x_labels_matched) {
+            for(std::size_t no_y_labels_matched = 1; no_y_labels_matched<=no_y_labels_total; ++no_y_labels_matched) {
 
                const auto labels_x = generate_random_label_set(no_x_labels_matched, no_x_labels_total);
                const auto labels_y = generate_random_label_set(no_y_labels_matched, no_y_labels_total);
                multigraph_matching_triplet_consistency_factor t(labels_x, labels_y);
 
+               double lb = std::numeric_limits<double>::infinity();
                t.for_each_labeling([&](const std::size_t _x, const std::size_t _y, const std::size_t _z) {
                      t.x = _x;
                      t.y = _y;
                      t.z = _z;
                      test(t.primal_feasible());
+                     lb = std::min(lb, t.evaluate(_x,_y,_z));
                      });
 
+               test(lb == t.LowerBound());
                test_factor(t,rd);
 
                multigraph_matching_triplet_consistency_factor_zero t_zero(labels_x, labels_y);
