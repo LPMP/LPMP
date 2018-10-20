@@ -29,9 +29,17 @@ public:
         SortingOrder = GetMaxPotsSortingOrder(MaxPotentials);
     }
 
+    template <bool computeMarginals = false>
     std::vector<INDEX> ComputeBestLabels(const std::vector<Marginals>& marginals) const {
         INDEX numCovered = 0;
         INDEX numNodes = marginals.size();
+        if (computeMarginals) {
+            INDEX size = 0;
+            for (INDEX i = 0; i < marginals.size(); i++)
+                size += marginals[i].size();
+            AllMarginals.Reserve(size);
+        }
+
         std::vector<bool> coveredNodes(numNodes, false);
         REAL s = 0;
         std::vector<REAL> l(numNodes, std::numeric_limits<REAL>::max());
@@ -65,10 +73,15 @@ public:
                 lablesForNodes[currentNodeIndex] = currentLabelIndex;
             }
 
-            if (numCovered == numNodes && bestObjective > s + currentMaxCost) {
-                // Found another solution which is better than the previous one, in which case mark current solution as the best so far.
-                bestObjective = s + currentMaxCost;
-                bestLabelsForNodes = lablesForNodes;
+            if (numCovered == numNodes) {
+                if (computeMarginals) {
+                    AllMarginals.insert<true>({currentMaxCost, s});
+                }
+                if (bestObjective > s + currentMaxCost) {
+                    // Found another solution which is better than the previous one, in which case mark current solution as the best so far.
+                    bestObjective = s + currentMaxCost;
+                    bestLabelsForNodes = lablesForNodes;
+                }
             }
         }
         assert(std::abs(bestObjective - CostOfLabelling(bestLabelsForNodes, marginals)) <= eps);
@@ -87,11 +100,13 @@ public:
     }
 
     REAL GetBestCost() const {return BestCost;}
+    Marginals& GetAllMarginals() const {return AllMarginals;}
 
 private:
     std::vector<MaxPotentialInUnary> MaxPotentials;
     std::vector<INDEX> SortingOrder;
     mutable REAL BestCost;
+    mutable Marginals AllMarginals;
   
     std::vector<INDEX> GetMaxPotsSortingOrder(const std::vector<MaxPotentialInUnary>& pots) const {
         std::vector<INDEX> idx(pots.size());
@@ -124,6 +139,9 @@ private:
     mutable std::vector<INDEX> BestChainMarginalIndices;
     mutable INDEX numEdges;
     mutable INDEX messageNormalizer;
+    mutable three_dimensional_variable_array<REAL> BackwardMessageFromChain;
+    mutable INDEX BackwardMessageFromChainIndex;
+    mutable INDEX NumChainsReparametrizedBackwards;
 
 public:
     // TODO: use move semantics
@@ -178,6 +196,8 @@ public:
         }
         std::fill(BestChainMarginalIndices.begin(), BestChainMarginalIndices.end(), std::numeric_limits<INDEX>::max());
         SolutionValid = false;
+        NumChainsReparametrizedBackwards = 0;
+        BackwardMessageFromChainIndex = std::numeric_limits<INDEX>::max();
     }
 
     REAL LowerBound() const {
@@ -238,46 +258,68 @@ public:
         Solution[chainIndex][nodeIndex] = val; 
     }
 
-    std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.95) const {
-        if (messageNormalizer == 0)
-            messageNormalizer = numEdges; //assuming restart.
-
-        REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
-        std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
-        std::vector<Marginals> leftNodeLeftMarginals, rightNodeRightMarginals;
-        #pragma omp parallel sections 
-        {
-            #pragma omp section 
-            {
-                leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e); 
-            }
-            #pragma omp section 
-            {
-                rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);
+    std::vector<REAL> GetMessageForEdge(INDEX chain, INDEX e) const {
+        if (chain != BackwardMessageFromChainIndex) {
+            BackwardMessageFromChain = ComputeBackwardMessagesOnChain(chain);
+            BackwardMessageFromChainIndex = chain;
+            NumChainsReparametrizedBackwards++;
+            if (NumChainsReparametrizedBackwards == NumChains) { // reset after all chains have been iterated over.
+                NumChainsReparametrizedBackwards = 0;
+                BackwardMessageFromChainIndex = std::numeric_limits<INDEX>::max();
             }
         }
-        MarginalsValid[chain] = false;
+        std::vector<REAL> message(BackwardMessageFromChain.dim2(e) * BackwardMessageFromChain.dim3(e));
         INDEX i = 0;
-        for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
-            for (INDEX l2 = 0; l2 < LinearPotentials[chain].dim3(e); l2++) {
-                // Copy the linear costs of current edge into marginals of current chain, as the original 
-                // ones are not of any use now and will need to be updated anyway.
-                MarginalsChains[chain] = MergeNodeMarginals(leftNodeLeftMarginals[l1], rightNodeRightMarginals[l2],
-                                                            {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
-                UnarySolver.ComputeBestLabels(MarginalsChains); // TO DO: Do not need to store labels.
-                REAL minMarginal = UnarySolver.GetBestCost();
-
-                message[i] = OMEGA * (minMarginal - lb) / messageNormalizer;
-                if (message[i] < 0 && message[i] > -eps)
-                    message[i] = 0; // get rid of numerical errors. 
-                assert(message[i] >= 0);
-                i++;
+        for (INDEX l1 = 0; l1 < BackwardMessageFromChain.dim2(e); l1++) {
+            for (INDEX l2 = 0; l2 < BackwardMessageFromChain.dim3(e); l2++, i++) {
+                message[i] = BackwardMessageFromChain(e, l1, l2);
             }
         }
-        messageNormalizer--;
-        assert(*std::min_element(message.begin(), message.end()) <= eps); // one edge should be a part of lower bound solution.
         return message;
     }
+
+    // std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.95) const {
+    //     if (messageNormalizer == 0)
+    //         messageNormalizer = numEdges; //assuming restart.
+
+    //     REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
+    //     std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
+    //     std::vector<Marginals> leftNodeLeftMarginals, rightNodeRightMarginals;
+    //     #pragma omp parallel sections 
+    //     {
+    //         #pragma omp section 
+    //         {
+    //             leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e); 
+    //         }
+    //         #pragma omp section 
+    //         {
+    //             rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);
+    //         }
+    //     }
+    //     MarginalsValid[chain] = false;
+    //     INDEX i = 0;
+    //     for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
+    //         for (INDEX l2 = 0; l2 < LinearPotentials[chain].dim3(e); l2++) {
+    //             // Copy the linear costs of current edge into marginals of current chain, as the original 
+    //             // ones are not of any use now and will need to be updated anyway.
+    //             MarginalsChains[chain] = MergeNodeMarginals(leftNodeLeftMarginals[l1], rightNodeRightMarginals[l2],
+    //                                                         {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
+    //             UnarySolver.ComputeBestLabels(MarginalsChains); // TO DO: Do not need to store labels.
+    //             REAL minMarginal = UnarySolver.GetBestCost();
+
+    //             message[i] = OMEGA * (minMarginal - lb) / messageNormalizer;
+    //             if (message[i] < 0 && message[i] > -eps)
+    //                 message[i] = 0; // get rid of numerical errors. 
+    //             assert(message[i] >= 0);
+    //             i++;
+    //         }
+    //     }
+    //     messageNormalizer--;
+    //     assert(*std::min_element(message.begin(), message.end()) <= eps); // one edge should be a part of lower bound solution.
+    //     return message;
+    // }
+
+
 
     void ComputeAndSetPrimal() const {
         Solution = ComputePrimal();
@@ -603,6 +645,101 @@ private:
         merged.Populated();
         return merged;
     }
+
+    //TODO: Maybe dealing with Infs explicitly can help.
+    three_dimensional_variable_array<REAL> ComputeBackwardMessagesOnChain(INDEX c) const {
+        //1. Initialize messages by zero.
+        three_dimensional_variable_array<REAL> messages(LinearPotentials[c].size_begin(), LinearPotentials[c].size_end());
+        three_dimensional_variable_array<INDEX> bestMIndices(LinearPotentials[c].size_begin(), LinearPotentials[c].size_end());
+        for (INDEX e = 0; e < messages.dim1(); e++) {
+            for (INDEX n1 = 0; n1 < messages.dim2(e); n1++) {
+                for (INDEX n2 = 0; n2 < messages.dim3(e); n2++) {
+                    messages(e, n1, n2) = std::numeric_limits<REAL>::max();
+                    bestMIndices(e, n1, n2) = std::numeric_limits<INDEX>::max();
+                }
+            }
+        }
+        REAL normalizer = messages.dim1() * (NumChains - NumChainsReparametrizedBackwards);
+        //2. Populate chain solution costs.
+        REAL lb = LowerBound();
+        //3. Merge the chain solution costs, by the node solver.
+        Marginals otherChainsMergedMarginals;
+        if (NumChains > 1) {
+            std::vector<Marginals> otherChainMarginals;
+            for (INDEX oc = 0; oc < NumChains; oc++) {
+                if (oc == c) continue;
+                otherChainMarginals.push_back(MarginalsChains[oc]);
+            }
+            max_potential_on_nodes otherChainsSolver = max_potential_on_nodes(otherChainMarginals);
+            otherChainsSolver.ComputeBestLabels<true>(otherChainMarginals);
+            otherChainsMergedMarginals = otherChainsSolver.GetAllMarginals();
+        }
+        // 4. Initialize two node solver, where node1 containing the merged marginals of all chains except of c:
+        max_potential_on_two_nodes twoNodeSolver(otherChainsMergedMarginals);
+        // 5. Create left and right shortest path calculators:
+        shortest_distance_calculator<true> leftDistCalc(LinearPotentials[c], MaxPotentials[c], NumLabels[c]);
+        shortest_distance_calculator<false> rightDistCalc(LinearPotentials[c], MaxPotentials[c], NumLabels[c]);
+        for (const auto& e : MaxPotentialsOfChainsOrder[c]) {
+            const auto n1 = MaxPotentialsOfChains[c][e].Edge;
+            const auto l1 = MaxPotentialsOfChains[c][e].L1;
+            const auto l2 = MaxPotentialsOfChains[c][e].L2;
+            const auto bottleneckCost = MaxPotentialsOfChains[c][e].Value;
+
+            // Calculate the min-marginal for given edge:
+            const REAL n1LeftDistance = leftDistCalc.GetDistance(n1, l1);
+            const REAL n2RightDistance = rightDistCalc.GetDistance(n1 + 1, l2);
+            REAL currentEdgeMinMarginal = ComputeMinMarginal(n1LeftDistance, n2RightDistance, twoNodeSolver, bestMIndices, c, n1, l1, l2, bottleneckCost);
+            assert(currentEdgeMinMarginal >= lb - eps);
+            messages(n1, l1, l2) = std::min(messages(n1, l1, l2), (currentEdgeMinMarginal - lb) / normalizer);
+
+            // Each edge addition can change the marginals of all edges on its right in the forward(left) distance calculator,
+            // and all the edges on the left of backward(right) distance calculator.
+            // 6. Update the edges on the right of left updated nodes:
+            const std::vector<std::array<INDEX, 2>> leftUpdatedNodeLabels = leftDistCalc.AddEdgeWithUpdate<true>(n1, l1, l2, bottleneckCost);
+            for (INDEX i = 0; i < leftUpdatedNodeLabels.size(); i++) {
+                const auto [n_n1, n_l1] = leftUpdatedNodeLabels[i];
+                if (n_n1 >= messages.dim1()) continue;
+                for (INDEX n_l2 = 0; n_l2 < NumLabels[c][n_n1 + 1]; n_l2++) {
+                    if (MaxPotentials[c](n_n1, n_l1, n_l2) > bottleneckCost) continue; // this edge is going to come, so can be computed right then.
+                    const REAL n1LeftDistance = leftDistCalc.GetDistance(n_n1, n_l1);
+                    const REAL n2RightDistance = rightDistCalc.GetDistance(n_n1 + 1, n_l2);
+                    REAL currentEdgeMinMarginal = ComputeMinMarginal(n1LeftDistance, n2RightDistance, twoNodeSolver, bestMIndices, c, n_n1, n_l1, n_l2, bottleneckCost);
+                    assert(currentEdgeMinMarginal >= lb - eps);
+                    messages(n_n1, n_l1, n_l2) = std::min(messages(n_n1, n_l1, n_l2), (currentEdgeMinMarginal - lb) / normalizer);
+                }
+            }
+            // 7. Update the edges on the left of right updated nodes:
+            const std::vector<std::array<INDEX, 2>> rightUpdatedNodeLabels = rightDistCalc.AddEdgeWithUpdate<true>(n1, l1, l2, bottleneckCost);
+            for (INDEX i = 0; i < rightUpdatedNodeLabels.size(); i++) {
+                const auto [p_n2, p_l2] = rightUpdatedNodeLabels[i];
+                if (p_n2 == 0) continue;
+                for (INDEX p_l1 = 0; p_l1 < NumLabels[c][p_n2 - 1]; p_l1++) {
+                    if (MaxPotentials[c](p_n2 - 1, p_l1, p_l2) > bottleneckCost) continue; // this edge is going to come, so can be computed right then.
+                    const REAL n1LeftDistance = leftDistCalc.GetDistance(p_n2 - 1, p_l1);
+                    const REAL n2RightDistance = rightDistCalc.GetDistance(p_n2, p_l2);
+                    REAL currentEdgeMinMarginal = ComputeMinMarginal(n1LeftDistance, n2RightDistance, twoNodeSolver, bestMIndices, c, p_n2 - 1, p_l1, p_l2, bottleneckCost);
+                    assert(currentEdgeMinMarginal >= lb - eps);
+                    messages(p_n2 - 1, p_l1, p_l2) = std::min(messages(p_n2 - 1, p_l1, p_l2), (currentEdgeMinMarginal - lb) / normalizer);
+                }
+            }
+        }
+        return messages;
+    }
+
+
+    REAL ComputeMinMarginal(const REAL n1LeftDistance, const REAL n2RightDistance, 
+                        const max_potential_on_two_nodes& twoNodeSolver, three_dimensional_variable_array<INDEX>& bestMIndices,
+                        const INDEX c, const INDEX n1, const INDEX l1, const INDEX l2, REAL bottleneckCost) const {
+        const max_linear_costs currentEdgeCost = {bottleneckCost, n1LeftDistance + n2RightDistance + LinearPotentials[c](n1, l1, l2)};
+        const auto& pair = twoNodeSolver.ComputeBestIndexAndCost(currentEdgeCost, bestMIndices(n1, l1, l2)); 
+        bestMIndices(n1, l1, l2) = pair.first;
+        #ifndef NDEBUG
+            const auto& pairD = twoNodeSolver.ComputeBestIndexAndCost(currentEdgeCost, 0); 
+            assert(pairD.first == pair.first);
+            assert(pairD.second.TotalCost() == pair.second.TotalCost());
+        #endif
+        return pair.second.TotalCost();
+    }
 };
 
 class pairwise_max_potential_on_multiple_chains_message {
@@ -662,7 +799,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         void send_message_to_left(const RIGHT_FACTOR& r, MSG& msg, const REAL omega = 1.0) const
         {
            // TODO; avoid extra copy, write with a matrix
-            std::vector<REAL> message = r.ComputeMessageForEdge(ChainIndex, EdgeIndex);
+            std::vector<REAL> message = r.GetMessageForEdge(ChainIndex, EdgeIndex);
             vector<REAL> m(message.size());
             for (INDEX i = 0; i < m.size(); i++)
                 m[i] = message[i];
@@ -716,6 +853,8 @@ class pairwise_max_potential_on_multiple_chains_message {
         void construct_constraints(SOLVER& s, LEFT_FACTOR& l, 
         typename SOLVER::vector l_left_msg_variables, typename SOLVER::vector l_right_msg_variables, 
         typename SOLVER::matrix l_pairwise_variables, RIGHT_FACTOR& r) {}
+
+        INDEX GetChainIndex() const { return ChainIndex; }
 
     private:
         const INDEX ChainIndex;

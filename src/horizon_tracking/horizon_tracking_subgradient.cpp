@@ -10,6 +10,6 @@ int main(int argc, char** argv) {
     auto input = horizon_tracking_uai_input::parse_file(solver.get_input_file());
     construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.template GetProblemConstructor<0>());
     solver.Solve();
-    round_primal_solution(solver, false);
+    round_primal_solution(solver, true, true);
     solver.WritePrimal();
 }

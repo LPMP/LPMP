@@ -20,6 +20,6 @@ int main(int argc, char** argv) {
     }
     */
     solver.Solve();
-    round_primal_solution(solver,false);
+    round_primal_solution(solver, true, true);
     solver.WritePrimal();
 }
