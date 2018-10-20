@@ -4,12 +4,13 @@
 
 using namespace LPMP;
 
+template<typename VECTOR>
 void test_vector_minima(const std::size_t n, std::random_device& rd)
 {
     std::mt19937 gen{rd()};
     std::normal_distribution<> dist{5,2};
 
-    vector<REAL> v(n);
+    VECTOR v(n);
     for(std::size_t i=0; i<n; ++i) {
         v[i] = dist(gen);
     }
@@ -55,7 +56,8 @@ int main() {
     std::random_device rd{};
 
     for(std::size_t n=2; n<100; ++n) {
-        test_vector_minima(n, rd);
+        test_vector_minima<vector<double>>(n, rd);
+        test_vector_minima<min_vector<double>>(n, rd);
     }
   }
 

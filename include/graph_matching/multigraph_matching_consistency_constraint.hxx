@@ -8,50 +8,212 @@
 
 namespace LPMP {
 
+namespace {
+   constexpr static std::size_t primal_not_set = std::numeric_limits<std::size_t>::max(); // primal is not set to any value, i.e. invalid
+   constexpr static std::size_t primal_inactive = std::numeric_limits<std::size_t>::max()-1; 
+}
+
+// TODO: put detail into separate file
+namespace detail {
+
+template<typename COST_X, typename COST_Y, typename LABELS_X, typename LABELS_Y>
+std::array<double,2> min_diagonal_off_diagonal_sum_naive(const COST_X& cost_x, const COST_Y& cost_y, const LABELS_X& labels_x, const LABELS_Y& labels_y)
+{
+   double min_same_labels = std::numeric_limits<double>::infinity();
+   double min_different_labels = std::numeric_limits<double>::infinity();
+   for(std::size_t i=0; i<cost_x.size(); ++i) {
+      for(std::size_t j=0; j<cost_y.size(); ++j) {
+         if(labels_x[i] == labels_y[j])
+            min_same_labels = std::min(min_same_labels, cost_x[i] + cost_y[j]);
+         else
+            min_different_labels = std::min(min_different_labels, cost_x[i] + cost_y[j]);
+      }
+   }
+
+   return {min_same_labels, min_different_labels}; 
+}
+
+// compute minimum over configuration with same labels and minimum over sum with different labels
+template<typename COST_X, typename COST_Y, typename LABELS_X, typename LABELS_Y>
+std::array<double,2> min_diagonal_off_diagonal_sum(const COST_X& cost_x, const COST_Y& cost_y, const LABELS_X& labels_x, const LABELS_Y& labels_y)
+{
+   // TODO: possibly add fast version for small label space
+   assert(std::is_sorted(labels_x.begin(), labels_x.end()));
+   assert(std::is_sorted(labels_y.begin(), labels_y.end()));
+   assert(cost_x.size() == labels_x.size());
+   assert(cost_y.size() == labels_y.size());
+
+   if(cost_x.size() == 1) {
+      return min_diagonal_off_diagonal_sum_naive(cost_x, cost_y, labels_x, labels_y); 
+   } else if(cost_y.size() == 1) {
+      return min_diagonal_off_diagonal_sum_naive(cost_y, cost_x, labels_y, labels_x); 
+   }
+
+   assert(cost_x.size() >= 2);
+   assert(cost_y.size() >= 2);
+
+   std::size_t min_index_x = std::numeric_limits<std::size_t>::max();
+   std::size_t second_min_index_x = std::numeric_limits<std::size_t>::max();
+   double min_x = std::numeric_limits<double>::infinity();
+   double second_min_x = std::numeric_limits<double>::infinity();
+
+   std::size_t min_index_y = std::numeric_limits<std::size_t>::max();
+   std::size_t second_min_index_y = std::numeric_limits<std::size_t>::max();
+   double min_y = std::numeric_limits<double>::infinity();
+   double second_min_y = std::numeric_limits<double>::infinity();
+
+   double min_same_labels = std::numeric_limits<double>::infinity();
+
+   auto update_minima = [](std::size_t& min_index, std::size_t& second_min_index, double& min_value, double& second_min_value, const double value, const std::size_t index)
+   {
+      if(min_value >= value) {
+         second_min_value = min_value;
+         min_value = value;
+         second_min_index = min_index;
+         min_index = index;
+      } else if(second_min_value >= value) {
+         second_min_value = value;
+         second_min_index = index;
+      }
+   };
+
+   std::size_t i=0;
+   std::size_t j=0;
+   while(i<cost_x.size() && j<cost_y.size()) {
+      if(labels_x[i] == labels_y[j]) {
+         min_same_labels = std::min(min_same_labels, cost_x[i] + cost_y[j]);
+         update_minima(min_index_x, second_min_index_x, min_x, second_min_x, cost_x[i], i);
+         update_minima(min_index_y, second_min_index_y, min_y, second_min_y, cost_y[j], j);
+         ++i;
+         ++j;
+      } else if(labels_x[i] < labels_y[j]) {
+         update_minima(min_index_x, second_min_index_x, min_x, second_min_x, cost_x[i], i);
+         ++i; 
+      }  else {
+         assert(labels_x[i] > labels_y[j]);
+         update_minima(min_index_y, second_min_index_y, min_y, second_min_y, cost_y[j], j);
+         ++j;
+      } 
+   }
+   assert(i == cost_x.size() || j == cost_y.size());
+
+   for(;i<cost_x.size(); ++i) {
+      update_minima(min_index_x, second_min_index_x, min_x, second_min_x, cost_x[i], i);
+   }
+   for(;j<cost_y.size(); ++j) {
+      update_minima(min_index_y, second_min_index_y, min_y, second_min_y, cost_y[j], j);
+   }
+
+   assert(cost_x[min_index_x] == *std::min_element(cost_x.begin(), cost_x.end()));
+   assert(cost_x[min_index_x] <= cost_x[second_min_index_x]);
+   assert(cost_y[min_index_y] == *std::min_element(cost_y.begin(), cost_y.end()));
+   assert(cost_y[min_index_y] <= cost_y[second_min_index_y]);
+
+   double min_different_labels = std::numeric_limits<double>::infinity();
+   if(labels_x[min_index_x] != labels_y[min_index_y])
+      min_different_labels = cost_x[min_index_x] + cost_y[min_index_y];
+   else
+      min_different_labels = std::min({cost_x[min_index_x] + cost_y[second_min_index_y], cost_x[second_min_index_x] + cost_y[min_index_y]});
+
+   return {min_same_labels, min_different_labels};
+}
+
+// efficient version of above when labels of x and y are identical
+template<typename COST_X, typename COST_Y>
+std::array<double,2> min_diagonal_off_diagonal_sum(const COST_X& cost_x, const COST_Y& cost_y)
+{
+   assert(cost_x.size() == cost_y.size());
+   assert(cost_x.size() > 0);
+
+   double min_different_labels = std::numeric_limits<double>::infinity();
+   double min_x = cost_x[0];
+   double min_y = cost_y[0];
+
+   double min_same_labels = cost_x[0] + cost_y[0];
+
+   for(std::size_t i=1; i<cost_x.size(); ++i) {
+      min_different_labels = std::min({min_different_labels, cost_x[i] + min_y, min_x + cost_y[i]}); 
+      min_x = std::min(min_x, cost_x[i]);
+      min_y = std::min(min_y, cost_y[i]);
+
+      min_same_labels = std::min(min_same_labels, cost_x[i] + cost_y[i]);
+   }
+
+   return {min_same_labels, min_different_labels};
+} 
+
+template<typename VECTOR>
+std::array<std::size_t,2> two_min_indices(const VECTOR& vec)
+{
+   assert(vec.size() >= 2);
+   std::size_t min_index = std::numeric_limits<std::size_t>::max();
+   double min_value = std::numeric_limits<double>::infinity();
+   std::size_t second_min_index = std::numeric_limits<std::size_t>::max();
+   double second_min_value = std::numeric_limits<double>::infinity();
+
+   for(std::size_t i=0; i<vec.size(); ++i) {
+      if(min_value >= vec[i]) {
+         second_min_value = min_value;
+         min_value = vec[i];
+         second_min_index = min_index;
+         min_index = i;
+      } else if(second_min_value >= vec[i]) {
+         second_min_value = vec[i];
+         second_min_index = i;
+      }
+   }
+
+   assert(min_index < vec.size());
+   assert(second_min_index < vec.size());
+   return {min_index, second_min_index};
+}
+
+} // namespace detail
+
 // Z_ij = \sum_p X_ip Y_pj
 class multigraph_matching_triplet_consistency_factor {
 public:
-   constexpr static std::size_t primal_not_set = std::numeric_limits<std::size_t>::max(); // primal is not set to any value
-   constexpr static std::size_t primal_inactive = std::numeric_limits<std::size_t>::max()-1;
 
-    // cost vectors
-    REAL cost_z;
-    vector<REAL> cost_x;
-    vector<REAL> cost_y;
+   // cost vectors
+   REAL cost_z = 0.0;
+   vector<REAL> cost_x;
+   vector<REAL> cost_y;
 
-    // primal
-    std::size_t x, y, z;
+   // primal
+   std::size_t x, y, z;
 
-    multigraph_matching_triplet_consistency_factor(const std::size_t dim)
-    : cost_z(0.0),
-    cost_x(dim, 0.0),
-    cost_y(dim, 0.0)
-    {
-        assert(dim >= 1);
-    }
+   template<typename LABEL_X, typename LABEL_Y>
+   multigraph_matching_triplet_consistency_factor(LABEL_X labels_x, LABEL_Y labels_y)
+   : multigraph_matching_triplet_consistency_factor(labels_x.begin(), labels_x.end(), labels_y.begin(), labels_y.end())
+   {}
 
-    // put in general place somewhere
-    template<typename ITERATOR>
-    std::array<std::size_t, 2> min_indices(ITERATOR begin, ITERATOR end) const
-    {
-        REAL smallest_taken = std::numeric_limits<REAL>::infinity();
-        REAL second_smallest_taken = std::numeric_limits<REAL>::infinity();
-        std::size_t min_idx, second_min_idx;
-        for(auto it=begin; it!=end; ++it) {
-            assert(false); 
-        } 
-        return {min_idx, second_min_idx};
-    } 
+   template<typename LABEL_ITERATOR_X, typename LABEL_ITERATOR_Y>
+   multigraph_matching_triplet_consistency_factor(LABEL_ITERATOR_X labels_x_begin, LABEL_ITERATOR_X labels_x_end, LABEL_ITERATOR_Y labels_y_begin, LABEL_ITERATOR_Y labels_y_end)
+   : 
+      cost_z(0.0),
+      cost_x(std::distance(labels_x_begin, labels_x_end), 0.0),
+      cost_y(std::distance(labels_y_begin, labels_y_end), 0.0),
+      labels_x(labels_x_begin, labels_x_end),
+      labels_y(labels_y_begin, labels_y_end)
+   {
+      assert(*std::max_element(cost_x.begin(), cost_x.end()) == 0.0);
+      assert(*std::min_element(cost_x.begin(), cost_x.end()) == 0.0);
+      assert(*std::max_element(cost_y.begin(), cost_y.end()) == 0.0);
+      assert(*std::min_element(cost_y.begin(), cost_y.end()) == 0.0);
+      assert(cost_x.size() == labels_x.size());
+      assert(cost_y.size() == labels_y.size());
+      assert(std::is_sorted(labels_x.begin(), labels_x.end()));
+      assert(std::is_sorted(labels_y.begin(), labels_y.end()));
+   }
 
     bool primal_feasible(const std::size_t _x, const std::size_t _y, const std::size_t _z) const
     {
        if(_x == primal_not_set || _y == primal_not_set || _z == primal_not_set) return false;
+       if(_y < labels_y.size() && _x < labels_x.size() && _z == 1 && labels_x[_x] != labels_y[_y]) return false;
        const std::size_t no_inactive = std::size_t(_x == primal_inactive) + std::size_t(_y == primal_inactive) + std::size_t(_z == primal_inactive);
        if(no_inactive >= 2) return true;
-       if(_y != _x && _z == primal_inactive) return true;
-       if(_y == _x && _z == 1) return true;
-       if(debug())
-          std::cout << "triplet consistency constraint infeasible\n";
+       if(labels_y[_y] != labels_x[_x] && _z == primal_inactive) return true;
+       if(labels_y[_y] == labels_x[_x] && _z == 1) return true;
        return false;
     }
 
@@ -59,15 +221,15 @@ public:
 
     REAL EvaluatePrimal() const
     {
-       if(primal_feasible()) {
+       if(primal_feasible())
           return evaluate(x,y,z);
-       } else {
+       else
           return std::numeric_limits<REAL>::infinity();
-       }
     }
 
     REAL evaluate(const std::size_t _x, const std::size_t _y, const std::size_t _z) const
     {
+       assert(primal_feasible(_x,_y,_z));
        double cost = 0.0;
        if(_x < cost_x.size()) cost += cost_x[_x];
        if(_y < cost_y.size()) cost += cost_y[_y];
@@ -78,30 +240,25 @@ public:
     template<typename FUNC>
     void for_each_labeling(FUNC&& f) const
     {
-       // z == primal_inactive
        f(primal_inactive,primal_inactive,primal_inactive);
+       f(primal_inactive, primal_inactive, 1);
 
        for(std::size_t i=0; i<cost_x.size(); ++i) {
           f(i,primal_inactive,primal_inactive);
        }
 
-       for(std::size_t i=0; i<cost_x.size(); ++i) {
-          f(primal_inactive,i,primal_inactive);
+       for(std::size_t j=0; j<cost_y.size(); ++j) {
+          f(primal_inactive,j,primal_inactive);
        }
 
        for(std::size_t i=0; i<cost_x.size(); ++i) {
           for(std::size_t j=0; j<cost_y.size(); ++j) {
-             if(i != j) {
+             if(labels_x[i] != labels_y[j]) {
                 f(i,j,primal_inactive);
+             } else {
+                f(i,j,1);
              } 
           }
-       }
-
-       // z == 1
-       f(primal_inactive, primal_inactive, 1);
-
-       for(std::size_t i=0; i<cost_x.size(); ++i) {
-          f(i,i,1);
        }
     }
 
@@ -136,41 +293,26 @@ public:
 
     std::array<REAL,2> z_marginals() const
     {
-       // z = multigraph_matching_triplet_consistency_factor::primal_inactive
-       REAL min_different_component = std::numeric_limits<REAL>::infinity();
-       REAL min_x = cost_x[0];
-       REAL min_y = cost_y[0];
-
-       // z = 1
-       REAL min_same_component = cost_x[0] + cost_y[0];
-
-       for(std::size_t i=1; i<cost_x.size(); ++i) {
-          min_different_component = std::min({min_different_component, cost_x[i] + min_y, min_x + cost_y[i]}); 
-          min_x = std::min(min_x, cost_x[i]);
-          min_y = std::min(min_y, cost_y[i]);
-
-          min_same_component = std::min(min_same_component, cost_x[i] + cost_y[i]);
-       }
-
-       const REAL cost_0 = std::min({min_different_component, min_x, min_y, 0.0});
-       const REAL cost_1 = std::min(min_same_component + cost_z, cost_z);
-
+       const auto [min_same_labels, min_different_labels] = detail::min_diagonal_off_diagonal_sum(cost_x, cost_y, labels_x, labels_y);
+       const double cost_0 = std::min({min_different_labels, cost_x.min(), cost_y.min(), 0.0});
+       const double cost_1 = std::min({cost_z, min_same_labels + cost_z});
        return {cost_0, cost_1};
     }
 
     vector<REAL> marginals(const vector<REAL>& v1, const vector<REAL>& v2) const
     {
+       assert(false);
+       // TODO: remove
        assert(v1.size() == v2.size());
        vector<REAL> marginals(v1.size());
        for(std::size_t i=0; i<marginals.size(); ++i) { marginals[i] = v1[i]; }
 
        for(std::size_t i=0; i<v1.size(); ++i) {
           for(std::size_t j=0; j<v2.size(); ++j) {
-             if(i == j) {
+             if(i == j)
                 marginals[i] = std::min(marginals[i], v1[i] + v2[i] + cost_z);
-             } else {
+             else
                 marginals[i] = std::min(marginals[i], v1[i] + v2[j]); 
-             }
           }
        }
 
@@ -178,41 +320,41 @@ public:
         for(std::size_t i=0; i<marginals.size(); ++i) { marginals[i] -= cost_not_taken; }
 
         return marginals;
+        //
     }
 
-    vector<REAL> x_marginals() const { return marginals(cost_x, cost_y); }
-    vector<REAL> y_marginals() const { return marginals(cost_y, cost_x); }
+    vector<double> x_marginals() const { return marginals(cost_x, cost_y, labels_x, labels_y); }
+    vector<double> y_marginals() const { return marginals(cost_y, cost_x, labels_y, labels_x); }
 
     REAL LowerBound() const
     {
         const auto z_marg = z_marginals();
-        return std::min(z_marg[0], z_marg[1]);
-        // z = multigraph_matching_triplet_consistency_factor::primal_inactive
+#ifndef NDEBUG
         const auto x_min = cost_x.min();
         const auto y_min = cost_y.min();
-        REAL cost_0 = std::min({0.0, cost_x.min(), cost_y.min()});
+        // cost for z ==0/1
+        double cost_0 = std::min({0.0, cost_x.min(), cost_y.min()});
+        double cost_1 = 0.0;
         for(std::size_t i=0; i<cost_x.size(); ++i) {
             for(std::size_t j=0; j<cost_y.size(); ++j) {
-                if(i != j) {
+                if(labels_x[i] != labels_y[j]) {
                     cost_0 = std::min(cost_0, cost_x[i] + cost_y[j]);
-                } 
+                } else {
+                   cost_1 = std::min(cost_1, cost_x[i] + cost_y[j]); 
+                }
             }
-        }
-
-        // z = 1
-        REAL cost_1 = std::numeric_limits<REAL>::infinity();
-        for(std::size_t i=0; i<cost_x.size(); ++i) {
-            cost_1 = std::min(cost_1, cost_x[i] + cost_y[i]); 
         }
         cost_1 += cost_z;
 
-        return std::min(cost_0, cost_1);
+        assert(std::min(cost_0, cost_1) == std::min(z_marg[0], z_marg[1]));
+#endif
+        return std::min(z_marg[0], z_marg[1]);
     }
 
    template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(x,y); }
    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar( cost_z, cost_x, cost_y ); }
 
-   auto export_variables() { return std::tie(cost_z, cost_y, cost_y); }
+   auto export_variables() { return std::tie(cost_x, cost_y, cost_z); }
 
    void init_primal() 
    { 
@@ -224,32 +366,239 @@ public:
    // if two primal variables are set, we must set the third one accordingly
    void PropagatePrimal()
    {
+      return; //TODO: activate again
       const std::size_t no_variables_set = std::size_t(x != primal_not_set) + std::size_t(x != primal_not_set) + std::size_t(z != primal_not_set);
       if(no_variables_set == 2) {
-         if(x == std::numeric_limits<std::size_t>::max()) {
+         if(x == primal_not_set) {
             if(z == 1)
                x = y;
-         } else if(y == std::numeric_limits<std::size_t>::max()) {
+         } else if(y == primal_not_set) {
             if(z == 1)
                y = x; 
          } else {
-            assert(z == std::numeric_limits<std::size_t>::max());
-            if(x == y)
+            assert(z == primal_not_set);
+            if(labels_x[x] == labels_y[y])
                z = 1;
             else
-               z = multigraph_matching_triplet_consistency_factor::primal_inactive;
+               z = primal_inactive;
          }
       }
-   } 
+   }
 
-   template<typename EXTERNAL_SOLVER>
-   void construct_constraints(EXTERNAL_SOLVER& s, typename EXTERNAL_SOLVER::scalar z, typename EXTERNAL_SOLVER::vector x, typename EXTERNAL_SOLVER::vector y) const
+private:
+
+    template<typename COST_1, typename COST_2, typename LABELS_1, typename LABELS_2>
+    vector<double> marginals(const COST_1& cost_1, const COST_2& cost_2, const LABELS_1& labels_1, const LABELS_2& labels_2) const
+    {
+       vector<double> marginals(cost_1.size());
+       if(cost_2.size() == 1) {
+
+          const double cost_0 = std::min({0.0, cost_z, cost_2[0]});
+          for(std::size_t i=0; i<cost_1.size(); ++i) {
+             if(labels_1[i] == labels_2[0])
+                marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[0] + cost_z);
+             else
+                marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[0]);
+             marginals[i] -= cost_0; 
+          }
+
+       } else {
+
+          const auto [min_idx_2, second_min_idx_2] = detail::two_min_indices(cost_2);
+
+          double cost_0 = std::min({0.0, cost_z, cost_2[min_idx_2]});
+
+          std::size_t j=0;
+          for(std::size_t i=0; i<cost_1.size(); ++i) {
+             if(labels_1[i] == labels_2[min_idx_2]) 
+                marginals[i] = std::min({cost_1[i], cost_1[i] + cost_2[second_min_idx_2]});
+             else
+                marginals[i] = std::min({cost_1[i], cost_1[i] + cost_2[min_idx_2]});
+
+             while(j<labels_2.size() && labels_2[j] < labels_1[i])
+                ++j; 
+
+             if(j<labels_2.size() && labels_1[i] == labels_2[j]) {
+                marginals[i] = std::min(marginals[i], cost_1[i] + cost_2[j] + cost_z); 
+                ++j;
+             }
+             marginals[i] -= cost_0; 
+          }
+
+       }
+       return marginals;
+    }
+
+    // TODO: add const
+    vector<std::size_t> labels_x;
+    vector<std::size_t> labels_y; 
+};
+
+// when edge is not present, we require X_ip Y_pj = 0
+class multigraph_matching_triplet_consistency_factor_zero {
+public:
+
+   template<typename LABEL_X, typename LABEL_Y>
+   multigraph_matching_triplet_consistency_factor_zero(LABEL_X labels_x, LABEL_Y labels_y)
+   : multigraph_matching_triplet_consistency_factor_zero(labels_x.begin(), labels_x.end(), labels_y.begin(), labels_y.end())
+   {}
+
+   template<typename LABEL_ITERATOR_X, typename LABEL_ITERATOR_Y>
+   multigraph_matching_triplet_consistency_factor_zero(LABEL_ITERATOR_X labels_x_begin, LABEL_ITERATOR_X labels_x_end, LABEL_ITERATOR_Y labels_y_begin, LABEL_ITERATOR_Y labels_y_end)
+   : 
+      cost_x(std::distance(labels_x_begin, labels_x_end), 0.0),
+      cost_y(std::distance(labels_y_begin, labels_y_end), 0.0),
+      labels_x(labels_x_begin, labels_x_end),
+      labels_y(labels_y_begin, labels_y_end)
    {
+      assert(cost_x.size() == labels_x.size());
+      assert(cost_y.size() == labels_y.size());
+
+      assert(std::is_sorted(labels_x.begin(), labels_x.end()));
+      assert(std::is_sorted(labels_y.begin(), labels_y.end()));
    }
-   template<typename EXTERNAL_SOLVER>
-   void convert_primal(EXTERNAL_SOLVER& s, typename EXTERNAL_SOLVER::scalar z, typename EXTERNAL_SOLVER::vector x, typename EXTERNAL_SOLVER::vector y) const
+
+   double LowerBound() const
    {
+      const double off_diagonal = detail::min_diagonal_off_diagonal_sum(cost_x, cost_y, labels_x, labels_y)[1];
+      return std::min({0.0, cost_x.min(), cost_y.min(), off_diagonal});
    }
+
+   double EvaluatePrimal() const
+   {
+      return evaluate(x,y);
+   }
+
+   template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(x,y); }
+   template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(cost_x, cost_y); }
+   auto export_variables() { return std::tie(cost_x, cost_y); }
+
+   void init_primal() 
+   { 
+      x = primal_not_set;
+      y = primal_not_set;
+   }
+
+   std::size_t x, y;
+   vector<double> cost_x;
+   vector<double> cost_y;
+
+   bool primal_feasible(const std::size_t _x, const std::size_t _y) const
+   {
+      if(_x == primal_not_set || _y == primal_not_set) return false;
+      if(_x == primal_inactive || _y == primal_inactive) return true;
+      assert(_x < cost_x.size() && _y < cost_y.size());
+      return labels_x[_x] != labels_y[_y];
+   }
+
+   bool primal_feasible() const { return primal_feasible(x,y); }
+
+   double evaluate(const std::size_t _x, const std::size_t _y) const
+   {
+      if(!primal_feasible(_x, _y)) 
+         return std::numeric_limits<double>::infinity();
+
+      assert(_x < labels_x.size() || _x == primal_inactive);
+      assert(_y < labels_y.size() || _y == primal_inactive);
+
+      if(_x < labels_x.size() && _y < labels_y.size())
+         return cost_x[_x] + cost_y[_y];
+      else if(_x == primal_inactive && _y < labels_y.size())
+         return cost_y[_y];
+      else if(_y == primal_inactive && _x < labels_x.size())
+         return cost_x[_x];
+      else
+         return 0.0;
+   }
+
+   template<typename FUNC>
+   void for_each_labeling(FUNC&& f) const
+   { 
+      f(primal_inactive,primal_inactive);
+
+      for(std::size_t i=0; i<cost_x.size(); ++i)
+         f(i,primal_inactive);
+
+      for(std::size_t j=0; j<cost_y.size(); ++j)
+         f(primal_inactive,j);
+
+      for(std::size_t i=0; i<cost_x.size(); ++i)
+         for(std::size_t j=0; j<cost_y.size(); ++j)
+            if(labels_x[i] != labels_y[j])
+               f(i,j);
+    }
+
+    void MaximizePotentialAndComputePrimal()
+    {
+       double best_cost = std::numeric_limits<double>::infinity();
+       std::size_t best_x = primal_not_set;
+       std::size_t best_y = primal_not_set;
+
+       auto update_primal = [&](const std::size_t _x, const std::size_t _y) {
+          assert(primal_feasible(_x,_y));
+          if((x == primal_not_set || x == _x) && (y == primal_not_set || y == _y)) {
+             const double cost = evaluate(_x,_y);
+             if(cost < best_cost) {
+                best_cost = cost;
+                best_x = _x;
+                best_y = _y;
+             }
+          }
+       };
+
+       for_each_labeling(update_primal);
+
+       assert(primal_feasible(best_x,best_y)); 
+
+       x = best_x;
+       y = best_y;
+    }
+
+   vector<double> x_marginals() const { return marginals(cost_x, cost_y, labels_x, labels_y); }
+   vector<double> y_marginals() const { return marginals(cost_y, cost_x, labels_y, labels_x); }
+
+private:
+   template<typename COST_1, typename COST_2, typename LABELS_1, typename LABELS_2>
+   static vector<REAL> marginals(const COST_1& cost_1, const COST_2& cost_2, const LABELS_1& labels_1, const LABELS_2& labels_2)
+   {
+      vector<double> marginals(cost_1.size());
+      if(cost_2.size() == 1) {
+
+         const double cost_zero = std::min(0.0, cost_2[0]);
+         for(std::size_t i=0; i<cost_1.size(); ++i) {
+            if(labels_1[i] == labels_2[0])
+               marginals[i] = cost_1[i];
+            else
+               marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[0]);
+            marginals[i] -= cost_zero;
+         }
+
+      } else {
+
+         const auto [min_index_2, second_min_index_2] = detail::two_min_indices(cost_2);
+
+         const double cost_zero = std::min(0.0, cost_2[min_index_2]);
+         for(std::size_t i=0; i<cost_1.size(); ++i) {
+            if(labels_1[i] == labels_2[min_index_2])
+               marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[second_min_index_2]);
+            else
+               marginals[i] = std::min(cost_1[i], cost_1[i] + cost_2[min_index_2]);
+            marginals[i] -= cost_zero; 
+         }
+
+      }
+      return marginals;
+   }
+
+   // TODO: use this function to accelerate for the dense assignment case
+   // in this case we can use faster version for marginal computation
+   bool labels_equal() const
+   {
+      return labels_x.size() == 0 && labels_y.size() == 0;
+   }
+
+   const vector<std::size_t> labels_x;
+   const vector<std::size_t> labels_y;
 };
 
 class simplex_multigraph_matching_triplet_scalar_consistency_message {
@@ -260,6 +609,7 @@ public:
    void RepamLeft(LEFT_FACTOR& l, const REAL msg, const INDEX msg_dim) const
    {
        assert(msg_dim == 0);
+       assert(idx_ < l.size()-1);
        l[idx_] += msg;
    }
 
@@ -294,8 +644,8 @@ public:
              r.z = 1;
              return changed;
           } else {
-             const bool changed = (r.z != multigraph_matching_triplet_consistency_factor::primal_inactive);
-             r.z = multigraph_matching_triplet_consistency_factor::primal_inactive;
+             const bool changed = (r.z != primal_inactive);
+             r.z = primal_inactive;
              return changed; 
           }
        }
@@ -303,10 +653,10 @@ public:
     }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-    bool ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
+    bool ComputeLeftFromRightPrimal_deactivated(LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
     {
        if(r.z != std::numeric_limits<std::size_t>::max()) {
-          if(r.z == multigraph_matching_triplet_consistency_factor::primal_inactive) {
+          if(r.z == primal_inactive) {
              const bool changed = (l.primal() == idx_);
              if(changed)
                 l.init_primal(); 
@@ -324,6 +674,7 @@ public:
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
     bool CheckPrimalConsistency(const LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
     {
+       assert(idx_ < l.size()-1);
        const bool left_active = l.primal() == idx_;
        const bool right_active = (r.z == 1);
        if(left_active != right_active) {
@@ -341,33 +692,26 @@ private:
 template<Chirality C> // does the message connect to x (left) or y (right) variable
 class simplex_multigraph_matching_triplet_vector_consistency_message {
 public:
-    template<typename ITERATOR>
-    simplex_multigraph_matching_triplet_vector_consistency_message(ITERATOR idx_begin, ITERATOR idx_end)
-    : idx_(idx_begin, idx_end)
-    {}
 
    template<typename LEFT_FACTOR>
    void RepamLeft(LEFT_FACTOR& l, const REAL msg, const INDEX dim) const
    {
-       assert(dim < idx_.size());
-       l[idx_[dim]] += msg;
+       assert(dim < l.size()-1);
+       l[dim] += msg;
    } 
 
    template<typename LEFT_FACTOR, typename MSG>
    void RepamLeft(LEFT_FACTOR& l, const MSG& msg) const
    {
-       assert(msg.size() == idx_.size());
-       for(std::size_t i=0; i<idx_.size(); ++i) {
-           l[idx_[i]] += msg[i];
+       assert(msg.size() == l.size()-1);
+       for(std::size_t i=0; i<l.size()-1; ++i) {
+           l[i] += msg[i];
        }
    }
 
    template<typename RIGHT_FACTOR>
    void RepamRight(RIGHT_FACTOR& r, const REAL msg, const INDEX dim) const
    {
-       assert(dim < idx_.size());
-       assert(idx_.size() == r.cost_x.size() && idx_.size() == r.cost_y.size());
-
        if(C == Chirality::left) {
            r.cost_x[dim] += msg;
        } else {
@@ -379,46 +723,23 @@ public:
    template<typename RIGHT_FACTOR, typename MSG>
    void RepamRight(RIGHT_FACTOR& r, const MSG& msg) const
    {
-       assert(msg.size() == idx_.size());
        if(C == Chirality::left) {
            assert(msg.size() == r.cost_x.size());
-           for(std::size_t i=0; i<r.cost_x.size(); ++i) {
+           for(std::size_t i=0; i<r.cost_x.size(); ++i)
                r.cost_x[i] += msg[i]; 
-           }
        } else {
            assert(C == Chirality::right);
            assert(msg.size() == r.cost_y.size());
-           for(std::size_t i=0; i<r.cost_y.size(); ++i) {
-               r.cost_y[i] += msg[i]; 
-           } 
+           for(std::size_t j=0; j<r.cost_y.size(); ++j)
+               r.cost_y[j] += msg[j]; 
        }
    }
    
     template<typename LEFT_FACTOR, typename MSG>
     void send_message_to_right(const LEFT_FACTOR& l, MSG& msg, const REAL omega = 1.0)
     {
-        std::vector<bool> edge_taken(l.size(), false);
-        for(auto i : idx_) edge_taken[i] = true;
-
-        REAL smallest_taken = std::numeric_limits<REAL>::infinity();
-        REAL second_smallest_taken = std::numeric_limits<REAL>::infinity();
-        REAL smallest_not_taken = std::numeric_limits<REAL>::infinity();
-        for(std::size_t i=0; i<l.size(); ++i) {
-            const auto val = l[i];
-            if(edge_taken[i]) {
-                const REAL min = std::min(smallest_taken, val);
-                const REAL max = std::max(smallest_taken, val);
-                smallest_taken = min;
-                second_smallest_taken = std::min(max, second_smallest_taken);
-            } else {
-                smallest_not_taken = std::min(val, smallest_not_taken);
-            }
-        }
-
-        const auto set_to_cost = std::min(second_smallest_taken, smallest_not_taken);
-
-        for(std::size_t i=0; i<idx_.size(); ++i) {
-            msg[i] -= omega*(l[idx_[i]] - set_to_cost);
+        for(std::size_t i=0; i<l.size()-1; ++i) {
+            msg[i] -= omega*(l[i] - l.back());
         }
     }
 
@@ -435,89 +756,55 @@ public:
        }
     }
 
-    // given simplex labeling, return corresponding label in triplet consistency factor.
-    std::size_t get_triplet_consistency_factor_index(const std::size_t l) const
-    {
-       for(std::size_t i=0; i<idx_.size(); ++i)
-          if(l == idx_[i]) 
-             return i;
-       return multigraph_matching_triplet_consistency_factor::primal_inactive; 
-    } 
-
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR> 
     void receive_restricted_message_from_right(LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
     {
        if(C == Chirality::left) {
-          if(r.x != multigraph_matching_triplet_consistency_factor::primal_inactive) {
-             for(std::size_t i=0; i<idx_.size(); ++i) {
-                l[idx_[i]] = std::numeric_limits<REAL>::infinity();
+          if(r.x != primal_inactive) {
+             for(std::size_t i=0; i<l.size()-1; ++i) {
+                l[i] = std::numeric_limits<REAL>::infinity();
              } 
           } else {
              for(std::size_t i=0; i<l.size(); ++i) {
-                if(r.x != idx_[i])
-                l[i] = std::numeric_limits<REAL>::infinity();
+                if(r.x != primal_inactive)
+                   l[i] = std::numeric_limits<REAL>::infinity();
              } 
           }
        } else {
-
+          assert(false); 
        }
     }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR> 
     bool ComputeRightFromLeftPrimal(const LEFT_FACTOR& l, RIGHT_FACTOR& r) const
     {
-       if(l.primal() < l.size()) {
-          const std::size_t i = get_triplet_consistency_factor_index(l.primal());
-
-          if(C == Chirality::left) {
-             const bool changed = (r.x != i);
-             r.x = i;
-             return changed;
-          } else {
-             const bool changed = (r.y != i);
-             r.y = i;
-             return changed;
-          }
-       }
-       return false;
+       const std::size_t right_label = l.primal() == l.size()-1 ? primal_inactive : l.primal();
+       std::size_t& right_primal = C == Chirality::left ? r.x : r.y;
+       const bool changed = right_primal != right_label;
+       right_primal = right_label;
+       return changed;
     }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-    bool ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
+    bool ComputeLeftFromRightPrimal_deactivated(LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
     {
-       const std::size_t label = C == Chirality::left ? r.x : r.y;
+       const std::size_t right_label = C == Chirality::left ? r.x : r.y;
+       const std::size_t left_label = right_label == primal_inactive ? l.size()-1 : right_label;
 
-       if(label != multigraph_matching_triplet_consistency_factor::primal_inactive && label != multigraph_matching_triplet_consistency_factor::primal_not_set) {
-          const bool changed = (l.primal() != idx_[label]);
-          l.primal() = idx_[label];
-          return changed;
-       } else {
-          return false;
-       }
+       const bool changed = l.primal() != left_label;
+       l.primal() = left_label;
+       return changed;
     }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
     bool CheckPrimalConsistency(const LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
     {
-       for(std::size_t i=0; i<idx_.size(); ++i) {
-          const std::size_t label = idx_[i];
-          const bool left_active = (l.primal() == label);
-          const bool right_active = [&]() {
-             if(C == Chirality::left)
-                return r.x == label;
-             else 
-                return r.y == label;
-          }();
-          if(left_active != right_active) {
-             std::cout << "inconsistency in vector consistency message\n";
-             return false;
-          }
-       }
-       return true;
-    }
+       const std::size_t right_label = C == Chirality::left ? r.x : r.y;
+       const std::size_t left_label = right_label == primal_inactive ? l.size()-1 : right_label;
+       assert(l.size() - 1 == (C == Chirality::left ? r.cost_x.size() : r.cost_y.size()));
 
-private:
-    vector<std::size_t> idx_;
+       return l.primal() == left_label;
+    }
 };
 
 } // namespace LPMP

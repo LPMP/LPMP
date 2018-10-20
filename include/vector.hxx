@@ -171,11 +171,11 @@ public:
        std::swap(begin_, copy.begin_);
        std::swap(end_, copy.begin_);
      }
-      assert(size() == o.size());
-      for(INDEX i=0; i<o.size(); ++i) { 
-         (*this)[i] = o[i]; 
-      } 
-      return *this;
+     assert(size() == o.size());
+     for(std::size_t i=0; i<o.size(); ++i) { 
+        (*this)[i] = o[i]; 
+     } 
+     return *this;
    }
 
    vector& operator=(vector&& o)
@@ -323,6 +323,7 @@ public:
        return min_val;
    }
 
+   // TODO: remove
    void min(const T val)
    {
      assert(false); // should not be used
@@ -444,8 +445,203 @@ public:
    }
 
 private:
-  T* begin_;
-  T* end_;
+  T* begin_ = nullptr;
+  T* end_ = nullptr;
+};
+
+// vector that caches minimum value
+namespace min_vector_update_handle {
+   template<typename T>
+   class type {
+      public:
+         type(T& val, T& min_value, bool& min_value_valid)
+            : val_(val),
+            min_value_(min_value),
+            min_value_valid_(min_value_valid)
+         {}
+
+         template<typename T2>
+         friend void swap(type<T2>& t1, type<T2>& t2);
+
+         operator T&() const { return val_; }
+
+         type& operator=(const T& x) { set_value(x); return *this; }
+         type& operator=(const type& o) { set_value(o.val_); return *this; }
+         type& operator*(const T& x) { set_value(val_*x); return *this; }
+         type& operator/(const T& x) { set_value(val_/x); return *this; } 
+         type& operator-=(const T& x) { change_value(-x); return *this; }
+         type& operator+=(const T& x) { change_value(x); return *this; }
+
+      private:
+         void update_value(const T& x)
+         {
+            if(x <= 0.0) {
+               val_ += x;
+               min_value_ = std::min(min_value_, val_); 
+            } else {
+               if(val_ == min_value_) {
+                  min_value_valid_ = false; 
+               }
+               val_ += x;
+            }
+         }
+
+         void set_value(const T& x)
+         {
+            if(x < min_value_) {
+               min_value_ = x;
+            } else if(val_ == min_value_) {
+               min_value_valid_ = false; 
+            }
+            val_ = x;
+         }
+
+         T& val_;
+         T& min_value_;
+         bool& min_value_valid_;
+   }; 
+
+   template<typename T>
+   void swap(type<T>& t1, type<T>& t2) 
+   { 
+      std::swap(t1.ptr_, t2.ptr_); 
+   } 
+}
+
+template<typename T=REAL>
+class min_vector : public vector_expression<T,min_vector<T>> {
+public:
+// TODO: perfect forwarding
+   template<typename... ARGS>
+   min_vector(ARGS... args)
+   : vec_(args...)
+   {}
+
+   auto size() const { return vec_.size(); }
+
+   template<typename E>
+   void operator=(const vector_expression<T,E>& o) {
+      assert(size() == o.size());
+      min_value_ = o[0];
+      for(std::size_t i=0; i<o.size(); ++i) { 
+         (*this)[i] = o[i]; 
+         min_value_ = std::min(min_value_, o[i]);
+      }
+      min_value_valid_ = true;
+   }
+   template<typename E>
+   void operator-=(const vector_expression<T,E>& o) {
+      assert(size() == o.size());
+      min_value_ = o[0];
+      for(std::size_t i=0; i<o.size(); ++i) { 
+         (*this)[i] -= o[i]; 
+         min_value_ = std::min(min_value_, (*this)[i]);
+      } 
+      min_value_valid_ = true;
+   }
+   template<typename E>
+   void operator+=(const vector_expression<T,E>& o) {
+      assert(size() == o.size());
+      min_value_ = o[0];
+      for(std::size_t i=0; i<o.size(); ++i) { 
+         (*this)[i] += o[i]; 
+         min_value_ = std::min(min_value_, (*this)[i]);
+      } 
+      min_value_valid_ = true;
+   }
+
+   T min() const
+   {
+      if(!min_value_valid_) {
+         min_value_ = vec_.min();
+         min_value_valid_ = true;
+      }
+
+      assert(min_value_ == vec_.min());
+      return min_value_;
+   }
+
+   T min_except(const std::size_t i) const
+   {
+      if(min_value_valid_ && vec_[i] > min_value_) {
+         return min_value_;
+      } else {
+         const T v = vec_.min_except(i);
+         min_value_ = std::min(v, vec_[i]);
+         min_value_valid_ = true;
+         return v; 
+      }
+   }
+
+   std::array<T,2> two_min() const
+   {
+      return vec_.two_min();
+   }
+
+   T& operator[](const std::size_t i) {
+      assert(i < this->size());
+      return min_vector_update_handle::type<T>( vec_[i], min_value_, min_value_valid_ );
+   }
+   const T& operator[](const std::size_t i) const { return vec_[i]; }
+
+// does not work properly: operator* expects reference
+/*
+   class iterator {
+      public:
+         using difference_type = std::ptrdiff_t;
+         using value_type  = min_vector_update_handle::type<T>;
+         using pointer = T*;
+         using reference = T&;
+         using iterator_category = std::random_access_iterator_tag;
+
+         iterator(T* ptr, T& min_value, bool& min_value_valid)
+            : ptr_(ptr),
+            min_value_(min_value),
+            min_value_valid_(min_value_valid)
+         {}
+
+         iterator& operator=(const iterator& o)
+         {
+            assert(&min_value_ == &o.min_value_);
+            ptr_ = o.ptr_; 
+            return *this;
+         }
+
+         bool operator==(const iterator& o) const { return ptr_ == o.ptr_; }
+         bool operator!=(const iterator& o) const { return ptr_ != o.ptr_; }
+         iterator& operator++() { ++ptr_; return *this; }
+         iterator& operator--() { --ptr_; return *this; }
+         iterator operator+(const std::size_t n) const { return iterator(ptr_ + n, min_value_, min_value_valid_); }
+         iterator operator-(const std::size_t n) const { return iterator(ptr_ - n, min_value_, min_value_valid_); }
+         std::ptrdiff_t operator-(const iterator& o) const { return ptr_ - o.ptr_; }
+         std::ptrdiff_t operator+(const iterator& o) const { return ptr_ + o.ptr_; }
+         bool operator<(const iterator& o) const { return ptr_ < o.ptr_; }
+
+         min_vector_update_handle::type<T> operator*() { return min_vector_update_handle::type<T>(*ptr_, min_value_, min_value_valid_); }
+         min_vector_update_handle::type<T> operator->() { return min_vector_update_handle::type<T>(*ptr_, min_value_, min_value_valid_); }
+
+      private:
+         T* ptr_;
+         T& min_value_;
+         bool& min_value_valid_; 
+   };
+
+   iterator begin() { return iterator(vec_.begin(), min_value_, min_value_valid_); }
+   iterator end() { return iterator(vec_.end(), min_value_, min_value_valid_); }
+   */
+
+   T* begin() { min_value_valid_ = false; return vec_.begin(); }
+   T* end() { min_value_valid_ = false; return vec_.end(); }
+
+   min_vector_update_handle::type<T> back() { return min_vector_update_handle::type<T>( vec_.back(), min_value_, min_value_valid_ ); }
+   const T& back() const { return vec_.back(); }
+
+   vector<T>& data() { min_value_valid_ = false; return vec_; }
+
+private:
+   vector<T> vec_;
+   mutable T min_value_;
+   mutable bool min_value_valid_ = false;
 };
 
 // additionally store free space so that no allocation is needed for small objects
@@ -711,19 +907,23 @@ public:
      return d1*(d2 + padding(d2));
    }
    static INDEX padding(const INDEX i) {
-     static_assert(std::is_same<T,float>::value || std::is_same<T,double>::value,"");
-     return (REAL_ALIGNMENT-(i%REAL_ALIGNMENT))%REAL_ALIGNMENT;
+      if constexpr(std::is_same<T,float>::value || std::is_same<T,double>::value,"")
+         return (REAL_ALIGNMENT-(i%REAL_ALIGNMENT))%REAL_ALIGNMENT;
+      else
+         return 0;
    }
 
    INDEX padded_dim2() const { return padded_dim2_; }
 
    void fill_padding()
    {
-     for(INDEX x1=0; x1<dim1(); ++x1) {
-       for(INDEX x2=dim2(); x2<padded_dim2(); ++x2) {
-         vec_[x1*padded_dim2() + x2] = std::numeric_limits<REAL>::infinity();
-       }
-     }
+      if constexpr(std::is_same<T,float>::value || std::is_same<T,double>::value,"") {
+         for(INDEX x1=0; x1<dim1(); ++x1) {
+            for(INDEX x2=dim2(); x2<padded_dim2(); ++x2) {
+               vec_[x1*padded_dim2() + x2] = std::numeric_limits<T>::infinity();
+            }
+         }
+      }
    }
    matrix(const INDEX d1, const INDEX d2) : vec_(underlying_vec_size(d1,d2)), dim2_(d2), padded_dim2_(d2 + padding(d2)) {
       assert(d1 > 0 && d2 > 0);

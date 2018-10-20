@@ -37,17 +37,6 @@ namespace LPMP {
 
 enum class PairwiseConstruction {Left,Right,BothSides}; // Indicates whether pairwise potentials should be built on {left|right|both} side(s) of assignment graph.
 
-// disable write primal in constructor, for right side mrf constructor
-template<typename BASE>
-class disable_write_constructor : public BASE
-{
-   public:
-   using BASE::BASE;
-   template<typename STREAM>
-   void WritePrimal(STREAM&) const 
-   {} 
-};
-
 // graph matching with assignment via message passing
 template<PairwiseConstruction PAIRWISE_CONSTRUCTION = PairwiseConstruction::Left>
 struct FMC_MP {
@@ -65,8 +54,8 @@ struct FMC_MP {
    using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 1 >;
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 2 >;
 
-   using FactorList = meta::list< UnaryFactor, PairwiseFactor>;
-   using MessageList = meta::list< AssignmentConstraintMessage, UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer>;//, UnaryMcfLabelingMessage >;
+   using FactorList = meta::list<UnaryFactor, PairwiseFactor>;
+   using MessageList = meta::list<AssignmentConstraintMessage, UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer>;
 
    using mrf = mrf_constructor<FMC_MP_PARAM,0,1,1,2>;
    using gm_constructor = graph_matching_constructor<graph_matching_mrf_constructor<mrf>, AssignmentConstraintMessage>;

@@ -20,9 +20,13 @@ target_include_directories(LPMP INTERFACE external/BCFW-Bundle/include)
 target_include_directories(LPMP INTERFACE external/ConicBundle/include)
 target_include_directories(LPMP INTERFACE external/arboricity)
 target_include_directories(LPMP INTERFACE external/MCF-SSP)
+target_include_directories(LPMP INTERFACE external/andres-graph/include)
 
 # for opengm #
 target_include_directories(LPMP INTERFACE external/opengm/include)
+
+find_package(OpenMP)
+target_link_libraries(LPMP INTERFACE OpenMP::OpenMP_CXX)
 
 find_package(HDF5 REQUIRED CXX)
 add_library(HDF5 INTERFACE)

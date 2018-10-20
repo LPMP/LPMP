@@ -4,9 +4,8 @@
 
 using namespace LPMP;
 int main(int argc, char** argv) {
-MpRoundingSolver<Solver<LP<FMC_MCF<PairwiseConstruction::BothSides>>,StandardTighteningVisitor>>solver(argc,argv);
+ProblemConstructorRoundingSolver<Solver<LP<FMC_MCF<PairwiseConstruction::BothSides>>,StandardTighteningVisitor>>solver(argc,argv);
 auto input = LPMP::TorresaniEtAlInput::parse_file(solver.get_input_file());
-solver.template GetProblemConstructor<0>().read_input(input);
-solver.template GetProblemConstructor<0>().construct();
+solver.template GetProblemConstructor<0>().construct(input);
 return solver.Solve();
 }
