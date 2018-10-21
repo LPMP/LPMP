@@ -17,9 +17,9 @@ class max_potential_on_nodes {
 struct MaxPotentialInUnary { REAL value; INDEX nodeIndex; INDEX labelIndex; };
 public:
 
-    max_potential_on_nodes() {}
+    max_potential_on_nodes() : SolveIndependently(false) {}
 
-    max_potential_on_nodes(const std::vector<Marginals>& marginals)
+    max_potential_on_nodes(const std::vector<Marginals>& marginals, const bool solveIndependently = false) : SolveIndependently(solveIndependently)
     {
         for(INDEX currentNodeIndex = 0; currentNodeIndex < marginals.size(); ++currentNodeIndex) {
             for(INDEX currentLabel = 0; currentLabel < marginals[currentNodeIndex].Get().size(); ++currentLabel ) {
@@ -29,28 +29,11 @@ public:
         SortingOrder = GetMaxPotsSortingOrder(MaxPotentials);
     }
 
-    std::vector<INDEX> ComputeBestLabelsIndependent(const std::vector<Marginals>& marginals) const {
-        INDEX numNodes = marginals.size();
-        std::vector<REAL> bestCostOfNodes(numNodes, std::numeric_limits<REAL>::max());
-        std::vector<INDEX> bestLabelsForNodes(numNodes);
-        for(const auto& currentElementToInsert : SortingOrder) {
-            const INDEX currentNodeIndex = MaxPotentials[currentElementToInsert].nodeIndex;
-            const INDEX currentLabelIndex = MaxPotentials[currentElementToInsert].labelIndex;
-            const REAL currentLinearCost = marginals[currentNodeIndex].Get(currentLabelIndex).LinearCost;
-            if (currentLinearCost == std::numeric_limits<REAL>::max())
-                continue; // infeasible label.
-            const REAL currentMaxCost =  MaxPotentials[currentElementToInsert].value;
-            assert(currentMaxCost == marginals[currentNodeIndex].Get(currentLabelIndex).MaxCost);
-            if (bestCostOfNodes[currentNodeIndex] > currentMaxCost + currentLinearCost) {
-                bestCostOfNodes[currentNodeIndex] = currentMaxCost + currentLinearCost;
-                bestLabelsForNodes[currentNodeIndex] = currentLabelIndex;
-            }
-        }
-        return bestLabelsForNodes;
-    }
-
     template <bool computeMarginals = false>
     std::vector<INDEX> ComputeBestLabels(const std::vector<Marginals>& marginals) const {
+        if (SolveIndependently)
+            return ComputeBestLabelsIndependent(marginals);
+
         INDEX numCovered = 0;
         INDEX numNodes = marginals.size();
         if (computeMarginals) {
@@ -112,7 +95,14 @@ public:
         REAL linearCost = 0;
         REAL maxCost = std::numeric_limits<REAL>::lowest();
         for(INDEX currentNodeIndex = 0; currentNodeIndex < marginals.size(); ++currentNodeIndex) {
-            maxCost = std::max(maxCost, marginals[currentNodeIndex].Get(labels[currentNodeIndex]).MaxCost);
+            if (currentNodeIndex == 0)
+                maxCost = marginals[currentNodeIndex].Get(labels[currentNodeIndex]).MaxCost;
+            else {
+                if (!SolveIndependently)
+                    maxCost = std::max(maxCost, marginals[currentNodeIndex].Get(labels[currentNodeIndex]).MaxCost);
+                else 
+                    maxCost += marginals[currentNodeIndex].Get(labels[currentNodeIndex]).MaxCost;
+            }
             linearCost += marginals[currentNodeIndex].Get(labels[currentNodeIndex]).LinearCost;
         }
         return maxCost + linearCost;
@@ -126,7 +116,7 @@ private:
     std::vector<INDEX> SortingOrder;
     mutable REAL BestCost;
     mutable Marginals AllMarginals;
-  
+    bool SolveIndependently;
     std::vector<INDEX> GetMaxPotsSortingOrder(const std::vector<MaxPotentialInUnary>& pots) const {
         std::vector<INDEX> idx(pots.size());
         std::iota(idx.begin(), idx.end(), 0);
@@ -134,6 +124,26 @@ private:
         std::sort(idx.begin(), idx.end(),
             [&pots](INDEX i1, INDEX i2) {return pots[i1].value < pots[i2].value;});
         return idx;
+    }
+
+    std::vector<INDEX> ComputeBestLabelsIndependent(const std::vector<Marginals>& marginals) const {
+        INDEX numNodes = marginals.size();
+        std::vector<REAL> bestCostOfNodes(numNodes, std::numeric_limits<REAL>::max());
+        std::vector<INDEX> bestLabelsForNodes(numNodes);
+        for(const auto& currentElementToInsert : SortingOrder) {
+            const INDEX currentNodeIndex = MaxPotentials[currentElementToInsert].nodeIndex;
+            const INDEX currentLabelIndex = MaxPotentials[currentElementToInsert].labelIndex;
+            const REAL currentLinearCost = marginals[currentNodeIndex].Get(currentLabelIndex).LinearCost;
+            if (currentLinearCost == std::numeric_limits<REAL>::max())
+                continue; // infeasible label.
+            const REAL currentMaxCost =  MaxPotentials[currentElementToInsert].value;
+            assert(currentMaxCost == marginals[currentNodeIndex].Get(currentLabelIndex).MaxCost);
+            if (bestCostOfNodes[currentNodeIndex] > currentMaxCost + currentLinearCost) {
+                bestCostOfNodes[currentNodeIndex] = currentMaxCost + currentLinearCost;
+                bestLabelsForNodes[currentNodeIndex] = currentLabelIndex;
+            }
+        }
+        return bestLabelsForNodes;
     }
 };
 
@@ -314,14 +324,10 @@ private:
             MarginalsValid[c] = true;
         }
         if (!UnarySolverInitialized) {
-            UnarySolver = max_potential_on_nodes(MarginalsChains);
+            UnarySolver = max_potential_on_nodes(MarginalsChains, SolveChainsIndependently);
             UnarySolverInitialized = true;
         }
-        if (!SolveChainsIndependently) {
-            return UnarySolver.ComputeBestLabels(MarginalsChains);
-        } else {
-            return UnarySolver.ComputeBestLabelsIndependent(MarginalsChains);
-        }
+        return UnarySolver.ComputeBestLabels(MarginalsChains);
     }
 
     two_dim_variable_array<INDEX> ComputeLabelling(const std::vector<INDEX>& marginalIndices) const { 
@@ -346,14 +352,23 @@ private:
         REAL maxPotValue = std::numeric_limits<REAL>::lowest();
         REAL linearCost = 0;
         for (INDEX c = 0; c < NumChains; c++) {
+            REAL currentChainMax = std::numeric_limits<REAL>::lowest();
             for (INDEX n1 = 0; n1 < LinearPotentials[c].dim1(); n1++)
             {
                 if (chainsLabelling[c][n1] == std::numeric_limits<INDEX>::max() || 
                     chainsLabelling[c][n1 + 1] == std::numeric_limits<INDEX>::max())
                     return {std::numeric_limits<REAL>::max(), std::numeric_limits<REAL>::max()}; // Solution not ready yet
 
-                maxPotValue = std::max(maxPotValue, MaxPotentials[c](n1, chainsLabelling[c][n1], chainsLabelling[c][n1 + 1]));
+                currentChainMax = std::max(currentChainMax, MaxPotentials[c](n1, chainsLabelling[c][n1], chainsLabelling[c][n1 + 1]));
                 linearCost += LinearPotentials[c](n1, chainsLabelling[c][n1], chainsLabelling[c][n1 + 1]);
+            }
+            if (c == 0) {
+                maxPotValue = currentChainMax;
+            } else {
+                if (SolveChainsIndependently)
+                    maxPotValue += currentChainMax;
+                else
+                    maxPotValue = std::max(maxPotValue, currentChainMax);
             }
         }
         return {maxPotValue, linearCost};
@@ -708,7 +723,6 @@ private:
         }
         return messages;
     }
-
 
     REAL ComputeMinMarginal(const REAL n1LeftDistance, const REAL n2RightDistance, 
                         const max_potential_on_two_nodes& twoNodeSolver, three_dimensional_variable_array<INDEX>& bestMIndices,
