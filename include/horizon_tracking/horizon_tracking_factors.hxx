@@ -29,6 +29,26 @@ public:
         SortingOrder = GetMaxPotsSortingOrder(MaxPotentials);
     }
 
+    std::vector<INDEX> ComputeBestLabelsIndependent(const std::vector<Marginals>& marginals) const {
+        INDEX numNodes = marginals.size();
+        std::vector<REAL> bestCostOfNodes(numNodes, std::numeric_limits<REAL>::max());
+        std::vector<INDEX> bestLabelsForNodes(numNodes);
+        for(const auto& currentElementToInsert : SortingOrder) {
+            const INDEX currentNodeIndex = MaxPotentials[currentElementToInsert].nodeIndex;
+            const INDEX currentLabelIndex = MaxPotentials[currentElementToInsert].labelIndex;
+            const REAL currentLinearCost = marginals[currentNodeIndex].Get(currentLabelIndex).LinearCost;
+            if (currentLinearCost == std::numeric_limits<REAL>::max())
+                continue; // infeasible label.
+            const REAL currentMaxCost =  MaxPotentials[currentElementToInsert].value;
+            assert(currentMaxCost == marginals[currentNodeIndex].Get(currentLabelIndex).MaxCost);
+            if (bestCostOfNodes[currentNodeIndex] > currentMaxCost + currentLinearCost) {
+                bestCostOfNodes[currentNodeIndex] = currentMaxCost + currentLinearCost;
+                bestLabelsForNodes[currentNodeIndex] = currentLabelIndex;
+            }
+        }
+        return bestLabelsForNodes;
+    }
+
     template <bool computeMarginals = false>
     std::vector<INDEX> ComputeBestLabels(const std::vector<Marginals>& marginals) const {
         INDEX numCovered = 0;
@@ -39,7 +59,6 @@ public:
                 size += marginals[i].size();
             AllMarginals.Reserve(size);
         }
-
         std::vector<bool> coveredNodes(numNodes, false);
         REAL s = 0;
         std::vector<REAL> l(numNodes, std::numeric_limits<REAL>::max());
@@ -124,6 +143,7 @@ private:
     mutable std::vector<three_dimensional_variable_array<REAL>> LinearPotentials;
     mutable std::vector<three_dimensional_variable_array<REAL>> MaxPotentials;
     const std::vector<std::vector<INDEX>> NumLabels;
+    const bool SolveChainsIndependently;
     const INDEX NumChains;
     const two_dim_variable_array<INDEX> ChainNodeToOriginalNode;
     std::vector<INDEX> NumNodes; // TODO: make const
@@ -148,12 +168,14 @@ public:
     max_potential_on_multiple_chains(std::vector<three_dimensional_variable_array<REAL>>& linearPotentials,
                                      std::vector<three_dimensional_variable_array<REAL>>& maxPotentials, 
                                      std::vector<std::vector<INDEX>>& numLabels,
-                                     two_dim_variable_array<INDEX>& chainNodeToOriginalNode) 
+                                     two_dim_variable_array<INDEX>& chainNodeToOriginalNode,
+                                     bool solveChainsIndependently) 
        : LinearPotentials(linearPotentials), 
         MaxPotentials(maxPotentials),
         NumLabels(numLabels),
         NumChains(NumLabels.size()),
-        ChainNodeToOriginalNode(chainNodeToOriginalNode)
+        ChainNodeToOriginalNode(chainNodeToOriginalNode),
+        SolveChainsIndependently(solveChainsIndependently)
    {
         assert(LinearPotentials.size() == MaxPotentials.size());
         assert(MaxPotentials.size() == NumLabels.size());
@@ -278,49 +300,6 @@ public:
         return message;
     }
 
-    // std::vector<REAL> ComputeMessageForEdge(INDEX chain, INDEX e, REAL OMEGA = 0.95) const {
-    //     if (messageNormalizer == 0)
-    //         messageNormalizer = numEdges; //assuming restart.
-
-    //     REAL lb = LowerBound(); // Get Lower Bound and Populate Marginals of all Chains (if invalid).
-    //     std::vector<REAL> message(LinearPotentials[chain].dim2(e) * LinearPotentials[chain].dim3(e));
-    //     std::vector<Marginals> leftNodeLeftMarginals, rightNodeRightMarginals;
-    //     #pragma omp parallel sections 
-    //     {
-    //         #pragma omp section 
-    //         {
-    //             leftNodeLeftMarginals = ComputeNodeMarginals<true>(chain, e); 
-    //         }
-    //         #pragma omp section 
-    //         {
-    //             rightNodeRightMarginals = ComputeNodeMarginals<false>(chain, e + 1);
-    //         }
-    //     }
-    //     MarginalsValid[chain] = false;
-    //     INDEX i = 0;
-    //     for (INDEX l1 = 0; l1 < LinearPotentials[chain].dim2(e); l1++) {
-    //         for (INDEX l2 = 0; l2 < LinearPotentials[chain].dim3(e); l2++) {
-    //             // Copy the linear costs of current edge into marginals of current chain, as the original 
-    //             // ones are not of any use now and will need to be updated anyway.
-    //             MarginalsChains[chain] = MergeNodeMarginals(leftNodeLeftMarginals[l1], rightNodeRightMarginals[l2],
-    //                                                         {MaxPotentials[chain](e, l1, l2), LinearPotentials[chain](e, l1, l2)});
-    //             UnarySolver.ComputeBestLabels(MarginalsChains); // TO DO: Do not need to store labels.
-    //             REAL minMarginal = UnarySolver.GetBestCost();
-
-    //             message[i] = OMEGA * (minMarginal - lb) / messageNormalizer;
-    //             if (message[i] < 0 && message[i] > -eps)
-    //                 message[i] = 0; // get rid of numerical errors. 
-    //             assert(message[i] >= 0);
-    //             i++;
-    //         }
-    //     }
-    //     messageNormalizer--;
-    //     assert(*std::min_element(message.begin(), message.end()) <= eps); // one edge should be a part of lower bound solution.
-    //     return message;
-    // }
-
-
-
     void ComputeAndSetPrimal() const {
         Solution = ComputePrimal();
     }
@@ -338,7 +317,11 @@ private:
             UnarySolver = max_potential_on_nodes(MarginalsChains);
             UnarySolverInitialized = true;
         }
-        return UnarySolver.ComputeBestLabels(MarginalsChains);
+        if (!SolveChainsIndependently) {
+            return UnarySolver.ComputeBestLabels(MarginalsChains);
+        } else {
+            return UnarySolver.ComputeBestLabelsIndependent(MarginalsChains);
+        }
     }
 
     two_dim_variable_array<INDEX> ComputeLabelling(const std::vector<INDEX>& marginalIndices) const { 

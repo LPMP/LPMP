@@ -24,7 +24,7 @@ INDEX num_chains() const { return NumChains; }
 max_multiple_chains_factor_container* add_multiple_chains_factor(const std::vector<std::vector<INDEX>>& numLabels,
                                     const std::vector<three_dimensional_variable_array<REAL>>& maxPairwisePotentials,
                                     const two_dim_variable_array<INDEX>& chainNodeToOriginalNode,
-                                    factor_tree<FMC>* t = nullptr)
+                                    factor_tree<FMC>* t = nullptr, bool solveChainsIndependently = false)
 {
     NumChains = numLabels.size();
     assert(NumChains == maxPairwisePotentials.size());
@@ -41,7 +41,7 @@ max_multiple_chains_factor_container* add_multiple_chains_factor(const std::vect
         linearPairwisePotentials.push_back(currentChainLinearPotentials);
     }
     auto* multiple_chains_factor = this->lp_->template add_factor<max_multiple_chains_factor_container>
-                                   (linearPairwisePotentials, maxPairwisePotentials, numLabels, chainNodeToOriginalNode);
+                                   (linearPairwisePotentials, maxPairwisePotentials, numLabels, chainNodeToOriginalNode, solveChainsIndependently);
 
     assert(NumChains == chainNodeToOriginalNode.size());
     for (std::size_t chain_index=0; chain_index<NumChains;chain_index++) {
@@ -176,7 +176,9 @@ private:
 };
 
 template<typename SOLVER, typename HORIZON_TRACKING_CONSTRUCTOR>
-void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking_input& input, SOLVER& solver, HORIZON_TRACKING_CONSTRUCTOR& multiple_chain_constructor)
+void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking_input& input, SOLVER& solver, 
+                                                            HORIZON_TRACKING_CONSTRUCTOR& multiple_chain_constructor,
+                                                            bool solveChainsIndependently = false)
 {
     // construct mrf part
     multiple_chain_constructor.construct(input.mrf); 
@@ -229,7 +231,7 @@ void construct_horizon_tracking_problem_on_grid_to_chains(const horizon_tracking
         using FMC = typename SOLVER::FMC;
         factor_tree<FMC> tree;
         two_dim_variable_array<INDEX> nodeIndices2D(nodeIndices);
-        multiple_chain_constructor.add_multiple_chains_factor(numLabels, max_pairwise_potentials_on_chains, nodeIndices2D, &tree);
+        multiple_chain_constructor.add_multiple_chains_factor(numLabels, max_pairwise_potentials_on_chains, nodeIndices2D, &tree, solveChainsIndependently);
         solver.GetLP().add_tree(tree);
     }
 }
