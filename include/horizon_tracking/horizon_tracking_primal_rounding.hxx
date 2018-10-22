@@ -31,20 +31,25 @@ void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool
         auto olb1 = solver.GetLP().original_factors_lower_bound();
         std::cout<<"Lower bound before send message left: "<<prevLb<<std::endl;
         // Send messages from Multiple Chain Linear pairwise potentials to MRF pairwise potentials:
-        for (INDEX p = 0; p < 1; p++) {
-        for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
-#ifndef NDEBUG
-            const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
-            const REAL before_right_lb = m->GetRightFactor()->LowerBound();
-#endif
-            m->send_message_to_left();
-#ifndef NDEBUG
-            const REAL after_left_lb = m->GetLeftFactor()->LowerBound();
-            const REAL after_right_lb = m->GetRightFactor()->LowerBound();
-            assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps);
-            std::cout<<"LB Change:"<<-before_left_lb - before_right_lb + after_left_lb + after_right_lb <<std::endl;
-#endif
-        }
+        for (INDEX passes = 0; passes < 1; passes++) {
+            for (INDEX c = 0; c < multiple_chain_constructor.num_chains(); c++) {
+                for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
+        #ifndef NDEBUG
+                    const REAL before_left_lb = m->GetLeftFactor()->LowerBound();
+                    const REAL before_right_lb = m->GetRightFactor()->LowerBound();
+        #endif
+                    if (c != m->GetMessageOp().GetChainIndex()) {
+                        continue; // utilize the computation on one chain first.
+                    }
+                    m->send_message_to_left();
+        #ifndef NDEBUG
+                    const REAL after_left_lb = m->GetLeftFactor()->LowerBound();
+                    const REAL after_right_lb = m->GetRightFactor()->LowerBound();
+                    assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps);
+                    std::cout<<"LB Change:"<<-before_left_lb - before_right_lb + after_left_lb + after_right_lb <<std::endl;
+        #endif
+                }
+            }
         }
         auto olb3 = solver.GetLP().original_factors_lower_bound();
         auto newLb = solver.GetLP().LowerBound();
@@ -109,7 +114,7 @@ void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool
     
     else {
         solver.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.0));
-        for(std::size_t i=0; i<30; ++i) {
+        for(std::size_t i=0; i<1; ++i) {
         solver.GetLP().ComputeForwardPassAndPrimal();
         solver.RegisterPrimal();
         solver.GetLP().ComputeBackwardPassAndPrimal();

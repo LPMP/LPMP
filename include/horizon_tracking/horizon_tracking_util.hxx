@@ -21,19 +21,26 @@ private:
     bool populated = false;
 
 public:
+    void Reserve(INDEX size) {
+        M.reserve(size);
+    }
+
+    template <bool storeRestricted = false>
     void insert(max_linear_costs m) {
         if (!populated) {
     #ifndef NDEBUG 
-            if(M.size() > 0) assert(M.back().MaxCost <= m.MaxCost);
+            if(M.size() > 0) assert(M.back().MaxCost <= m.MaxCost);     // incoming order should be sorted w.r.t max costs in non-decreasing order
     #endif
             if (M.size() == 0) M.push_back(m);
             else if (M.back().MaxCost == m.MaxCost) M.back().LinearCost = std::min(M.back().LinearCost, m.LinearCost);
+            else if (storeRestricted && m.LinearCost >= M.back().LinearCost)  return; // these entries can not be optimal, so no need to store.
             else M.push_back(m);
         }
         else {
             if (i > 0 && M[i - 1].MaxCost == m.MaxCost) {
                 M[i - 1].LinearCost = std::min(M[i - 1].LinearCost, m.LinearCost);
             }
+            else if (storeRestricted && m.LinearCost >= M[i - 1].MaxCost) return;
             else { 
                 assert(M[i].MaxCost == m.MaxCost);
                 M[i++].LinearCost = m.LinearCost;
@@ -54,7 +61,42 @@ public:
     void Clear() { M.clear(); }
 };
 
-template <bool DoForward, bool useStartingNode = false, bool useFixedLabel = false>
+
+// Finds best labelling given a node 1 with a vector of marginals, and node 2 with only one possible label.
+class max_potential_on_two_nodes {
+public:
+    max_potential_on_two_nodes(const Marginals& node1AllMarginals) : Node1AllMarginals(node1AllMarginals) {}
+
+    std::pair<INDEX, max_linear_costs> ComputeBestIndexAndCost(const max_linear_costs& node2Marginal, INDEX prevBestIndex = 0) const {
+        if (Node1AllMarginals.size() == 0) return std::pair<INDEX, max_linear_costs>(0, node2Marginal);
+        if (prevBestIndex < std::numeric_limits<INDEX>::max() && Node1AllMarginals.Get(prevBestIndex).MaxCost >= node2Marginal.MaxCost) { // previous optimal labelling is still feasible, thus optimal.
+            max_linear_costs costs = { Node1AllMarginals.Get(prevBestIndex).MaxCost, 
+                                        Node1AllMarginals.Get(prevBestIndex).LinearCost + node2Marginal.LinearCost };
+            return std::pair<INDEX, max_linear_costs>(prevBestIndex, costs);
+        } else if (prevBestIndex == std::numeric_limits<INDEX>::max()) {
+            prevBestIndex = 0;
+        }
+        max_linear_costs bestCost;
+        bestCost.MaxCost = std::numeric_limits<REAL>::max();
+        bestCost.LinearCost = std::numeric_limits<REAL>::max();
+        INDEX bestIndex = 0;
+        for (INDEX i = prevBestIndex; i < Node1AllMarginals.size(); i++) {
+            if (bestCost.TotalCost() > Node1AllMarginals.Get(i).MaxCost + Node1AllMarginals.Get(i).LinearCost) {
+                bestCost.MaxCost = std::max(Node1AllMarginals.Get(i).MaxCost, node2Marginal.MaxCost);
+                bestCost.LinearCost = Node1AllMarginals.Get(i).LinearCost;
+                bestIndex = i;
+            }
+        }
+        bestCost.LinearCost += node2Marginal.LinearCost;
+        assert(bestCost.MaxCost < std::numeric_limits<REAL>::max());
+        return std::pair<INDEX, max_linear_costs>(bestIndex, bestCost);
+    }
+
+private:
+    const Marginals Node1AllMarginals;
+};
+
+template <bool DoForward = true, bool useStartingNode = false, bool useFixedLabel = false>
 class shortest_distance_calculator {
 private: 
     const three_dimensional_variable_array<REAL>& LinearPairwisePotentials;
@@ -100,10 +142,12 @@ public:
         }
     }
     
-    void AddEdgeWithUpdate(INDEX n1, INDEX l1, INDEX l2, REAL bottleneckThreshold) {
+    template <bool computeUpdatedNodes = false>
+    std::vector<std::array<INDEX, 2>> AddEdgeWithUpdate(INDEX n1, INDEX l1, INDEX l2, REAL bottleneckThreshold) {
         assert(MaxPairwisePotentials(n1, l1, l2) <= bottleneckThreshold);
+        std::vector<std::array<INDEX, 2>> updatedNodes;
         if (!ToAddEdge(n1, l1, l2))
-            return;
+            return updatedNodes;
 
         std::queue<edge> queue;
         queue.push({n1, l1, l2});
@@ -120,10 +164,14 @@ public:
             if (distance[nextNode][nextLabel] <= offeredDistance) continue; // TODO: do not add to queue if that condition holds
 
             distance[nextNode][nextLabel] = offeredDistance;
+
             if ((DoForward && currentNode == LinearPairwisePotentials.dim1() - 1) || (!DoForward && nextNode == 0))  {
                 shortestPathDistance = std::min(shortestPathDistance, offeredDistance);
                 continue;
             }
+            if (computeUpdatedNodes)
+                updatedNodes.push_back({nextNode, nextLabel});
+
             INDEX childNode = nextNode + (DoForward ?  + 1 : -1);
             for (INDEX childLabel = 0; childLabel < NumLabels[childNode]; ++childLabel) {
                 if (DoForward && MaxPairwisePotentials(nextNode, nextLabel, childLabel) <= bottleneckThreshold
@@ -136,6 +184,7 @@ public:
                 }
             }
         }
+        return updatedNodes;
     }
 
     bool ToAddEdge(INDEX n1, INDEX l1, INDEX l2) const {
