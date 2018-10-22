@@ -10,6 +10,7 @@
 #include "config.hxx"
 #include <omp.h>
 #include <atomic>
+#include <future>
 #include "multicut/multicut_instance.hxx"
 #include "multicut/multicut_kernighan_lin.h"
 #include "multicut/transform_multigraph_matching.h"
@@ -734,28 +735,31 @@ public:
     {
        if(!mcf_primal_rounding_arg_.getValue())
           return;
-       if(debug())
-          std::cout << "round with mcf solvers\n";
 
-       // first try out individual graph matching solutions
-       multigraph_matching_input::labeling labeling;
-       for(auto& c : graph_matching_constructors) {
-          labeling.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
+       if(primal_result_handle_.valid() && primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+          if(debug()) 
+             std::cout << "read in primal mgm solution\n";
+          auto mgm_sol = primal_result_handle_.get();
+          read_in_labeling(mgm_sol); 
        }
-       //multicut_instance::labeling cc_labeling = transform
 
-       // TODO: check primal consistency of multigraph matching labeling
-       //if(CheckPrimalConsistency()) return;
-
-       // export as correlation clustering problem
-       auto mgm = export_linear_multigraph_matching_input();
-       auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
-       // read in infeasible solution and solve multicut instance which will correct infeasible assignments
-       auto cc_sol = compute_multicut_gaec_kernighan_lin(cc);
-       auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
-
-       // write solution back into factors
-       read_in_labeling(mgm_sol);
+       if(!primal_result_handle_.valid() || primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
+          if(debug()) 
+             std::cout << "construct mgm rounding problem\n";
+          // first try out individual graph matching solutions
+          multigraph_matching_input::labeling labeling;
+          for(auto& c : graph_matching_constructors) {
+             labeling.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
+          }
+          auto mgm = export_linear_multigraph_matching_input();
+          auto round_primal_async = ([=]() {
+                auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
+                auto cc_sol = compute_multicut_gaec_kernighan_lin(cc);
+                auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
+                return mgm_sol;
+                });
+          primal_result_handle_ = std::async(std::launch::async, round_primal_async);
+       }
     }
 
     void read_in_labeling(const multigraph_matching_input::labeling& l)
@@ -843,6 +847,8 @@ private:
     TCLAP::SwitchArg mcf_reparametrization_arg_; // TODO: this should be part of graph matching constructor
     TCLAP::SwitchArg mcf_primal_rounding_arg_; // TODO: this should be part of graph matching constructor as well
     mutable TCLAP::ValueArg<std::string> output_format_arg_; // mutable should not be necessary, but TCLAP's getValue is not const.
+
+    std::future<multigraph_matching_input::labeling> primal_result_handle_;
 }; 
 
 } // namespace LPMP

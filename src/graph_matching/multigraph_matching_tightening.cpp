@@ -3,7 +3,8 @@
 
 using namespace LPMP;
 int main(int argc, char** argv) {
-    MpRoundingSolver<Solver<LP<FMC_MGM_T>,StandardTighteningVisitor>> solver(argc,argv);
+    ProblemConstructorRoundingSolver<Solver<LP<FMC_MGM_T>,StandardTighteningVisitor>> solver(argc,argv);
+    //MpRoundingSolver<Solver<LP<FMC_MGM_T>,StandardTighteningVisitor>> solver(argc,argv);
     auto input = Torresani_et_al_multigraph_matching_input::parse_file(solver.get_input_file());
     solver.template GetProblemConstructor<0>().construct(input);
     return solver.Solve();
