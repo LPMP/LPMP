@@ -8,6 +8,7 @@
 
 namespace LPMP {
 
+template<bool SEND_ASSIGNMENT_MESSAGES = true>
 struct FMC_MGM { // factor message connection
    constexpr static const char* name = "multigraph matching";
       
@@ -17,7 +18,8 @@ struct FMC_MGM { // factor message connection
    using triplet_consistency_factor_zero = FactorContainer<multigraph_matching_triplet_consistency_factor_zero, FMC_MGM, 3>;
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, triplet_consistency_factor, triplet_consistency_factor_zero>;
 
-   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MGM, 0 >;
+   constexpr static auto assignment_message_schedule = SEND_ASSIGNMENT_MESSAGES ? message_passing_schedule::full : message_passing_schedule::none;
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, assignment_message_schedule, variableMessageNumber, variableMessageNumber, FMC_MGM, 0 >;
    using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM, 1 >;
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM, 2 >;
 
@@ -41,33 +43,7 @@ struct FMC_MGM { // factor message connection
    using ProblemDecompositionList = meta::list<mgm_constructor>;
 };
 
-struct FMC_MGM_LINEAR { // factor message connection
-   constexpr static const char* name = "multigraph matching";
-      
-   using UnaryFactor = FactorContainer<UnarySimplexFactor, FMC_MGM_LINEAR, 0, true>;
-   using PairwiseFactor = FactorContainer<PairwiseSimplexFactor, FMC_MGM_LINEAR, 1>;
-   using triplet_consistency_factor = FactorContainer<multigraph_matching_triplet_consistency_factor, FMC_MGM_LINEAR, 2>; 
-   using triplet_consistency_factor_zero = FactorContainer<multigraph_matching_triplet_consistency_factor_zero, FMC_MGM_LINEAR, 3>;
-   using FactorList = meta::list< UnaryFactor, PairwiseFactor, triplet_consistency_factor, triplet_consistency_factor_zero>;
-
-   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MGM_LINEAR, 0 >;
-
-   using pq_vector_triplet_consistency_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::left>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_LINEAR, 1>; 
-   using qr_vector_triplet_consistency_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::right>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_LINEAR, 2>; 
-   using pr_scalar_triplet_consistency_message_container = MessageContainer<simplex_multigraph_matching_triplet_scalar_consistency_message, 0, 1, message_passing_schedule::left, variableMessageNumber, 2, FMC_MGM_LINEAR, 3>;
-
-   using pq_vector_triplet_consistency_zero_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::left>, 0, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_LINEAR, 4>; 
-   using qr_vector_triplet_consistency_zero_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::right>, 0, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_LINEAR, 5>; 
-
-   using MessageList = meta::list< AssignmentConstraintMessage, pq_vector_triplet_consistency_message_container, qr_vector_triplet_consistency_message_container, pr_scalar_triplet_consistency_message_container, pq_vector_triplet_consistency_zero_message_container, qr_vector_triplet_consistency_zero_message_container >;
-
-   // TODO: make mrf constructor correct for case of no pairwise potentials
-   using mrf = mrf_constructor<FMC_MGM_LINEAR,0,0,0,0>;
-   using gm_constructor = graph_matching_constructor<graph_matching_mrf_constructor<mrf>, AssignmentConstraintMessage>;
-   using mgm_constructor = multigraph_matching_constructor<gm_constructor, triplet_consistency_factor, triplet_consistency_factor_zero, pq_vector_triplet_consistency_message_container, qr_vector_triplet_consistency_message_container, pr_scalar_triplet_consistency_message_container, pq_vector_triplet_consistency_zero_message_container, qr_vector_triplet_consistency_zero_message_container >;
-   using ProblemDecompositionList = meta::list<mgm_constructor>;
-}; 
-
+template<bool SEND_ASSIGNMENT_MESSAGES = true>
 struct FMC_MGM_T { // factor message connection with tightening triplets for underlying MRFs
    constexpr static const char* name = "multigraph matching with mrf tightening";
       
@@ -79,7 +55,8 @@ struct FMC_MGM_T { // factor message connection with tightening triplets for und
 
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, triplet_consistency_factor, triplet_consistency_factor_zero, empty_mrf_triplet_factor >;
 
-   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MGM_T, 0 >;
+   constexpr static auto assignment_message_schedule = SEND_ASSIGNMENT_MESSAGES ? message_passing_schedule::full : message_passing_schedule::none;
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, assignment_message_schedule, variableMessageNumber, variableMessageNumber, FMC_MGM_T, 0 >;
    using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 1 >;
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 2 >;
 
@@ -87,12 +64,12 @@ struct FMC_MGM_T { // factor message connection with tightening triplets for und
    using qr_vector_triplet_consistency_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::right>, 0, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 4>; 
    using pr_scalar_triplet_consistency_message_container = MessageContainer<simplex_multigraph_matching_triplet_scalar_consistency_message, 0, 2, message_passing_schedule::left, variableMessageNumber, 2, FMC_MGM_T, 5>;
 
-   using pq_vector_triplet_consistency_zero_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::left>, 0, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 4>; 
-   using qr_vector_triplet_consistency_zero_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::right>, 0, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 5>; 
+   using pq_vector_triplet_consistency_zero_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::left>, 0, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 6>; 
+   using qr_vector_triplet_consistency_zero_message_container = MessageContainer<simplex_multigraph_matching_triplet_vector_consistency_message<Chirality::right>, 0, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 7>; 
 
-   using pairwise_triplet_12_message = MessageContainer<PairwiseTripletMessage<0,1>, 1, 4, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 6>;
-   using pairwise_triplet_13_message = MessageContainer<PairwiseTripletMessage<0,2>, 1, 4, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 7>;
-   using pairwise_triplet_23_message = MessageContainer<PairwiseTripletMessage<1,2>, 1, 4, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 8>; 
+   using pairwise_triplet_12_message = MessageContainer<PairwiseTripletMessage<0,1>, 1, 4, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 8>;
+   using pairwise_triplet_13_message = MessageContainer<PairwiseTripletMessage<0,2>, 1, 4, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 9>;
+   using pairwise_triplet_23_message = MessageContainer<PairwiseTripletMessage<1,2>, 1, 4, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 10>; 
 
    using MessageList = meta::list<
       AssignmentConstraintMessage, UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer, 
@@ -102,7 +79,7 @@ struct FMC_MGM_T { // factor message connection with tightening triplets for und
          >;
 
    using mrf = mrf_constructor<FMC_MGM_T,0,1,1,2>;
-   using tightening_mrf = tightening_mrf_constructor<mrf,3,6,7,8>;
+   using tightening_mrf = tightening_mrf_constructor<mrf,4,8,9,10>;
    using gm_constructor = graph_matching_constructor<graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage>;
    using mgm_constructor = multigraph_matching_constructor<gm_constructor,
          triplet_consistency_factor, triplet_consistency_factor_zero,

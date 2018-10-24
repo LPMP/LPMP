@@ -1,3 +1,5 @@
+add_subdirectory(eval)
+
 add_library(graph_matching_input graph_matching_input.cpp)
 target_link_libraries(graph_matching_input LPMP)
 
@@ -64,11 +66,15 @@ if(WITH_GUROBI)
 endif()
 
 # multigraph matching
-add_executable(multigraph_matching multigraph_matching.cpp)
-target_link_libraries(multigraph_matching multigraph_matching_input LPMP multicut_kernighan_lin transform_multigraph_matching)
+SET(MGM_SOURCE_FILES
+      multigraph_matching_mp.cpp
+      multigraph_matching_mcf.cpp
+      multigraph_matching_tightening_mp.cpp
+      multigraph_matching_tightening_mcf.cpp
+      )
 
-add_executable(multigraph_matching_linear multigraph_matching_linear.cpp)
-target_link_libraries(multigraph_matching_linear multigraph_matching_input LPMP)
-
-add_executable(multigraph_matching_tightening multigraph_matching_tightening.cpp)
-target_link_libraries(multigraph_matching_tightening multigraph_matching_input LPMP multicut_kernighan_lin transform_multigraph_matching)
+foreach( source_file ${MGM_SOURCE_FILES} )
+   string( REPLACE ".cpp" "" executable_file ${source_file} )
+   add_executable( ${executable_file} ${source_file})
+   target_link_libraries( ${executable_file} multigraph_matching_input LPMP multicut_kernighan_lin transform_multigraph_matching m stdc++ pthread )
+endforeach( source_file ${MGM_SOURCE_FILES} )
