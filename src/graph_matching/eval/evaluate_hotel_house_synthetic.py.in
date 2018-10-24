@@ -4,7 +4,7 @@ import os
 
 options = "--roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 10 --tightenIteration 300 --tightenConstraintsPercentage 0.05  --mcfReparametrization --primalComputationStart 1 --primalComputationInterval 50 -v 2 --lowerBoundComputationInterval 10 --tighten --multigraphMatchingOutputFormat clustering"
 
-algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightenign_mp', 'multigraph_matching_tightening_mcf']
+algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightening_mp', 'multigraph_matching_tightening_mcf']
 
 hotel_house_synthetic_instance_dir = "@HOTEL_HOUSE_SYNTHETIC_INSTANCE_DIRECTORY@" + "/"
 

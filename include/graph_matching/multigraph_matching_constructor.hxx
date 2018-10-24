@@ -260,7 +260,9 @@ public:
         mcf_reparametrization_arg_("", "mcfReparametrization", "enable reparametrization by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
         mcf_primal_rounding_arg_("", "mcfRounding", "enable runding by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
         output_format_arg_("", "multigraphMatchingOutputFormat", "output format for multigraph matching", false, "matching", "{matching|clustering}", s.get_cmd())
-        {}
+        {
+           omp_set_nested(0); // there is parallelism in the graph matching constructors, which we suppress hereby. TODO: should be better set somewhere else
+        }
 
     void order_factors()
     {
