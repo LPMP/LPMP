@@ -65,6 +65,22 @@ void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool
     if (!do_rounding_on_mrf) {
         for(std::size_t p=0; p<multiple_chain_constructor.get_number_of_pairwise_factors(); ++p) {
             auto [i, j] = multiple_chain_constructor.get_pairwise_variables(p);
+            if (j - i == 1)
+                continue;
+
+            auto* f = multiple_chain_constructor.get_pairwise_factor(p);
+            auto msgs_left = f->template get_messages<typename FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryPairwiseMessageLeftContainer>();
+            auto msgs_right =  f->template get_messages<typename FMC_HORIZON_TRACKING_MULTIPLE_CHAINS::UnaryPairwiseMessageRightContainer>();
+            for(auto* m : msgs_left) {
+                m->send_message_to_left(1.0);
+            }
+            for(auto* m : msgs_right) {
+                m->send_message_to_left(1.0);
+            }
+        }
+
+        for(std::size_t p=0; p<multiple_chain_constructor.get_number_of_pairwise_factors(); ++p) {
+            auto [i, j] = multiple_chain_constructor.get_pairwise_variables(p);
             if (j - i > 1)
                 continue;
 
@@ -114,7 +130,7 @@ void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool
     
     else {
         solver.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.0));
-        for(std::size_t i=0; i<1; ++i) {
+        for(std::size_t i=0; i<10; ++i) {
         solver.GetLP().ComputeForwardPassAndPrimal();
         solver.RegisterPrimal();
         solver.GetLP().ComputeBackwardPassAndPrimal();
@@ -126,4 +142,4 @@ void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool
     std::cout<<"Perentage Gap: "<<100*(solver.primal_cost() - lb)/std::abs(lb)<<std::endl;
 }
 
-#endif //LPMP_HORIZON_TRACKING_PRIMAL_ROUNDING_NEW_HXX
+#endif //LPMP_HORIZON_TRACKING_PRIMAL_ROUNDING_HXX

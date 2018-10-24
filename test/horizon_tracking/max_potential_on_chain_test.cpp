@@ -8,6 +8,7 @@ int main()
     // problem with zero linear potentials
     const int numNodes = 3;
     std::vector<std::vector<INDEX>> numLabels(1);
+    two_dim_variable_array<INDEX> chainNodeToOriginalNode({std::vector({0, 1, 2})});
     numLabels[0] = {3, 2, 3};
     std::vector<std::array<INDEX,2>> potential_size{{3,2}, {2,3}};
 
@@ -27,11 +28,24 @@ int main()
     MaxPairwisePotentials(1,1,0) = 3;
     MaxPairwisePotentials(1,1,1) = 1;
     MaxPairwisePotentials(1,1,2) = 6;
+    three_dimensional_variable_array<REAL> maxPairwiseCopy(MaxPairwisePotentials);
 
     {
+        MaxPairwisePotentials(0,0,0) = 1000;
+        MaxPairwisePotentials(0,1,0) = 1000;
+        MaxPairwisePotentials(0,2,0) = 1000;
+        MaxPairwisePotentials(0,1,1) = 1000;
+        MaxPairwisePotentials(0,2,0) = 1000;
+        MaxPairwisePotentials(1,0,0) = 1000;
+        MaxPairwisePotentials(1,0,1) = 1000;
+        MaxPairwisePotentials(1,0,2) = 1000;
+        MaxPairwisePotentials(1,1,0) = 1000;
+        MaxPairwisePotentials(1,1,1) = 1000;
+        MaxPairwisePotentials(1,1,2) = 1000;
+
         std::vector<three_dimensional_variable_array<REAL>> allLinearPotentials = {LinearPairwisePotentials};
-        std::vector<three_dimensional_variable_array<REAL>> allMaxPotentials = {MaxPairwisePotentials};
-        max_potential_on_multiple_chains chain = max_potential_on_multiple_chains(allLinearPotentials, allMaxPotentials , {numLabels});
+        std::vector<three_dimensional_variable_array<REAL>> allMaxPotentials = {maxPairwiseCopy};
+        max_potential_on_multiple_chains chain = max_potential_on_multiple_chains(allLinearPotentials, allMaxPotentials , {numLabels}, chainNodeToOriginalNode);
         chain.MaximizePotentialAndComputePrimal();
         test(chain.EvaluatePrimal(), 1, 0);
     }
@@ -52,8 +66,8 @@ int main()
 
     {
         std::vector<three_dimensional_variable_array<REAL>> allLinearPotentials = {LinearPairwisePotentials};
-        std::vector<three_dimensional_variable_array<REAL>> allMaxPotentials = {MaxPairwisePotentials};
-        max_potential_on_multiple_chains chain = max_potential_on_multiple_chains(allLinearPotentials, allMaxPotentials , {numLabels});
+        std::vector<three_dimensional_variable_array<REAL>> allMaxPotentials = {maxPairwiseCopy};
+        max_potential_on_multiple_chains chain = max_potential_on_multiple_chains(allLinearPotentials, allMaxPotentials , {numLabels}, chainNodeToOriginalNode);
         chain.MaximizePotentialAndComputePrimal();
         test(chain.EvaluatePrimal(), 6, 0);
     }
@@ -63,8 +77,8 @@ int main()
 
     {
         std::vector<three_dimensional_variable_array<REAL>> allLinearPotentials = {LinearPairwisePotentials};
-        std::vector<three_dimensional_variable_array<REAL>> allMaxPotentials = {MaxPairwisePotentials};
-        max_potential_on_multiple_chains chain = max_potential_on_multiple_chains(allLinearPotentials, allMaxPotentials, {numLabels});
+        std::vector<three_dimensional_variable_array<REAL>> allMaxPotentials = {maxPairwiseCopy};
+        max_potential_on_multiple_chains chain = max_potential_on_multiple_chains(allLinearPotentials, allMaxPotentials, {numLabels}, chainNodeToOriginalNode);
         chain.MaximizePotentialAndComputePrimal();
         test(chain.EvaluatePrimal(), 4, 0);
     }

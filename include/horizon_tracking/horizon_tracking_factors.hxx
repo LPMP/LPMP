@@ -179,7 +179,7 @@ public:
                                      std::vector<three_dimensional_variable_array<REAL>>& maxPotentials, 
                                      std::vector<std::vector<INDEX>>& numLabels,
                                      two_dim_variable_array<INDEX>& chainNodeToOriginalNode,
-                                     bool solveChainsIndependently) 
+                                     bool solveChainsIndependently = false) 
        : LinearPotentials(linearPotentials), 
         MaxPotentials(maxPotentials),
         NumLabels(numLabels),
@@ -861,4 +861,4 @@ class pairwise_max_potential_on_multiple_chains_message {
 };
 }
 
-#endif // LPMP_HORIZON_TRACKING_FACTORS_NEW_HXX
+#endif // LPMP_HORIZON_TRACKING_FACTORS_HXX
