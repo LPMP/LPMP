@@ -17,7 +17,7 @@ struct FMC_MGM { // factor message connection
    using triplet_consistency_factor_zero = FactorContainer<multigraph_matching_triplet_consistency_factor_zero, FMC_MGM, 3>;
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, triplet_consistency_factor, triplet_consistency_factor_zero>;
 
-   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MGM, 0 >;
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::none, variableMessageNumber, variableMessageNumber, FMC_MGM, 0 >;
    using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM, 1 >;
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM, 2 >;
 
@@ -79,7 +79,7 @@ struct FMC_MGM_T { // factor message connection with tightening triplets for und
 
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, triplet_consistency_factor, triplet_consistency_factor_zero, empty_mrf_triplet_factor >;
 
-   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MGM_T, 0 >;
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::none, variableMessageNumber, variableMessageNumber, FMC_MGM_T, 0 >;
    using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 1 >;
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MGM_T, 2 >;
 

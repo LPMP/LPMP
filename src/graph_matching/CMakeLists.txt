@@ -1,3 +1,5 @@
+add_subdirectory(eval)
+
 add_library(graph_matching_input graph_matching_input.cpp)
 target_link_libraries(graph_matching_input LPMP)
 
