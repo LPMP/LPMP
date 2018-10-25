@@ -8,6 +8,7 @@ options = "--roundingReparametrization uniform:0.5 --tightenReparametrization un
 algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightening_mp', 'multigraph_matching_tightening_mcf']
 
 WILLOW_instance_dir = "@WILLOW_INSTANCE_DIRECTORY@" + "/"
+current_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/"
 
 instance_list = [
    'gm_8/Face/instance_00001/instance.txt',
@@ -274,8 +275,9 @@ instance_list = [
 
 for instance in instance_list:
    for algorithm in algorithms:
+      full_algorithm_path = current_dir + "../" + algorithm
       instance_file = WILLOW_instance_dir + instance 
-      output_dir = "WILLOW/" + os.path.dirname(instance) + "/"
+      output_dir = current_dir + "WILLOW/" + os.path.dirname(instance) + "/"
       instance_name = os.path.splitext(os.path.basename(instance))[0]
       result_file = output_dir + instance_name + "_" + algorithm + "_result.txt"
       log_file = output_dir + instance_name + "_" + algorithm + "_log.txt"
@@ -285,7 +287,7 @@ for instance in instance_list:
 
       if not (os.path.isfile(log_file) or os.path.isfile(result_file)):
          print("optimize " + instance + " with " + algorithm)
-         run_alg_cmd = "export OMP_NUM_THREADS=1; ../" + algorithm + " -i " + instance_file + " -o " + result_file + " " + options + " 2>&1 > " + log_file
+         run_alg_cmd = "export OMP_NUM_THREADS=1; " + full_algorithm_path + " -i " + instance_file + " -o " + result_file + " " + options + " 2>&1 > " + log_file
          call(run_alg_cmd, shell=True)
       else:
          print("skip optimization of " + instance + " with algorithm " + algorithm)
