@@ -745,6 +745,10 @@ class pairwise_max_potential_on_multiple_chains_message {
                                                           const INDEX unary_1, const INDEX unary_2) :
         ChainIndex(chain_index), EdgeIndex(pairwise_index), N1(unary_1), N2(unary_2) {}
 
+        void TurnOffUpdateFlags() {
+            ToUpdate = false;
+        }
+
         template<typename FACTOR, typename MSG>
         void RepamRight(FACTOR& r, const MSG& msgs) const
         {
@@ -819,7 +823,7 @@ class pairwise_max_potential_on_multiple_chains_message {
                 l.primal()[1] = r.GetSolution(ChainIndex, N2);
             }
 
-            return changed_N1 || changed_N2;
+            return (changed_N1 || changed_N2) && ToUpdate;
         }
 
         template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
@@ -837,7 +841,7 @@ class pairwise_max_potential_on_multiple_chains_message {
                 r.SetSolution(ChainIndex, N2, l.primal()[1]);
             }
 
-            return changed_N1 || changed_N2;
+            return (changed_N1 || changed_N2) && ToUpdate;
         }
 
         template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
@@ -858,6 +862,7 @@ class pairwise_max_potential_on_multiple_chains_message {
         const INDEX EdgeIndex;
         const INDEX N1;
         const INDEX N2;
+        bool ToUpdate = true;
 };
 }
 
