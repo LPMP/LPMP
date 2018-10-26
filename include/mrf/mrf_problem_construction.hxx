@@ -114,20 +114,28 @@ public:
       return pairwiseFactor_[factor_id]; 
    }
 
-   LeftMessageContainer* get_left_message(const INDEX i, const INDEX j) const
+   std::pair<LeftMessageContainer*, RightMessageContainer*> get_unary_messages(PairwiseFactorContainer* p) const
+   {
+      return {get_left_message(p), get_right_message(p)};
+   }
+
+   std::pair<LeftMessageContainer*,RightMessageContainer*> get_unary_messages(const std::size_t i, const std::size_t j) const
    {
       assert(i < j);
-      auto* f = get_pairwise_factor(i,j);
-      auto msgs = f->template get_messages<LeftMessageContainer>();
+      auto* p = get_pairwise_factor(i,j);
+      return get_unary_messages(p);
+   }
+
+   LeftMessageContainer* get_left_message(PairwiseFactorContainer* p) const
+   {
+      auto msgs = p->template get_messages<LeftMessageContainer>();
       assert(msgs.size() == 1);
       return msgs[0];
    }
 
-   RightMessageContainer* get_right_message(const INDEX i, const INDEX j) const
+   RightMessageContainer* get_right_message(PairwiseFactorContainer* p) const
    {
-      assert(i < j);
-      auto* f = get_pairwise_factor(i,j);
-      auto msgs = f->template get_messages<RightMessageContainer>();
+      auto msgs = p->template get_messages<RightMessageContainer>();
       assert(msgs.size() == 1);
       return msgs[0];
    }
@@ -374,6 +382,18 @@ public:
      //assert(check_pairwise_factors_present() == pairwiseIndices.size());
 
      return std::move(trees);
+  }
+
+  void send_messages_to_unaries()
+  {
+     for(auto* p : pairwiseFactor_) {
+        auto msgs = get_unary_messages(p);
+        std::get<0>(msgs)->send_message_to_right(1.0);
+        std::get<1>(msgs)->send_message_to_right(1.0);
+        std::get<0>(msgs)->send_message_to_left(0.5);
+        std::get<1>(msgs)->send_message_to_left(1.0);
+        std::get<0>(msgs)->send_message_to_left(1.0);
+     } 
   }
 
   void construct(const mrf_input& input)
@@ -626,8 +646,31 @@ public:
       return no_triplets_added;
    }
 
+  void send_messages_to_unaries()
+  {
+     for(auto* t : tripletFactor_) {
+        auto msgs = get_triplet_to_pairwise_messages(t);
+        std::get<0>(msgs)->send_message_to_left(1.0/3.0);
+        std::get<1>(msgs)->send_message_to_left(1.0/3.0);
+        std::get<2>(msgs)->send_message_to_left(1.0);
+        std::get<1>(msgs)->send_message_to_left(0.5);
+        std::get<0>(msgs)->send_message_to_left(1.0); 
+     }
+     MRF_PROBLEM_CONSTRUCTOR::send_messages_to_unaries();
+  } 
 
 protected:
+
+  std::tuple< PairwiseTripletMessage12Container*, PairwiseTripletMessage13Container*, PairwiseTripletMessage23Container* >
+  get_triplet_to_pairwise_messages(TripletFactorContainer* t)
+  {
+     auto msgs12 = t->template get_messages<PairwiseTripletMessage12Container>();
+     auto msgs13 = t->template get_messages<PairwiseTripletMessage13Container>();
+     auto msgs23 = t->template get_messages<PairwiseTripletMessage23Container>();
+     assert(msgs12.size() == 1 && msgs13.size() == 1 && msgs23.size() == 1);
+     return {msgs12[0], msgs13[0], msgs23[0]};
+  }
+
    std::vector<TripletFactorContainer*> tripletFactor_;
    std::vector<std::array<INDEX,3>> tripletIndices_;
    std::map<std::array<INDEX,3>, INDEX> tripletMap_; // given two sorted indices, return factorId belonging to that index.

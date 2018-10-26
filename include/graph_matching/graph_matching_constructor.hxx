@@ -62,8 +62,15 @@ public:
        return left_factors; 
     }
 
+    void send_messages_to_unaries()
+    {
+       left_mrf.send_messages_to_unaries();
+       right_mrf.send_messages_to_unaries();
+    }
+
     void ComputePrimal()
     {
+       send_messages_to_unaries();
        auto l = compute_primal_mcf_solution();
        read_in_labeling(l);
     }

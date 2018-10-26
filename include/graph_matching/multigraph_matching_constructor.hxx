@@ -731,6 +731,16 @@ public:
           throw std::runtime_error("output format must be {matching|clustering}");
     }
 
+    void send_messages_to_unaries()
+    {
+       for(auto& c : graph_matching_constructors)
+          c.second->send_messages_to_unaries();
+
+       for(auto& t : triplet_consistency_factors) {
+          std::visit([&](auto&& t) { this->send_messages_to_unaries(t); }, t.second);
+       }
+    }
+
     // start with possibly inconsistent primal labeling obtained by individual graph matching roundings.
     // remote cycles that are inconsistent through a multicut solver
     void ComputePrimal()
@@ -753,6 +763,7 @@ public:
           for(auto& c : graph_matching_constructors) {
              labeling.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
           }
+          send_messages_to_unaries();
           auto mgm = export_linear_multigraph_matching_input();
           auto round_primal_async = ([=]() {
                 auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
@@ -834,6 +845,47 @@ private:
        else
           return get_graph_matching_constructor(q,p)->get_right_index(p_node,q_node);
     }
+
+   std::tuple< PQ_ROW_TRIPLET_CONSISTENCY_MESSAGE*, QR_COLUMN_TRIPLET_CONSISTENCY_MESSAGE*, PR_SCALAR_TRIPLET_CONSISTENCY_MESSAGE*, PR_SCALAR_TRIPLET_CONSISTENCY_MESSAGE* >
+   get_unary_messages(TRIPLET_CONSISTENCY_FACTOR* t) const
+   {
+      auto pq_row_msgs = t->template get_messages<PQ_ROW_TRIPLET_CONSISTENCY_MESSAGE>();
+      auto qr_column_msgs = t->template get_messages<QR_COLUMN_TRIPLET_CONSISTENCY_MESSAGE>();
+      auto pr_scalar_msgs = t->template get_messages<PR_SCALAR_TRIPLET_CONSISTENCY_MESSAGE>();
+      assert(pq_row_msgs.size() == 1 && qr_column_msgs.size() == 1 && pr_scalar_msgs.size() == 2);
+      return {pq_row_msgs[0], qr_column_msgs[0], pr_scalar_msgs[0], pr_scalar_msgs[1]};
+   }
+    void send_messages_to_unaries(TRIPLET_CONSISTENCY_FACTOR* t)
+    {
+       auto msgs = get_unary_messages(t);
+       std::get<0>(msgs)->send_message_to_left(0.25);
+       std::get<1>(msgs)->send_message_to_left(0.25);
+       std::get<2>(msgs)->send_message_to_left(0.25);
+       std::get<3>(msgs)->send_message_to_left(1.0);
+       std::get<2>(msgs)->send_message_to_left(1.0/3.0);
+       std::get<1>(msgs)->send_message_to_left(1.0/3.0);
+       std::get<0>(msgs)->send_message_to_left(1.0);
+       std::get<1>(msgs)->send_message_to_left(0.5);
+       std::get<2>(msgs)->send_message_to_left(1.0);
+       std::get<1>(msgs)->send_message_to_left(1.0); 
+    }
+
+   std::tuple<PQ_ROW_TRIPLET_CONSISTENCY_ZERO_MESSAGE*, QR_COLUMN_TRIPLET_CONSISTENCY_ZERO_MESSAGE*>
+   get_unary_messages(TRIPLET_CONSISTENCY_FACTOR_ZERO* t) const
+   {
+      auto pq_row_msgs = t->template get_messages<PQ_ROW_TRIPLET_CONSISTENCY_ZERO_MESSAGE>();
+      auto qr_column_msgs = t->template get_messages<QR_COLUMN_TRIPLET_CONSISTENCY_ZERO_MESSAGE>();
+      assert(pq_row_msgs.size() == 1 && qr_column_msgs.size() == 1);
+      return {pq_row_msgs[0], qr_column_msgs[0]}; 
+   }
+
+   void send_messages_to_unaries(TRIPLET_CONSISTENCY_FACTOR_ZERO* t)
+   {
+       auto msgs = get_unary_messages(t);
+       std::get<0>(msgs)->send_message_to_left(0.5);
+       std::get<1>(msgs)->send_message_to_left(1.0);
+       std::get<0>(msgs)->send_message_to_left(1.0);
+   } 
 
     LP<FMC>* lp_;
     //std::unordered_map<triplet_consistency_factor, TRIPLET_CONSISTENCY_FACTOR*, triplet_consistency_factor_hash> triplet_consistency_factors;

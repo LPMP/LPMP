@@ -50,7 +50,7 @@ struct FMC_MP {
    using UnaryFactor = FactorContainer<UnarySimplexFactor, FMC_MP_PARAM, 0, true >; // set to true if labeling by unaries is desired
    using PairwiseFactor = FactorContainer<PairwiseSimplexFactor, FMC_MP_PARAM, 1, false >;
 
-   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 0 >;
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::none, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 0 >;
    using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 1 >;
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 2 >;
 
@@ -75,7 +75,7 @@ struct FMC_MP_T {
    using UnaryFactor = FactorContainer<UnarySimplexFactor, FMC_MP_PARAM, 0, true >; // set to true if labeling by unaries is desired
    using PairwiseFactor = FactorContainer<PairwiseSimplexFactor, FMC_MP_PARAM, 1, false >;
 
-   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 0 >;
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::none, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 0 >;
    using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 1 >;
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 2 >;
 
