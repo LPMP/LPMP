@@ -129,6 +129,9 @@ void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool
     }
     
     else {
+        for(auto* m : multiple_chain_constructor.pairwise_to_multiple_chain_messages()) {
+            m->GetMessageOp().TurnOffUpdateFlags();
+        }
         solver.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.0));
         for(std::size_t i=0; i<10; ++i) {
         solver.GetLP().ComputeForwardPassAndPrimal();
