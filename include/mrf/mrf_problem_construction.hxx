@@ -390,6 +390,7 @@ public:
         auto msgs = get_unary_messages(p);
         std::get<0>(msgs)->send_message_to_right(1.0);
         std::get<1>(msgs)->send_message_to_right(1.0);
+
         std::get<0>(msgs)->send_message_to_left(0.5);
         std::get<1>(msgs)->send_message_to_left(1.0);
         std::get<0>(msgs)->send_message_to_left(1.0);
@@ -650,12 +651,17 @@ public:
   {
      for(auto* t : tripletFactor_) {
         auto msgs = get_triplet_to_pairwise_messages(t);
+        std::get<0>(msgs)->send_message_to_right(1.0);
+        std::get<1>(msgs)->send_message_to_right(1.0);
+        std::get<2>(msgs)->send_message_to_right(1.0);
+
         std::get<0>(msgs)->send_message_to_left(1.0/3.0);
         std::get<1>(msgs)->send_message_to_left(1.0/3.0);
         std::get<2>(msgs)->send_message_to_left(1.0);
         std::get<1>(msgs)->send_message_to_left(0.5);
         std::get<0>(msgs)->send_message_to_left(1.0); 
      }
+
      MRF_PROBLEM_CONSTRUCTOR::send_messages_to_unaries();
   } 
 

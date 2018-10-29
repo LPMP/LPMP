@@ -203,6 +203,7 @@ multigraph_matching_input::labeling transform_correlation_clustering_to_multigra
    return l_output;
 }
 
+
 /*
 multicut_instance::labeling transform_multigraph_matching_labeling_to_correlation_clustering(
       const multigraph_matching_input::labeling& input
@@ -217,6 +218,8 @@ multicut_instance::labeling transform_multigraph_matching_labeling_to_correlatio
    }
 
    // now add intra-graph edges. Possibly input is not feasible. In this case not all edges are 0.
+
+   return output;
 }
 */
 

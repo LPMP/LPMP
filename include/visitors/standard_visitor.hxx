@@ -43,7 +43,9 @@ namespace LPMP {
             standardReparametrizationArg_("","standardReparametrization","mode of reparametrization",false,"anisotropic","{anisotropic|uniform}:${leave_percentage}",cmd),
             roundingReparametrizationArg_("","roundingReparametrization","mode of reparametrization for rounding primal solution:",false,"uniform:0.5","{anisotropic|uniform}:${leave_percentage}",cmd),
             primalTime_(0)
-      {}
+      {
+         beginTime_ = std::chrono::steady_clock::now();
+      }
 
       template<typename LP_TYPE>
       LpControl begin(LP_TYPE& lp) // called, after problem is constructed. 
@@ -67,8 +69,6 @@ namespace LPMP {
             exit(1);
          }
 
-         beginTime_ = std::chrono::steady_clock::now();
-
          LpControl ret;
          ret.lp_repam = standard_reparametrization_;
          ret.computePrimal = false;
@@ -81,7 +81,7 @@ namespace LPMP {
       LpControl visit(const LpControl c, const REAL lowerBound, const REAL primalBound)
       {
          lowerBound_.push_back(lowerBound); // rename to lowerBoundHistory_
-         const INDEX timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beginTime_).count();
+         const auto timeElapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - beginTime_).count();
 
          // first output based on what lp solver did in last iteration
          if(c.computePrimal == false && c.computeLowerBound == false) {
@@ -95,7 +95,9 @@ namespace LPMP {
               if(c.computePrimal) {
                 std::cout << ", upper bound = " << primalBound;
               }
-              std::cout << ", time elapsed = " << timeElapsed/1000 << "." << (timeElapsed%1000)/10 << "s\n";
+              using seconds_format = std::chrono::duration<double, std::ratio<64,1000000>>;
+              std::cout << ", time elapsed = " << seconds_format(timeElapsed).count()/1000000 << "s\n";
+              //std::cout << ", time elapsed = " << timeElapsed/unit << "." << (timeElapsed%unit) << "s\n";
             }
          }
 
@@ -162,15 +164,15 @@ namespace LPMP {
 
       void end(const REAL lower_bound, const REAL upper_bound)
       {
-         auto endTime = std::chrono::steady_clock::now();
+         const auto endTime = std::chrono::steady_clock::now();
          if(verbosity >= 1) { 
            std::cout << "final lower bound = " << lower_bound << ", upper bound = " << upper_bound << "\n";
            std::cout << "Optimization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(endTime - beginTime_).count() << " milliseconds and " << curIter_ << " iterations.\n";
          }
       }
       
-      using TimeType = decltype(std::chrono::steady_clock::now());
-      TimeType GetBeginTime() const { return beginTime_; }
+      using time_type = decltype(std::chrono::steady_clock::now());
+      time_type GetBeginTime() const { return beginTime_; }
       //`REAL GetLowerBound() const { return curLowerBound_; }
       INDEX GetIter() const { return curIter_; }
 
@@ -211,7 +213,7 @@ namespace LPMP {
       INDEX curIter_ = 0;
       REAL prevLowerBound_ = -std::numeric_limits<REAL>::max();
       REAL curLowerBound_ = -std::numeric_limits<REAL>::max();
-      TimeType beginTime_;
+      time_type beginTime_;
 
       // primal
       //REAL bestPrimalCost_ = std::numeric_limits<REAL>::infinity();

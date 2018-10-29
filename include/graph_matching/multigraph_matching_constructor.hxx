@@ -767,7 +767,8 @@ public:
           auto mgm = export_linear_multigraph_matching_input();
           auto round_primal_async = ([=]() {
                 auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
-                auto cc_sol = compute_multicut_gaec_kernighan_lin(cc);
+                // TODO: try fixing infeasible matching cost with kernighan lin
+                auto cc_sol = compute_multicut_kernighan_lin(cc);
                 auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
                 return mgm_sol;
                 });
@@ -858,6 +859,11 @@ private:
     void send_messages_to_unaries(TRIPLET_CONSISTENCY_FACTOR* t)
     {
        auto msgs = get_unary_messages(t);
+       std::get<0>(msgs)->send_message_to_right(1.0);
+       std::get<1>(msgs)->send_message_to_right(1.0);
+       std::get<2>(msgs)->send_message_to_right(1.0);
+       std::get<3>(msgs)->send_message_to_right(1.0);
+
        std::get<0>(msgs)->send_message_to_left(0.25);
        std::get<1>(msgs)->send_message_to_left(0.25);
        std::get<2>(msgs)->send_message_to_left(0.25);
@@ -882,6 +888,9 @@ private:
    void send_messages_to_unaries(TRIPLET_CONSISTENCY_FACTOR_ZERO* t)
    {
        auto msgs = get_unary_messages(t);
+       std::get<0>(msgs)->send_message_to_right(1.0);
+       std::get<1>(msgs)->send_message_to_right(1.0);
+
        std::get<0>(msgs)->send_message_to_left(0.5);
        std::get<1>(msgs)->send_message_to_left(1.0);
        std::get<0>(msgs)->send_message_to_left(1.0);
