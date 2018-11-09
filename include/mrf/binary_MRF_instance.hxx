@@ -4,6 +4,7 @@
 #include <vector>
 #include <array>
 #include <tuple>
+#include <map>
 #include <cassert>
 
 namespace LPMP {
@@ -63,6 +64,22 @@ struct binary_MRF_instance {
         std::size_t j = 0;
         std::array<std::array<double,2>,2> cost = {{ {0.0, 0.0}, {0.0, 0.0} }};
     };
+
+    void merge_parallel_edges()
+    {
+       std::vector<binary_pairwise_potential> merged_pairwise_potentials;
+       std::map<std::array<std::size_t,2>, std::size_t> merged_index;
+       for(const auto& p : pairwise_potentials) {
+          if(merged_index.count({p.i,p.j}) > 0) {
+             const std::size_t idx = merged_index.find({p.i,p.j})->second;
+             merged_pairwise_potentials[idx].add_cost(p);
+          } else {
+             merged_index.insert(std::make_pair(std::array<std::size_t,2>{p.i,p.j}, merged_pairwise_potentials.size()));
+             merged_pairwise_potentials.push_back(p);
+          }
+       }
+       std::swap(pairwise_potentials, merged_pairwise_potentials);
+    }
 
     double constant = 0.0;
     std::vector<std::array<double,2>> unaries;

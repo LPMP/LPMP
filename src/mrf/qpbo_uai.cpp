@@ -14,4 +14,7 @@ int main(int argc, char** argv)
    qpbo_factor q(input);
    const std::size_t no_persistent_labels = q.no_persistent_labels();
    std::cout << no_persistent_labels << " are persistent out of " << q.no_variables() << " nodes\n"; 
+
+   const auto reduced_mrf = q.get_reduced_problem();
+   std::cout << "reduced problem has " << reduced_mrf.unaries.size() << " variables and " << reduced_mrf.pairwise_potentials.size() << " edges\n";
 }
