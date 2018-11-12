@@ -407,7 +407,7 @@ public:
     INDEX VerticalSize() const { return SizeV; }
 
 private:
-    const two_dim_variable_array<INDEX> ChainNodeToOriginalNode;
+    const two_dim_variable_array<INDEX>& ChainNodeToOriginalNode;
     const INDEX NumChains;
     std::vector<bool> IsHorizontalChain;   // 1 -> horizontal, 0 -> vertical
     std::vector<INDEX> HChainIndices; // gives horizontal chain index at the given y-offset
@@ -416,6 +416,110 @@ private:
     INDEX NumVerticalChains;
     INDEX SizeH = 1, SizeV = 1;     // SizeV=1 if single horizontal chain
 
+};
+
+class GreedyRoundingChains {
+    struct NodeWithPriority {
+        INDEX N;
+        INDEX Label;
+        REAL Cost; // higher means less priority
+    };
+
+public:
+    GreedyRoundingChains(const std::vector<three_dimensional_variable_array<REAL>>& linearPotentials, const two_dim_variable_array<INDEX>& chainNodeToOriginalNode) :
+    LinearPotentials(linearPotentials), ChainNodeToOriginalNode(chainNodeToOriginalNode) {
+        NumNodes = 0;
+        assert(ChainNodeToOriginalNode.size() == LinearPotentials.size());
+        for (INDEX c = 0; c < ChainNodeToOriginalNode.size(); c++) {
+            NumNodes = std::max(NumNodes, *std::max_element(ChainNodeToOriginalNode[c].begin(), ChainNodeToOriginalNode[c].end()) + 1);
+        }
+        nodeNeighbours.resize(NumNodes);
+        nodeNeighboursPotIndex.resize(NumNodes);
+        SeedNode = std::numeric_limits<INDEX>::max();
+        for (INDEX c = 0; c < ChainNodeToOriginalNode.size(); c++) {
+            for (INDEX n1 = 0; n1 < ChainNodeToOriginalNode[c].size() - 1; n1++) {
+                INDEX n2 = n1 + 1;
+                INDEX n1Orig = ChainNodeToOriginalNode[c][n1];
+                INDEX n2Orig = ChainNodeToOriginalNode[c][n2];
+                nodeNeighbours[n1Orig].push_back(n2Orig);
+                nodeNeighboursPotIndex[n1Orig].push_back({c, n1}); // edge potential between n1 and n2.
+                nodeNeighbours[n2Orig].push_back(n1Orig);
+                nodeNeighboursPotIndex[n2Orig].push_back({c, n1}); // edge potential between n2 and n1.
+                if (LinearPotentials[c].dim2(n1) == 1)
+                {
+                    SeedNode = n1Orig;
+                }
+            }
+        }
+        assert(SeedNode < std::numeric_limits<INDEX>::max());
+    }
+
+    std::vector<std::vector<INDEX>> ComputeSolution() const {
+        std::vector<INDEX> solution;
+        solution.resize(NumNodes, std::numeric_limits<INDEX>::max());
+        auto cmp = [](const NodeWithPriority& left, const NodeWithPriority& right) { return left.Cost > right.Cost; };
+        std::priority_queue<NodeWithPriority, std::vector<NodeWithPriority>, decltype(cmp)> pQ(cmp);
+        pQ.push({SeedNode, 0, 0.0});
+        while (!pQ.empty()) {
+            const auto bestN = pQ.top();
+            pQ.pop();
+            if (solution[bestN.N] < std::numeric_limits<INDEX>::max()) {
+                continue; // already set.
+            }
+            solution[bestN.N] = bestN.Label;
+            for (const INDEX& neighbourNode : nodeNeighbours[bestN.N]) {
+                if (solution[neighbourNode] < std::numeric_limits<INDEX>::max()) continue;
+                // find the best label for current node and enqueue:
+                const auto& bestLabelAndCost = ComputeNeighbourBestLabel(bestN.N, solution[bestN.N], neighbourNode);
+                pQ.push({neighbourNode, bestLabelAndCost.first, bestLabelAndCost.second});
+            }
+        }
+        assert(*std::min_element(solution.begin(), solution.end()) < std::numeric_limits<INDEX>::max());
+
+        std::vector<std::vector<INDEX>> allChainsLabels(ChainNodeToOriginalNode.size());
+        for (INDEX c = 0; c < ChainNodeToOriginalNode.size(); c++) {
+            allChainsLabels[c].resize(ChainNodeToOriginalNode[c].size(), std::numeric_limits<INDEX>::max());
+        }
+        for (INDEX c = 0; c < ChainNodeToOriginalNode.size(); c++) {
+            for (INDEX n = 0; n < ChainNodeToOriginalNode[c].size(); n++) {
+                allChainsLabels[c][n] = solution[ChainNodeToOriginalNode[c][n]];
+            }
+        }
+        return allChainsLabels;
+    }
+
+    std::pair<INDEX, REAL> ComputeNeighbourBestLabel(const INDEX& root, const INDEX& rootLabel, const INDEX& neighbour) const {
+        INDEX bestLabel;
+        REAL bestCost = std::numeric_limits<REAL>::max();
+        INDEX n1Orig = std::min(root, neighbour);
+        INDEX c = std::numeric_limits<INDEX>::max();
+        INDEX n1 = std::numeric_limits<INDEX>::max();
+        INDEX i = 0;
+        for (const auto& allN : nodeNeighbours[root]) {
+            if (allN == neighbour) {
+                c = nodeNeighboursPotIndex[n1Orig][i][0];
+                n1 = nodeNeighboursPotIndex[n1Orig][i][1];
+            }
+            i++;
+        }
+        assert(c < std::numeric_limits<INDEX>::max());
+        for (INDEX ln = 0; ln < LinearPotentials[c].dim3(n1); ln++) {
+            REAL pairwiseCost = LinearPotentials[c](n1, rootLabel, ln);
+            if (bestCost > pairwiseCost) {
+                bestCost = pairwiseCost;
+                bestLabel = ln;
+            }
+        }
+        return std::make_pair(bestLabel, bestCost);
+    }
+
+private:
+    const std::vector<three_dimensional_variable_array<REAL>>& LinearPotentials;
+    const two_dim_variable_array<INDEX>& ChainNodeToOriginalNode;
+    INDEX NumNodes;
+    std::vector<std::vector<INDEX>> nodeNeighbours;
+    std::vector<std::vector<std::array<INDEX, 2>>> nodeNeighboursPotIndex; // Given a node, gives the chain index, node index to get the edge potentials connected to it.
+    INDEX SeedNode;
 };
 }
 #endif //HORIZON_TRACKING_UTIL_HXX

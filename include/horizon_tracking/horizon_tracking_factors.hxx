@@ -311,7 +311,8 @@ public:
     }
 
     void ComputeAndSetPrimal() const {
-        Solution = ComputePrimal();
+        // Solution = ComputePrimal();
+        Solution = ComputePrimalGreedy();
     }
 
 private:
@@ -502,6 +503,11 @@ private:
             PropagateChainSolutionToOtherChains(cDest, gridSolution, allChainsLabels);  
         }
         return allChainsLabels;
+    }
+
+    std::vector<std::vector<INDEX>> ComputePrimalGreedy() const {
+        GreedyRoundingChains greedySolver(LinearPotentials, ChainNodeToOriginalNode);
+        return greedySolver.ComputeSolution();
     }
 
     std::pair<three_dimensional_variable_array<REAL>, three_dimensional_variable_array<REAL>>
