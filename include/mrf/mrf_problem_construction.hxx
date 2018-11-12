@@ -80,14 +80,20 @@ public:
    template<typename MATRIX>
    PairwiseFactorContainer* add_pairwise_factor(const std::size_t var1, const std::size_t var2, const MATRIX& cost)
    { 
-      assert(var1<var2);
-      assert(!has_pairwise_factor(var1,var2));
-      auto* p = lp_->template add_factor<PairwiseFactorContainer>(get_number_of_labels(var1), get_number_of_labels(var2));
+      auto* p = add_pairwise_factor(var1, var2);
       for(std::size_t i=0; i<get_number_of_labels(var1); ++i) {
           for(std::size_t j=0; j<get_number_of_labels(var2); ++j) {
               p->get_factor()->cost(i,j) = cost(i,j);
           }
       }
+      return p;
+   }
+
+   PairwiseFactorContainer* add_pairwise_factor(const std::size_t var1, const std::size_t var2)
+   { 
+      assert(var1<var2);
+      assert(!has_pairwise_factor(var1,var2));
+      auto* p = lp_->template add_factor<PairwiseFactorContainer>(get_number_of_labels(var1), get_number_of_labels(var2));
       pairwiseFactor_.push_back(p);
       pairwiseIndices_.push_back(std::array<INDEX,2>({var1,var2}));
       const INDEX factorId = pairwiseFactor_.size()-1;
@@ -99,10 +105,11 @@ public:
       return p;
    }
 
+   // TODO: remove this function
    PairwiseFactorContainer* add_empty_pairwise_factor(const INDEX var1, const INDEX var2)
    {
       assert(this->pairwiseMap_.find(std::make_tuple(var1,var2)) == this->pairwiseMap_.end()); 
-      return this->add_pairwise_factor(var1, var2, matrix<REAL>(this->get_number_of_labels(var1), this->get_number_of_labels(var2), 0));
+      return this->add_pairwise_factor(var1, var2);
    } 
 
    UnaryFactorContainer* get_unary_factor(const INDEX i) const { assert(i<unaryFactor_.size()); return unaryFactor_[i]; }

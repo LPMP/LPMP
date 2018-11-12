@@ -204,7 +204,7 @@ inline void LP<FMC>::Begin()
    } else if(reparametrization_type_arg_.getValue() == "overlapping_partition") {
      reparametrization_type_ = reparametrization_type::overlapping_partition;
    } else {
-     assert(false);
+     throw std::runtime_error("reparamerization type not recognized");
    }
 }
 
@@ -289,7 +289,7 @@ void LP<FMC>::ComputePass(FACTOR_ITERATOR factorIt, const FACTOR_ITERATOR factor
             f->update_factor_residual(*(omegaIt + i), *(receive_it + i));
         }
     } else {
-       assert(false);
+       throw std::runtime_error("reparametrization type not recognized");
     }
 }
 

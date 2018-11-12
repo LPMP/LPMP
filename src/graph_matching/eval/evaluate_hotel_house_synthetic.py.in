@@ -1226,7 +1226,8 @@ for instance in instance_list:
 
       if not (os.path.isfile(log_file) or os.path.isfile(result_file)):
          print("optimize " + instance + " with " + algorithm)
-         run_alg_cmd = "export OMP_NUM_THREADS=1; ../" + full_algorithm_path + " -i " + instance_file + " -o " + result_file + " " + options + " 2>&1 > " + log_file
+         run_alg_cmd = "export OMP_NUM_THREADS=1; " + full_algorithm_path + " -i " + instance_file + " -o " + result_file + " " + options + " 2>&1 > " + log_file
+         print run_alg_cmd
          call(run_alg_cmd, shell=True)
       else:
          print("skip optimization of " + instance + " with algorithm " + algorithm)
