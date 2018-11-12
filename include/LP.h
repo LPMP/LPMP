@@ -110,28 +110,27 @@ protected:
    std::size_t rounding_iteration_ = 1;
    double constant_ = 0.0;
 
-   TCLAP::ValueArg<std::string> reparametrization_type_arg_; // shared|residual|partition|overlapping_partition|adaptive
+   TCLAP::ValueArg<std::string> reparametrization_type_arg_; // shared|residual|partition|overlapping_partition
    TCLAP::ValueArg<INDEX> inner_iteration_number_arg_;
-   enum class reparametrization_type {shared,residual,partition,overlapping_partition,adaptive};
-   reparametrization_type reparametrization_type_;
+   enum class reparametrization_type {shared,residual,partition,overlapping_partition};
+   reparametrization_type reparametrization_type_ = reparametrization_type::shared;
 
    std::vector<bool> get_inconsistent_mask(const std::size_t no_fatten_rounds = 1);
    template<typename FACTOR_ITERATOR, typename FACTOR_MASK_ITERATOR>
    std::vector<FactorTypeAdapter*> get_masked_factors( FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end, FACTOR_MASK_ITERATOR factor_mask_begin, FACTOR_MASK_ITERATOR factor_mask_end);
    void reduce_optimization_factors();
-
 };
 
 template<typename FMC> 
 LP<FMC>::LP(TCLAP::CmdLine& cmd)
-: reparametrization_type_arg_("","reparametrizationType","message sending type: ", false, "shared", "{shared|residual|partition|overlapping_partition|adaptive}", cmd)
+: reparametrization_type_arg_("","reparametrizationType","message sending type: ", false, "shared", "{shared|residual|partition|overlapping_partition}", cmd)
 , inner_iteration_number_arg_("","innerIteration","number of iterations in inner loop in partition reparamtrization, default = 5",false,5,&positiveIntegerConstraint,cmd)
 {}
 
 // make a deep copy of factors and messages. Adjust pointers to messages and factors
 template<typename FMC>
 LP<FMC>::LP(LP& o) // no const because of o.num_lp_threads_arg_.getValue() not being const!
-  : reparametrization_type_arg_("","reparametrizationType","message sending type: ", false, o.reparametrization_type_arg_.getValue(), "{shared|residual|partition|overlapping_partition|adaptive}" )
+  : reparametrization_type_arg_("","reparametrizationType","message sending type: ", false, o.reparametrization_type_arg_.getValue(), "{shared|residual|partition|overlapping_partition}" )
 , inner_iteration_number_arg_("","innerIteration","number of iterations in inner loop in partition reparamtrization, default = 5",false,o.inner_iteration_number_arg_.getValue(),&positiveIntegerConstraint) 
 {
   /*
@@ -204,8 +203,6 @@ inline void LP<FMC>::Begin()
      reparametrization_type_ = reparametrization_type::partition;
    } else if(reparametrization_type_arg_.getValue() == "overlapping_partition") {
      reparametrization_type_ = reparametrization_type::overlapping_partition;
-   } else if(reparametrization_type_arg_.getValue() == "adaptive") {
-     reparametrization_type_ = reparametrization_type::adaptive;
    } else {
      assert(false);
    }
@@ -278,7 +275,7 @@ template<typename FMC>
 template<typename FACTOR_ITERATOR, typename OMEGA_ITERATOR, typename RECEIVE_MASK_ITERATOR>
 void LP<FMC>::ComputePass(FACTOR_ITERATOR factorIt, const FACTOR_ITERATOR factorItEnd, OMEGA_ITERATOR omegaIt, RECEIVE_MASK_ITERATOR receive_it)
 {
-    const auto n = std::distance(factorIt, factorItEnd);
+    const std::size_t n = std::distance(factorIt, factorItEnd);
     //#pragma omp parallel for schedule(static)
     if(reparametrization_type_ == reparametrization_type::shared || reparametrization_type_ == reparametrization_type::partition || reparametrization_type_ == reparametrization_type::overlapping_partition) {
         for(std::size_t i=0; i<n; ++i) {
@@ -293,11 +290,6 @@ void LP<FMC>::ComputePass(FACTOR_ITERATOR factorIt, const FACTOR_ITERATOR factor
         }
     } else {
        assert(false);
-        assert(reparametrization_type_ == reparametrization_type::adaptive);
-        for(std::size_t i=0; i<n; ++i) {
-            auto* f = *(factorIt + i);
-            f->update_factor_adaptive(*(omegaIt + i), *(receive_it + i));
-        }
     }
 }
 
@@ -390,10 +382,9 @@ double LP<FMC>::EvaluatePrimal()
        return std::numeric_limits<REAL>::infinity();
 
     double cost = constant_;
-    std::cout << "constant = " << constant_ << "\n";
     this->for_each_factor([&cost](const auto& f) {
           const double delta = f.EvaluatePrimal();
-          assert(delta < std::numeric_limits<double>::max());
+          //assert(delta < std::numeric_limits<double>::max()); // need not hold true, since we can have infeasible solutions
 #pragma omp critical
           {
             cost += delta;

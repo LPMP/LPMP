@@ -271,13 +271,13 @@ compute_anisotropic_weights(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor
               // set omega reweighting values
               const std::size_t no_send_messages_anisotropic = std::count(omega[c].begin(), omega[c].end(), 1.0);
               const auto no_send_messages = factor->no_send_messages();
-              const auto leave_weight = [&]() {
-                  if(no_later_factors_receiving_message_from[factor_index] > 0) return 1.0;
-                  if(no_send_messages - no_send_messages_anisotropic  > no_send_messages_anisotropic) return 1.0;
-                  return 0.0;
-              }();
 
               // higher weight than SRMP chooses, that still leaves something in the factor, exactly when SRMP does so.
+              //const auto leave_weight = [&]() {
+              //    if(no_later_factors_receiving_message_from[factor_index] > 0) return 1.0;
+              //    if(no_send_messages - no_send_messages_anisotropic  > no_send_messages_anisotropic) return 1.0;
+              //    return 0.0;
+              //}();
               //const double weight = (1.0-leave_percentage) / double(leave_weight + no_send_messages_anisotropic);
 
               // srmp option:

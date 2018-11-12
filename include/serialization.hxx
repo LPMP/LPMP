@@ -298,6 +298,7 @@ public:
   static INDEX serialize(const std::bitset<N>& v)
   {
     assert(false);
+    return 0;
   }
 
    // for plain data
@@ -395,6 +396,7 @@ public:
   static INDEX serialize(const std::bitset<N>& v)
   {
     assert(false);
+    return 0;
   }
 
 
@@ -596,6 +598,7 @@ public:
   static INDEX serialize(const std::bitset<N>& v)
   {
     assert(false);
+    return 0;
   }
 
 

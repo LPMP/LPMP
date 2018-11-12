@@ -23,7 +23,14 @@ namespace LPMP {
       const multicut_instance& cc,
       multicut_instance::edge_labeling l_input);
 
-   //multicut_instance::labeling transform_multigraph_matching_labeling_to_correlation_clustering(const multigraph_matching_input::labeling& input);
+   multicut_instance::edge_labeling transform_multigraph_matching_labeling_to_correlation_clustering(
+      const multigraph_matching_input::labeling& input,
+      const multigraph_matching_input& mgm,
+      const multicut_instance& cc);
+   multicut_instance::edge_labeling transform_multigraph_matching_labeling_to_correlation_clustering(
+      const multigraph_matching_input::labeling& input,
+      const multicut_instance& cc,
+      const detail::multigraph_matching_nodes& nodes);
 
 }
 

@@ -74,7 +74,6 @@ public:
       }
 
       std::vector<triplet_candidate> triplet_candidates;
-      std::size_t index=0;
 
       // Iterate over all of the edge intersection sets
 #pragma omp parallel 
@@ -294,7 +293,7 @@ template<typename MRF_CONSTRUCTOR, bool EXTENDED>
 std::vector<triplet_candidate> 
 k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::find_cycles(const std::size_t max_triplets)
 {
-   double largest_th;
+   double largest_th = 0.0;
    union_find uf(proj_graph_.no_nodes());
    std::size_t e=0;
 
@@ -435,7 +434,6 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::compute_partitions(c
    for(auto x : sorted_factor) {
       const std::size_t x1 = std::get<0>(x);
       const std::size_t x2 = std::get<1>(x);
-      const double cost = std::get<2>(x);
 
       if(!uf.connected(x1, f.dim1() + x2)) {
          // check if merging c1 and c2 would result in one partition
@@ -444,7 +442,7 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::compute_partitions(c
          } else {
             assert(uf.count() == 2);
             const std::size_t c1 = uf.find(x1);
-            const std::size_t c2 = uf.find(f.dim1() + x2);
+            //const std::size_t c2 = uf.find(f.dim1() + x2);
             // record labels of partition c1
             for(std::size_t y1=0; y1<f.dim1(); ++y1) {
                if(uf.find(y1) == c1) {
@@ -487,7 +485,7 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::compute_partitions(c
       part_j.clear();
    }
 
-   return std::move(std::make_pair(std::move(part_i), std::move(part_j)));
+   return std::make_pair(std::move(part_i), std::move(part_j));
 }
 
 template<typename MRF_CONSTRUCTOR, bool EXTENDED>
@@ -530,7 +528,7 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::compute_partitions()
       partitions[i].erase( unique( partitions[i].begin(), partitions[i].end() ), partitions[i].end() );
    }
 
-   return std::move(partitions);
+   return partitions;
 }
 
 template<typename MRF_CONSTRUCTOR, bool EXTENDED>

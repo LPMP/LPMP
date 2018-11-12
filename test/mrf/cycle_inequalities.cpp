@@ -64,12 +64,11 @@ int main()
       test(principal_minima(3,3) == 0);
    }
 
-   char * i[5];
-   i[0] = "";
-   i[1] = "-i";
-   i[2] = "";
-   i[3] = "-v";
-   i[4] = "0";
+   std::vector<std::string> i = {
+      "",
+      "-i", "",
+      "-v", "2"
+   };
 
    matrix<REAL> negPotts2(2,2);
    negPotts2(0,0) = 1.0;
@@ -85,9 +84,9 @@ int main()
 
    // binary violated 4 cycle
    {
-      Solver<LP<FMC_SRMP_T>,StandardVisitor> s(5,i);
+      Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
       auto& mrf = s.template GetProblemConstructor<0>();
-      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.5)); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
+      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.1));
 
       mrf.add_unary_factor({0,0});
       mrf.add_unary_factor({0,0});
@@ -99,6 +98,7 @@ int main()
       mrf.add_pairwise_factor(2,3,posPotts2);
       mrf.add_pairwise_factor(0,3,posPotts2);
 
+      mrf.Tighten(100);
       k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(mrf)>::type> cycle_search(mrf);
 
       auto triplets = cycle_search.search();
@@ -108,12 +108,28 @@ int main()
       for(std::size_t i=0; i<100; ++i) {
          s.GetLP().ComputePass();
       }
+      std::cout << "omega forward\n";
+      std::cout << s.GetLP().LowerBound() << std::endl;
+      const auto w = s.GetLP().get_message_passing_weight(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.1));
+      for(std::size_t i=0; i<w.omega_forward.size(); ++i) {
+         for(std::size_t j=0; j<w.omega_forward[i].size(); ++j) {
+            std::cout << w.omega_forward[i][j] << ", ";
+         }
+         std::cout << "\n";
+      }
+      std::cout << "receive mask forward\n";
+      for(std::size_t i=0; i<w.receive_mask_forward.size(); ++i) {
+         for(std::size_t j=0; j<w.receive_mask_forward[i].size(); ++j) {
+            std::cout << int(w.receive_mask_forward[i][j]) << ", ";
+         }
+         std::cout << "\n";
+      }
       test(s.GetLP().LowerBound() > 1.0-eps);
    }
 
    // binary violated 5 cycle
    {
-     Solver<LP<FMC_SRMP_T>,StandardVisitor> s(5,i);
+     Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
      auto& mrf = s.template GetProblemConstructor<0>();
      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.5)); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
@@ -140,6 +156,7 @@ int main()
       for(INDEX i=0; i<100; ++i) {
          s.GetLP().ComputePass();
       }
+      std::cout << s.GetLP().LowerBound() << std::endl;
       test(s.GetLP().LowerBound() > 1.0-eps);
       
    }
@@ -158,7 +175,7 @@ int main()
 
    // expanded k-ary cycle search 4-cycle
    {
-     Solver<LP<FMC_SRMP_T>,StandardVisitor> s(5,i);
+     Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
      auto& mrf = s.template GetProblemConstructor<0>();
      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.5)); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
@@ -191,7 +208,7 @@ int main()
 
    // expanded k-ary cycle search 5-cycle
    {
-     Solver<LP<FMC_SRMP_T>,StandardVisitor> s(5,i);
+     Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
      auto& mrf = s.template GetProblemConstructor<0>();
      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.5)); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 

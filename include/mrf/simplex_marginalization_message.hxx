@@ -11,7 +11,7 @@
 namespace LPMP {
 
 // specialized messages between UnarySimplexFactor and PairwiseSimplexFactor
-template<Chirality CHIRALITY, bool SUPPORT_INFINITY = true>
+template<Chirality CHIRALITY, bool SUPPORT_INFINITY = false>
 class UnaryPairwiseMessage {
 public:
    UnaryPairwiseMessage(const INDEX i1, const INDEX i2) {} // obsolete
@@ -173,9 +173,6 @@ public:
     template<typename RIGHT_FACTOR, typename G2>
     void send_message_to_left(const RIGHT_FACTOR& r, G2& msg, const REAL omega = 1.0)
     {
-#ifndef NDEBUG
-       const REAL before_lb = r.LowerBound();
-#endif
        vector<REAL> msgs;
        if(CHIRALITY == Chirality::left) {
           msgs = r.min_marginal_1();
@@ -190,10 +187,6 @@ public:
        const REAL min = msgs.min();
        for(INDEX i=0; i<msgs.size(); ++i) { msgs[i] -= min; }
        msg -= omega*msgs;
-#ifndef NDEBUG
-       const REAL after_lb = r.LowerBound();
-       //assert(before_lb <= after_lb); 
-#endif
     }
 
    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
@@ -203,7 +196,7 @@ public:
    } 
 };
 
-template<INDEX I1, INDEX I2>
+template<INDEX I1, INDEX I2, bool SUPPORT_INFINITY = false>
 class PairwiseTripletMessage {
 public:
    PairwiseTripletMessage() {} 
@@ -226,7 +219,10 @@ public:
          // do zrobienia: possibly use counter
          for(INDEX x1=0; x1<l.dim1(); ++x1) {
             for(INDEX x2=0; x2<l.dim2(); ++x2) {
-               l.cost(x1,x2) += normalize( msgs(x1,x2) );
+               if(SUPPORT_INFINITY)
+                  l.cost(x1,x2) += normalize( msgs(x1,x2) );
+               else
+                  l.cost(x1,x2) += msgs(x1,x2);
                assert(!std::isnan(l(x1,x2)));
             }
          }
@@ -239,7 +235,10 @@ public:
             for(INDEX x1=0; x1<r.dim1(); ++x1) {
                for(INDEX x2=0; x2<r.dim2(); ++x2) {
                   assert(!std::isnan(msgs(x1,x2)));
-                  r.msg12(x1,x2) += normalize( msgs(x1,x2) );
+                  if(SUPPORT_INFINITY)
+                     r.msg12(x1,x2) += normalize( msgs(x1,x2) );
+                  else
+                     r.msg12(x1,x2) += msgs(x1,x2);
                   assert(!std::isnan(r.msg12(x1,x2)));
                }
             }
@@ -248,7 +247,10 @@ public:
                for(INDEX x1=0; x1<r.dim1(); ++x1) {
                   for(INDEX x2=0; x2<r.dim3(); ++x2) {
                      assert(!std::isnan(msgs(x1,x2)));
-                     r.msg13(x1,x2) += normalize( msgs(x1,x2) );
+                     if(SUPPORT_INFINITY)
+                        r.msg13(x1,x2) += normalize( msgs(x1,x2) );
+                     else 
+                        r.msg13(x1,x2) += msgs(x1,x2);
                      assert(!std::isnan(r.msg13(x1,x2)));
                   }
                }
@@ -257,7 +259,10 @@ public:
                   for(INDEX x1=0; x1<r.dim2(); ++x1) {
                      for(INDEX x2=0; x2<r.dim3(); ++x2) {
                         assert(!std::isnan(msgs(x1,x2)));
-                        r.msg23(x1,x2) += normalize( msgs(x1,x2) );
+                        if(SUPPORT_INFINITY)
+                           r.msg23(x1,x2) += normalize( msgs(x1,x2) );
+                        else
+                           r.msg23(x1,x2) += msgs(x1,x2);
                         assert(!std::isnan(r.msg23(x1,x2)));
                      }
                   }

@@ -19,8 +19,6 @@
 #include <assert.h>
 #include <cxxabi.h>
 
-#include <mutex>
-
 #include "template_utilities.hxx"
 #include "function_existence.hxx"
 #include "meta/meta.hpp"
@@ -66,11 +64,6 @@ LPMP_FUNCTION_EXISTENCE_CLASS(has_receive_restricted_message_from_left, receive_
 
 LPMP_FUNCTION_EXISTENCE_CLASS(HasSendMessagesToRight,SendMessagesToRight)
 LPMP_FUNCTION_EXISTENCE_CLASS(HasSendMessagesToLeft, SendMessagesToLeft)
-
-LPMP_FUNCTION_EXISTENCE_CLASS(has_send_message_to_right_improvement, send_message_to_right_improvement)
-LPMP_FUNCTION_EXISTENCE_CLASS(has_send_message_to_left_improvement, send_message_to_left_improvement)
-LPMP_FUNCTION_EXISTENCE_CLASS(has_send_messages_to_right_improvement, send_messages_to_right_improvement)
-LPMP_FUNCTION_EXISTENCE_CLASS(has_send_messages_to_left_improvement, send_messages_to_left_improvement)
 
 LPMP_FUNCTION_EXISTENCE_CLASS(HasRepamRight, RepamRight)
 LPMP_FUNCTION_EXISTENCE_CLASS(HasRepamLeft, RepamLeft)
@@ -123,12 +116,6 @@ struct LeftMessageFuncGetter
    constexpr static decltype(&MSG_CONTAINER::template test_send_messages_to_right<MSG_ITERATOR>) get_test_send_messages_func() 
    { return &MSG_CONTAINER::template test_send_messages_to_right<MSG_ITERATOR>; }
 
-   constexpr static decltype(&MSG_CONTAINER::send_message_to_right_improvement) get_send_message_improvement_func()
-   { return &MSG_CONTAINER::send_message_to_right_improvement; }
-   template<typename MSG_ITERATOR>
-   constexpr static auto get_send_messages_improvement_func()
-   { return &MSG_CONTAINER::template send_messages_to_right_improvement<MSG_ITERATOR>; }
-
    constexpr static bool sends_message_to_adjacent_factor() { return MSG_CONTAINER::sends_message_to_right_constexpr(); }
    constexpr static bool receives_message_from_adjacent_factor() { return MSG_CONTAINER::receives_message_from_right_constexpr(); }
    constexpr static bool adjacent_factor_sends_message() { return MSG_CONTAINER::sends_message_to_left_constexpr(); }
@@ -176,13 +163,6 @@ struct RightMessageFuncGetter
    constexpr static decltype(&MSG_CONTAINER::template test_send_messages_to_left<MSG_ITERATOR>) get_test_send_messages_func() 
    { return &MSG_CONTAINER::template test_send_messages_to_left<MSG_ITERATOR>; }
 
-   constexpr static auto get_send_message_improvement_func()
-   { return &MSG_CONTAINER::send_message_to_left_improvement; }
-
-   template<typename MSG_ITERATOR>
-   constexpr static auto get_send_messages_improvement_func()
-   { return &MSG_CONTAINER::template send_messages_to_left_improvement<MSG_ITERATOR>; }
-
    constexpr static bool sends_message_to_adjacent_factor() { return MSG_CONTAINER::sends_message_to_left_constexpr(); }
    constexpr static bool receives_message_from_adjacent_factor() { return MSG_CONTAINER::receives_message_from_left_constexpr(); }
    constexpr static bool adjacent_factor_sends_message() { return MSG_CONTAINER::sends_message_to_right_constexpr(); }
@@ -216,13 +196,6 @@ struct MessageDispatcher
       auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::GetReceiveFunc();
       (t.*staticMemberFunc)();
    }
-#ifdef LPMP_PARALLEL
-   static void ReceiveMessageSynchronized(MSG_CONTAINER& t)
-   {
-      auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::GetReceiveSynchronizedFunc();
-      (t.*staticMemberFunc)();
-   }
-#endif
 
    constexpr static bool can_call_receive_restricted_message() { return FuncGetter<MSG_CONTAINER>::can_call_receive_restricted_message(); }
    static void receive_restricted_message(MSG_CONTAINER& t)
@@ -249,12 +222,6 @@ struct MessageDispatcher
       (t.*fun)(); 
    }
 
-   static REAL send_message_improvement(MSG_CONTAINER& t)
-   {
-       auto static_member_func = FuncGetter<MSG_CONTAINER>::get_send_message_improvement_func();
-       return (t.*static_member_func)();
-   }
-
    // batch message sending
    constexpr static bool CanCallSendMessages() { return FuncGetter<MSG_CONTAINER>::CanCallSendMessages(); }
 
@@ -271,23 +238,6 @@ struct MessageDispatcher
       auto fun = FuncGetter<MSG_CONTAINER>::template get_test_send_messages_func<MSG_ITERATOR>();
       (*fun)(msg_begin, msg_end); 
    }
-
-
-   template<typename MSG_ITERATOR>
-   static REAL send_messages_improvement(MSG_ITERATOR msg_begin, MSG_ITERATOR msg_end)
-   {
-       auto static_member_func = FuncGetter<MSG_CONTAINER>::template get_send_messages_improvement_func<MSG_ITERATOR>();
-       return (*static_member_func)(msg_begin, msg_end);
-   }
-
-#ifdef LPMP_PARALLEL
-   template<typename FACTOR, typename MSG_ARRAY, typename ITERATOR>
-   static void SendMessagesSynchronized(const FACTOR& f, const MSG_ARRAY& msgs, ITERATOR omegaBegin)
-   {
-      auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::template GetSendMessagesSynchronizedFunc<FACTOR, MSG_ARRAY, ITERATOR>();
-      (*staticMemberFunc)(f, msgs, omegaBegin);
-   }
-#endif
 
    constexpr static bool CanComputePrimalThroughMessage() // do zrobienia: return false, if the factor from which this is called computes its own primal already
    {
@@ -699,42 +649,6 @@ public:
        //rightFactor_ = r;
    }
 
-#ifdef LPMP_PARALLEL
-   void send_message_to_left_synchronized(const REAL omega = 1.0) 
-   {
-      send_message_to_left_synchronized(rightFactor_->get_factor(), omega);
-   }
-   void send_message_to_left_synchronized(RightFactorType* r, const REAL omega)
-   {
-     auto& mtx = GetLeftFactor()->mutex_;
-     std::unique_lock<std::recursive_mutex> lck(mtx,std::defer_lock);
-     if(lck.try_lock()) {
-       msg_op_.send_message_to_left(*r, *static_cast<MessageContainerView<MessageContainerType,Chirality::right>*>(this), omega); 
-     } else {
-#ifndef NDEBUG
-       if(debug()) {
-         std::cout << "locking failed for " << GetLeftFactor() << "\n";
-       }
-#endif
-     }
-   }
-#endif
-
-   constexpr static bool can_compute_send_message_to_left_improvement()
-   {
-      return FunctionExistence::has_send_message_to_left_improvement<MessageType, REAL, LeftFactorType, RightFactorType>(); 
-   }
-
-   REAL send_message_to_left_improvement()
-   {
-       if constexpr(can_compute_send_message_to_left_improvement()) {
-           return msg_op_.send_message_to_left_improvement(*leftFactor_->get_factor(), *rightFactor_->get_factor());
-       } else {
-           assert(false);
-           return 0.0;
-       }
-   }
-
    void send_message_to_right(const REAL omega = 1.0) 
    {
       send_message_to_right(leftFactor_->get_factor(), omega);
@@ -761,42 +675,6 @@ public:
        //leftFactor_ = r;
    }
 
-#ifdef LPMP_PARALLEL
-   void send_message_to_right_synchronized(const REAL omega = 1.0) 
-   {s
-      send_message_to_right_synchronized(leftFactor_->get_factor(), omega);
-   }
-   void send_message_to_right_synchronized(LeftFactorType* l, const REAL omega)
-   {
-     auto& mtx = GetRightFactor()->mutex_;
-     std::unique_lock<std::recursive_mutex> lck(mtx,std::defer_lock);
-     if(lck.try_lock()) {
-       msg_op_.send_message_to_right(*l, *static_cast<MessageContainerView<MessageContainerType,Chirality::left>*>(this), omega); 
-     } else {
-#ifndef NDEBUG
-       if(debug()) {
-         std::cout << "locking failed for " << GetRightFactor() << "\n";
-       }
-#endif
-     }
-   }
-#endif
-
-   constexpr static bool can_compute_send_message_to_right_improvement()
-   {
-      return FunctionExistence::has_send_message_to_right_improvement<MessageType, REAL, LeftFactorType, RightFactorType>(); 
-   }
-
-   REAL send_message_to_right_improvement()
-   {
-       if constexpr(can_compute_send_message_to_right_improvement()) {
-           return msg_op_.send_message_to_right_improvement(*leftFactor_->get_factor(), *rightFactor_->get_factor());
-       } else {
-           assert(false);
-           return 0.0;
-       }
-   }
-
    constexpr static bool
    CanCallReceiveMessageFromRightContainer()
    { 
@@ -817,13 +695,6 @@ public:
       assert(before_left_lb + before_right_lb <= after_left_lb + after_right_lb + eps); 
 #endif
    }
-
-#ifdef LPMP_PARALLEL
-   void ReceiveMessageFromRightContainerSynchronized()
-   {
-      send_message_to_left_synchronized();
-   }
-#endif
 
    constexpr static bool
    can_call_receive_restricted_message_from_right_container()
@@ -857,13 +728,6 @@ public:
 #endif
    }
 
-#ifdef LPMP_PARALLEL
-   void ReceiveMessageFromLeftContainerSynchronized()
-   { 
-      send_message_to_right_synchronized();
-   }
-#endif
-
    constexpr static bool
    can_call_receive_restricted_message_from_left_container()
    { 
@@ -887,13 +751,6 @@ public:
       send_message_to_right(l, omega);
    }
 
-#ifdef LPMP_PARALLEL
-   void SendMessageToRightContainerSynchronized(LeftFactorType* l, const REAL omega)
-   {
-      send_message_to_right_synchronized(l, omega);
-   }
-#endif
-
    constexpr static bool
    CanCallSendMessageToLeftContainer()
    { 
@@ -904,13 +761,6 @@ public:
    {
       send_message_to_left(r, omega);
    }
-
-#ifdef LPMP_PARALLEL
-   void SendMessageToLeftContainerSynchronized(RightFactorType* r, const REAL omega)
-   {
-      send_message_to_left_synchronized(r, omega);
-   }
-#endif
 
    constexpr static bool CanCallSendMessagesToLeftContainer()
    {
@@ -995,63 +845,6 @@ public:
            MESSAGE_ITERATOR it_;
    };
 
-#ifdef LPMP_PARALLEL
-   template<Chirality CHIRALITY, typename MESSAGE_ITERATOR, typename LOCK_ITERATOR>
-   struct MessageIteratorViewSynchronized {
-     MessageIteratorViewSynchronized(MESSAGE_ITERATOR it, LOCK_ITERATOR lock_it) : it_(it), lock_it_(lock_it) {}
-     MessageContainerView<CHIRALITY>& operator*() const {
-       return *(static_cast<MessageContainerView<CHIRALITY>*>( *it_ )); 
-     }
-     MessageIteratorViewSynchronized<CHIRALITY,MESSAGE_ITERATOR,LOCK_ITERATOR>& operator++() {
-       ++it_;
-       ++lock_it_;
-       while(*lock_it_ == false) { // this will always terminate: the lock_rec has one more entry than there are msgs and last entry is always true
-         ++it_;
-         ++lock_it_; 
-       }
-       return *this;
-     }
-     bool operator==(const MessageIteratorViewSynchronized<CHIRALITY,MESSAGE_ITERATOR,LOCK_ITERATOR>& o) const {
-       return it_ == o.it_; 
-     }
-     bool operator!=(const MessageIteratorViewSynchronized<CHIRALITY,MESSAGE_ITERATOR,LOCK_ITERATOR>& o) const {
-       return it_ != o.it_; 
-     }
-     private:
-     MESSAGE_ITERATOR it_;
-     LOCK_ITERATOR lock_it_;
-   };
-#endif
-
-   template<typename IT, typename LOCK_ITERATOR>
-   struct omega_iterator_with_lock {
-     omega_iterator_with_lock(IT it, LOCK_ITERATOR lock_it) : it_(it), lock_it_(lock_it) {}
-     omega_iterator_with_lock(const omega_iterator_with_lock& o) : it_(o.it_), lock_it_(o.lock_it_) {}
-     omega_iterator_with_lock& operator++() {
-       ++it_;
-       ++lock_it_;
-       while(*lock_it_ == false) { // this will always terminate: the lock_it_ has one more entry than there are elements pointed to by it_ and last entry is always true
-         ++it_;
-         ++lock_it_;
-       }
-       return *this;
-     }
-     omega_iterator_with_lock operator+(const INDEX s) {
-        omega_iterator_with_lock o(*this);
-        for(INDEX i=0; i<s; ++i) {
-           ++o;
-        }
-        return o;
-     }
-     auto operator*() const { return *it_; }
-     bool operator==(const omega_iterator_with_lock<IT,LOCK_ITERATOR>& o) const { return it_ == o.it_; }
-     bool operator!=(const omega_iterator_with_lock<IT,LOCK_ITERATOR>& o) const { return it_ != o.it_; }
-
-     private:
-     IT it_;
-     LOCK_ITERATOR lock_it_;
-   };
-
    // rename to send_messages_to_left_container
    template<typename RIGHT_FACTOR, typename MSG_ITERATOR>
    static void SendMessagesToLeftContainer(const RIGHT_FACTOR& rightFactor, MSG_ITERATOR msgs_begin, MSG_ITERATOR msgs_end, const REAL omega) 
@@ -1085,76 +878,6 @@ public:
            (*msg_it).SetRightFactor(right_factor);
        }
        */
-   }
-
-#ifdef LPMP_PARALLEL
-   template<typename RIGHT_FACTOR, typename MSG_ARRAY, typename ITERATOR, typename LOCK_VECTOR>
-   static void SendMessagesToLeftContainerSynchronized_impl(const RIGHT_FACTOR& rightFactor, const MSG_ARRAY& msgs, ITERATOR omegaBegin, LOCK_VECTOR& lock_rec) 
-   {
-      // first lock as many adjacent factors as possible.
-      auto lock_it = lock_rec.begin();
-      for(auto it=msgs.begin(); it!=msgs.end(); ++it, ++lock_it) {
-        auto& mtx = (*it)->GetLeftFactor()->mutex_;
-        if(mtx.try_lock()) { // mark that factor was locked by this process
-          *lock_it = true;
-        } else {
-          *lock_it = false; 
-#ifndef NDEBUG
-          if(debug()) {
-            std::cout << "locking failed for " << (*it)->GetLeftFactor() << "\n";
-          }
-#endif
-        }
-      }
-      assert(lock_it+1 == lock_rec.end());
-      //std::fill(lock_rec.begin(), lock_rec.end(), true);
-
-      using MessageIteratorType = MessageIteratorViewSynchronized<Chirality::right, decltype(msgs.begin()), decltype(lock_it)>;
-      omega_iterator_with_lock<decltype(omegaBegin), decltype(lock_rec.cbegin())> omega_it(omegaBegin, lock_rec.cbegin()) ;
-      MessageType::SendMessagesToLeft(rightFactor, MessageIteratorType(msgs.begin(), lock_rec.begin()), MessageIteratorType(msgs.end(), lock_rec.end()-1), omega_it);
-
-      // unlock those factors which were locked above
-      lock_it = lock_rec.begin();
-      for(auto it=msgs.begin(); it!=msgs.end(); ++it, ++lock_it) {
-        if(*lock_it) {
-          (*it)->GetLeftFactor()->mutex_.unlock();
-        }
-      }
-      assert(lock_it+1 == lock_rec.end());
-   }
-#endif
-   template<typename RIGHT_FACTOR, typename MSG_ARRAY, typename ITERATOR>
-   static void SendMessagesToLeftContainerSynchronized(const RIGHT_FACTOR& rightFactor, const MSG_ARRAY& msgs, ITERATOR omegaBegin) 
-   {
-     // record which factors were locked here
-     if(msgs.size() <= 63) {
-       std::array<bool,64> lock_rec;
-       lock_rec[msgs.size()] = true;
-       SendMessagesToLeftContainerSynchronized_impl(rightFactor, msgs, omegaBegin, lock_rec);
-     } else {
-       std::vector<bool> lock_rec(msgs.size()+1); // replace with own vector
-       lock_rec[msgs.size()] = true;
-       SendMessagesToLeftContainerSynchronized_impl(rightFactor, msgs, omegaBegin, lock_rec);
-     }
-   }
-
-   template<typename MSG_ITERATOR>
-   constexpr static bool can_compute_send_messages_to_left_improvement()
-   {
-      return FunctionExistence::has_send_messages_to_left_improvement<MessageType, REAL, RightFactorType, MSG_ITERATOR>(); 
-   }
-
-   template<typename MSG_ITERATOR>
-   static REAL send_messages_to_left_improvement(MSG_ITERATOR msg_begin, MSG_ITERATOR msg_end) 
-   {
-       if constexpr(can_compute_send_messages_to_left_improvement<MSG_ITERATOR>()) {
-           auto* r = (*msg_begin).GetRightFactor()->get_factor();
-           auto& msg_op = (*msg_begin).GetMessageOp();
-           return msg_op.send_messages_to_left_improvement(*r, msg_begin, msg_end);
-       } else {
-           assert(false); // not implemented yet
-           return 0.0;
-       }
    }
 
    constexpr static bool CanCallSendMessagesToRightContainer()
@@ -1199,75 +922,6 @@ public:
            (*msg_it).SetLeftFactor(left_factor);
        }
        */
-   }
-
-#ifdef LPMP_PARALLEL
-   template<typename LEFT_FACTOR, typename MSG_ARRAY, typename ITERATOR, typename LOCK_VECTOR>
-   static void SendMessagesToRightContainerSynchronized_impl(const LEFT_FACTOR& leftFactor, const MSG_ARRAY& msgs, ITERATOR omegaBegin, LOCK_VECTOR& lock_rec) 
-   {
-      // first lock as many adjacent factors as possible.
-      auto lock_it = lock_rec.begin();
-      for(auto it=msgs.begin(); it!=msgs.end(); ++it, ++lock_it) {
-        if((*it)->GetRightFactor()->mutex_.try_lock()) { // mark that factor was locked by this process
-          *lock_it = true;
-        } else {
-          *lock_it = false; 
-#ifndef NDEBUG
-          if(debug()) {
-            std::cout << "locking failed for " << (*it)->GetRightFactor() << "\n";
-          }
-#endif
-        }
-      }
-      assert(lock_it+1 == lock_rec.end());
-      //std::fill(lock_rec.begin(), lock_rec.end(), true);
-
-      using MessageIteratorType = MessageIteratorViewSynchronized<Chirality::left, decltype(msgs.begin()), decltype(lock_it)>;
-      omega_iterator_with_lock<decltype(omegaBegin), decltype(lock_rec.cbegin())> omega_it(omegaBegin, lock_rec.cbegin()) ;
-      MessageType::SendMessagesToRight(leftFactor, MessageIteratorType(msgs.begin(), lock_rec.begin()), MessageIteratorType(msgs.end(), lock_rec.end()-1), omega_it);
-
-      // unlock those factors which were locked above
-      lock_it = lock_rec.begin();
-      for(auto it=msgs.begin(); it!=msgs.end(); ++it, ++lock_it) {
-        if(*lock_it) {
-          (*it)->GetRightFactor()->mutex_.unlock();
-        }
-      }
-      assert(lock_it+1 == lock_rec.end());
-   }
-   template<typename LEFT_FACTOR, typename MSG_ARRAY, typename ITERATOR>
-   static void SendMessagesToRightContainerSynchronized(const LEFT_FACTOR& leftFactor, const MSG_ARRAY& msgs, ITERATOR omegaBegin) 
-   {
-     // record which factors were locked here
-     if(msgs.size() <= 63) {
-       std::array<bool,64> lock_rec;
-       lock_rec[msgs.size()] = true;
-       SendMessagesToRightContainerSynchronized_impl(leftFactor, msgs, omegaBegin, lock_rec);
-     } else {
-       std::vector<bool> lock_rec(msgs.size()+1); // replace with own vector
-       lock_rec[msgs.size()] = true;
-       SendMessagesToRightContainerSynchronized_impl(leftFactor, msgs, omegaBegin, lock_rec);
-     }
-   }
-#endif
-
-   template<typename MSG_ITERATOR>
-   constexpr static bool can_compute_send_messages_to_right_improvement()
-   {
-      return FunctionExistence::has_send_messages_to_right_improvement<MessageType, REAL, LeftFactorType, MSG_ITERATOR>(); 
-   }
-
-   template<typename MSG_ITERATOR>
-   static REAL send_messages_to_right_improvement(MSG_ITERATOR msg_begin, MSG_ITERATOR msg_end) 
-   {
-       if constexpr(can_compute_send_messages_to_right_improvement<MSG_ITERATOR>()) {
-           assert(msg_begin != msg_end);
-           auto* l = (*msg_begin).GetLeftFactor()->get_factor();
-           auto& msg_op = (*msg_begin).GetMessageOp();
-           return msg_op.send_messages_to_right_improvement(*l, msg_begin, msg_end);
-       } else {
-           assert(false); // not implemented yet
-       }
    }
 
    constexpr static bool
@@ -1346,7 +1000,6 @@ public:
 
    bool CheckPrimalConsistency() const
    { 
-      bool ret;
       if constexpr(CanCheckPrimalConsistency()) {
           return msg_op_.CheckPrimalConsistency(*leftFactor_->get_factor(), *rightFactor_->get_factor());
       } else {
@@ -1635,11 +1288,9 @@ public:
    {
        using solver_type = DD_ILP::external_solver_interface<DD_ILP::problem_export>;
 
-       using left_factor_variable_types = typename std::invoke_result<decltype(&LeftFactorType::export_variables)()>::type; 
        using left_external_vars_types = decltype(std::declval<LeftFactorContainer>().template get_external_vars<solver_type>( std::declval<solver_type&>() ));
        auto lI = std::make_index_sequence< std::tuple_size<left_external_vars_types>::value >{};
 
-       using right_factor_variable_types = typename std::invoke_result<decltype(&RightFactorType::export_variables)()>::type; 
        using right_external_vars_types = decltype(std::declval<RightFactorContainer>().template get_external_vars<solver_type>( std::declval<solver_type&>() ));
        auto rI = std::make_index_sequence< std::tuple_size<right_external_vars_types>::value >{};
 
@@ -2258,13 +1909,6 @@ public:
       SendMessages(omega);
    }
 
-   void update_factor_adaptive(const weight_slice omega, const receive_slice receive_mask) final
-   {
-      ReceiveMessages(receive_mask);
-      MaximizePotential();
-      send_messages_with_adaptive_weights(omega); 
-   }
-
    void update_factor_residual(const weight_slice omega, const receive_slice receive_mask) final
    {
       assert(*std::min_element(omega.begin(), omega.end()) >= 0.0);
@@ -2275,25 +1919,6 @@ public:
       MaximizePotential();
       send_messages_residual(omega); // other message passing type shall be called "shared"
    }
-
-#ifdef LPMP_PARALLEL
-   void UpdateFactorSynchronized(const weight_slice& omega) final
-   {
-      assert(*std::min_element(omega.begin(), omega.end()) >= 0.0);
-      assert(std::accumulate(omega.begin(), omega.end(), 0.0) <= 1.0 + eps);
-      assert(std::distance(omega.begin(), omega.end()) == no_send_messages());
-      std::lock_guard<std::recursive_mutex> lock(mutex_); // only here do we wait for the mutex. In all other places try_lock is allowed only
-      ReceiveMessagesSynchronized(omega);
-      MaximizePotential();
-      SendMessagesSynchronized(omega);
-   }
-
-   void UpdateFactorPrimalSynchronized(const weight_slice& omega, const INDEX iteration) final
-   {
-     //std::cout << "not implemented\n";
-     //assert(false);
-   }
-#endif
 
    // do zrobienia: possibly also check if method present
    constexpr static bool
@@ -2421,8 +2046,8 @@ public:
    void receive_messages()
    {
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this](auto l) {
-            constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
             if constexpr(l.receives_message_from_adjacent_factor()) {
+                constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                 auto msg_begin = std::get<n>(msg_).begin();
                 auto msg_end = std::get<n>(msg_).end();
                 for(auto it = msg_begin; it != msg_end; ++it) {
@@ -2443,8 +2068,8 @@ public:
       auto receive_it = receive_mask.begin();
 
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&receive_it](auto l) {
-            constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
             if constexpr(l.receives_message_from_adjacent_factor()) {
+                constexpr INDEX n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                 auto msg_begin = std::get<n>(msg_).begin();
                 auto msg_end = std::get<n>(msg_).end();
                   for(auto it = msg_begin; it != msg_end; ++it, ++receive_it) {
@@ -2462,6 +2087,7 @@ public:
             }
             
       });
+      assert(std::distance(receive_mask.begin(), receive_it) == no_receive_messages());
    }
 
    // we write message change not into original reparametrization, but into temporary one named pot
@@ -2471,8 +2097,8 @@ public:
       auto receive_it = receive_mask.begin();
 
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&receive_it](auto l) {
-            constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
             if constexpr(l.can_call_receive_restricted_message()) {
+                constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                 auto msg_begin = std::get<n>(msg_).begin();
                 auto msg_end = std::get<n>(msg_).end();
                   for(auto it = msg_begin; it != msg_end; ++it, ++receive_it) {
@@ -2648,8 +2274,8 @@ public:
    {
      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
          // check whether the message supports batch updates. If so, call batch update, else call individual send message
-         constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
          if constexpr(l.sends_message_to_adjacent_factor()) {
+           constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
            auto msg_begin = std::get<n>(msg_).begin();
            auto msg_end = std::get<n>(msg_).end();
 
@@ -2669,7 +2295,7 @@ public:
              }
            }
          }
-     }); 
+     });
    }
 
    template<typename ITERATOR>
@@ -2678,8 +2304,8 @@ public:
      auto omega_begin = omegaIt;
      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
          // check whether the message supports batch updates. If so, call batch update, else call individual send message
-         constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
          if constexpr(l.sends_message_to_adjacent_factor()) {
+           constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
            auto msg_begin = std::get<n>(msg_).begin();
            auto msg_end = std::get<n>(msg_).end();
 
@@ -2719,34 +2345,6 @@ public:
      });
      assert(omegaIt - omega_begin == no_send_messages());
    }
-
-#ifdef LPMP_PARALLEL
-   template<typename ITERATOR>
-   void CallSendMessagesSynchronized(FactorType& factor, ITERATOR omegaIt) 
-   {
-     meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
-         // check whether the message supports batch updates. If so, call batch update.
-         // If not, check whether individual updates are supported. If yes, call individual updates. If no, do nothing
-         if(l.sends_message_to_adjacent_factor()) {
-         if constexpr(l.CanCallSendMessages()) {
-             constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
-             const REAL omega_sum = std::accumulate(omegaIt, omegaIt + std::get<n>(msg_).size(), 0.0);
-             if(omega_sum > 0.0) { 
-               f(l).SendMessagesSynchronized(factor, std::get<n>(msg_), omegaIt);
-             }
-             omegaIt += std::get<n>(msg_).size();
-          } else {
-                constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
-                for(auto it = std::get<n>(msg_).begin(); it != std::get<n>(msg_).end(); ++it, ++omegaIt) {
-                  if(*omegaIt != 0.0) {
-                    l.SendMessageSynchronized(&factor, *it, *omegaIt); 
-                  }
-                }
-          });
-         }
-     });
-   }
-#endif
 
    void send_messages(const REAL leave_weight)
    {
@@ -2790,118 +2388,6 @@ public:
 
    } 
 
-   template<typename ITERATOR_1, typename ITERATOR_2>
-   void adaptive_weight_rescaling_soft_max(ITERATOR_1 dual_improvement_begin, ITERATOR_1 dual_improvement_end, ITERATOR_2 omega_begin, ITERATOR_2 omega_end)
-   {
-       // soft max
-       /*
-       const auto scaling_exp = 100.0;
-       const auto dual_improvement_sum_help = std::accumulate(dual_improvement.begin(), dual_improvement.end(), 0.0);
-       const auto max_dual_improvement = *std::max_element(dual_improvement.begin(), dual_improvement.end());
-       const auto offset = scaling_exp*max_dual_improvement/dual_improvement_sum_help;
-       const auto dual_improvement_sum = std::accumulate(dual_improvement.begin(), dual_improvement.end(), 0.0, 
-               [=](auto sum, auto x) { 
-                   return sum + (x > 0 ? std::exp(scaling_exp*x/dual_improvement_sum_help - offset) : 0.0);
-               });
-
-       if(dual_improvement_sum_help > eps) {
-           for(std::size_t i=0; i<omega.size(); ++i) {
-               if(omega[i] > 0) {
-                   dual_improvement[i] = 0.1*omega[i] + 0.9*omega_sum*(std::exp(scaling_exp*dual_improvement[i]/dual_improvement_sum_help - offset)/dual_improvement_sum );
-               } else {
-                   assert(dual_improvement[i] == 0.0);
-               }
-           }
-       } else {
-           std::copy(omega.begin(), omega.end(), dual_improvement.begin());
-       }
-       */
-       assert(false);
-   }
-
-   template<typename ITERATOR_1, typename ITERATOR_2>
-   void adaptive_weight_rescaling(ITERATOR_1 dual_improvement_begin, ITERATOR_1 dual_improvement_end, ITERATOR_2 omega_begin, ITERATOR_2 omega_end)
-   {
-       assert(std::distance(dual_improvement_begin, dual_improvement_end) == std::distance(omega_begin, omega_end));
-       const auto dual_improvement_sum = std::accumulate(dual_improvement_begin, dual_improvement_end, 0.0);
-       const auto omega_sum = std::accumulate(omega_begin, omega_end, 0.0);
-       if(dual_improvement_sum > 0) {
-           auto omega_it = omega_begin;
-           for(auto it=dual_improvement_begin; it!=dual_improvement_end; ++it, ++omega_it) {
-               *it = 0.5 * (*omega_it) + 0.5 * omega_sum * (*it)/dual_improvement_sum;
-           }
-       }
-   }
-
-   template<typename WEIGHT_VEC>
-   void send_messages_with_adaptive_weights(const WEIGHT_VEC& omega)
-   {
-       assert(*std::min_element(omega.begin(), omega.end()) >= 0.0);
-       assert(std::accumulate(omega.begin(), omega.end(), 0.0) <= 1.0 + eps);
-       assert(std::distance(omega.begin(), omega.end()) == no_send_messages()); 
-
-       // first go over all messages that will be send (i.e. where omega > 0) and record, how large an improvement will result from sending message with weight 1
-       const auto omega_sum = std::accumulate(omega.begin(), omega.end(), 0.0);
-       std::vector<REAL> dual_improvement;
-       dual_improvement.reserve(omega.size());
-
-       auto omega_it = omega.begin();
-       // now record message update
-       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
-         // check whether the message supports batch updates. If so, call batch update.
-         // If not, check whether individual updates are supported. If yes, call individual updates. If no, do nothing
-         constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
-           if(!std::get<n>(msg_).empty()) {
-
-             auto msg_begin = std::get<n>(msg_).begin();
-             auto msg_end = std::get<n>(msg_).end(); 
-
-             if constexpr(l.CanCallSendMessages()) {
-
-               const INDEX no_messages = std::get<n>(msg_).size();
-               const INDEX no_active_messages = std::count_if(omega_it, omega_it+no_messages, [](REAL x){ return x > 0.0; });
-               REAL impr;
-               if(no_active_messages > 0) { 
-                 auto msg_begin_c = conditional_message_iterator_begin(msg_begin, omega_it);
-                 auto msg_end_c = conditional_message_iterator_end(msg_begin, msg_end, omega_it);
-                 impr = l.send_messages_improvement(msg_begin_c, msg_end_c);
-                 //impr = l.send_messages_improvement(conditional_message_iterator(msg_begin, omega_it), conditional_message_iterator_end(msg_begin, omega_it));
-                 assert(impr >= -eps);
-                 impr = std::abs(impr);
-               } 
-
-               // record dual improvement
-               for(auto msg_it=msg_begin; msg_it!=msg_end; ++msg_it, ++omega_it) {
-                   if(*omega_it > 0) {
-                       dual_improvement.push_back(impr/no_active_messages);
-                   } else {
-                       dual_improvement.push_back(0.0);
-                   }
-               }
-
-             } else {
-                 for(auto msg_it=msg_begin; msg_it!=msg_end; ++msg_it, ++omega_it) {
-                    if(*omega_it > 0.0) {
-                        dual_improvement.push_back( l.send_message_improvement(*msg_it) );
-                        assert(dual_improvement.back() >= -eps);
-                        dual_improvement.back() = std::abs(dual_improvement.back());
-                    } else {
-                        dual_improvement.push_back(0.0);
-                    }
-                 }
-             }
-           }
-       });
-
-       // reweight omega according to dual improvement
-       assert(dual_improvement.size() == omega.size());
-       adaptive_weight_rescaling(dual_improvement.begin(), dual_improvement.end(), omega.begin(), omega.end());
-
-       //assert(std::abs( omega_sum - std::accumulate(dual_improvement.begin(), dual_improvement.end(), 0.0) ) <= eps);
-
-       SendMessages(dual_improvement);
-   }
-
    static constexpr INDEX active_messages_array_size = 16;
 
    template<typename MSG_ITERATOR, typename ACTIVE_ITERATOR>
@@ -2944,13 +2430,10 @@ public:
        meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
          // check whether the message supports batch updates. If so, call batch update.
          // If not, check whether individual updates are supported. If yes, call individual updates. If no, do nothing
-         constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
-         using message_ptr_type = decltype( *(std::get<n>(msg_).begin()) );
          if constexpr(l.sends_message_to_adjacent_factor()) {
+           constexpr INDEX n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
            if(!std::get<n>(msg_).empty()) {
              auto& msgs = std::get<n>(msg_);
-             auto msg_begin = msgs.begin();
-             auto msg_end = msgs.end();
 
              if constexpr(l.CanCallSendMessages()) {
 
@@ -2959,6 +2442,8 @@ public:
                const REAL omega_sum = std::accumulate(omegaIt, omegaIt+no_messages, 0.0);
                residual_omega += omega_sum;
                if(no_active_messages > 0) { 
+                 auto msg_begin = msgs.begin();
+                 auto msg_end = msgs.end();
                  auto msg_begin_c = conditional_message_iterator_begin(msg_begin, omegaIt);
                  auto msg_end_c = conditional_message_iterator_end(msg_begin, msg_end, omegaIt);
                  l.SendMessages(factor_, msg_begin_c, msg_end_c, residual_omega);
@@ -2982,26 +2467,6 @@ public:
 
        });
    }
-
-#ifdef LPMP_PARALLEL
-   template<typename WEIGHT_VEC>
-   void SendMessagesSynchronized(const WEIGHT_VEC& omega) 
-   {
-      // do zrobienia: condition no_send_messages_calls also on omega. whenever omega is zero, we will not send messages
-      const INDEX no_calls = no_send_messages_calls();
-
-      if(no_calls == 1) {
-        CallSendMessagesSynchronized(factor_, omega.begin());
-      } else if( no_calls > 1 ) {
-         // make a copy of the current reparametrization. The new messages are computed on it. Messages are updated implicitly and hence possibly the new reparametrization is automatically adjusted, which would interfere with message updates
-         FactorType tmp_factor(factor_);
-
-         CallSendMessagesSynchronized(tmp_factor, omega.begin());
-      } else {
-        assert(omega.size() == 0.0);
-      }
-   } 
-#endif
 
    bool ReceivesMessage() const
    {
@@ -3414,12 +2879,6 @@ private:
    using msg_storage_type = tuple_from_list<msg_container_type_list>;
    msg_storage_type msg_;
 
-#ifdef LPMP_PARALLEL
-   // a recursive mutex is required only for SendMessagesTo{Left|Right}, as multiple messages may be have the same endpoints. Then the corresponding lock is acquired multiple times.
-   // if no two messages have the same endpoints, an ordinary mutex is enough.
-   std::recursive_mutex mutex_;
-#endif
-
 public:
 
    // functions for interfacing with external solver interface DD_ILP
@@ -3543,9 +3002,6 @@ public:
        } else {
            assert(false);
        }
-
-       struct C { double Func(char, int&); };
-       typename std::result_of<decltype(&C::Func)(C, char, int&)>::type g = 3.14;
    }
 
    template<typename SOLVER_TYPE, typename EXTERNAL_VARS_TUPLE, std::size_t... Is>
@@ -3561,8 +3017,6 @@ public:
    {
        // test whether construct_constraints works with DD_ILP::external_solver_interface<DD_ILP::problem_export>
        using solver_type = DD_ILP::external_solver_interface<DD_ILP::problem_export>;
-       using factor_variable_types = typename std::invoke_result<decltype(&FactorType::export_variables)()>::type;
-
        using external_vars_types = decltype(std::declval<FactorContainerType>().template get_external_vars<solver_type>( std::declval<solver_type&>() ));
        auto I = std::make_index_sequence< std::tuple_size<external_vars_types>::value >{};
 
@@ -3582,8 +3036,6 @@ public:
    {
        // test whether convert_primal works with DD_ILP::external_solver_interface<DD_ILP::problem_export>
        using solver_type = DD_ILP::external_solver_interface<DD_ILP::problem_export>;
-       using factor_variable_types = typename std::invoke_result<decltype(&FactorType::export_variables)()>::type;
-
        using external_vars_types = decltype(std::declval<FactorContainerType>().template get_external_vars<solver_type>( std::declval<solver_type&>() ));
        auto I = std::make_index_sequence< std::tuple_size<external_vars_types>::value >{};
 

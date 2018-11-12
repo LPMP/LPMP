@@ -461,10 +461,16 @@ public:
       });
    }
 
+   virtual void Begin()
+   {
+      SOLVER::Begin();
+      ComputePrimal();
+      this->RegisterPrimal();
+   }
+
    virtual void PostIterate(LpControl c)
    {
       if(c.computePrimal) {
-         // do zrobienia: possibly run this in own thread similar to lp solver
          ComputePrimal();
          this->RegisterPrimal();
       }
