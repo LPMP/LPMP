@@ -16,7 +16,7 @@ namespace Torresani_et_al_multigraph_matching_input {
    using parsing::mand_whitespace;
    using parsing::positive_integer;
 
-    struct comment_line : pegtl::seq< opt_whitespace, pegtl::string<'c'>, pegtl::until< pegtl::eol >> {};
+    struct comment_line : pegtl::seq< opt_whitespace, pegtl::sor<pegtl::string<'c'>, pegtl::string<'#'>>, pegtl::until< pegtl::eol >> {};
     struct empty_line : pegtl::seq< opt_whitespace, pegtl::eol > {};
     struct ignore_line : pegtl::sor<comment_line, empty_line > {};
     struct graph_matching_line : pegtl::seq< opt_whitespace, pegtl::string<'g','m'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace, pegtl::eol > {};
