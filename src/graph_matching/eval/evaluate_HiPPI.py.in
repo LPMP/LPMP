@@ -1,0 +1,93 @@
+#!/usr/bin/python
+from subprocess import call
+import os
+import os.path
+
+options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 300 --tightenConstraintsPercentage 0.05  --mcfReparametrization --primalComputationStart 1 --primalComputationInterval 50 -v 2 --lowerBoundComputationInterval 10 --tighten --multigraphMatchingOutputFormat matching"
+
+algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightening_mp', 'multigraph_matching_tightening_mcf']
+
+instance_dir = "@HIPPI_INSTANCE_DIRECTORY@" + "/"
+current_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/"
+
+instance_list = [
+   'bark2_multiLAP.txt',
+   'bark2_pwTrace.txt',
+   'bark3_multiLAP.txt',
+   'bark3_pwTrace.txt',
+   'bin_multiLAP.txt',
+   'bin_pwTrace.txt',
+   'branches1_multiLAP.txt',
+   'branches1_pwTrace.txt',
+   'branches2_multiLAP.txt',
+   'branches2_pwTrace.txt',
+   'fence_multiLAP.txt',
+   'fence_pwTrace.txt',
+   'flowers1_multiLAP.txt',
+   'flowers1_pwTrace.txt',
+   'flowers2_multiLAP.txt',
+   'flowers2_pwTrace.txt',
+   'grass_multiLAP.txt',
+   'grass_pwTrace.txt',
+   'gravel1_multiLAP.txt',
+   'gravel1_pwTrace.txt',
+   'gravel2_multiLAP.txt',
+   'gravel2_pwTrace.txt',
+   'gravel3_multiLAP.txt',
+   'gravel3_pwTrace.txt',
+   'lamp_multiLAP.txt',
+   'lamp_pwTrace.txt',
+   'leafs2_multiLAP.txt',
+   'leafs2_pwTrace.txt',
+   'leafs3_multiLAP.txt',
+   'leafs3_pwTrace.txt',
+   'leafs_multiLAP.txt',
+   'leafs_pwTrace.txt',
+   'lichen_multiLAP.txt',
+   'lichen_pwTrace.txt',
+   'lid_multiLAP.txt',
+   'lid_pwTrace.txt',
+   'planks_multiLAP.txt',
+   'planks_pwTrace.txt',
+   'rotten_apples_multiLAP.txt',
+   'rotten_apples_pwTrace.txt',
+   'small_wheelbarrow_multiLAP.txt',
+   'small_wheelbarrow_pwTrace.txt',
+   'snow_multiLAP.txt',
+   'snow_pwTrace.txt',
+   'soil_multiLAP.txt',
+   'soil_pwTrace.txt',
+   'spade_multiLAP.txt',
+   'spade_pwTrace.txt',
+   'stones1_multiLAP.txt',
+   'stones1_pwTrace.txt',
+   'tennis_ball_multiLAP.txt',
+   'tennis_ball_pwTrace.txt',
+   'tiles1_multiLAP.txt',
+   'tiles1_pwTrace.txt',
+   'wheelbarrow_multiLAP.txt',
+   'wheelbarrow_pwTrace.txt',
+   'wheel_multiLAP.txt',
+   'wheel_pwTrace.txt'
+   ]
+
+
+for instance in instance_list:
+   for algorithm in algorithms:
+      full_algorithm_path = current_dir + "../" + algorithm
+      instance_file = instance_dir + instance 
+      output_dir = current_dir + "HiPPI/" + os.path.dirname(instance) + "/"
+      instance_name = os.path.splitext(os.path.basename(instance))[0]
+      result_file = output_dir + instance_name + "_" + algorithm + "_result.txt"
+      log_file = output_dir + instance_name + "_" + algorithm + "_log.txt"
+
+      create_dir_cmd = "mkdir -p " + output_dir 
+      call(create_dir_cmd, shell=True)
+
+      if not (os.path.isfile(log_file) or os.path.isfile(result_file)):
+         print("optimize " + instance + " with " + algorithm)
+         run_alg_cmd = "export OMP_NUM_THREADS=1; " + full_algorithm_path + " -i " + instance_file + " -o " + result_file + " " + options + " 2>&1 > " + log_file
+         call(run_alg_cmd, shell=True)
+      else:
+         print("skip optimization of " + instance + " with algorithm " + algorithm)
+

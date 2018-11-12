@@ -10,4 +10,7 @@ configure_file(evaluate_hotel_house_with_unaries.py.in evaluate_hotel_house_with
 set(WORMS_MM_INSTANCE_DIRECTORY "${PROJECT_SOURCE_DIR}/src/graph_matching/eval/worms-mm/")
 configure_file(evaluate_worms_mm.py.in evaluate_worms_mm.py)
 
+set(HiPPI_INSTANCE_DIRECTORY "${PROJECT_SOURCE_DIR}/src/graph_matching/eval/HiPPI/")
+configure_file(evaluate_HiPPI.py.in evaluate_HiPPI.py)
+
 configure_file(generate_plots_and_table.sh.in generate_plots_and_table.sh)
