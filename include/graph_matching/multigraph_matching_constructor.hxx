@@ -316,7 +316,6 @@ public:
 
     void End()
     {
-       std::cout << "kwaskwas\n";
        // read out last mgm solution
        if(primal_result_handle_.valid()) {
           primal_result_handle_.wait();
