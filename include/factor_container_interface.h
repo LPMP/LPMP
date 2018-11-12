@@ -22,7 +22,6 @@ public:
    virtual FactorTypeAdapter* clone() const = 0;
    virtual void update_factor_uniform(const REAL leave_weight) = 0;
    virtual void UpdateFactor(const weight_slice omega, const receive_slice receive_mask) = 0;
-   virtual void update_factor_adaptive(const weight_slice omega, const receive_slice receive_mask) = 0;
    virtual void update_factor_residual(const weight_slice omega, const receive_slice receive_mask) = 0;
    virtual void UpdateFactorPrimal(const weight_slice& omega, const receive_slice& receive_mask, const INDEX iteration) = 0;
    // TODO: remove below two functions. Can be handled via message passing schedule

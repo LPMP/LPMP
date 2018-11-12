@@ -45,8 +45,8 @@ class union_find {
     }
     // Replace sets containing x and y with their union.
     void merge(const std::size_t x, const std::size_t y) {
-        std::size_t i = find(x);
-        std::size_t j = find(y);
+        const std::size_t i = find(x);
+        const std::size_t j = find(y);
         if(i == j) return;
 
         // make smaller root point to larger one

@@ -48,7 +48,7 @@ const std::vector<std::string> options =
 
 int main(int argc, char** argv)
 {
-    ProblemConstructorRoundingSolver<Solver<LP<FMC_MGM>,StandardTighteningVisitor>> solver(options);
+    ProblemConstructorRoundingSolver<Solver<LP<FMC_MGM<true>>,StandardTighteningVisitor>> solver(options);
     auto input = Torresani_et_al_multigraph_matching_input::parse_string(minimal_synchronization_example);
     auto& mgm_constructor = solver.template GetProblemConstructor<0>();
     mgm_constructor.construct(input);

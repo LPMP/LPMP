@@ -488,11 +488,7 @@ public:
       using PairwiseTripletMessageType = typename PAIRWISE_TRIPLET_MESSAGE_CONTAINER::MessageType;
 
       typename MRFPC::PairwiseFactorContainer* const p = this->pairwiseFactor_[pairwiseFactorId];
-      const INDEX pairwiseVar1 = this->pairwiseIndices_[pairwiseFactorId][0];
-      const INDEX pairwiseVar2 = this->pairwiseIndices_[pairwiseFactorId][1];
-      assert(pairwiseVar1 < pairwiseVar2);
-      const INDEX pairwiseDim1 = this->get_number_of_labels(pairwiseVar1);
-      const INDEX pairwiseDim2 = this->get_number_of_labels(pairwiseVar2);
+      assert(this->pairwiseIndices_[pairwiseFactorId][0] < this->pairwiseIndices_[pairwiseFactorId][1]);
 
       TripletFactorContainer* const t = tripletFactor_[tripletFactorId];
       const INDEX tripletVar1 = tripletIndices_[tripletFactorId][0];
@@ -503,9 +499,9 @@ public:
       const INDEX tripletDim2 = this->get_number_of_labels(tripletVar2);
       const INDEX tripletDim3 = this->get_number_of_labels(tripletVar3);
          
-      assert(pairwiseDim1*pairwiseDim2 == p->get_factor()->size());
+      assert(this->get_number_of_labels(this->pairwiseIndices_[pairwiseFactorId][0]) * this->get_number_of_labels(this->pairwiseIndices_[pairwiseFactorId][1]) == p->get_factor()->size());
 
-      auto* m = this->lp_->template add_message<PAIRWISE_TRIPLET_MESSAGE_CONTAINER>(p, t, tripletDim1, tripletDim2, tripletDim3);
+      this->lp_->template add_message<PAIRWISE_TRIPLET_MESSAGE_CONTAINER>(p, t, tripletDim1, tripletDim2, tripletDim3);
    }
    INDEX get_number_of_triplet_factors() const { return tripletFactor_.size(); }
 
@@ -542,7 +538,7 @@ public:
    INDEX add_triplets(const std::vector<triplet_candidate>& tc, const INDEX max_triplets_to_add = std::numeric_limits<INDEX>::max())
    {
       INDEX no_triplets_added = 0;
-      for(auto t : tc) {
+      for(const auto t : tc) {
          if(add_tightening_triplet(t.i, t.j, t.k)) {
             ++no_triplets_added;
             if(no_triplets_added >= max_triplets_to_add) {

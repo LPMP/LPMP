@@ -259,7 +259,9 @@ public:
         primal_checking_triplets_arg_("", "primalCheckingTriplets", "number of triplet consistency factors to include during primal feasibility check", false, 0, &positiveIntegerConstraint_, s.get_cmd()),
         mcf_reparametrization_arg_("", "mcfReparametrization", "enable reparametrization by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
         mcf_primal_rounding_arg_("", "mcfRounding", "enable runding by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
-        output_format_arg_("", "multigraphMatchingOutputFormat", "output format for multigraph matching", false, "matching", "{matching|clustering}", s.get_cmd())
+        output_format_arg_("", "multigraphMatchingOutputFormat", "output format for multigraph matching", false, "matching", "{matching|clustering}", s.get_cmd()),
+        primal_rounding_algorithms_arg_("", "multigraphMatchingRoundingMethod", "correlation clustering algorithms that are used for rounding a solution", false, "gaec_KL", "{gaec_KL|KL|MCF_KL}", s.get_cmd())
+        
         {
            omp_set_nested(0); // there is parallelism in the graph matching constructors, which we suppress hereby. TODO: should be better set somewhere else
         }
@@ -310,6 +312,19 @@ public:
              compute_pass(gm_update_factors.rbegin(), gm_update_factors.rend(), omega_backward.begin(), receive_mask_backward.begin()); 
           } 
        } 
+    }
+
+    void End()
+    {
+       std::cout << "kwaskwas\n";
+       // read out last mgm solution
+       if(primal_result_handle_.valid()) {
+          primal_result_handle_.wait();
+          if(debug()) 
+             std::cout << "read in primal mgm solution\n";
+          auto mgm_sol = primal_result_handle_.get();
+          read_in_labeling(mgm_sol); 
+       }
     }
 
     void pre_iterate()
@@ -736,9 +751,8 @@ public:
        for(auto& c : graph_matching_constructors)
           c.second->send_messages_to_unaries();
 
-       for(auto& t : triplet_consistency_factors) {
+       for(auto& t : triplet_consistency_factors)
           std::visit([&](auto&& t) { this->send_messages_to_unaries(t); }, t.second);
-       }
     }
 
     // start with possibly inconsistent primal labeling obtained by individual graph matching roundings.
@@ -758,17 +772,43 @@ public:
        if(!primal_result_handle_.valid() || primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
           if(debug()) 
              std::cout << "construct mgm rounding problem\n";
-          // first try out individual graph matching solutions
-          multigraph_matching_input::labeling labeling;
-          for(auto& c : graph_matching_constructors) {
-             labeling.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
-          }
-          send_messages_to_unaries();
+
+          send_messages_to_unaries(); 
+
+          enum class rounding_method {gaec_KL, KL, mcf_KL};
+          rounding_method rm = [&]() {
+          if(primal_rounding_algorithms_arg_.getValue() == "gaec_KL")
+             return rounding_method::gaec_KL;
+          else if(primal_rounding_algorithms_arg_.getValue() == "KL")
+             return rounding_method::KL;
+          else if(primal_rounding_algorithms_arg_.getValue() == "MCF_KL")
+             return rounding_method::mcf_KL;
+          else
+             throw std::runtime_error("could not recognize correlation clustering rounding method");
+          }();
+
+          multigraph_matching_input::labeling labeling_to_improve;
+          if(rm == rounding_method::mcf_KL)
+             for(auto& c : graph_matching_constructors)
+                labeling_to_improve.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
+
           auto mgm = export_linear_multigraph_matching_input();
           auto round_primal_async = ([=]() {
                 auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
-                // TODO: try fixing infeasible matching cost with kernighan lin
-                auto cc_sol = compute_multicut_kernighan_lin(cc);
+
+                auto cc_sol = [&]() {
+                  if(rm == rounding_method::gaec_KL) {
+                     return compute_multicut_gaec_kernighan_lin(cc); // seems better than just computing with Kernighan&Lin
+                  } else if(rm == rounding_method::KL) {
+                     return compute_multicut_kernighan_lin(cc);
+                  } else {
+                     assert(rm == rounding_method::mcf_KL);
+                     // try fixing infeasible matchings computed by individual graph matching solvers with Kernighan&Lin
+                     auto cc_sol_to_improve = transform_multigraph_matching_labeling_to_correlation_clustering(labeling_to_improve, mgm, cc);
+                     return compute_multicut_kernighan_lin(cc, cc_sol_to_improve);
+                  }
+                }();
+
                 auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
                 return mgm_sol;
                 });
@@ -910,6 +950,7 @@ private:
     TCLAP::SwitchArg mcf_reparametrization_arg_; // TODO: this should be part of graph matching constructor
     TCLAP::SwitchArg mcf_primal_rounding_arg_; // TODO: this should be part of graph matching constructor as well
     mutable TCLAP::ValueArg<std::string> output_format_arg_; // mutable should not be necessary, but TCLAP's getValue is not const.
+    TCLAP::ValueArg<std::string> primal_rounding_algorithms_arg_; // which multicut algorithms to run on
 
     std::future<multigraph_matching_input::labeling> primal_result_handle_;
 }; 

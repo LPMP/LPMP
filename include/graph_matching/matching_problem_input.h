@@ -238,6 +238,7 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
          node_mapping nm(*this);
          union_find uf(nm.no_nodes());
 
+         s << "# ${graph_no}, ${node_no}, ${cluster_id}\n";
          for(const auto& gm : *this)
             for(std::size_t i=0; i<gm.labeling.size(); ++i)
                if(gm.labeling[i] != std::numeric_limits<std::size_t>::max())

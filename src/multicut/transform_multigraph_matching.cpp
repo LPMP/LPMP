@@ -3,7 +3,6 @@
 #include <numeric>
 #include <cassert>
 #include "multicut/transform_multigraph_matching.h"
-#include <iostream> // TODO: remove
 
 namespace LPMP {
 
@@ -18,6 +17,7 @@ namespace detail {
          }
 
          std::size_t no_graphs() const { return no_nodes_.size(); }
+         std::size_t total_no_nodes() const { return graph_node_offsets_.back() + no_nodes_.back(); }
          std::size_t no_nodes(const std::size_t i) const { assert(i < no_graphs()); return no_nodes_[i]; }
 
          std::size_t multigraph_matching_to_multicut_node(const std::size_t graph_no, const std::size_t node_no) const
@@ -184,10 +184,8 @@ multigraph_matching_input::labeling transform_correlation_clustering_to_multigra
       for(const auto& a : gm.gm_input.assignments) {
          const std::size_t i = nodes.multigraph_matching_to_multicut_node(gm.left_graph_no, a.left_node);
          const std::size_t j = nodes.multigraph_matching_to_multicut_node(gm.right_graph_no, a.right_node);
-         if(l_input[e] == 1) {
+         if(l_input[e] == 1)
             l_output.back().labeling[a.left_node] = a.right_node;
-            //std::cout << e << "\n";
-         }
          ++e;
       }
    }
@@ -203,24 +201,45 @@ multigraph_matching_input::labeling transform_correlation_clustering_to_multigra
    return l_output;
 }
 
-
-/*
-multicut_instance::labeling transform_multigraph_matching_labeling_to_correlation_clustering(
-      const multigraph_matching_input::labeling& input
+multicut_instance::edge_labeling transform_multigraph_matching_labeling_to_correlation_clustering(
+      const multigraph_matching_input::labeling& input,
       const multigraph_matching_input& mgm,
+      const multicut_instance& cc)
+{
+   detail::multigraph_matching_nodes nodes(mgm);
+   return transform_multigraph_matching_labeling_to_correlation_clustering(input, cc, nodes);
+}
+
+multicut_instance::edge_labeling transform_multigraph_matching_labeling_to_correlation_clustering(
+      const multigraph_matching_input::labeling& input,
       const multicut_instance& cc,
       const detail::multigraph_matching_nodes& nodes)
 {
-   multicut_instance::labeling output;
-   // first add the matching edges
-   for(const auto& e : cc.edges()) {
+   multicut_instance::edge_labeling output;
+   output.transform_to_correlation_clustering();
 
+   // first compute a clustering representation
+   union_find uf(nodes.total_no_nodes());
+   for(const auto& gm : input) {
+      for(std::size_t i=0; i<gm.labeling.size(); ++i) {
+         if(gm.labeling[i] != std::numeric_limits<std::size_t>::max()) {
+            const std::size_t cc_node_1 = nodes.multigraph_matching_to_multicut_node(gm.left_graph_no, i);
+            const std::size_t cc_node_2 = nodes.multigraph_matching_to_multicut_node(gm.right_graph_no, gm.labeling[i]);
+            uf.merge(cc_node_1,cc_node_2);
+         }
+      }
    }
 
-   // now add intra-graph edges. Possibly input is not feasible. In this case not all edges are 0.
+   for(const auto& e : cc.edges()) {
+      const std::size_t i = e[0];
+      const std::size_t j = e[1];
+      if(uf.connected(i,j))
+         output.push_back(1);
+      else
+         output.push_back(0); 
+   }
 
    return output;
 }
-*/
 
 } // namespace LPMP
