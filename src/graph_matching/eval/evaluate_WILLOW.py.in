@@ -273,8 +273,8 @@ solver_options = "--standardReparametrization uniform --roundingReparametrizatio
 
 algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightening_mp', 'multigraph_matching_tightening_mcf']
 
+executable_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "../"
 instance_dir = "@WILLOW_INSTANCE_DIRECTORY@" + "/"
-executable_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/"
 output_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/WILLOW"
 
 LPMP_evaluate_log.run_experiments(instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options)

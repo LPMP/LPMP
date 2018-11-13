@@ -252,7 +252,7 @@ algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_m
 
 solver_options = "--standardReparametrization uniform --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 300 --tightenConstraintsPercentage 0.05  --mcfReparametrization --primalComputationStart 1 --primalComputationInterval 50 -v 2 --lowerBoundComputationInterval 10 --tighten --multigraphMatchingOutputFormat clustering"
 
-executable_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/"
+executable_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "../"
 instance_dir = "@HOTEL_HOUSE_SYNTHETIC_INSTANCE_DIRECTORY@"
 output_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/hotel_house_synthetic"
 

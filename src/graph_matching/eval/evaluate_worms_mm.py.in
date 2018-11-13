@@ -315,7 +315,7 @@ solver_options = "--standardReparametrization anisotropic --roundingReparametriz
 
 algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightening_mp', 'multigraph_matching_tightening_mcf']
 
-executable_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/"
+executable_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "../"
 instance_dir = "@WORMS_MM_INSTANCE_DIRECTORY@" + "/"
 output_dir = "@CMAKE_CURRENT_BINARY_DIR@" + "/hotel_house_synthetic"
 
