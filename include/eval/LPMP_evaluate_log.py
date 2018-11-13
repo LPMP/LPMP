@@ -177,36 +177,47 @@ def compute_primal_dual_table(methods, input_folders):
    return latex
 
 def get_log_file_names(instance_file, algorithm, output_dir):
+   instance_dir = os.path.dirname(instance_file)
    instance_name = os.path.splitext(os.path.basename(instance_file))[0]
    log_file = instance_name + "_" + algorithm + "_log.txt"
    result_file = instance_name + "_" + algorithm + "_result.txt"
+   log_file = os.path.join(instance_dir, log_file)
+   result_file = os.path.join(instance_dir, result_file)
    log_file = os.path.join(output_dir, log_file)
    result_file = os.path.join(output_dir, result_file)
    return log_file, result_file
 
-def remove_incomplete_log(instance_file, algorithm):
-   # remove log and result file if only one of them is present or either of them is empty
-   log_file, result_file = get_log_file_names(instance_file, algorithm)
-
+def log_valid(instance_file, algorithm, output_dir):
+   log_file, result_file = get_log_file_names(instance_file, algorithm, output_dir)
    if not (os.path.isfile(log_file) and os.path.isfile(result_file)) or (os.path.isfile(log_file) and os.path.getsize(log_file) == 0) or (os.path.isfile(result_file) and os.path.getsize(result_file) == 0):
-         os.remove(log_file)
-         os.remove(result_file)
+       return False
+   else:
+       return True
+
+def remove_incomplete_log(instance_file, algorithm, output_dir):
+   # remove log and result file if only one of them is present or either of them is empty
+   log_file, result_file = get_log_file_names(instance_file, algorithm, output_dir)
+
+   if not log_valid(instance_file, algorithm, output_dir):
+      print "removing " + log_file + " and " + result_file
+      os.remove(log_file)
+      os.remove(result_file)
 
 def evaluate_instance(instance_file, algorithm, executable_dir, instance_dir, output_dir, solver_options):
    full_algorithm_path = os.path.join(executable_dir, algorithm)
-   instance_file = os.path.join(instance_dir, instance_file)
-   instance_name = os.path.splitext(os.path.basename(instance_file))[0]
+   full_instance_path = os.path.join(instance_dir, instance_file)
    log_file, result_file = get_log_file_names(instance_file, algorithm, output_dir)
 
-   create_dir_cmd = "mkdir -p " + output_dir 
+   create_dir_cmd = "mkdir -p " + os.path.dirname(log_file) 
    call(create_dir_cmd, shell=True)
 
    if not (os.path.isfile(log_file) or os.path.isfile(result_file)):
-      print("optimize " + instance_name + " with " + algorithm)
-      run_alg_cmd = "export OMP_NUM_THREADS=1; " + full_algorithm_path + " -i " + instance_file + " -o " + result_file + " " + solver_options + " 2>&1 > " + log_file
+      print("optimize " + instance_file + " with " + algorithm)
+      run_alg_cmd = "export OMP_NUM_THREADS=1; " + full_algorithm_path + " -i " + full_instance_path + " -o " + result_file + " " + solver_options + " 2>&1 > " + log_file
+      print run_alg_cmd
       call(run_alg_cmd, shell=True)
-   else:
-      print("skip optimization of " + instance_file + " with algorithm " + algorithm)
+#   else:
+#      print("skip optimization of " + instance_file + " with algorithm " + algorithm)
 
 def run_experiments(instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options):
    for instance in instance_list:
