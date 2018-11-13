@@ -192,7 +192,7 @@ def remove_incomplete_log(instance_file, algorithm):
          os.remove(log_file)
          os.remove(result_file)
 
-def evaluate_instance(instance_file, algorithm, executable_dir, instance_dir, output_dir):
+def evaluate_instance(instance_file, algorithm, executable_dir, instance_dir, output_dir, solver_options):
    full_algorithm_path = os.path.join(executable_dir, algorithm)
    instance_file = os.path.join(instance_dir, instance_file)
    output_dir = os.path.join(output_dir,  os.path.dirname(instance_file))
@@ -206,32 +206,35 @@ def evaluate_instance(instance_file, algorithm, executable_dir, instance_dir, ou
 
   if not (os.path.isfile(log_file) or os.path.isfile(result_file)):
      print("optimize " + instance_name + " with " + algorithm)
-     run_alg_cmd = "export OMP_NUM_THREADS=1; " + full_algorithm_path + " -i " + instance_file + " -o " + result_file + " " + options + " 2>&1 > " + log_file
+     run_alg_cmd = "export OMP_NUM_THREADS=1; " + full_algorithm_path + " -i " + instance_file + " -o " + result_file + " " + solver_options + " 2>&1 > " + log_file
      call(run_alg_cmd, shell=True)
   else:
      print("skip optimization of " + instance + " with algorithm " + algorithm)
 
+def run_experiments(instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options):
+   for instance in instance_list:
+      for algorithm in algorithms:
+         evaluate_instance(instance, algorithm, executable_dir, instance_dir, output_dir, solver_options)
 
-# first create averaged plots for all folders
-paths = sys.argv[1:]
-for path in paths:
-   for (dirpath, dirnames, filenames) in os.walk(path):
-      input_files = [[] for i in range(len(methods))]
-      for f in filenames:
-         for method_index in range(0, len(methods)):
-            if f.endswith(methods[method_index] + "_log.txt"):
-               input_file = os.path.join(dirpath,f)
-               input_files[method_index].append(input_file)
-               break
+def create_plots(paths, methods):
+   for path in paths:
+      for (dirpath, dirnames, filenames) in os.walk(path):
+         input_files = [[] for i in range(len(methods))]
+         for f in filenames:
+            for method_index in range(0, len(methods)):
+               if f.endswith(methods[method_index] + "_log.txt"):
+                  input_file = os.path.join(dirpath,f)
+                  input_files[method_index].append(input_file)
+                  break
 
-   #plt.show()
-   if path.endswith('/'): path = path[:-1]
-   figure_name = path.split('/')[-1]
-   plt.savefig( figure_name + '.pdf')
+      #plt.show()
+      if path.endswith('/'): path = path[:-1]
+      figure_name = path.split('/')[-1]
+      plt.savefig( figure_name + '.pdf')
 
-# create table with primal/dual gaps
-table_latex = compute_primal_dual_table(methods, paths)
-table_latex = '\documentclass[preview]{standalone}\n\\usepackage{multirow}\n\\begin{document}\n' + table_latex + '\end{document}'
-open('results_table.txt', 'w').write(table_latex)
-call('pdflatex results_table.txt', shell=True)
+def create_table(parths, methods):
+   table_latex = compute_primal_dual_table(methods, paths)
+   table_latex = '\documentclass[preview]{standalone}\n\\usepackage{multirow}\n\\begin{document}\n' + table_latex + '\end{document}'
+   open('results_table.txt', 'w').write(table_latex)
+   call('pdflatex results_table.txt', shell=True)
 
