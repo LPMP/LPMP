@@ -311,7 +311,7 @@ instance_list = [
    '5/12.mm'
 ]
 
-solver_options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 300 --tightenConstraintsPercentage 0.05  --mcfReparametrization --primalComputationStart 1 --primalComputationInterval 50 -v 2 --lowerBoundComputationInterval 10 --tighten --multigraphMatchingOutputFormat matching --multigraphRoundingMethod gaec_KL"
+solver_options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 300 --tightenConstraintsPercentage 0.05  --mcfReparametrization --primalComputationStart 1 --primalComputationInterval 50 -v 2 --lowerBoundComputationInterval 10 --tighten --multigraphMatchingOutputFormat matching --multigraphMatchingRoundingMethod gaec_KL"
 
 algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightening_mp', 'multigraph_matching_tightening_mcf']
 

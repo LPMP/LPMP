@@ -269,7 +269,7 @@ instance_list = [
    'gm_12/Duck/instance_00002/instance.txt'
    ]
 
-solver_options = "--standardReparametrization uniform --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 300 --tightenConstraintsPercentage 0.05  --mcfReparametrization --primalComputationStart 1 --primalComputationInterval 50 -v 2 --lowerBoundComputationInterval 10 --tighten --multigraphMatchingOutputFormat clustering --multigraphMatchingRounding gaec_KL"
+solver_options = "--standardReparametrization uniform --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 300 --tightenConstraintsPercentage 0.05  --mcfReparametrization --primalComputationStart 1 --primalComputationInterval 50 -v 2 --lowerBoundComputationInterval 10 --tighten --multigraphMatchingOutputFormat clustering --multigraphMatchingRoundingMethod gaec_KL"
 
 algorithms = ['multigraph_matching_mp', 'multigraph_matching_mcf', 'multigraph_matching_tightening_mp', 'multigraph_matching_tightening_mcf']
 
