@@ -633,9 +633,8 @@ public:
             } 
         }
 
-        if(debug()) {
+        if(diagnostics())
             std::cout << "Added " << no_constraints_added << " triplet consistency factor for multigraph matching\n";
-        }
 
         // tighten for graph matching constructors
         // TODO: do in parallel. But: constructors will add factors in parallel, leading to data corruption. On the other hand cycle search for mrfs is already parallelized
@@ -772,6 +771,7 @@ public:
           if(debug()) 
              std::cout << "construct mgm rounding problem\n";
 
+          if(debug()) std::cout << "send messages to unaries\n";
           send_messages_to_unaries(); 
 
           enum class rounding_method {gaec_KL, KL, mcf_KL};
