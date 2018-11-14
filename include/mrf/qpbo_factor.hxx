@@ -87,8 +87,14 @@ public:
        std::vector<std::size_t> original_to_reduced_node;
        original_to_reduced_node.reserve(no_variables());
        constexpr static std::size_t node_fixed_val = std::numeric_limits<std::size_t>::max();
-       auto node_fixed = [&](const std::size_t i) { return original_to_reduced_node[i] == node_fixed_val; };
-       auto get_reduced_node = [&](const std::size_t i) { return original_to_reduced_node[i]; };
+       auto node_fixed = [&](const std::size_t i) {
+          assert(i < original_to_reduced_node.size());
+          return original_to_reduced_node[i] == node_fixed_val; 
+       };
+       auto get_reduced_node = [&](const std::size_t i) { 
+          assert(!node_fixed(i));
+          return original_to_reduced_node[i]; 
+       };
 
        for(std::size_t i=0; i<q.GetNodeNum(); ++i) {
           if(q.GetLabel(i) < 0) { // node persistently labelled
@@ -115,11 +121,11 @@ public:
              p.i = get_reduced_node(p.i);
              p.j = get_reduced_node(p.j);
              output.pairwise_potentials.push_back(p);
-          } else if(node_fixed(p.i) && !node_fixed(p.j)) {
+          } else if(!node_fixed(p.i) && node_fixed(p.j)) {
              const std::size_t reduced_i = get_reduced_node(p.i);
              output.unaries[reduced_i][0] += p.cost[0][q.GetLabel(p.j)];
              output.unaries[reduced_i][1] += p.cost[1][q.GetLabel(p.j)];
-          } else if(!node_fixed(p.i) && node_fixed(p.j)) {
+          } else if(node_fixed(p.i) && !node_fixed(p.j)) {
              const std::size_t reduced_j = get_reduced_node(p.j);
              output.unaries[reduced_j][0] += p.cost[q.GetLabel(p.i)][0];
              output.unaries[reduced_j][1] += p.cost[q.GetLabel(p.i)][1];
