@@ -6,6 +6,9 @@ import os
 import os.path
 from subprocess import call
 from collections import namedtuple
+
+# TODO: make class out of this
+
 time_series_element = namedtuple("time_series", "value time")
 time_series_concatenation_element = namedtuple("time_series", "time_series_number value time")
 
@@ -43,28 +46,36 @@ def read_log(input_file):
       if line.startswith("iteration = "):
          m = re.match("iteration = (\d+), lower bound = (-?\d+\.?\d*), time elapsed = (\d+\.?\d*)s", line)
          if m:
-            iteration = m.group(1)
-            lower_bound = m.group(2)
-            time_elapsed = m.group(3)
+            iteration = float(m.group(1))
+            lower_bound = float(m.group(2))
+            time_elapsed = float(m.group(3))
             lower_bounds.append(time_series_element(lower_bound, time_elapsed))
 
          m = re.match("iteration = (\d+), upper bound = (-?\d+\.?\d*), time elapsed = (\d+\.?\d*)s", line)
          if m:
-            iteration = m.group(1)
-            upper_bound = m.group(2)
-            time_elapsed = m.group(3)
+            iteration = float(m.group(1))
+            upper_bound = float(m.group(2))
+            time_elapsed = float(m.group(3))
             upper_bounds.append(time_series_element(upper_bound, time_elapsed))
 
          m = re.match("iteration = (\d+), lower bound = (-?\d+\.?\d*), upper bound = (-?\d+\.?\d*), time elapsed = (\d+\.?\d*)s", line)
          if m:
-            iteration = m.group(1)
-            lower_bound = m.group(2)
-            upper_bound = m.group(3)
-            time_elapsed = m.group(4)
+            iteration = float(m.group(1))
+            lower_bound = float(m.group(2))
+            upper_bound = float(m.group(3))
+            time_elapsed = float(m.group(4))
             lower_bounds.append(time_series_element(lower_bound, time_elapsed))
             upper_bounds.append(time_series_element(upper_bound, time_elapsed))
 
+   timeseries_continuous(lower_bounds)
+   timeseries_continuous(upper_bounds)
    return lower_bounds, upper_bounds
+
+def timeseries_continuous(timeseries):
+   for i in range(1, len(timeseries)):
+      if float(timeseries[i-1].time) > float(timeseries[i].time):
+         print  str(i) + ": " + timeseries[i-1].time + "; " + timeseries[i].time
+      assert float(timeseries[i-1].time) <= float(timeseries[i].time)
 
 def average_time_series(time_series):
    no_time_series = len(time_series)
@@ -72,7 +83,8 @@ def average_time_series(time_series):
    for i in range(0,no_time_series):
       for elem in time_series[i]:
          time_series_concatenate.append(time_series_concatenation_element (i, elem.value, elem.time))
-   sorted_ts = sorted(time_series_concatenate, key=lambda x: x.time)
+   sorted_ts = sorted(time_series_concatenate, key=lambda x: float(x.time))
+   timeseries_continuous(sorted_ts)
 
    initial_index = 0
    index = [0] * no_time_series
@@ -99,9 +111,10 @@ def average_time_series(time_series):
       current_average += float(sorted_ts[i].value)
       averaged_ts.append(time_series_element(current_average / float(no_time_series), sorted_ts[i].time)) 
 
+   timeseries_continuous(averaged_ts)
    return averaged_ts
 
-def average_logs(method_name, line_color, input_files):
+def average_plot(method_name, line_color, input_files):
    lower_bounds = []
    upper_bounds = []
    for input_file in input_files:
@@ -224,25 +237,36 @@ def run_experiments(instance_list, algorithms, executable_dir, instance_dir, out
       for algorithm in algorithms:
          evaluate_instance(instance, algorithm, executable_dir, instance_dir, output_dir, solver_options)
 
-def create_plots(paths, methods):
-   for path in paths:
-      for (dirpath, dirnames, filenames) in os.walk(path):
-         input_files = [[] for i in range(len(methods))]
-         for f in filenames:
-            for method_index in range(0, len(methods)):
-               if f.endswith(methods[method_index] + "_log.txt"):
-                  input_file = os.path.join(dirpath,f)
-                  input_files[method_index].append(input_file)
-                  break
+def create_plots(log_files, methods, dataset_name):
+   print methods
+   # sort log files by method
+   for method_index in range(0, len(methods)):
+      input_files = []
+      for log_file in log_files:
+         if log_file.endswith(methods[method_index] + "_log.txt"): # this is not so nice: we must first process tightening_{...} before {...} for properly recognizing
+            input_files.append(log_file)
 
+      average_plot(methods[method_index], line_colors[method_index], input_files)
       #plt.show()
-      if path.endswith('/'): path = path[:-1]
-      figure_name = path.split('/')[-1]
-      plt.savefig( figure_name + '.pdf')
+      #if path.endswith('/'): path = path[:-1]
+      #figure_name = path.split('/')[-1]
+
+   plt.savefig( dataset_name + '.pdf') 
+   plt.close()
 
 def create_table(parths, methods):
    table_latex = compute_primal_dual_table(methods, paths)
    table_latex = '\documentclass[preview]{standalone}\n\\usepackage{multirow}\n\\begin{document}\n' + table_latex + '\end{document}'
    open('results_table.txt', 'w').write(table_latex)
-   call('pdflatex results_table.txt', shell=True)
+   print table_latex
+   #call('pdflatex results_table.txt', shell=True)
 
+def evaluate_experiments(instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, dataset_name):
+   log_files = []
+   for instance in instance_list:
+      for algorithm in algorithms:
+         log_files.append(get_log_file_names(instance, algorithm, output_dir)[0])
+         if not log_valid(instance, algorithm, output_dir):
+            print log_files[-1] + " not valid, exit evaluation"
+            exit(-1)
+   create_plots(log_files, algorithms, dataset_name)

@@ -91,12 +91,13 @@ public:
        auto get_reduced_node = [&](const std::size_t i) { return original_to_reduced_node[i]; };
 
        for(std::size_t i=0; i<q.GetNodeNum(); ++i) {
-          if(q.GetLabel(i) >= 0) {
+          if(q.GetLabel(i) < 0) { // node persistently labelled
              double E0, E1;
              q.GetTwiceUnaryTerm(i, E0, E1);
              output.unaries.push_back({0.5*E0, 0.5*E1});
              original_to_reduced_node.push_back(no_reduced_nodes++);
           } else {
+             assert(q.GetLabel(i) == 0 || q.GetLabel(i) == 1);
              original_to_reduced_node.push_back(node_fixed_val);
           }
        }

@@ -17,4 +17,5 @@ int main(int argc, char** argv)
    const auto reduced_mrf = q.get_reduced_problem();
    std::cout << "original problem has " << q.no_variables() << " variables and " << q.no_edges() << " edges\n";
    std::cout << "reduced problem has " << reduced_mrf.unaries.size() << " variables and " << reduced_mrf.pairwise_potentials.size() << " edges\n";
+   std::cout << "LP value = " << q.LowerBound() << "\n";
 } 

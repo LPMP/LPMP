@@ -125,6 +125,9 @@ namespace TorresaniEtAlInput {
 
 } // namespace TorresaniEtAlInput
 
+graph_matching_input::labeling parse_graph_matching_result_file(const std::string& filename);
+graph_matching_input::labeling parse_graph_matching_result_string(const std::string& input);
+
 } // namespace LPMP
 
 #endif // LPMP_GRAPH_MATCHING_INPUT_H

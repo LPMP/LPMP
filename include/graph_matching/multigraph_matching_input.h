@@ -18,6 +18,9 @@ namespace Torresani_et_al_multigraph_matching_input {
 
 }
 
+multigraph_matching_input::labeling parse_multigraph_matching_result_file(const std::string& filename);
+multigraph_matching_input::labeling parse_multigraph_matching_result_string(const std::string& input);
+
 }
 
 #endif // LPMP_MULTIGRAPH_MATCHING_INPUT_H

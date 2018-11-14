@@ -83,4 +83,65 @@ namespace Torresani_et_al_multigraph_matching_input {
 
 } // namespace Torresani_et_al_multigraph_matching_input
 
+using parsing::opt_whitespace;
+using parsing::mand_whitespace;
+using parsing::positive_integer;
+
+struct graph_matching_line : pegtl::seq< opt_whitespace, pegtl::string<'g','m'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace, pegtl::eol > {};
+struct graph_matching : pegtl::star<pegtl::not_at<graph_matching_line>, pegtl::any> {};
+struct empty_line : pegtl::seq< opt_whitespace, pegtl::eol > {};
+
+struct grammar :
+   pegtl::star<
+   pegtl::star<empty_line>, 
+   graph_matching_line,
+   graph_matching
+   >
+{};
+
+template< typename Rule >
+struct action
+: pegtl::nothing< Rule > {};
+
+template<> struct action< graph_matching_line > {
+   template<typename INPUT>
+      static void apply(const INPUT& in, multigraph_matching_input::labeling& input)
+      {
+         std::istringstream iss(in.string());
+         char l; 
+         iss >> l; assert(l == 'g');
+         iss >> l; assert(l == 'm');
+         std::size_t left_graph_no; iss >> left_graph_no;
+         std::size_t right_graph_no; iss >> right_graph_no;
+         assert(left_graph_no < right_graph_no);
+
+         input.push_back({});
+         input.back().left_graph_no = left_graph_no;
+         input.back().right_graph_no = right_graph_no;
+      }
+};
+
+template<> struct action< graph_matching > {
+   template<typename INPUT>
+      static void apply(const INPUT& in, multigraph_matching_input::labeling& input)
+      {
+         graph_matching_input::labeling gm_input = parse_graph_matching_result_string(in.string());
+         input.back().labeling = std::move(gm_input);
+      }
+};
+
+multigraph_matching_input::labeling parse_multigraph_matching_result_file(const std::string& filename)
+{
+   multigraph_matching_input::labeling output;
+   throw std::runtime_error("not implemented yet");
+   return output;
+}
+multigraph_matching_input::labeling parse_multigraph_matching_result_string(const std::string& input)
+{
+   multigraph_matching_input::labeling output;
+   const bool read_success = pegtl::parse<grammar, action>(input,"",output);
+   if(!read_success) throw std::runtime_error("could not read multigraph matching result from string");
+   return output;
+}
+
 } // namespace LPMP

@@ -154,13 +154,66 @@ namespace TorresaniEtAlInput {
       bool read_success = pegtl::parse<grammar, action>(input,"",gm_input);
       //std::sort(gm_input.assignments.begin(), gm_input.assignments.end());
 
-      if(!read_success) {
+      if(!read_success)
          throw std::runtime_error("could not read input");
-      }
 
       return gm_input; 
    }
 
 } // namespace TorresaniEtAlInput
+
+using parsing::mand_whitespace;
+using parsing::opt_whitespace;
+using parsing::positive_integer;
+
+using partial_matching = std::vector<std::array<std::size_t,2>>;
+struct assignment : pegtl::seq< opt_whitespace, positive_integer, opt_whitespace, pegtl::string<'-','>'>, opt_whitespace, positive_integer, opt_whitespace > {};
+struct grammar : pegtl::star<pegtl::sor<assignment,opt_whitespace,pegtl::eol>,pegtl::eof> {}; 
+
+template< typename Rule >
+struct action
+: pegtl::nothing< Rule > {};
+
+template<> struct action< assignment > {
+   template<typename INPUT>
+      static void apply(const INPUT& in, partial_matching& matchings)
+      {
+         std::istringstream iss(in.string());
+         std::size_t left_node; iss >> left_node;
+         char c; iss >> c;
+         assert(c == '-');
+         iss >> c;
+         assert(c == '>');
+         std::size_t right_node; iss >> left_node;
+
+         matchings.push_back({left_node, right_node});
+      }
+};
+
+graph_matching_input::labeling transform_partial_matching(partial_matching pm)
+{
+   const std::size_t no_nodes = (*std::max_element(pm.begin(), pm.end(), [](const auto& a, const auto& b) { return a[0] < b[0]; }))[0];
+   graph_matching_input::labeling l;
+   l.resize(no_nodes, std::numeric_limits<std::size_t>::max());
+   for(const auto& m : pm)
+      l[m[0]] = l[m[1]];
+   return l;
+}
+
+graph_matching_input::labeling parse_graph_matching_result_file(const std::string& filename)
+{
+   partial_matching pm;
+   throw std::runtime_error("not implemented yet");
+   return transform_partial_matching(std::move(pm)); 
+}
+
+graph_matching_input::labeling parse_graph_matching_result_string(const std::string& input)
+{
+   partial_matching pm;
+   const bool read_success = pegtl::parse<grammar, action>(input, "", pm);
+   if(!read_success)
+      throw std::runtime_error("could not read input");
+   return transform_partial_matching(std::move(pm)); 
+}
 
 } // namespace LPMP

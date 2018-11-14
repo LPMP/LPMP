@@ -10,6 +10,7 @@
 
 namespace LPMP {
 
+// we take the minimization format
 struct max_cut_instance {
     struct weighted_edge : public std::array<std::size_t,2> { 
         weighted_edge(const std::size_t i, const std::size_t j, const double _cost) : std::array<std::size_t,2>({i,j}), cost(_cost) {}
@@ -53,6 +54,7 @@ struct max_cut_instance {
         return cost;
     }
 
+// write out as maximization formulation
     template<typename STREAM>
     void write(STREAM& s) const
     {
