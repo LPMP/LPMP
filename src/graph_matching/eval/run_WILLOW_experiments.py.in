@@ -1,0 +1,11 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+import WILLOW_evaluation_data
+import LPMP_evaluate_log
+
+LPMP_evaluate_log.run_experiments(Winebottle_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(Motorbike_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(Car_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(Duck_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(Face_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
