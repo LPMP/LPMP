@@ -89,11 +89,13 @@ using parsing::positive_integer;
 
 struct graph_matching_line : pegtl::seq< opt_whitespace, pegtl::string<'g','m'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace, pegtl::eol > {};
 struct graph_matching : pegtl::star<pegtl::not_at<graph_matching_line>, pegtl::any> {};
+struct comment_line : pegtl::seq< opt_whitespace, pegtl::sor<pegtl::string<'c'>, pegtl::string<'#'>>, pegtl::until< pegtl::eol >> {};
 struct empty_line : pegtl::seq< opt_whitespace, pegtl::eol > {};
+struct ignore_line : pegtl::sor<comment_line, empty_line > {};
 
 struct grammar :
    pegtl::star<
-   pegtl::star<empty_line>, 
+   pegtl::star<ignore_line>, 
    graph_matching_line,
    graph_matching
    >

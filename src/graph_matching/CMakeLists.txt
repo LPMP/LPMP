@@ -71,6 +71,7 @@ SET(MGM_SOURCE_FILES
       multigraph_matching_mcf.cpp
       multigraph_matching_tightening_mp.cpp
       multigraph_matching_tightening_mcf.cpp
+      evaluate_multigraph_matching.cpp
       )
 
 foreach( source_file ${MGM_SOURCE_FILES} )
