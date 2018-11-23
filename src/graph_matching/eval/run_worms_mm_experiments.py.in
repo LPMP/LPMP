@@ -8,3 +8,9 @@ LPMP_evaluate_log.run_experiments(3_instance_list, algorithms, executable_dir, i
 LPMP_evaluate_log.run_experiments(4_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
 LPMP_evaluate_log.run_experiments(5_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
 LPMP_evaluate_log.run_experiments(30_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+
+LPMP_evaluate_log.run_experiments(6_instance_list, algorithms, executable_dir, instance_6_7_8_9_10_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(7_instance_list, algorithms, executable_dir, instance_6_7_8_9_10_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(8_instance_list, algorithms, executable_dir, instance_6_7_8_9_10_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(9_instance_list, algorithms, executable_dir, instance_6_7_8_9_10_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(10_instance_list, algorithms, executable_dir, instance_6_7_8_9_10_dir, output_dir, solver_options) 

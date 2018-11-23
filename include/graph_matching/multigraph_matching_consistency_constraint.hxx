@@ -6,6 +6,7 @@
 #include <array>
 #include <limits>
 
+/*
 namespace LPMP {
 
 namespace {
@@ -806,6 +807,7 @@ public:
        return l.primal() == left_label;
     }
 };
+*/
 
 } // namespace LPMP
 

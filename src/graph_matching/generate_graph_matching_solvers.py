@@ -39,7 +39,10 @@ solvers = [
     solver(preamble_mp, 'FMC_HUNGARIAN_BP_T<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_hungarian_bp_both_sides_tightening.cpp"),
     solver(preamble_BCFW, 'FMC_MCF<PairwiseConstruction::Left>', 'LP_tree_FWMAP', 'ParseProblemMCF_trees', "graph_matching_mcf_proximal_bundle_left.cpp"),
     solver(preamble_BCFW, 'FMC_GM<PairwiseConstruction::Left>', 'LP_tree_FWMAP', 'ParseProblemGM_trees', "graph_matching_gm_proximal_bundle_left.cpp"),
-    solver(preamble_BCFW, 'FMC_LOCAL_SUBPROBLEM<PairwiseConstruction::Left>', 'LP_tree_FWMAP', 'ParseProblemLocalSubproblems_trees', "graph_matching_local_subproblems_proximal_bundle_left.cpp")
+    solver(preamble_BCFW, 'FMC_LOCAL_SUBPROBLEM<PairwiseConstruction::Left>', 'LP_tree_FWMAP', 'ParseProblemLocalSubproblems_trees', "graph_matching_local_subproblems_proximal_bundle_left.cpp"),
+
+    solver(preamble_mp, 'FMC_MP_Q<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_mp_both_sides_inter_quadratic_message.cpp"),
+    solver(preamble_mp, 'FMC_MP_Q_T<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_mp_both_sides_inter_quadratic_message_tightening.cpp")
     ]
 
 for e in solvers:

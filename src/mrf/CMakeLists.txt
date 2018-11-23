@@ -1,3 +1,6 @@
+add_library(MRF_factors pairwise_simplex_factor.cpp pairwise_Potts_factor.cpp ternary_simplex_factor)
+target_link_libraries(MRF_factors LPMP) 
+
 add_library(dimacs_max_flow_input dimacs_max_flow_input.cpp)
 target_link_libraries(dimacs_max_flow_input LPMP)
 

@@ -173,17 +173,17 @@ public:
     template<typename RIGHT_FACTOR, typename G2>
     void send_message_to_left(const RIGHT_FACTOR& r, G2& msg, const REAL omega = 1.0)
     {
-       vector<REAL> msgs;
-       if(CHIRALITY == Chirality::left) {
-          msgs = r.min_marginal_1();
-       } else {
-          msgs = r.min_marginal_2(); 
-       }
-       if(!SUPPORT_INFINITY) {
-         for(INDEX x=0; x<msgs.size(); ++x) {
+       auto msgs = [&]() {
+          if(CHIRALITY == Chirality::left) 
+             return r.min_marginal_1();
+          else
+             return r.min_marginal_2(); 
+       }();
+
+       if(!SUPPORT_INFINITY)
+         for(INDEX x=0; x<msgs.size(); ++x)
            assert(!std::isnan(msgs[x]) && msgs[x] != std::numeric_limits<REAL>::infinity());
-         }
-       }
+
        const REAL min = msgs.min();
        for(INDEX i=0; i<msgs.size(); ++i) { msgs[i] -= min; }
        msg -= omega*msgs;
@@ -369,27 +369,24 @@ public:
    template<typename RIGHT_FACTOR, typename G2>
      void send_message_to_left(const RIGHT_FACTOR& r, G2& msg, const REAL omega = 1.0)
      {
-         matrix<REAL> msgs(r.dim(I1), r.dim(I2));
-         if(I1 == 0 && I2 == 1) {
-             r.min_marginal12(msgs);
-         } else if(I1 == 0 && I2 == 2) {
-             r.min_marginal13(msgs);
-         } else if(I1 == 1 && I2 == 2) {
-             r.min_marginal23(msgs);
-         } else {
-             assert(false);
-         }
+         auto msgs = [&]() {
+            if(I1 == 0 && I2 == 1)
+               return r.min_marginal12();
+            else if(I1 == 0 && I2 == 2)
+               return r.min_marginal13();
+            else if(I1 == 1 && I2 == 2)
+               return r.min_marginal23();
+            assert(false);
+         }();
 
-         for(auto it=msgs.begin(); it!=msgs.end(); ++it) {
+         for(auto it=msgs.begin(); it!=msgs.end(); ++it)
              assert(!std::isnan(*it));
-         }
 
          const auto min = msgs.min();
-         for(std::size_t x1=0; x1<msgs.dim1(); ++x1) {
-             for(std::size_t x2=0; x2<msgs.dim2(); ++x2) {
+         for(std::size_t x1=0; x1<msgs.dim1(); ++x1)
+             for(std::size_t x2=0; x2<msgs.dim2(); ++x2)
                  msgs(x1,x2) -= min;
-             }
-         }
+
          msg -= omega*msgs;
      }
 

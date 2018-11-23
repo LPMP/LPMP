@@ -11,8 +11,10 @@ preamble = """
 solvers = [
     solver(preamble, 'FMC_MGM<true>', 'LP', "multigraph_matching_mp.cpp"),
     solver(preamble, 'FMC_MGM<false>', 'LP', "multigraph_matching_mcf.cpp"),
+    solver(preamble, 'FMC_MGM_Q<false>', 'LP', "multigraph_matching_mcf_inter_quadratic_messages.cpp"),
     solver(preamble, 'FMC_MGM_T<true>', 'LP', "multigraph_matching_tightening_mp.cpp"),
     solver(preamble, 'FMC_MGM_T<false>', 'LP', "multigraph_matching_tightening_mcf.cpp"),
+    solver(preamble, 'FMC_MGM_Q_T<false>', 'LP', "multigraph_matching_tightening_mcf_inter_quadratic_message.cpp"),
     ]
 
 for e in solvers:

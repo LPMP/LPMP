@@ -2379,13 +2379,12 @@ public:
 
          CallSendMessages(tmp_factor, omega.begin());
       } else {
-        assert(omega.size() == 0.0);
+         assert(omega.size() == 0.0);
       }
 #ifndef NDEBUG
        const REAL after_lb = LowerBound();
        assert(before_lb <= after_lb + eps);
 #endif
-
    } 
 
    static constexpr INDEX active_messages_array_size = 16;

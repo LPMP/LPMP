@@ -14,6 +14,7 @@
 #include "multicut/multicut_instance.hxx"
 #include "multicut/multicut_kernighan_lin.h"
 #include "multicut/transform_multigraph_matching.h"
+#include "multigraph_matching_synchronization.h"
 
 namespace LPMP {
 
@@ -260,7 +261,7 @@ public:
         mcf_reparametrization_arg_("", "mcfReparametrization", "enable reparametrization by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
         mcf_primal_rounding_arg_("", "mcfRounding", "enable runding by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
         output_format_arg_("", "multigraphMatchingOutputFormat", "output format for multigraph matching", false, "matching", "{matching|clustering}", s.get_cmd()),
-        primal_rounding_algorithms_arg_("", "multigraphMatchingRoundingMethod", "correlation clustering algorithms that are used for rounding a solution", false, "gaec_KL", "{gaec_KL|KL|MCF_KL}", s.get_cmd())
+        primal_rounding_algorithms_arg_("", "multigraphMatchingRoundingMethod", "correlation clustering algorithms that are used for rounding a solution", false, "gaec_KL", "{gaec_KL|KL|MCF_KL|MCF_PS}", s.get_cmd())
         
         {
            omp_set_nested(0); // there is parallelism in the graph matching constructors, which we suppress hereby. TODO: should be better set somewhere else
@@ -638,8 +639,9 @@ public:
 
         // tighten for graph matching constructors
         // TODO: do in parallel. But: constructors will add factors in parallel, leading to data corruption. On the other hand cycle search for mrfs is already parallelized
+        const std::size_t no_constraints_to_add_per_gm = no_constraints_to_add / (((graph_matching_constructors.size() * ( graph_matching_constructors.size() -1))/2)) + 1;
         for(auto& c : graph_matching_constructors) {
-           no_constraints_added += c.second->Tighten(no_constraints_to_add);
+           no_constraints_added += c.second->Tighten(no_constraints_to_add_per_gm);
         }
 
         return no_constraints_added;
@@ -753,6 +755,33 @@ public:
           std::visit([&](auto&& t) { this->send_messages_to_unaries(t); }, t.second);
     }
 
+    matrix<int> compute_allowed_matching_matrix() const
+    {
+       auto mgm = export_linear_multigraph_matching_input();
+       multigraph_matching_input::graph_size mgm_size(mgm);
+
+       matrix<int> m(mgm_size.total_no_nodes(), mgm_size.total_no_nodes(), 0);
+
+       for(std::size_t i=0; i<m.dim1(); ++i) 
+          for(std::size_t j=0; j<m.dim2(); ++j) 
+             m(i,j) = 0;
+
+       for(std::size_t p=0; p<mgm_size.no_graphs(); ++p) {
+          for(std::size_t q=p+1; q<mgm_size.no_graphs(); ++q) {
+             auto* c = get_graph_matching_constructor(p, q);
+             const auto& graph = c->graph_;
+             for(std::size_t i=0; i<graph.size(); ++i) {
+                for(std::size_t j : graph[i]) {
+                   m(mgm_size.node_no(p,i), mgm_size.node_no(q,j)) = 1;
+                   m(mgm_size.node_no(q,j), mgm_size.node_no(p,i))  = 1;
+                }
+             }
+          }
+       } 
+
+       return m;
+    }
+
     // start with possibly inconsistent primal labeling obtained by individual graph matching roundings.
     // remote cycles that are inconsistent through a multicut solver
     void ComputePrimal()
@@ -774,7 +803,7 @@ public:
           if(debug()) std::cout << "send messages to unaries\n";
           send_messages_to_unaries(); 
 
-          enum class rounding_method {gaec_KL, KL, mcf_KL};
+          enum class rounding_method {gaec_KL, KL, mcf_KL, mcf_ps};
           rounding_method rm = [&]() {
           if(primal_rounding_algorithms_arg_.getValue() == "gaec_KL")
              return rounding_method::gaec_KL;
@@ -782,36 +811,48 @@ public:
              return rounding_method::KL;
           else if(primal_rounding_algorithms_arg_.getValue() == "MCF_KL")
              return rounding_method::mcf_KL;
+          else if(primal_rounding_algorithms_arg_.getValue() == "MCF_PS") // permutation synchronization
+             return rounding_method::mcf_ps;
           else
              throw std::runtime_error("could not recognize correlation clustering rounding method");
           }();
 
           multigraph_matching_input::labeling labeling_to_improve;
-          if(rm == rounding_method::mcf_KL)
+          if(rm == rounding_method::mcf_KL || rm == rounding_method::mcf_ps)
              for(auto& c : graph_matching_constructors)
                 labeling_to_improve.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
 
           auto mgm = export_linear_multigraph_matching_input();
-          auto round_primal_async = ([=]() {
-                auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
-
-                auto cc_sol = [&]() {
+          const auto allowed_matchings = compute_allowed_matching_matrix();
+          auto round_primal_async = ([=](multigraph_matching_input mgm, multigraph_matching_input::labeling labeling_to_improve) {
                   if(rm == rounding_method::gaec_KL) {
-                     return compute_multicut_gaec_kernighan_lin(cc); // seems better than just computing with Kernighan&Lin
+                     auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
+                     auto cc_sol = compute_multicut_gaec_kernighan_lin(cc); // seems better than just computing with Kernighan&Lin
+                     auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
+                     return mgm_sol;
                   } else if(rm == rounding_method::KL) {
-                     return compute_multicut_kernighan_lin(cc);
-                  } else {
-                     assert(rm == rounding_method::mcf_KL);
+                     auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
+                     auto cc_sol = compute_multicut_kernighan_lin(cc);
+                     auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
+                     return mgm_sol;
+                  } else if(rm == rounding_method::mcf_KL) {
                      // try fixing infeasible matchings computed by individual graph matching solvers with Kernighan&Lin
+                     auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
                      auto cc_sol_to_improve = transform_multigraph_matching_labeling_to_correlation_clustering(labeling_to_improve, mgm, cc);
-                     return compute_multicut_kernighan_lin(cc, cc_sol_to_improve);
+                     auto cc_sol = compute_multicut_kernighan_lin(cc, cc_sol_to_improve);
+                     auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
+                     return mgm_sol;
+                  } else if(rm == rounding_method::mcf_ps) {
+                     multigraph_matching_input::graph_size gs(mgm);
+                     synchronize_multigraph_matching(gs, labeling_to_improve, allowed_matchings); // for sparse assignment problems
+                     //synchronize_multigraph_matching(gs, labeling_to_improve); // when all edges are present in pairwise matching subproblems
+                     return labeling_to_improve; 
+                  } else {
+                     throw std::runtime_error("rounding method not supported");
                   }
-                }();
 
-                auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
-                return mgm_sol;
                 });
-          primal_result_handle_ = std::async(std::launch::async, round_primal_async);
+          primal_result_handle_ = std::async(std::launch::async, round_primal_async, mgm, labeling_to_improve);
        }
     }
 

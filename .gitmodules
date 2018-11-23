@@ -38,3 +38,6 @@
 [submodule "external/andres-graph"]
 	path = external/andres-graph
 	url = https://github.com/bjoern-andres/graph.git
+[submodule "external/Eigen"]
+	path = external/Eigen
+	url = https://github.com/eigenteam/eigen-git-mirror.git

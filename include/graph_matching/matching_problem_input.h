@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <numeric>
 #include "union_find.hxx"
+#include <iostream>
 
 // TODO: split into header and cpp file
 
@@ -90,6 +91,34 @@ struct linear_assignment_problem_input {
    class labeling : public std::vector<std::size_t> {
       public:
       using std::vector<std::size_t>::vector;
+
+      template<typename MATRIX>
+      labeling(const MATRIX& m)
+      {
+         // check that each row and columns has at most one 1 entry
+         std::cout << m << "\n";
+         for(std::size_t i=0; i<m.cols(); ++i) {
+            for(std::size_t j=0; j<m.rows(); ++j) {
+               assert(m(i,j) == 0 || m(i,j) == 1);
+            }
+         }
+         for(std::size_t i=0; i<m.cols(); ++i) {
+            assert(m.col(i).sum() <= 1);
+         }
+         for(std::size_t j=0; j<m.rows(); ++j) {
+            assert(m.row(j).sum() <= 1);
+         }
+         this->resize(m.cols(), std::numeric_limits<std::size_t>::max());
+         for(std::size_t i=0; i<m.cols(); ++i) {
+            for(std::size_t j=0; j<m.rows(); ++j) {
+               if(m(i,j) == 1) {
+                  assert((*this)[i] == std::numeric_limits<std::size_t>::max());
+                  (*this)[i] = j;
+               } 
+            }
+         }
+         assert(this->size() == m.cols());
+      }
 
       template<typename STREAM>
       void WritePrimal(STREAM& s) const
@@ -183,6 +212,79 @@ struct multigraph_matching_input_entry {
 
 struct multigraph_matching_input : public std::vector<multigraph_matching_input_entry> {
 
+   class graph_size {
+      public:
+         template<typename SIZE_ITERATOR>
+         graph_size(SIZE_ITERATOR size_begin, SIZE_ITERATOR size_end)
+         : no_nodes_(size_begin, size_end)
+         {
+            compute_node_offsets(); 
+         }
+         graph_size(const multigraph_matching_input& input)
+         {
+            compute_no_nodes(input);
+            compute_node_offsets();
+         }
+
+         std::size_t no_graphs() const { return no_nodes_.size(); }
+         std::size_t total_no_nodes() const { return graph_node_offsets_.back() + no_nodes_.back(); }
+         std::size_t no_nodes(const std::size_t i) const { assert(i < no_graphs()); return no_nodes_[i]; }
+
+         std::size_t node_no(const std::size_t graph_no, const std::size_t node_no) const
+         {
+            assert(graph_node_offsets_.size() == no_graphs());
+            assert(graph_no < graph_node_offsets_.size());
+            return graph_node_offsets_[graph_no] + node_no; 
+         }
+
+         std::array<std::size_t,2> graph_node_no(const std::size_t i) const
+         {
+            assert(graph_node_offsets_.size() == no_graphs());
+            const std::size_t p = std::lower_bound(graph_node_offsets_.begin(), graph_node_offsets_.end(), i+1)-1 - graph_node_offsets_.begin();
+            assert(p < no_graphs());
+            const std::size_t p_node = i - graph_node_offsets_[p];
+            assert(p_node < no_nodes(p));
+            assert(i == node_no(p, p_node));
+            return {p, p_node}; 
+         }
+
+      private:
+         std::size_t compute_no_graphs(const multigraph_matching_input& input)
+         {
+            std::size_t no_graphs = 1 + [](const auto& gm) {
+               return std::max(gm.left_graph_no, gm.right_graph_no); 
+            }(*std::max_element(input.begin(), input.end(), [](const auto& gm1, const auto& gm2) { return std::max(gm1.left_graph_no, gm1.right_graph_no) < std::max(gm2.left_graph_no, gm2.right_graph_no); }));
+
+            return no_graphs;
+         }
+
+         void compute_no_nodes(const multigraph_matching_input& input)
+         {
+            no_nodes_.resize(compute_no_graphs(input), 0);
+
+            for(auto& gm : input) {
+               for(const auto& a : gm.gm_input.assignments) {
+                  no_nodes_[gm.left_graph_no] = std::max(a.left_node+1, no_nodes_[gm.left_graph_no]);
+                  no_nodes_[gm.right_graph_no] = std::max(a.right_node+1, no_nodes_[gm.right_graph_no]); 
+               }
+            }
+         }
+
+         void compute_node_offsets()
+         {
+            graph_node_offsets_.reserve(no_graphs());
+            std::partial_sum(no_nodes_.begin(), no_nodes_.end(), std::back_inserter(graph_node_offsets_));
+            std::rotate(graph_node_offsets_.begin(), graph_node_offsets_.begin() + graph_node_offsets_.size()-1, graph_node_offsets_.end());
+            assert(graph_node_offsets_[0] == *std::max_element(graph_node_offsets_.begin(), graph_node_offsets_.end()));
+            graph_node_offsets_[0] = 0;
+            assert(std::is_sorted(graph_node_offsets_.begin(), graph_node_offsets_.end())); 
+         }
+
+         std::vector<std::size_t> no_nodes_;
+         std::vector<std::size_t> graph_node_offsets_;
+   };
+
+
    struct multigraph_matching_labeling_entry {
       std::size_t left_graph_no, right_graph_no;
       linear_assignment_problem_input::labeling labeling;
@@ -191,6 +293,30 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
    class labeling : public std::vector<multigraph_matching_labeling_entry> {
       public:
       using std::vector<multigraph_matching_labeling_entry>::vector;
+
+      template<typename MATRIX>
+      labeling(const MATRIX& m, const graph_size& mgm_size)
+      {
+         assert(m.cols() == m.rows());
+         //for(std::size_t i=0; i<m.cols(); ++i) {
+         //   assert(m(i,i) == 1);
+         //}
+         for(std::size_t p=0; p<mgm_size.no_graphs(); ++p) {
+            for(std::size_t q=p+1; q<mgm_size.no_graphs(); ++q) {
+               // extract submatrix
+               const std::size_t first_col = mgm_size.node_no(q,0);
+               const std::size_t no_cols = mgm_size.no_nodes(q);
+               const std::size_t first_row = mgm_size.node_no(p,0);
+               const std::size_t no_rows = mgm_size.no_nodes(p);
+
+               std::cout << first_row << "," << first_col << "," << no_rows << "," << no_cols << "\n";
+               auto gm_matching = m.block(first_row, first_col, no_rows, no_cols);
+               //auto gm_matching = m.block(first_col, first_row, no_cols, no_rows);
+               linear_assignment_problem_input::labeling gm_labeling(gm_matching);
+               this->push_back({p,q, gm_labeling});
+            }
+         }
+      }
 
       bool check_primal_consistency() const
       {
@@ -271,6 +397,7 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
    }
 
    private:
+   // TODO: remove class, it is implemented already generally
    class node_mapping {
       public:
       node_mapping(const multigraph_matching_input::labeling& mgm)

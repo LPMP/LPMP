@@ -595,6 +595,199 @@ private:
     MCF_FACTOR* mcf_factor = nullptr;
 };
 
+template<typename GRAPH_MATCHING_CONSTRUCTOR, typename INTER_QUADRATIC_MESSAGE_CONTAINER>
+class graph_matching_inter_quadratic_message_constructor : public GRAPH_MATCHING_CONSTRUCTOR {
+public:
+    using FMC = typename GRAPH_MATCHING_CONSTRUCTOR::FMC;
+    using inter_quadratic_message_container = INTER_QUADRATIC_MESSAGE_CONTAINER;
+
+    using GRAPH_MATCHING_CONSTRUCTOR::GRAPH_MATCHING_CONSTRUCTOR;
+
+    template<typename PAIRWISE_FACTOR, typename INDICES_ITERATOR>
+    inter_quadratic_message_container* add_inter_quadratic_message(PAIRWISE_FACTOR* l, PAIRWISE_FACTOR* r, 
+          INDICES_ITERATOR left_indices_begin, INDICES_ITERATOR left_indices_end,
+          INDICES_ITERATOR right_indices_begin, INDICES_ITERATOR right_indices_end)
+    {
+       return this->lp_->template add_message<inter_quadratic_message_container>(l, r, left_indices_begin, left_indices_end, right_indices_begin, right_indices_end); 
+    }
+
+    template<typename PAIRWISE_FACTOR_CONTAINER>
+    inter_quadratic_message_container* add_interquadratic_message(
+          const std::size_t left_node_1, const std::size_t left_node_2, 
+          const std::size_t right_node_1, const std::size_t right_node_2,
+          PAIRWISE_FACTOR_CONTAINER* l, PAIRWISE_FACTOR_CONTAINER* r 
+          )
+    {
+       assert(left_node_1 < left_node_2);
+       assert(right_node_1 < right_node_2);
+
+       const bool l1r1 = this->has_edge(left_node_1, right_node_1);
+       const bool l1r2 = this->has_edge(left_node_1, right_node_2);
+       const bool l2r1 = this->has_edge(left_node_2, right_node_1);
+       const bool l2r2 = this->has_edge(left_node_2, right_node_2);
+
+       const std::size_t l1r1_index = l1r1 ? this->get_left_index(left_node_1, right_node_1) : std::numeric_limits<std::size_t>::max();
+       const std::size_t r1l1_index = l1r1 ? this->get_right_index(right_node_1, left_node_1) : std::numeric_limits<std::size_t>::max();
+       const std::size_t l1r2_index = l1r2 ? this->get_left_index(left_node_1, right_node_2) : std::numeric_limits<std::size_t>::max();
+       const std::size_t r2l1_index = l1r2 ? this->get_right_index(right_node_2, left_node_1) : std::numeric_limits<std::size_t>::max();
+       const std::size_t l2r1_index = l2r1 ? this->get_left_index(left_node_2, right_node_1) : std::numeric_limits<std::size_t>::max();
+       const std::size_t r1l2_index = l2r1 ? this->get_right_index(right_node_1, left_node_2) : std::numeric_limits<std::size_t>::max();
+       const std::size_t l2r2_index = l2r2 ? this->get_left_index(left_node_2, right_node_2) : std::numeric_limits<std::size_t>::max();
+       const std::size_t r2l2_index = l2r2 ? this->get_right_index(right_node_2, left_node_2) : std::numeric_limits<std::size_t>::max();
+
+       if(l1r1) { assert(l1r1_index < std::numeric_limits<std::size_t>::max() && r1l1_index < std::numeric_limits<std::size_t>::max()); }
+       if(l1r2) { assert(l1r2_index < std::numeric_limits<std::size_t>::max() && r2l1_index < std::numeric_limits<std::size_t>::max()); }
+       if(l2r1) { assert(l2r1_index < std::numeric_limits<std::size_t>::max() && r1l2_index < std::numeric_limits<std::size_t>::max()); }
+       if(l2r2) { assert(l2r2_index < std::numeric_limits<std::size_t>::max() && r2l2_index < std::numeric_limits<std::size_t>::max()); }
+
+       std::array<std::size_t,2> matching_l_indices = {std::numeric_limits<std::size_t>::max(), std::numeric_limits<std::size_t>::max()};
+       std::array<std::size_t,2> matching_r_indices = {std::numeric_limits<std::size_t>::max(), std::numeric_limits<std::size_t>::max()}; 
+       std::size_t matching_counter = 0;
+       if(l1r1 && l2r2) {
+          matching_l_indices[matching_counter] = l1r1_index * (l->get_factor()->dim2()) + l2r2_index;
+          matching_r_indices[matching_counter++] = r1l1_index * (r->get_factor()->dim2()) + r2l2_index;
+       }
+       if(l1r2_index < std::numeric_limits<std::size_t>::max() && l2r1_index < std::numeric_limits<std::size_t>::max()) {
+          matching_l_indices[matching_counter] = l1r2_index * (l->get_factor()->dim2()) + l2r1_index;
+          matching_r_indices[matching_counter++] = r1l2_index * (r->get_factor()->dim2()) + r2l1_index; 
+       }
+       if(matching_counter == 2 && matching_l_indices[0] > matching_l_indices[1]) {
+          std::swap(matching_l_indices[0], matching_l_indices[1]);
+          std::swap(matching_r_indices[0], matching_r_indices[1]); 
+       }
+
+       if(matching_counter > 0) 
+          return add_inter_quadratic_message(l, r, matching_l_indices.begin(), matching_l_indices.begin() + matching_counter, matching_r_indices.begin(), matching_r_indices.begin() + matching_counter);
+       else
+          return nullptr;
+    }
+
+    void construct(const graph_matching_input& gm_input)
+    {
+       GRAPH_MATCHING_CONSTRUCTOR::construct(gm_input);
+
+       std::cout << "construct interquadratic messages\n";
+       for(std::size_t left_pairwise_factor_id=0; left_pairwise_factor_id<this->left_mrf.get_number_of_pairwise_factors(); ++left_pairwise_factor_id) {
+          auto* l = this->left_mrf.get_pairwise_factor(left_pairwise_factor_id);
+          const auto [l_node_1,l_node_2] = this->left_mrf.get_pairwise_variables(left_pairwise_factor_id);
+          assert(l_node_1 < l_node_2);
+          for(std::size_t l_index_1=0; l_index_1<l->get_factor()->dim1()-1; ++l_index_1) {
+             const std::size_t r_node_1 = this->graph_[l_node_1][l_index_1];
+             for(std::size_t l_index_2=0; l_index_2<l->get_factor()->dim2()-1; ++l_index_2) {
+                const std::size_t r_node_2 = this->graph_[l_node_2][l_index_2];
+                if(r_node_1 == r_node_2) continue;
+                const std::size_t min_r_node = std::min(r_node_1, r_node_2);
+                const std::size_t max_r_node = std::max(r_node_1, r_node_2);
+                if(this->right_mrf.has_pairwise_factor(min_r_node, max_r_node)) {
+                   auto* r = this->right_mrf.get_pairwise_factor(min_r_node, max_r_node);
+
+                   add_interquadratic_message(l_node_1, l_node_2, min_r_node, max_r_node, l, r);
+
+
+/*
+                   const std::size_t l1r1_index = this->get_left_index(l_node_1, r_node_1);
+                   const std::size_t l1r2_index = this->get_left_index(l_node_1, r_node_2);
+                   const std::size_t l2r1_index = this->get_left_index(l_node_2, r_node_1);
+                   const std::size_t l2r2_index = this->get_left_index(l_node_2, r_node_2);
+
+                   assert(l1r1_index != l1r2_index);
+                   assert(l2r1_index != l2r2_index);
+
+                   const std::size_t r1l1_index = this->get_right_index(r_node_1, l_node_1);
+                   const std::size_t r1l2_index = this->get_right_index(r_node_1, l_node_2);
+                   const std::size_t r2l1_index = this->get_right_index(r_node_2, l_node_1);
+                   const std::size_t r2l2_index = this->get_right_index(r_node_2, l_node_2);
+
+                   assert(r1l1_index != r1l2_index);
+                   assert(r2l1_index != r2l2_index);
+
+                   std::array<std::size_t,2> matching_l_indices = {std::numeric_limits<std::size_t>::max(), std::numeric_limits<std::size_t>::max()};
+                   std::array<std::size_t,2> matching_r_indices = {std::numeric_limits<std::size_t>::max(), std::numeric_limits<std::size_t>::max()}; 
+                   std::size_t cur_index = 0;
+
+                   if(l1r1_index < std::numeric_limits<std::size_t>::max() && l2r2_index < std::numeric_limits<std::size_t>::max()) {
+                      matching_l_indices[cur_index] = l1r1_index * (l->get_factor()->dim2()) + l2r2_index;
+                      matching_r_indices[cur_index] = r1l1_index * (r->get_factor()->dim2()) + r2l2_index;
+                      assert(matching_l_indices[cur_index] < l->get_factor()->dim1()*l->get_factor()->dim2());
+                      assert(matching_r_indices[cur_index] < r->get_factor()->dim1()*r->get_factor()->dim2());
+                      ++cur_index;
+                   }
+                   if(l1r2_index < std::numeric_limits<std::size_t>::max() && l2r1_index < std::numeric_limits<std::size_t>::max()) {
+                      matching_l_indices[cur_index] = l1r2_index * (l->get_factor()->dim2()) + l2r1_index;
+                      matching_r_indices[cur_index] = r1l2_index * (r->get_factor()->dim2()) + r2l1_index; 
+                      assert(matching_l_indices[cur_index] < l->get_factor()->dim1()*l->get_factor()->dim2());
+                      assert(matching_r_indices[cur_index] < r->get_factor()->dim1()*r->get_factor()->dim2());
+                      ++cur_index;
+                   }
+                   assert(cur_index > 0);
+
+                   add_inter_quadratic_message(l, r, matching_l_indices.begin(), matching_l_indices.begin() + cur_index, matching_r_indices.begin(), matching_r_indices.begin() + cur_index);
+                   */
+                }
+             }
+          }
+       }
+
+       /*
+       for(std::size_t left_pairwise_factor_id=0; left_pairwise_factor_id<this->left_mrf.get_number_of_pairwise_factors(); ++left_pairwise_factor_id) {
+          for(std::size_t right_pairwise_factor_id=0; right_pairwise_factor_id<this->right_mrf.get_number_of_pairwise_factors(); ++right_pairwise_factor_id) {
+             // check for overlap between assignment pairs
+             auto* l = this->left_mrf.get_pairwise_factor(left_pairwise_factor_id);
+             auto* r = this->right_mrf.get_pairwise_factor(right_pairwise_factor_id);
+
+             const auto [l1,l2] = this->left_mrf.get_pairwise_variables(left_pairwise_factor_id);
+             assert(l1<l2);
+             const auto [r1,r2] = this->right_mrf.get_pairwise_variables(right_pairwise_factor_id);
+             assert(r1<r2);
+
+             const std::size_t l1r1_index = this->get_left_index(l1,r1);
+             const std::size_t l1r2_index = this->get_left_index(l1,r2);
+             const std::size_t l2r1_index = this->get_left_index(l2,r1);
+             const std::size_t l2r2_index = this->get_left_index(l2,r2);
+
+             assert(l1r1_index != l1r2_index);
+             assert(l2r1_index != l2r2_index);
+
+             const std::size_t r1l1_index = this->get_right_index(r1,l1);
+             const std::size_t r1l2_index = this->get_right_index(r1,l2);
+             const std::size_t r2l1_index = this->get_right_index(r2,l1);
+             const std::size_t r2l2_index = this->get_right_index(r2,l2);
+
+             assert(r1l1_index != r1l2_index);
+             assert(r2l1_index != r2l2_index);
+
+             std::vector<std::size_t> left_indices;
+             std::vector<std::size_t> right_indices;
+
+             if(l1r1_index < std::numeric_limits<std::size_t>::max() && l2r2_index < std::numeric_limits<std::size_t>::max()) {
+                left_indices.push_back(l1r1_index * (l->get_factor()->dim2()) + l2r2_index);
+                right_indices.push_back(r1l1_index * (r->get_factor()->dim2()) + r2l2_index); 
+                assert(left_indices.back() < l->get_factor()->dim1()*l->get_factor()->dim2());
+                assert(right_indices.back() < r->get_factor()->dim1()*r->get_factor()->dim2());
+             }
+             if(l1r2_index < std::numeric_limits<std::size_t>::max() && l2r1_index < std::numeric_limits<std::size_t>::max()) {
+                left_indices.push_back(l1r2_index * (l->get_factor()->dim2()) + l2r1_index);
+                right_indices.push_back(r1l2_index * (r->get_factor()->dim2()) + r2l1_index); 
+                assert(left_indices.back() < l->get_factor()->dim1()*l->get_factor()->dim2());
+                assert(right_indices.back() < r->get_factor()->dim1()*r->get_factor()->dim2());
+             }
+
+             if(left_indices.size() == 2) {
+                assert(left_indices[0] < left_indices[1]);
+             }
+             if(right_indices.size() == 2) {
+                assert(right_indices[0] < right_indices[1]);
+             }
+
+             if(left_indices.size() > 0)
+                add_inter_quadratic_message(l,r, left_indices, right_indices);
+          }
+       }
+       */
+    }
+
+};
+
 } // namespace LPMP
 
 #endif // LPMP_GRAPH_MATCHING_CONSTRUCTOR_HXX

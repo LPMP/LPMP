@@ -12,6 +12,7 @@
 #include "graph_matching_input.h"
 
 #include "equality_message.hxx"
+#include "graph_matching_inter_quadratic_message.hxx"
 #include "min_cost_flow_factor_ssp.hxx"
 #include "graph_matching_local_problem.hxx"
 #include "tree_decomposition.hxx"
@@ -62,6 +63,33 @@ struct FMC_MP {
    using ProblemDecompositionList = meta::list<gm_constructor>;
 };
 
+// + inter quadratic messages
+template<PairwiseConstruction PAIRWISE_CONSTRUCTION = PairwiseConstruction::Left>
+struct FMC_MP_Q {
+   using FMC_MP_PARAM = FMC_MP_Q<PAIRWISE_CONSTRUCTION>;
+   constexpr static const char* name =
+      PAIRWISE_CONSTRUCTION == PairwiseConstruction::Left ? "AMP-O"
+      : (PAIRWISE_CONSTRUCTION == PairwiseConstruction::Right ? "AMP-I"
+      : (PAIRWISE_CONSTRUCTION == PairwiseConstruction::BothSides ? "AMP-B"
+      : "unknown variant"));
+      
+   using UnaryFactor = FactorContainer<UnarySimplexFactor, FMC_MP_PARAM, 0, true >; // set to true if labeling by unaries is desired
+   using PairwiseFactor = FactorContainer<PairwiseSimplexFactor, FMC_MP_PARAM, 1, false >;
+
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::none, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 0 >;
+   using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 1 >;
+   using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 2 >;
+   using inter_quadratic_message_container = MessageContainer<graph_matching_inter_quadratic_message, 1, 1, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 3 >;
+
+   using FactorList = meta::list<UnaryFactor, PairwiseFactor>;
+   using MessageList = meta::list<AssignmentConstraintMessage, UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer, inter_quadratic_message_container>;
+
+   using mrf = mrf_constructor<FMC_MP_PARAM,0,1,1,2>;
+   using gm_constructor = graph_matching_constructor<graph_matching_mrf_constructor<mrf>, AssignmentConstraintMessage>;
+   using gm_constructor_q = graph_matching_inter_quadratic_message_constructor<gm_constructor, inter_quadratic_message_container>;
+   using ProblemDecompositionList = meta::list<gm_constructor_q>;
+};
+
 // graph matching with assignment via message passing + tightening triplets
 template<PairwiseConstruction PAIRWISE_CONSTRUCTION = PairwiseConstruction::Left>
 struct FMC_MP_T {
@@ -100,7 +128,46 @@ struct FMC_MP_T {
    using ProblemDecompositionList = meta::list<gm_constructor>;
 };
 
+// graph matching with assignment via message passing + tightening triplets
+template<PairwiseConstruction PAIRWISE_CONSTRUCTION = PairwiseConstruction::Left>
+struct FMC_MP_Q_T {
+   using FMC_MP_PARAM = FMC_MP_Q_T<PAIRWISE_CONSTRUCTION>;
+   constexpr static const char* name =
+      PAIRWISE_CONSTRUCTION == PairwiseConstruction::Left ? "AMP-O-T"
+      : (PAIRWISE_CONSTRUCTION == PairwiseConstruction::Right ? "AMP-I-T"
+      : (PAIRWISE_CONSTRUCTION == PairwiseConstruction::BothSides ? "AMP-B-T"
+      : "unknown variant"));
+      
+   using UnaryFactor = FactorContainer<UnarySimplexFactor, FMC_MP_PARAM, 0, true >; // set to true if labeling by unaries is desired
+   using PairwiseFactor = FactorContainer<PairwiseSimplexFactor, FMC_MP_PARAM, 1, false >;
 
+   using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 0, 0, message_passing_schedule::none, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 0 >;
+   using UnaryPairwiseMessageLeftContainer = MessageContainer<UnaryPairwiseMessage<Chirality::left,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 1 >;
+   using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 2 >;
+   using inter_quadratic_message_container = MessageContainer<graph_matching_inter_quadratic_message, 1, 1, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 3 >;
+
+   using EmptyTripletFactor = FactorContainer<SimpleTighteningTernarySimplexFactor, FMC_MP_PARAM, 2 >;
+   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 4>;
+   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 5>;
+   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 6>;
+
+   using FactorList = meta::list< UnaryFactor, PairwiseFactor, EmptyTripletFactor>;
+   using MessageList = meta::list< 
+      AssignmentConstraintMessage,
+      UnaryPairwiseMessageLeftContainer,
+      UnaryPairwiseMessageRightContainer,
+      inter_quadratic_message_container, 
+      PairwiseTriplet12MessageContainer, 
+      PairwiseTriplet13MessageContainer, 
+      PairwiseTriplet23MessageContainer 
+         >;
+
+   using mrf = mrf_constructor<FMC_MP_PARAM,0,1,1,2>;
+   using tightening_mrf = tightening_mrf_constructor<mrf,2,4,5,6>;
+   using gm_constructor = graph_matching_constructor< graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage >;
+   using gm_constructor_q = graph_matching_inter_quadratic_message_constructor<gm_constructor, inter_quadratic_message_container>;
+   using ProblemDecompositionList = meta::list<gm_constructor_q>;
+};
 
 // graph matching with assignment via minimum cost flow solver
 
