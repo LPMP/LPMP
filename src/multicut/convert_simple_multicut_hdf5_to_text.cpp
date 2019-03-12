@@ -5,7 +5,7 @@
 #include <array>
 #include <cassert>
 #include <H5Cpp.h>
-#include "multicut/multicut_instance.hxx"
+#include "multicut/multicut_instance.h"
 
 using namespace std;
 using namespace H5;
@@ -64,7 +64,6 @@ int main(int argc, char** argv)
 
 
    LPMP::multicut_instance output;
-   output.transform_to_multicut();
    for(std::size_t e=0; e<edge_ids.size(); ++e)
       output.add_edge(edge_ids[e][0], edge_ids[e][1], edge_values[e]);
 

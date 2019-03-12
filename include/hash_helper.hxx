@@ -1,5 +1,4 @@
-#ifndef LPMP_HASH_HELPER_HXX
-#define LPMP_HASH_HELPER_HXX
+#pragma once
 
 namespace LPMP {
    // hash function for various types
@@ -14,7 +13,7 @@ namespace LPMP {
       size_t hash_array(const std::array<T,N>& x)
       {
          size_t hash = std::hash<T>()(x[0]);
-         for(std::size_t i=0; i<N; ++i) {
+         for(std::size_t i=1; i<N; ++i) {
             hash = hash_combine(hash, std::hash<T>()(x[i]));
          }
          return hash; 
@@ -35,5 +34,3 @@ namespace std
         }
     };
 }
-
-#endif // LPMP_HASH_HELPER_HXX

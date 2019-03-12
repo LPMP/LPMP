@@ -1,12 +1,7 @@
-#ifndef LPMP_MULTICUT_TEXT_INPUT
-#define LPMP_MULTICUT_TEXT_INPUT
+#pragma once
 
-#include <vector>
-#include <array>
 #include <string>
-#include <algorithm>
-#include <cassert>
-#include "multicut_instance.hxx"
+#include "multicut_instance.h"
 
 namespace LPMP {
 
@@ -18,5 +13,3 @@ namespace LPMP {
    }
 
 }
-
-#endif // LPMP_MULTICUT_TEXT_INPUT

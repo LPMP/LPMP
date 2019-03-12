@@ -7,6 +7,8 @@
 #include "opengm/operations/adder.hxx"
 #include "assert.h"
 
+// TODO: use library functions
+
 std::vector<std::string> split(const std::string &s, const char delim) {
    std::vector<std::string> elems;
    std::stringstream ss(s);

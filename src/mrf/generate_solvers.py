@@ -82,8 +82,8 @@ for e in solvers:
    f.write("int main(int argc, char** argv) {\n")
    f.write("MpRoundingSolver<Solver<" + e.LP + "," + e.visitor + ">> solver(argc,argv);\n")
    f.write("auto input = " + e.parse_fun + "(solver.get_input_file());\n") 
-   f.write("solver.template GetProblemConstructor<0>().construct(input);\n")
+   f.write("solver.GetProblemConstructor().construct(input);\n")
    if e.construct_trees:
-       f.write("auto trees = solver.template GetProblemConstructor<0>().compute_forest_cover();\n")
+       f.write("auto trees = solver.GetProblemConstructor().compute_forest_cover();\n")
        f.write("for(auto& tree : trees) { solver.GetLP().add_tree(tree); }\n") 
    f.write("return solver.Solve();\n}")

@@ -1,5 +1,4 @@
-#ifndef LPMP_MULTIGRAPH_MATCHING_CONSISTENCY_CONSTRAINT_HXX
-#define LPMP_MULTIGRAPH_MATCHING_CONSISTENCY_CONSTRAINT_HXX
+#pragma once
 
 #include "LP.h"
 #include "vector"
@@ -807,8 +806,6 @@ public:
        return l.primal() == left_label;
     }
 };
-*/
 
 } // namespace LPMP
-
-#endif // LPMP_MULTIGRAPH_MATCHING_CONSISTENCY_CONSTRAINT_HXX
+*/

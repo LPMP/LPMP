@@ -1,9 +1,11 @@
-#include "graph_matching/multigraph_matching_consistency_constraint.hxx"
+#include "graph_matching/multigraph_matching_triplet_consistency_factor.h"
+#include "../src/graph_matching/multigraph_matching_triplet_consistency_factor.cpp"
 #include "generate_random_label_set.hxx"
 #include "test/test.h"
 #include <array>
 #include <vector>
 #include <random>
+#include <numeric>
 
 using namespace LPMP;
 
@@ -25,7 +27,6 @@ int main(int argc, char** argv)
       std::iota(labels_x.begin(), labels_x.end(), 0);
       std::iota(labels_y.begin(), labels_y.end(), 0);
 
-      test(detail::min_diagonal_off_diagonal_sum(cost_x, cost_y) == detail::min_diagonal_off_diagonal_sum_naive(cost_x, cost_y, labels_x, labels_y));
       test(detail::min_diagonal_off_diagonal_sum(cost_x, cost_y, labels_x, labels_y) == detail::min_diagonal_off_diagonal_sum_naive(cost_x, cost_y, labels_x, labels_y));
    } 
 

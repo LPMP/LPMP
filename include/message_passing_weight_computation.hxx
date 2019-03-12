@@ -401,7 +401,7 @@ void omega_valid(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end, const
    std::size_t i=0;
    for(; factor_it!=factor_end; ++factor_it) {
       if((*factor_it)->FactorUpdated()) {
-         assert(*std::min_element(omega[i].begin(), omega[i].end()) >= 0.0);
+         assert(omega[i].size() == 0 || *std::min_element(omega[i].begin(), omega[i].end()) >= 0.0);
          assert(std::accumulate(omega[i].begin(), omega[i].end(), 0.0) <= 1.0 + eps);
          assert(omega[i].size() == factor_begin[i]->no_send_messages());
          ++i;
@@ -418,8 +418,8 @@ void receive_mask_valid(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end
    std::size_t i=0;
    for(; factor_it!=factor_end; ++factor_it) {
       if((*factor_it)->FactorUpdated()) {
-         assert(*std::min_element(receive_mask[i].begin(), receive_mask[i].end()) >= 0);
-         assert(*std::max_element(receive_mask[i].begin(), receive_mask[i].end()) <= 1);
+         assert(receive_mask[i].size() == 0 || *std::min_element(receive_mask[i].begin(), receive_mask[i].end()) >= 0);
+         assert(receive_mask[i].size() == 0 || *std::max_element(receive_mask[i].begin(), receive_mask[i].end()) <= 1);
          assert(receive_mask[i].size() == factor_begin[i]->no_receive_messages());
          ++i;
       }

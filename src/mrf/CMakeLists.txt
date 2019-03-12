@@ -29,7 +29,7 @@ SET(UAI_SOURCE_FILES
 foreach( source_file ${UAI_SOURCE_FILES} )
    string( REPLACE ".cpp" "" executable_file ${source_file} )
    add_executable( ${executable_file} ${source_file} )
-   target_link_libraries( ${executable_file} LPMP DD_ILP m stdc++ pthread lingeling mrf_uai_input ) 
+   target_link_libraries( ${executable_file} LPMP MRF_factors mrf_uai_input ) 
 endforeach( source_file ${SOURCE_FILES} )
 
 SET(OPENGM_SOURCE_FILES
@@ -41,20 +41,20 @@ SET(OPENGM_SOURCE_FILES
 foreach( source_file ${OPENGM_SOURCE_FILES} )
    string( REPLACE ".cpp" "" executable_file ${source_file} )
    add_executable( ${executable_file} ${source_file} ${headers} ${sources})
-   target_link_libraries( ${executable_file} LPMP m stdc++ pthread lingeling mrf_opengm_input ) 
+   target_link_libraries( ${executable_file} LPMP MRF_factors mrf_opengm_input ) 
 endforeach( source_file ${SOURCE_FILES} )
 
 add_executable(FWMAP_uai FWMAP_uai.cpp)
-target_link_libraries(FWMAP_uai LPMP m stdc++ pthread lingeling FW-MAP arboricity mrf_uai_input)
+target_link_libraries(FWMAP_uai LPMP MRF_factors FW-MAP arboricity mrf_uai_input)
 
 add_executable(FWMAP_opengm FWMAP_opengm.cpp)
-target_link_libraries(FWMAP_opengm HDF5 LPMP m stdc++ pthread lingeling FW-MAP arboricity mrf_opengm_input) 
+target_link_libraries(FWMAP_opengm HDF5 LPMP MRF_factors FW-MAP arboricity mrf_opengm_input) 
 
 add_executable(conic_bundle_uai conic_bundle_uai.cpp)
-target_link_libraries(conic_bundle_uai LPMP m stdc++ pthread lingeling cb arboricity mrf_uai_input)
+target_link_libraries(conic_bundle_uai LPMP MRF_factors cb arboricity mrf_uai_input)
 
 add_executable(conic_bundle_opengm conic_bundle_opengm.cpp)
-target_link_libraries(conic_bundle_opengm HDF5 LPMP m stdc++ pthread lingeling cb arboricity mrf_opengm_input)
+target_link_libraries(conic_bundle_opengm HDF5 LPMP MRF_factors cb arboricity mrf_opengm_input)
 
 add_executable(qpbo_dimacs qpbo_dimacs.cpp)
 target_link_libraries(qpbo_dimacs LPMP dimacs_max_flow_input)

@@ -9,6 +9,7 @@
 #include "mrf/max_flow_instance.hxx"
 #include "mrf/binary_MRF_instance.hxx"
 #include "max_cut/max_cut_instance.hxx"
+#include "hash_functions.hxx"
 
 namespace LPMP {
 
@@ -32,6 +33,21 @@ std::vector<std::array<std::size_t,2>> generate_random_graph(const std::size_t n
         edges.push_back({i,j});
     }   
     return edges; 
+}
+
+max_cut_instance generate_random_max_cut_instance(const std::size_t no_nodes, const std::size_t no_edges, std::random_device& rd)
+{
+    const auto edges = generate_random_graph(no_nodes, no_edges, rd);
+
+    max_cut_instance output;
+
+    std::mt19937 gen{rd()};
+    std::normal_distribution ud(0.0,5.0);
+
+    for(auto e : edges)
+        output.add_edge(e[0], e[1], ud(gen));
+
+    return output;
 }
 
 binary_MRF_instance generate_random_binary_MRF_instance(const std::size_t no_nodes, const std::size_t no_edges, std::random_device& rd)

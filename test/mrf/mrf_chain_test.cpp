@@ -361,7 +361,7 @@ int main(int argc, char** argv)
 
    MpRoundingSolver<Solver<LP<FMC_SRMP>,StandardVisitor>> solver(options);
    auto input = mrf_uai_input::parse_string(uai_chain);
-   solver.template GetProblemConstructor<0>().construct(input);
+   solver.GetProblemConstructor().construct(input);
    solver.Solve();
 
    test(std::abs(solver.lower_bound() - 0.629357) < 1e-5);

@@ -1,5 +1,5 @@
-#ifndef LP_MP_HORIZON_TRACKING_TEST_HELPER_HXX
-#define LP_MP_HORIZON_TRACKING_TEST_HELPER_HXX
+#ifndef LPMP_HORIZON_TRACKING_TEST_HELPER_HXX
+#define LPMP_HORIZON_TRACKING_TEST_HELPER_HXX
 
 #include "test.h"
 #include "horizon_tracking/horizon_tracking.h"
@@ -15,7 +15,7 @@ template<typename SOLVER>
 void compute_lower_bound_chains(SOLVER& solver, std::string uai_file, REAL expected_lb, bool check_lb = true)
 {
     auto input = horizon_tracking_uai_input::parse_string(uai_file);
-    construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.template GetProblemConstructor<0>());
+    construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.GetProblemConstructor());
     solver.Solve();
     if (check_lb) test(solver.lower_bound(), expected_lb);
 }
@@ -23,12 +23,12 @@ void compute_lower_bound_chains(SOLVER& solver, std::string uai_file, REAL expec
 template<typename SOLVER>
 void validate_objective_from_solution(SOLVER& solver, std::vector<std::string> solverOptions, std::string uai_file)
 {
-    auto constructor = solver.template GetProblemConstructor<0>();
+    auto constructor = solver.GetProblemConstructor();
     using solver_type = Solver<LP_tree_FWMAP<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS>, StandardVisitor>;
     solver_type solver_reference(solverOptions);
     auto input = horizon_tracking_uai_input::parse_string(uai_file);
-    construct_horizon_tracking_problem_on_grid_to_chains(input, solver_reference, solver_reference.template GetProblemConstructor<0>());
-    auto constructor_reference = solver_reference.template GetProblemConstructor<0>();
+    construct_horizon_tracking_problem_on_grid_to_chains(input, solver_reference, solver_reference.GetProblemConstructor());
+    auto constructor_reference = solver_reference.GetProblemConstructor();
     auto numberPairwise = constructor_reference.get_number_of_pairwise_factors();
     assert(numberPairwise == constructor.get_number_of_pairwise_factors());
     for (std::size_t p = 0; p < numberPairwise; p++) {

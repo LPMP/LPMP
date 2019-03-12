@@ -10,7 +10,7 @@ int main()
     using VisitorType = StandardVisitor;
 
     auto construct_problem = [](auto& solver) {
-        auto& mrf = solver.template GetProblemConstructor<0>();
+        auto& mrf = solver.GetProblemConstructor();
 
         // square with three negative and two positive Potts potentials
         mrf.add_unary_factor(std::vector<REAL>({1.1, 0.0}));
@@ -42,7 +42,7 @@ int main()
 
         SolverType s(solver_options);
         construct_problem(s);
-        auto& mrf = s.template GetProblemConstructor<0>();
+        auto& mrf = s.GetProblemConstructor();
         auto trees = mrf.compute_forest_cover();
         for(auto& tree : trees) { s.GetLP().add_tree(tree); }
         s.Solve(); 
@@ -56,7 +56,7 @@ int main()
 
         SolverType s(solver_options);
         construct_problem(s);
-        auto& mrf = s.template GetProblemConstructor<0>();
+        auto& mrf = s.GetProblemConstructor();
         auto trees = mrf.compute_forest_cover();
         for(auto& tree : trees) { s.GetLP().add_tree(tree); }
 
@@ -71,7 +71,7 @@ int main()
 
         SolverType s(solver_options);
         construct_problem(s);
-        auto& mrf = s.template GetProblemConstructor<0>();
+        auto& mrf = s.GetProblemConstructor();
         auto trees = mrf.compute_forest_cover();
         for(auto& tree : trees) { s.GetLP().add_tree(tree); }
 

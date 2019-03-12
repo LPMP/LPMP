@@ -1,5 +1,4 @@
-#ifndef LPMP_SOLVER_HXX
-#define LPMP_SOLVER_HXX
+#pragma once
 
 #include <type_traits>
 #include <thread>
@@ -21,63 +20,76 @@ static std::vector<std::string> default_solver_options = {
    {"--maxIter"}, {"1000"}
 };
 
+template<typename PROBLEM_CONSTRUCTOR>
+class primal_storage {
+    public:
+        template<typename T>
+            using has_get_primal_t = decltype(&T::get_primal);
+
+        constexpr static bool
+            can_get_primal()
+            {
+                return is_detected<has_get_primal_t, PROBLEM_CONSTRUCTOR>::value;
+            }
+
+        static auto get_primal_return_type()
+        {
+            if constexpr(can_get_primal())
+                return static_cast<PROBLEM_CONSTRUCTOR*>(nullptr)->get_primal();
+            else
+                return nullptr;
+        }
+
+        void update_current_primal(PROBLEM_CONSTRUCTOR& pc)
+        {
+            if constexpr(can_get_primal())
+                primal_solution_ = pc.get_primal();
+        }
+
+        decltype(get_primal_return_type()) primal_solution_;
+};
+
 // class containing the LP, problem constructor list, input function and visitor
 // binds together problem constructors and solver and organizes input/output
 // base class for solvers with primal rounding, e.g. LP-based rounding heuristics, message passing rounding and rounding provided by problem constructors.
-
-
 template<typename LP_TYPE, typename VISITOR>
-class Solver {
+class Solver : private primal_storage<typename LP_TYPE::FMC::problem_constructor> {
 
 public:
    using SolverType = Solver<LP_TYPE, VISITOR>;
    using FMC = typename LP_TYPE::FMC;
-   using ProblemDecompositionList = typename FMC::ProblemDecompositionList;
+   using problem_constructor_type = typename FMC::problem_constructor;
 
    // default parameters
 
    Solver() : Solver(default_solver_options) {}
 
-   Solver(int argc, char** argv) : Solver(ProblemDecompositionList{}) 
+   Solver(int argc, char** argv) : Solver(true) 
    {
       cmd_.parse(argc,argv);
       Init_(); 
    }
-   Solver(std::vector<std::string> options) : Solver(ProblemDecompositionList{})
+   Solver(std::vector<std::string> options) : Solver(true)
    {
       cmd_.parse(options);
       Init_(); 
    }
 
 private:
-   template<typename... PROBLEM_CONSTRUCTORS>
-   Solver(meta::list<PROBLEM_CONSTRUCTORS...>&& pc_list)
+   Solver(const bool tmp)
      :
         cmd_(std::string("Command line options for ") + FMC::name, ' ', "0.0.1"),
         lp_(cmd_),
         inputFileArg_("i","inputFile","file from which to read problem instance",false,"","file name",cmd_),
         outputFileArg_("o","outputFile","file to write solution",false,"","file name",cmd_),
         verbosity_arg_("v","verbosity","verbosity level: 0 = silent, 1 = important runtime information, 2 = further diagnostics",false,1,"0,1,2",cmd_),
-        visitor_(cmd_)
+        visitor_(cmd_),
+        problem_constructor_(*this)
    {
-      for_each_tuple(this->problemConstructor_, [this](auto& l) {
-           assert(l == nullptr);
-           l = new typename std::remove_pointer<typename std::remove_reference<decltype(l)>::type>::type(*this); // note: this is not so nice: if problem constructor needs other problem constructors, those must already be allocated, otherwise address is invalid. This is only a problem for circular references, though, otherwise order problem constructors accordingly. This should be resolved when std::tuple will be constructed without move and copy constructors.
-           assert(l != nullptr);
-      }); 
-
       std::cout << std::setprecision(10);
    }
 
 public:
-
-   ~Solver() 
-   {
-      for_each_tuple(this->problemConstructor_, [this](auto& l) {
-            assert(l != nullptr);
-            delete l;
-      });
-   }
 
    TCLAP::CmdLine& get_cmd() { return cmd_; }
 
@@ -96,6 +108,7 @@ public:
 
    const std::string& get_input_file() const { return inputFile_; }
 
+   // TODO: deprecated
    template<class INPUT_FUNCTION, typename... ARGS>
    bool ReadProblem(INPUT_FUNCTION inputFct, ARGS... args)
    {
@@ -109,37 +122,30 @@ public:
    }
 
    LPMP_FUNCTION_EXISTENCE_CLASS(has_order_factors, order_factors)
-   template<typename PC>
    constexpr static bool
    can_order_factors()
    {
-      return has_order_factors<PC, void>(); 
+      return has_order_factors<problem_constructor_type, void>(); 
    }
    void order_factors()
    {
-      for_each_tuple(this->problemConstructor_, [this](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->can_order_factors<pc_type>()) {
-               l->order_factors();
-            }
-      }); 
+       if constexpr(can_order_factors())
+           problem_constructor_.order_factors();
    }
 
    LPMP_FUNCTION_EXISTENCE_CLASS(HasWritePrimal,WritePrimal)
-   template<typename PC>
    constexpr static bool
    CanWritePrimalIntoFile()
    {
-      return HasWritePrimal<PC, void, std::ofstream>();
+      return HasWritePrimal<problem_constructor_type, void, std::ofstream>();
    }
-   template<typename PC>
    constexpr static bool
    CanWritePrimalIntoString()
    {
-      return HasWritePrimal<PC, void, std::stringstream>();
+      return HasWritePrimal<problem_constructor_type, void, std::stringstream>();
    } 
 
-   const std::string& get_primal() const { return solution_; }
+   const std::string& get_primal_string() const { return solution_; }
 
    void WritePrimal()
    {
@@ -165,77 +171,50 @@ public:
    {
       std::stringstream ss;
 
-      for_each_tuple(this->problemConstructor_, [&ss,this](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->CanWritePrimalIntoString<pc_type>()) {
-                l->WritePrimal(ss);
-            }
-      }); 
+      if constexpr(CanWritePrimalIntoString())
+          problem_constructor_.WritePrimal(ss);
 
       std::string sol = ss.str();
-      return std::move(sol);
+      return sol;
    }
 
    LPMP_FUNCTION_EXISTENCE_CLASS(HasCheckPrimalConsistency,CheckPrimalConsistency)
-   // invoke the corresponding functions of problem constructors
-   template<typename PROBLEM_CONSTRUCTOR>
    constexpr static bool
    CanCheckPrimalConsistency()
    {
-      return HasCheckPrimalConsistency<PROBLEM_CONSTRUCTOR, bool>();
+      return HasCheckPrimalConsistency<problem_constructor_type, bool>();
    }
    
    bool CheckPrimalConsistency()
    {
       bool feasible = true;
-      for_each_tuple(this->problemConstructor_, [this,&feasible](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->CanCheckPrimalConsistency<pc_type>()) {
-                  if(feasible) {
-                     const bool feasible_pc = l->CheckPrimalConsistency();
-                     if(!feasible_pc) {
-                        feasible = false;
-                     }
-                  }
-            }
-      });
+      if constexpr(CanCheckPrimalConsistency())
+          feasible = problem_constructor_.CheckPrimalConsistency();
 
-      if(feasible) {
+      if(feasible)
          feasible = this->lp_.CheckPrimalConsistency();
-      }
 
       return feasible;
    }
 
 
    LPMP_FUNCTION_EXISTENCE_CLASS(HasTighten,Tighten)
-   template<typename PROBLEM_CONSTRUCTOR>
    constexpr static bool
    CanTighten()
    {
-      return HasTighten<PROBLEM_CONSTRUCTOR, INDEX, INDEX>();
+      return HasTighten<problem_constructor_type, INDEX, INDEX>();
    }
 
-   // maxConstraints gives maximum number of constraints to add for each problem constructor
-   INDEX Tighten(const INDEX maxConstraints) 
+   std::size_t Tighten(const std::size_t max_constraints_to_add) 
    {
       INDEX constraints_added = 0;
-      for_each_tuple(this->problemConstructor_, [this,maxConstraints,&constraints_added](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->CanTighten<pc_type>()) {
-                  constraints_added += l->Tighten(maxConstraints);
-            }
-       });
-
+      if constexpr(CanTighten())
+          constraints_added += problem_constructor_.Tighten(max_constraints_to_add);
       return constraints_added;
    }
    
-   template<INDEX PROBLEM_CONSTRUCTOR_NO>
-   meta::at_c<ProblemDecompositionList, PROBLEM_CONSTRUCTOR_NO>& GetProblemConstructor() 
-   {
-      auto& pc = *std::get<PROBLEM_CONSTRUCTOR_NO>(problemConstructor_);
-      return pc;
-   }
+   problem_constructor_type& GetProblemConstructor() { return problem_constructor_; }
+   const problem_constructor_type& GetProblemConstructor() const { return problem_constructor_; }
 
    LP_TYPE& GetLP() { return lp_; }
    
@@ -276,46 +255,39 @@ public:
    }
 
 
-   LPMP_FUNCTION_EXISTENCE_CLASS(has_begin,begin)
-   template<typename PROBLEM_CONSTRUCTOR>
+   // TODO: renamce Begin functino to pre_optimization or similar
+   LPMP_FUNCTION_EXISTENCE_CLASS(has_begin,Begin)
    constexpr static bool has_begin()
    {
-      return has_begin<PROBLEM_CONSTRUCTOR, void>();
+      return has_begin<problem_constructor_type, void>();
    }
 
    // called before first iterations
    virtual void Begin() 
    {
       lp_.Begin(); 
-      for_each_tuple(this->problemConstructor_, [this](auto* l) { using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->has_begin<pc_type>()) {
-                     l->begin();
-            }
-      });
+      if constexpr(has_begin())
+          problem_constructor_.Begin();
       order_factors();
    }
 
    LPMP_FUNCTION_EXISTENCE_CLASS(has_pre_iterate, pre_iterate)
-   template<typename PROBLEM_CONSTRUCTOR>
    constexpr static bool has_pre_iterate()
    {
-      return has_pre_iterate<PROBLEM_CONSTRUCTOR, void>();
+      return has_pre_iterate<problem_constructor_type, void>();
    }
 
    // what to do before improving lower bound, e.g. setting reparametrization mode
    virtual void PreIterate(LpControl c) 
    {
       lp_.set_reparametrization(c.lp_repam);
-      for_each_tuple(this->problemConstructor_, [this](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->has_pre_iterate<pc_type>()) {
-                     l->pre_iterate();
-            }
-      });
+      if constexpr(has_pre_iterate())
+          problem_constructor_.pre_iterate();
    } 
 
    // what to do for improving lower bound, typically ComputePass or ComputePassAndPrimal
-   virtual void Iterate(LpControl c) {
+   virtual void Iterate(LpControl c) 
+   {
       lp_.ComputePass();
    } 
 
@@ -333,22 +305,17 @@ public:
 
    LPMP_FUNCTION_EXISTENCE_CLASS(HasEnd,End) 
    // called after last iteration
-   template<typename PROBLEM_CONSTRUCTOR>
    constexpr static bool
    CanCallEnd()
    {
-      return HasEnd<PROBLEM_CONSTRUCTOR, void>();
+      return HasEnd<problem_constructor_type, void>();
    } 
 
    virtual void End() 
    {
-      for_each_tuple(this->problemConstructor_, [this](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->CanCallEnd<pc_type>()) {
-                l->End();
-            }
-      }); 
-      lp_.End();
+       if constexpr(CanCallEnd())
+           problem_constructor_.End();
+       lp_.End();
    }
 
    // evaluate and register primal solution
@@ -365,12 +332,18 @@ public:
             }
             bestPrimalCost_ = cost;
             solution_ = write_primal_into_string();
+            this->update_current_primal(problem_constructor_);
          } else {
             if(debug()) {
                std::cout << "solution infeasible\n";
             }
          } 
       }
+   }
+
+   auto get_primal() const
+   {
+       return this->primal_solution_;
    }
 
    REAL lower_bound() const { return lowerBound_; }
@@ -381,14 +354,12 @@ protected:
 
    LP_TYPE lp_;
 
-   struct add_pointer {
-      template<typename T>
-         using invoke = T*;
-      template<typename T>
-         using type = T*;
-   };
-   using constructor_pointer_list = meta::transform< ProblemDecompositionList, add_pointer >;
-   meta::apply<meta::quote<std::tuple>, constructor_pointer_list> problemConstructor_;
+   problem_constructor_type problem_constructor_;
+
+   primal_storage<problem_constructor_type> primal_storage_;
+
+   //using constructor_pointer_list = meta::transform< ProblemDecompositionList, add_pointer >;
+   //meta::apply<meta::quote<std::tuple>, constructor_pointer_list> problemConstructor_;
    // unfortunately, std::tuple cannot intialize properly when tuple elements are non-copyable and non-moveable. This happens, when problem constructors hold TCLAP arguments. Hence we must hold references to problem constructors, which is less nice.
    //meta::apply<meta::quote<std::tuple>, ProblemDecompositionList> problemConstructor_;
    //tuple_from_list<ProblemDecompositionList> problemConstructor_;
@@ -442,10 +413,9 @@ public:
 
    LPMP_FUNCTION_EXISTENCE_CLASS(HasComputePrimal,ComputePrimal)
 
-   template<typename PROBLEM_CONSTRUCTOR>
    constexpr static bool can_compute_primal()
    {
-      return HasComputePrimal<PROBLEM_CONSTRUCTOR, void>();
+      return HasComputePrimal<typename SOLVER::problem_constructor_type, void>();
    }
 
    void ComputePrimal()
@@ -453,12 +423,8 @@ public:
       SOLVER::lp_.init_primal();
       // compute the primal in parallel.
       // for this, first we have to wait until the rounding procedure has read off everything from the LP model before optimizing further
-      for_each_tuple(this->problemConstructor_, [&](auto* l) {
-            using pc_type = typename std::remove_pointer<decltype(l)>::type;
-            if constexpr(this->can_compute_primal<pc_type>()) {
-                  l->ComputePrimal();
-            }
-      });
+      if constexpr(can_compute_primal())
+          this->problem_constructor_.ComputePrimal();
    }
 
    virtual void Begin()
@@ -522,6 +488,3 @@ private:
 };
 
 } // end namespace LPMP
-
-#endif // LPMP_SOLVER_HXX
-

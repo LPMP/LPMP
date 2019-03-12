@@ -1,5 +1,5 @@
-#ifndef LP_MP_TEST_H
-#define LP_MP_TEST_H
+#ifndef LPMP_TEST_H
+#define LPMP_TEST_H
 
 #include <stdexcept>
 #include <string>
@@ -32,4 +32,4 @@ void test(const double given_value, const double expected_value, double percenta
   }
 }
 
-#endif // LP_MP_TEST_H
+#endif // LPMP_TEST_H

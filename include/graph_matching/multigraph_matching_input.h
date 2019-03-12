@@ -1,5 +1,4 @@
-#ifndef LPMP_MULTIGRAPH_MATCHING_INPUT_H
-#define LPMP_MULTIGRAPH_MATCHING_INPUT_H
+#pragma once
 
 #include "matching_problem_input.h"
 #include <string>
@@ -22,5 +21,3 @@ multigraph_matching_input::labeling parse_multigraph_matching_result_file(const 
 multigraph_matching_input::labeling parse_multigraph_matching_result_string(const std::string& input);
 
 }
-
-#endif // LPMP_MULTIGRAPH_MATCHING_INPUT_H

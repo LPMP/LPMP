@@ -1,5 +1,4 @@
-#ifndef LPMP_FACTORS_MESSAGES_HXX
-#define LPMP_FACTORS_MESSAGES_HXX
+#pragma once
 
 #include "message_passing_schedule.hxx"
 #include "factor_container_interface.h"
@@ -189,6 +188,7 @@ struct RightMessageFuncGetter
 template<class MSG_CONTAINER, template<typename> class FuncGetter>
 struct MessageDispatcher
 {
+    using message_container_type = MSG_CONTAINER;
    using ConnectedFactorType = typename FuncGetter<MSG_CONTAINER>::ConnectedFactorType; // this is the type of factor container to which the message is connected
 
    static void ReceiveMessage(MSG_CONTAINER& t)
@@ -212,6 +212,7 @@ struct MessageDispatcher
    template<typename FACTOR_TYPE>
    static void SendMessage(FACTOR_TYPE* f, MSG_CONTAINER& t, const REAL omega)
    {
+       assert(omega >= 0.0 && omega <= 1.0);
       auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::GetSendFunc();
       (t.*staticMemberFunc)(f, omega);
    }
@@ -228,6 +229,7 @@ struct MessageDispatcher
    template<typename FACTOR, typename MSG_ITERATOR>
    static void SendMessages(const FACTOR& f, MSG_ITERATOR msgs_begin, MSG_ITERATOR msgs_end, const REAL omega)
    {
+       assert(omega >= 0.0 && omega <= 1.0);
       auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::template GetSendMessagesFunc<FACTOR, MSG_ITERATOR>();
       (*staticMemberFunc)(f, msgs_begin, msgs_end, omega);
    }
@@ -625,6 +627,7 @@ public:
 
    void send_message_to_left(const REAL omega = 1.0) 
    {
+       assert(omega >= 0.0 && omega <= 1.0);
       send_message_to_left(rightFactor_->get_factor(), omega);
    }
    void send_message_to_left(RightFactorType* r, const REAL omega)
@@ -651,6 +654,7 @@ public:
 
    void send_message_to_right(const REAL omega = 1.0) 
    {
+       assert(omega >= 0.0 && omega <= 1.0);
       send_message_to_right(leftFactor_->get_factor(), omega);
    }
    void send_message_to_right(LeftFactorType* l, const REAL omega)
@@ -1054,7 +1058,7 @@ public:
    }
    */
 
-   template<bool IsAssignable = IsAssignableLeft()>
+   //template<bool IsAssignable = IsAssignableLeft()>
    //typename std::enable_if<IsAssignable == true>::type
    void
    RepamLeft(const REAL diff, const INDEX dim) {
@@ -1090,6 +1094,7 @@ public:
          }
       }
    }
+
    /*
    template<typename ARRAY, bool IsAssignable = IsAssignableRight()>
    typename std::enable_if<CanBatchRepamRight<ARRAY>() == false && IsAssignable == true>::type
@@ -1108,7 +1113,7 @@ public:
    }
    */
 
-   template<bool IsAssignable = IsAssignableRight()>
+   //template<bool IsAssignable = IsAssignableRight()>
    //typename std::enable_if<IsAssignable == true>::type
    void
    RepamRight(const REAL diff, const INDEX dim) {
@@ -2043,6 +2048,64 @@ public:
       return consistent;
    }
 
+   void receive_all_messages()
+   {
+       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this](auto l) {
+               constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+               auto msg_begin = std::get<n>(msg_).begin();
+               auto msg_end = std::get<n>(msg_).end();
+               for(auto it = msg_begin; it != msg_end; ++it) {
+               l.ReceiveMessage(*it);
+               }
+               });
+   }
+
+   template<typename... MESSAGES>
+       std::size_t no_messages_of_type()
+       {
+           static_assert(sizeof...(MESSAGES) <= message_container_list::size());
+           std::size_t no_msgs = 0;
+           using messages_list = meta::list<MESSAGES...>;
+           
+           //int status;
+           //std::cout << "messages list = " << abi::__cxa_demangle(typeid(messages_list).name(),0,0,&status) << "\n";
+
+           meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&,this](auto l) {
+                   using message_type = typename decltype(l)::message_container_type;
+                   //std::cout << "msg to check = " << abi::__cxa_demangle(typeid(message_type).name(),0,0,&status) << "\n";
+                   constexpr std::size_t n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+                   if constexpr(meta::count<messages_list, message_type>::value) { // TODO: remove remove_reference
+                   //std::cout << "found\n";
+                   no_msgs += std::get<n>(msg_).size();
+                   }
+                   });
+
+           return no_msgs; 
+       }
+
+   template<typename... MESSAGES>
+       void send_messages_uniform()
+       {
+           // TODO: use SendMessages... whenever supported
+           const std::size_t no_msgs = no_messages_of_type<MESSAGES...>();
+           //std::cout << "no messages to send: " << no_msgs << "\n";
+           using messages_list = meta::list<MESSAGES...>;
+           
+           FactorType tmp_factor(factor_);
+           meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&no_msgs,&tmp_factor](auto l) {
+                   constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+                   using msg_container_type = typename decltype(l)::message_container_type;
+                   if constexpr(meta::count<messages_list, msg_container_type>::value) {
+                   //std::cout << "send message\n";
+                   auto msg_begin = std::get<n>(this->msg_).begin();
+                   auto msg_end = std::get<n>(this->msg_).end();
+                   for(auto it = msg_begin; it != msg_end; ++it) {
+                   l.SendMessage(&tmp_factor, *it, 1.0/double(no_msgs));
+                   }
+                   }
+                   });
+       }
+
    void receive_messages()
    {
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this](auto l) {
@@ -2362,7 +2425,7 @@ public:
    template<typename WEIGHT_VEC>
    void SendMessages(const WEIGHT_VEC& omega) 
    {
-      assert(*std::min_element(omega.begin(), omega.end()) >= 0.0);
+      assert(omega.size() == 0 || *std::min_element(omega.begin(), omega.end()) >= 0.0);
       assert(std::accumulate(omega.begin(), omega.end(), 0.0) <= 1.0 + eps);
       assert(std::distance(omega.begin(), omega.end()) == no_send_messages()); 
 #ifndef NDEBUG
@@ -2701,7 +2764,6 @@ public:
       return factor_.EvaluatePrimal();
    }
 
-
    FactorType* get_factor() const { return &factor_; }
    FactorType* get_factor() { return &factor_; }
 
@@ -2842,17 +2904,19 @@ protected:
    };
    struct get_left_msg_container_type_list {
       template<class MSG_CONTAINER_TYPE> 
-         using invoke = typename message_container_selector<MSG_CONTAINER_TYPE, MSG_CONTAINER_TYPE::no_left_factors(), MSG_CONTAINER_TYPE::no_right_factors(), MSG_CONTAINER_TYPE::estimated_no_left_factors(), MSG_CONTAINER_TYPE::estimated_no_right_factors(), Chirality::left>::type;//LIST::LeftMessageContainerStorageType;
+         using invoke = typename message_container_selector<MSG_CONTAINER_TYPE, MSG_CONTAINER_TYPE::no_left_factors(), MSG_CONTAINER_TYPE::no_right_factors(), MSG_CONTAINER_TYPE::estimated_no_left_factors(), MSG_CONTAINER_TYPE::estimated_no_right_factors(), Chirality::left>::type;
    };
    struct get_right_msg_container_type_list {
       template<class MSG_CONTAINER_TYPE>
-         using invoke = typename message_container_selector<MSG_CONTAINER_TYPE, MSG_CONTAINER_TYPE::no_left_factors(), MSG_CONTAINER_TYPE::no_right_factors(), MSG_CONTAINER_TYPE::estimated_no_left_factors(), MSG_CONTAINER_TYPE::estimated_no_right_factors(), Chirality::right>::type;//LIST::LeftMessageContainerStorageType;
+         using invoke = typename message_container_selector<MSG_CONTAINER_TYPE, MSG_CONTAINER_TYPE::no_left_factors(), MSG_CONTAINER_TYPE::no_right_factors(), MSG_CONTAINER_TYPE::estimated_no_left_factors(), MSG_CONTAINER_TYPE::estimated_no_right_factors(), Chirality::right>::type;
    };
 
    using left_msg_list = meta::transform< meta::filter<typename FACTOR_MESSAGE_TRAIT::MessageList, get_left_msg>, get_msg_type_list>;
    using right_msg_list = meta::transform< meta::filter<typename FACTOR_MESSAGE_TRAIT::MessageList, get_right_msg>, get_msg_type_list>;
    using left_msg_container_list = meta::transform< meta::filter<typename FACTOR_MESSAGE_TRAIT::MessageList, get_left_msg>, get_left_msg_container_type_list>;
    using right_msg_container_list = meta::transform< meta::filter<typename FACTOR_MESSAGE_TRAIT::MessageList, get_right_msg>, get_right_msg_container_type_list>;
+
+   using message_container_list = meta::concat<left_msg_list, right_msg_list>;
 
    // now construct a tuple with left and right dispatcher
    struct left_dispatch {
@@ -2891,6 +2955,10 @@ public:
    { return s.add_vector(v); }
 
    template<typename EXTERNAL_SOLVER, std::size_t N>
+   auto convert_variables_to_external(EXTERNAL_SOLVER& s, const array<REAL,N>& v)
+   { return s.add_vector(v); }
+
+   template<typename EXTERNAL_SOLVER, std::size_t N>
    auto convert_variables_to_external(EXTERNAL_SOLVER& s, const std::array<REAL,N>& v)
    { return s.add_vector(v); }
 
@@ -2912,6 +2980,10 @@ public:
 
    template<typename EXTERNAL_SOLVER>
    auto load_external_variables(EXTERNAL_SOLVER& s, vector<REAL>& x)
+   { return s.load_vector(); }
+
+   template<typename EXTERNAL_SOLVER, std::size_t N>
+   auto load_external_variables(EXTERNAL_SOLVER& s, array<REAL,N>& x)
    { return s.load_vector(); }
 
    template<typename EXTERNAL_SOLVER, std::size_t N>
@@ -2937,6 +3009,10 @@ public:
    template<typename EXTERNAL_SOLVER>
    void add_objective(EXTERNAL_SOLVER& s, const vector<REAL>& cost)
    { s.add_vector_objective(cost); }
+
+   template<typename EXTERNAL_SOLVER, std::size_t N>
+   auto add_objective(EXTERNAL_SOLVER& s, array<REAL,N>& cost)
+   { return s.add_vector_objective(cost); } 
 
    template<typename EXTERNAL_SOLVER, std::size_t N>
    auto add_objective(EXTERNAL_SOLVER& s, std::array<REAL,N>& cost)
@@ -3057,6 +3133,3 @@ public:
 };
 
 } // end namespace LPMP
-
-#endif // LPMP_FACTORS_MESSAGES_HXX
-

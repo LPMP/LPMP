@@ -1,5 +1,4 @@
-#ifndef LPMP_HORIZON_TRACKING_H
-#define LPMP_HORIZON_TRACKING_H
+#pragma once
 
 #include "factors_messages.hxx"
 #include "LP.h"
@@ -29,8 +28,6 @@ struct FMC_HORIZON_TRACKING_MULTIPLE_CHAINS {
 
    using mrf_c = mrf_constructor<FMC_HORIZON_TRACKING_MULTIPLE_CHAINS,0,1,0,1>;
    using constructor = max_multiple_chains_constructor<mrf_c, MultipleChainsContainer, PairwiseMultipleChainsMessageContainer>;
-   using ProblemDecompositionList = meta::list<constructor>;
+   using problem_constructor = constructor;
 };
 }
-
-#endif // LPMP_HORIZON_TRACKING_H

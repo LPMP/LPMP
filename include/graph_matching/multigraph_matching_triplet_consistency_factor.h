@@ -1,5 +1,4 @@
-#ifndef LPMP_MULTIGRAPH_MATCHING_TRIPLET_CONSISTENCY_FACTOR_H 
-#define LPMP_MULTIGRAPH_MATCHING_TRIPLET_CONSISTENCY_FACTOR_H 
+#pragma once
 
 #include "config.hxx"
 #include "vector.hxx"
@@ -192,6 +191,3 @@ void multigraph_matching_triplet_consistency_factor_zero::for_each_labeling(FUNC
 }
 
 } // namespace LPMP
-
-#endif // LPMP_MULTIGRAPH_MATCHING_TRIPLET_CONSISTENCY_FACTOR_H 
-

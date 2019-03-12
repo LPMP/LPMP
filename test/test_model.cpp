@@ -31,6 +31,7 @@ int main()
         test(lp.get_factor(1) == f2);
         test(lp.get_factor(2) == f3);
 
+        std::cout << f1->no_messages() << "\n";
         test(f1->no_messages() == 2);
         test(f1->no_send_messages() == 2);
 

@@ -85,7 +85,7 @@ int main()
    // binary violated 4 cycle
    {
       Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
-      auto& mrf = s.template GetProblemConstructor<0>();
+      auto& mrf = s.GetProblemConstructor();
       s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Anisotropic, 0.1));
 
       mrf.add_unary_factor({0,0});
@@ -130,7 +130,7 @@ int main()
    // binary violated 5 cycle
    {
      Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
-     auto& mrf = s.template GetProblemConstructor<0>();
+     auto& mrf = s.GetProblemConstructor();
      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.5)); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
       mrf.add_unary_factor({0,0});
@@ -176,7 +176,7 @@ int main()
    // expanded k-ary cycle search 4-cycle
    {
      Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
-     auto& mrf = s.template GetProblemConstructor<0>();
+     auto& mrf = s.GetProblemConstructor();
      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.5)); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
       mrf.add_unary_factor({0,0,0,0});
@@ -209,7 +209,7 @@ int main()
    // expanded k-ary cycle search 5-cycle
    {
      Solver<LP<FMC_SRMP_T>,StandardVisitor> s(i);
-     auto& mrf = s.template GetProblemConstructor<0>();
+     auto& mrf = s.GetProblemConstructor();
      s.GetLP().set_reparametrization(lp_reparametrization(lp_reparametrization_mode::Uniform, 0.5)); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
       mrf.add_unary_factor({0,0,0,0});

@@ -54,6 +54,6 @@ for e in solvers:
    f.write("ProblemConstructorRoundingSolver<" + solver_type + ">")
    f.write("solver(argc,argv);\n")
    f.write("auto input = LPMP::TorresaniEtAlInput::parse_file(solver.get_input_file());\n")
-   f.write("solver.template GetProblemConstructor<0>().construct(input);\n")
+   f.write("solver.GetProblemConstructor().construct(input);\n")
    f.write("return solver.Solve();\n}")
    f.close()

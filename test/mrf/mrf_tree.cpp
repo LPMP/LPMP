@@ -10,7 +10,7 @@ int main()
 
     using SolverType = Solver<LP<FMC>,VisitorType>;
     SolverType solver(solver_options);
-    auto& mrf = solver.template GetProblemConstructor<0>();
+    auto& mrf = solver.GetProblemConstructor();
 
     // build tree
     auto* u1 = mrf.add_unary_factor(std::vector<REAL>({1.0, 0.0}));

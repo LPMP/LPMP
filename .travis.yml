@@ -12,8 +12,6 @@ addons:
             - gcc-7
             - g++-7
             - cmake
-            - libhdf5-serial-dev 
-            - hdf5-tools    
 script:
     # Link gcc-7 and g++-7 to their standard commands
     - sudo ln -s /usr/bin/gcc-7 /usr/local/bin/gcc
@@ -24,7 +22,7 @@ script:
     # Check versions of gcc, g++ and cmake
     - gcc -v && g++ -v && cmake --version
     # Run your build commands next
-    - git submodule update --init --remote --recursive
+    - git submodule update --init
     - cmake .
     - make
     - make test

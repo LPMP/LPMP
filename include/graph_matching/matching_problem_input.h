@@ -1,5 +1,4 @@
-#ifndef LPMP_MATCHING_PROBLEM_INPUT_H
-#define LPMP_MATCHING_PROBLEM_INPUT_H
+#pragma once
 
 #include <vector>
 #include <array>
@@ -42,6 +41,10 @@ struct linear_assignment_problem_input {
    void initialize_mcf(MCF& mcf, const double scaling = 1.0) const
    {
       const std::size_t no_nodes = no_left_nodes + no_right_nodes;
+      const std::size_t no_mcf_nodes = no_left_nodes + no_right_nodes + 2;
+      const std::size_t no_mcf_edges = assignments.size() + no_left_nodes + no_right_nodes + 1;
+
+       mcf = MCF(no_mcf_nodes, no_mcf_edges);
 
       for(const auto a : assignments)
          mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling*a.cost);
@@ -160,7 +163,7 @@ struct linear_assignment_problem_input {
 
    double evaluate(const labeling& l) const
    {
-      if(!l.no_left_nodes() == no_left_nodes)
+      if(l.no_left_nodes() != no_left_nodes)
          throw std::runtime_error("labeling must have equal number of left nodes as matching problem.");
 
       double cost = 0.0;
@@ -225,10 +228,14 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
             compute_no_nodes(input);
             compute_node_offsets();
          }
+         graph_size() {}
 
          std::size_t no_graphs() const { return no_nodes_.size(); }
          std::size_t total_no_nodes() const { return graph_node_offsets_.back() + no_nodes_.back(); }
          std::size_t no_nodes(const std::size_t i) const { assert(i < no_graphs()); return no_nodes_[i]; }
+
+         auto& no_nodes() { return no_nodes_; }
+         const auto& no_nodes() const { return no_nodes_; }
 
          std::size_t node_no(const std::size_t graph_no, const std::size_t node_no) const
          {
@@ -455,5 +462,3 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
 };
 
 } // namespace LPMP
-
-#endif // LPMP_MATCHING_PROBLEM_INPUT_H

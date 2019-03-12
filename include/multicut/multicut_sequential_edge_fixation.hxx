@@ -1,5 +1,4 @@
-#ifndef LPMP_SEQUENTIAL_EDGE_FIXATION_HXX
-#define LPMP_SEQUENTIAL_EDGE_FIXATION_HXX
+#pragma once
 
 #include "union_find.hxx"
 #include <algorithm>
@@ -10,6 +9,7 @@
 namespace LPMP {
 
 // aka mutex watershed (Wolf & Pape et al, ECCV 2018, when edges are sorted), but more efficient implementation
+// note: this is not a correct algorithm. It only provides an oversegmentation of the result of mws.
 class multicut_sequential_edge_fixation {
 public:
    multicut_sequential_edge_fixation(const std::size_t no_nodes)
@@ -117,5 +117,3 @@ private:
 };
 
 } // namespace LPMP
-
-#endif // LPMP_SEQUENTIAL_EDGE_FIXATION_HXX

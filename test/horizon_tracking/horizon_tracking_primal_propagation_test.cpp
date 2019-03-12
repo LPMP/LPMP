@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     compute_lower_bound_chains(solver, grid_uai_input_medium, grid_uai_input_medium_lb, false);
 
     solver.GetLP().ComputePass();
-    auto& constructor = solver.template GetProblemConstructor<0>();
+    auto& constructor = solver.GetProblemConstructor();
     std::vector<std::size_t> labeling;
     for(std::size_t i=0; i<constructor.get_number_of_variables(); ++i) {
 	    auto* f = constructor.get_unary_factor(i);

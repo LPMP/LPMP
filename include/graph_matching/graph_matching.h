@@ -1,5 +1,4 @@
-#ifndef LPMP_GRAPH_MATCHING_H
-#define LPMP_GRAPH_MATCHING_H
+#pragma once
 
 #include "factors_messages.hxx"
 #include "LP.h"
@@ -60,7 +59,7 @@ struct FMC_MP {
 
    using mrf = mrf_constructor<FMC_MP_PARAM,0,1,1,2>;
    using gm_constructor = graph_matching_constructor<graph_matching_mrf_constructor<mrf>, AssignmentConstraintMessage>;
-   using ProblemDecompositionList = meta::list<gm_constructor>;
+   using problem_constructor = gm_constructor;
 };
 
 // + inter quadratic messages
@@ -87,7 +86,7 @@ struct FMC_MP_Q {
    using mrf = mrf_constructor<FMC_MP_PARAM,0,1,1,2>;
    using gm_constructor = graph_matching_constructor<graph_matching_mrf_constructor<mrf>, AssignmentConstraintMessage>;
    using gm_constructor_q = graph_matching_inter_quadratic_message_constructor<gm_constructor, inter_quadratic_message_container>;
-   using ProblemDecompositionList = meta::list<gm_constructor_q>;
+   using problem_constructor = gm_constructor_q;
 };
 
 // graph matching with assignment via message passing + tightening triplets
@@ -125,7 +124,7 @@ struct FMC_MP_T {
    using mrf = mrf_constructor<FMC_MP_PARAM,0,1,1,2>;
    using tightening_mrf = tightening_mrf_constructor<mrf,2,3,4,5>;
    using gm_constructor = graph_matching_constructor< graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage >;
-   using ProblemDecompositionList = meta::list<gm_constructor>;
+   using problem_constructor = gm_constructor;
 };
 
 // graph matching with assignment via message passing + tightening triplets
@@ -166,7 +165,7 @@ struct FMC_MP_Q_T {
    using tightening_mrf = tightening_mrf_constructor<mrf,2,4,5,6>;
    using gm_constructor = graph_matching_constructor< graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage >;
    using gm_constructor_q = graph_matching_inter_quadratic_message_constructor<gm_constructor, inter_quadratic_message_container>;
-   using ProblemDecompositionList = meta::list<gm_constructor_q>;
+   using problem_constructor = gm_constructor_q;
 };
 
 // graph matching with assignment via minimum cost flow solver
@@ -208,7 +207,7 @@ struct FMC_MCF {
    using mrf = mrf_constructor<FMC_MCF_PARAM,1,2,0,1>;
    using gm_constructor = graph_matching_constructor< graph_matching_mrf_constructor<mrf>, AssignmentConstraintMessage>;
    using mcf_gm_constructor = graph_matching_mcf_constructor<gm_constructor, MinCostFlowAssignmentFactor, UnaryToAssignmentMessageContainer>;
-   using ProblemDecompositionList = meta::list<mcf_gm_constructor>;
+   using problem_constructor = mcf_gm_constructor;
 };
 
 // + tightening
@@ -254,7 +253,7 @@ struct FMC_MCF_T {
    using tightening_mrf = tightening_mrf_constructor<mrf,3,3,4,5>;
    using gm_constructor = graph_matching_constructor< graph_matching_mrf_constructor<tightening_mrf>, AssignmentConstraintMessage>;
    using mcf_gm_constructor = graph_matching_mcf_constructor<gm_constructor, MinCostFlowAssignmentFactor, UnaryToAssignmentMessageContainer>;
-   using ProblemDecompositionList = meta::list<mcf_gm_constructor>;
+   using problem_constructor = mcf_gm_constructor;
 };
 
 
@@ -279,7 +278,7 @@ struct FMC_GM {
 
    using mrf = mrf_constructor<FMC_GM_PARAM,0,1,0,1>;
    using gm_constructor = graph_matching_mrf_constructor<mrf>;
-   using ProblemDecompositionList = meta::list<gm_constructor>;
+   using problem_constructor = gm_constructor;
 };
 
 // + tightening triplets
@@ -315,7 +314,7 @@ struct FMC_GM_T {
    using mrf = mrf_constructor<FMC_GM_PARAM,0,1,0,1>;
    using tightening_mrf = tightening_mrf_constructor<mrf,2,2,3,4>;
    using gm_constructor = graph_matching_mrf_constructor<tightening_mrf>;
-   using ProblemDecompositionList = meta::list<gm_constructor>;
+   using problem_constructor = gm_constructor;
 };
 
 template<PairwiseConstruction PAIRWISE_CONSTRUCTION = PairwiseConstruction::Left> // note: both sides makes no sense here
@@ -350,7 +349,7 @@ struct FMC_HUNGARIAN_BP {
    using mrf = mrf_constructor<FMC_HUNGARIAN_BP,1,2,0,1>;
    using gm_constructor = graph_matching_mrf_constructor<mrf>;
    using mcf_gm_constructor = graph_matching_mcf_constructor<gm_constructor, MinCostFlowAssignmentFactor, UnaryToAssignmentMessageContainer>;
-   using ProblemDecompositionList = meta::list<mcf_gm_constructor>;
+   using problem_constructor = mcf_gm_constructor;
 };
 
 template<PairwiseConstruction PAIRWISE_CONSTRUCTION = PairwiseConstruction::Left> // note: both sides makes no sense here
@@ -395,7 +394,7 @@ struct FMC_HUNGARIAN_BP_T {
    using tightening_mrf = tightening_mrf_constructor<mrf,3,3,4,5>;
    using gm_constructor = graph_matching_mrf_constructor<tightening_mrf>;
    using mcf_gm_constructor = graph_matching_mcf_constructor<gm_constructor, MinCostFlowAssignmentFactor, UnaryToAssignmentMessageContainer>;
-   using ProblemDecompositionList = meta::list<mcf_gm_constructor>;
+   using problem_constructor = mcf_gm_constructor;
 };
 
 template<PairwiseConstruction PAIRWISE_CONSTRUCTION = PairwiseConstruction::Left> 
@@ -441,7 +440,7 @@ struct FMC_LOCAL_SUBPROBLEM {
    using local_subproblem_constructor_left = local_subproblem_constructor_type;
    using local_subproblem_constructor_right = local_subproblem_constructor_type;
 
-   using ProblemDecompositionList = meta::list<>; //mrf_left,mrf_right,local_subproblem_constructor_left,local_subproblem_constructor_right>;
+   using problem_constructor = meta::list<>; //mrf_left,mrf_right,local_subproblem_constructor_left,local_subproblem_constructor_right>;
 };
 
 
@@ -746,6 +745,3 @@ namespace UaiGraphMatchingInput {
 
 
 } // namespace LPMP
-
-#endif // LPMP_GRAPH_MATCHING_H
-

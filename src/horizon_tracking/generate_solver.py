@@ -15,9 +15,9 @@ preamble = """
 #include "tree_decomposition.hxx"
 
 solvers = [
-    solver(preamble + "#include \"LP_FWMAP.hxx\"", 'FMC_HORIZON_TRACKING_CHAINS', 'LP_tree_FWMAP', 'horizon_tracking_uai_input::parse_file', "horizon_tracking_fwmap.cpp"),
-    solver(preamble + "#include \"LP_conic_bundle.hxx\"", 'FMC_HORIZON_TRACKING_CHAINS', 'LP_conic_bundle', 'horizon_tracking_uai_input::parse_file', "horizon_tracking_conic_bundle.cpp"),
-    solver(preamble + "#include \"tree_decomposition.hxx\"", 'FMC_HORIZON_TRACKING_CHAINS', 'LP_subgradient_ascent', 'horizon_tracking_uai_input::parse_file', "horizon_tracking_subgradient.cpp"),
+    solver(preamble + "#include \"LP_FWMAP.hxx\"", 'FMC_HORIZON_TRACKING_MULTIPLE_CHAINS', 'LP_tree_FWMAP', 'horizon_tracking_uai_input::parse_file', "horizon_tracking_fwmap.cpp"),
+    solver(preamble + "#include \"LP_conic_bundle.hxx\"", 'FMC_HORIZON_TRACKING_MULTIPLE_CHAINS', 'LP_conic_bundle', 'horizon_tracking_uai_input::parse_file', "horizon_tracking_conic_bundle.cpp"),
+    solver(preamble + "#include \"tree_decomposition.hxx\"", 'FMC_HORIZON_TRACKING_MULTIPLE_CHAINS', 'LP_subgradient_ascent', 'horizon_tracking_uai_input::parse_file', "horizon_tracking_subgradient.cpp"),
     ]
 
 for e in solvers:
@@ -28,8 +28,7 @@ for e in solvers:
    f.write("\nusing namespace LPMP;\nint main(int argc, char** argv) {\n")
    f.write(solver_type + " solver(argc,argv);\n")
    f.write("auto input = " + e.parse_fun + "(solver.get_input_file());\n")
-   f.write("construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.template GetProblemConstructor<0>());\n")
-   f.write("order_nodes_by_label_space_cadinality(solver.template GetProblemConstructor<0>());\n")
+   f.write("construct_horizon_tracking_problem_on_grid_to_chains(input, solver, solver.GetProblemConstructor());\n")
    f.write("solver.Solve();\n")
    f.write("solver.GetLP().write_back_reparametrization();\n")
    f.write("round_primal_solution(solver);\n")

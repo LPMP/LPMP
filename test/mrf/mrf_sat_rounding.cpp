@@ -23,7 +23,7 @@ int main()
        using SolverType = MpRoundingSolver<Solver<LP_external_solver<DD_ILP::sat_solver,LP<FMC>>,VisitorType>>;
 
        SolverType s(sat_solver_options);
-       auto& mrf = s.template GetProblemConstructor<0>();
+       auto& mrf = s.GetProblemConstructor();
 
        mrf.add_unary_factor(std::vector<REAL>(2,0.0));
        mrf.add_unary_factor(std::vector<REAL>(2,0.0));
@@ -50,7 +50,7 @@ int main()
        using SolverType = MpRoundingSolver<Solver<LP_external_solver<DD_ILP::sat_solver,LP<FMC>>,VisitorType>>;
 
        SolverType s(sat_solver_options);
-       auto& mrf = s.template GetProblemConstructor<0>();
+       auto& mrf = s.GetProblemConstructor();
 
        mrf.add_unary_factor(std::vector<REAL>(2,0.0));
        mrf.add_unary_factor(std::vector<REAL>(2,0.0));
@@ -76,7 +76,7 @@ int main()
         using SatSolverType = MpRoundingSolver<Solver<LP_external_solver<DD_ILP::sat_solver,LP<FMC>>,VisitorType>>;
 
         SatSolverType s_sat(solver_options);
-        auto& mrf_sat = s_sat.template GetProblemConstructor<0>();
+        auto& mrf_sat = s_sat.GetProblemConstructor();
 
         mrf_sat.add_unary_factor(std::vector<REAL>(2,0.0));
         mrf_sat.add_unary_factor(std::vector<REAL>(2,0.0));

@@ -79,16 +79,18 @@ class stack_arena{
 		void load(char * filename);
 		void unload(char * filename);
 		void check_integrity();
+        friend bool operator==(const stack_arena& a1, const stack_arena& a2);
+        friend bool operator!=(const stack_arena& a1, const stack_arena& a2);
 	};
 
-  //bool operator==(const stack_arena& a1, const stack_arena& a2)
-  //{
-  //  return a1._beg == a2._beg && a1._end == a2._end && a1._capbeg == a2._capbeg;
-  //}
-  //bool operator!=(const stack_arena& a1, const stack_arena& a2)
-  //{
-  //  return !(a1==a2);
-  //}
+  inline bool operator==(const stack_arena& a1, const stack_arena& a2)
+  {
+    return a1._beg == a2._beg && a1._end == a2._end && a1._capbeg == a2._capbeg;
+  }
+  inline bool operator!=(const stack_arena& a1, const stack_arena& a2)
+  {
+    return !(a1==a2);
+  }
 
 
 	//____________________block_arena______________________________
@@ -205,7 +207,8 @@ template<typename T>
 		//! all objects must have been destroyed
 		assert(empty());
 		if (!empty()){
-			throw std::runtime_error("buffer is in use");
+            std::cout << "buffer is in use";
+            std::terminate();
       }
    }
 	inline bool stack_arena::is_top_block(int * P)const{
@@ -640,12 +643,14 @@ public:
   //template<typename T2> struct rebind {using other = stack_allocator<T2>;};
   T* allocate(std::size_t n, int align = sizeof(size_t)) { return (T*)a_.allocate(n*sizeof(T),align); }
   void deallocate(T* p, std::size_t n) { return a_.deallocate((void*)p,n); }
-  friend bool operator==(const stack_allocator& a1, const stack_allocator a2) noexcept;
+  template<typename TT>
+  friend bool operator==(const stack_allocator<TT>& a1, const stack_allocator<TT>& a2);
 };
-  //bool operator==(const stack_allocator& a1, const stack_allocator& a2)
-  //{
-  //  return a1.a_ == a2.a_;
-  //}
+    template<typename T>
+  bool operator==(const stack_allocator<T>& a1, const stack_allocator<T>& a2)
+  {
+    return a1.a_ == a2.a_;
+  }
   //bool operator!=(const stack_allocator& a1, const stack_allocator& a2)
   //{
   //  return !(a1==a2);
@@ -664,12 +669,14 @@ public:
   //template<typename T2> struct rebind {using other = block_allocator<T2>;};
   T* allocate(std::size_t n, int align = sizeof(size_t)) { return (T*)a_.allocate(n*sizeof(T), align); }
   void deallocate(T* p, std::size_t n) { return a_.deallocate((void*)p); }
-  friend bool operator==(const block_allocator& a1, const block_allocator a2) noexcept;
+  template<typename TT>
+  friend bool operator==(const block_allocator<TT>& a1, const block_allocator<TT>& a2);
 };
-  //bool operator==(const block_allocator& a1, const block_allocator& a2)
-  //{
-  //  return a1.a_ == a2.a_;
-  //}
+template<typename T>
+  bool operator==(const block_allocator<T>& a1, const block_allocator<T>& a2)
+  {
+    return a1.a_ == a2.a_;
+  }
   //bool operator!=(const block_allocator& a1, const block_allocator& a2)
   //{
   //  return !(a1==a2);

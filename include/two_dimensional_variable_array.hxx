@@ -15,7 +15,10 @@ template<typename T>
 class two_dim_variable_array
 {
 public:
-   two_dim_variable_array() {}
+   two_dim_variable_array() 
+       : two_dim_variable_array(std::vector<std::size_t>{})
+   {}
+
    ~two_dim_variable_array() {
       static_assert(!std::is_same_v<T,bool>, "value type cannot be bool");
    }
@@ -152,6 +155,7 @@ public:
       return data_[offsets_[i]+j];
    }
 
+   std::size_t no_elements() const { return data_.size(); }
    std::size_t size() const { assert(offsets_.size() > 0); return offsets_.size()-1; }
 
    struct iterator : public std::iterator< std::random_access_iterator_tag, T* > {

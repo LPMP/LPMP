@@ -25,7 +25,7 @@ template<typename SOLVER>
 void round_primal_solution(SOLVER& solver, bool do_rounding_on_mrf = false, bool send_backward = false)
 {
     solver.GetLP().write_back_reparametrization();
-    auto multiple_chain_constructor = solver.template GetProblemConstructor<0>();
+    auto multiple_chain_constructor = solver.GetProblemConstructor();
     if (send_backward) {
         auto prevLb = solver.GetLP().LowerBound();
         auto olb1 = solver.GetLP().original_factors_lower_bound();

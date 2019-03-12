@@ -1,38 +1,35 @@
-#ifndef LPMP_UNION_FIND_HXX
-#define LPMP_UNION_FIND_HXX
+#pragma once
 
 #include <vector>
 #include <cassert>
 #include <limits>
+#include <numeric>
 
 namespace LPMP {
 
 class union_find {
-    std::size_t *id, cnt, *sz, N; // it is not necessary to hold sz!
-    public:
+    std::vector<std::size_t> id;
+    std::vector<std::size_t> sz;
+    std::size_t cnt;
+
+    public: 
     // Create an empty union find data structure with N isolated sets.
-    union_find(const std::size_t _N) : N(_N) {
-        id = new std::size_t[2*N];
-        sz = id + N;
-        reset();
-    }
-    ~union_find() {
-        delete [] id;
-    }
-
-    std::size_t size() const
+    void init(const std::size_t N)
     {
-       return N;
+        id.resize(N);
+        sz.resize(N);
+        cnt = N;
+        std::iota(id.begin(), id.end(), 0);
+        std::fill(sz.begin(), sz.end(), 1);
     }
 
-    void reset() {
-        cnt = N;
-        for(std::size_t i=0; i<N; ++i) { id[i] = i; }
-        for(std::size_t i=0; i<N; ++i) { sz[i] = 1; }
-    }
+    union_find(const std::size_t N = 0) { init(N); }
+    std::size_t size() const { assert(id.size() == sz.size()); return id.size(); }
+    void reset() { init(this->size()); }
+
     // Return the id of component corresponding to object p.
     std::size_t find(std::size_t p) {
-        assert(p < N);
+        assert(p < size());
         std::size_t root = p;
         while (root != id[root])
             root = id[root];
@@ -53,15 +50,22 @@ class union_find {
         if(sz[i] < sz[j])    { 
             id[i] = j; 
             sz[j] += sz[i]; 
+            sz[i] = 0;
         } else   { 
             id[j] = i; 
             sz[i] += sz[j]; 
+            sz[j] = 0;
         }
         cnt--;
     }
     // Are objects x and y in the same set?
     bool connected(const std::size_t x, const std::size_t y) {
         return find(x) == find(y);
+    }
+
+    std::size_t no_elements(const std::size_t x) const
+    {
+        return sz[x];
     }
 
     std::size_t thread_safe_find(const std::size_t p) const {
@@ -80,21 +84,21 @@ class union_find {
 
     std::vector<std::size_t> get_contiguous_ids()
     {
-        std::vector<std::size_t> contiguous_ids(N);
-        std::vector<std::size_t> id_mapping(N, std::numeric_limits<std::size_t>::max());
-        for(std::size_t i=0; i<N; ++i) {
+        std::vector<std::size_t> contiguous_ids(this->size());
+        std::vector<std::size_t> id_mapping(this->size(), std::numeric_limits<std::size_t>::max());
+        for(std::size_t i=0; i<this->size(); ++i) {
             std::size_t d = find(i);
             id_mapping[d] = 1; 
         }
         std::size_t next_id = 0;
-        for(std::size_t d=0; d<N; ++d) {
+        for(std::size_t d=0; d<this->size(); ++d) {
             if(id_mapping[d] == 1) {
                 id_mapping[d] = next_id;
                 ++next_id;
             }
         }
 
-        for(std::size_t i=0; i<N; ++i) {
+        for(std::size_t i=0; i<this->size(); ++i) {
             std::size_t d = find(i);
             assert(id_mapping[d] != std::numeric_limits<std::size_t>::max());
             contiguous_ids[i] = id_mapping[d];
@@ -104,6 +108,3 @@ class union_find {
 };
 
 } // namespace LPMP
-
-#endif // LPMP_UNION_FIND_HXX
-

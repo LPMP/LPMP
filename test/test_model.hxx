@@ -1,5 +1,4 @@
-#ifndef LPMP_TEST_MODEL_HXX 
-#define LPMP_TEST_MODEL_HXX 
+#pragma once
 
 #include <array>
 #include "config.hxx"
@@ -127,13 +126,18 @@ struct test_message {
   }
 };
 
+struct empty_problem_constructor {
+    template<typename SOLVER>
+        empty_problem_constructor(SOLVER& s) {}
+};
+
 struct test_FMC { // factor message connection
   constexpr static const char* name = "test model";
   using factor = FactorContainer<test_factor, test_FMC, 0>;
   using message = MessageContainer<test_message, 0, 0, message_passing_schedule::left, variableMessageNumber, variableMessageNumber, test_FMC, 0>;
   using FactorList = meta::list<factor>;
   using MessageList = meta::list<message>;
-  using ProblemDecompositionList = meta::list<>;
+  using problem_constructor = empty_problem_constructor;
 };
 
 template<typename LP_TYPE>
@@ -175,7 +179,4 @@ void build_test_model(LP_TYPE& lp)
   }
 }
 
-
 } // namespace LPMP 
-
-#endif // LPMP_TEST_MODEL_HXX 

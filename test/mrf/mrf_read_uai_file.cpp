@@ -13,14 +13,14 @@ int main()
     {
         SolverType s(solver_options);
         auto input = mrf_uai_input::parse_string(uai_test_input); 
-        s.template GetProblemConstructor<0>().construct(input);
+        s.GetProblemConstructor().construct(input);
         s.Solve();
         test(std::abs(s.lower_bound() - 0.644) < LPMP::eps);
     }
     {
         SolverType s(solver_options_2);
         auto input = mrf_uai_input::parse_string(uai_test_input_2); 
-        s.template GetProblemConstructor<0>().construct(input);
+        s.GetProblemConstructor().construct(input);
         s.Solve();
         test(std::abs(s.lower_bound() - 17) < LPMP::eps);
     }

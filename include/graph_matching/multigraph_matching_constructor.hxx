@@ -1,5 +1,4 @@
-#ifndef LPMP_MULTIGRAPH_MATCHING_CONSTRUCTOR_HXX
-#define LPMP_MULTIGRAPH_MATCHING_CONSTRUCTOR_HXX
+#pragma once
 
 #include "graph_matching_constructor.hxx"
 #include "multigraph_matching_input.h"
@@ -11,7 +10,7 @@
 #include <omp.h>
 #include <atomic>
 #include <future>
-#include "multicut/multicut_instance.hxx"
+#include "multicut/multicut_instance.h"
 #include "multicut/multicut_kernighan_lin.h"
 #include "multicut/transform_multigraph_matching.h"
 #include "multigraph_matching_synchronization.h"
@@ -647,9 +646,9 @@ public:
         return no_constraints_added;
     }
 
-    void construct(const multigraph_matching_input& input)
+    void construct(const multigraph_matching_input& mgm_instance)
     {
-        for(const auto& gm : input) {
+        for(const auto& gm : mgm_instance) {
             auto* gm_constructor = add_graph_matching_problem(gm.left_graph_no, gm.right_graph_no, lp_);
             gm_constructor->construct(gm.gm_input);
         }
@@ -805,11 +804,11 @@ public:
 
           enum class rounding_method {gaec_KL, KL, mcf_KL, mcf_ps};
           rounding_method rm = [&]() {
-          if(primal_rounding_algorithms_arg_.getValue() == "gaec_KL")
+          if(primal_rounding_algorithms_arg_.getValue() == "gaec_KL") 
              return rounding_method::gaec_KL;
           else if(primal_rounding_algorithms_arg_.getValue() == "KL")
              return rounding_method::KL;
-          else if(primal_rounding_algorithms_arg_.getValue() == "MCF_KL")
+          else if(primal_rounding_algorithms_arg_.getValue() == "MCF_KL") // K&L on infeasible partial minimum cost flow matchings
              return rounding_method::mcf_KL;
           else if(primal_rounding_algorithms_arg_.getValue() == "MCF_PS") // permutation synchronization
              return rounding_method::mcf_ps;
@@ -822,28 +821,33 @@ public:
              for(auto& c : graph_matching_constructors)
                 labeling_to_improve.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
 
-          auto mgm = export_linear_multigraph_matching_input();
+          // TODO: split round_primal_async based on rounding method into multiple lambdas
+          auto mgm = std::make_shared<multigraph_matching_input>(export_linear_multigraph_matching_input());
           const auto allowed_matchings = compute_allowed_matching_matrix();
-          auto round_primal_async = ([=](multigraph_matching_input mgm, multigraph_matching_input::labeling labeling_to_improve) {
+          auto round_primal_async = ([=](std::shared_ptr<multigraph_matching_input> mgm, multigraph_matching_input::labeling labeling_to_improve) {
+                  multigraph_matching_correlation_clustering_transform mgm_cc_trafo(mgm);
+                  auto cc = mgm_cc_trafo.get_correlatino_clustering_instance();
+                  auto mc = cc.transform_to_multicut();
                   if(rm == rounding_method::gaec_KL) {
-                     auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
-                     auto cc_sol = compute_multicut_gaec_kernighan_lin(cc); // seems better than just computing with Kernighan&Lin
-                     auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
+                     auto mc_sol = compute_multicut_gaec_kernighan_lin(mc); // seems better than just computing with Kernighan&Lin
+                     auto cc_sol = mc_sol.transform_to_correlation_clustering();
+                     auto mgm_sol = mgm_cc_trafo.transform(cc_sol); 
                      return mgm_sol;
                   } else if(rm == rounding_method::KL) {
-                     auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
-                     auto cc_sol = compute_multicut_kernighan_lin(cc);
-                     auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
+                     auto mc_sol = compute_multicut_kernighan_lin(mc);
+                     auto cc_sol = mc_sol.transform_to_correlation_clustering();
+                     auto mgm_sol = mgm_cc_trafo.transform(cc_sol); 
                      return mgm_sol;
                   } else if(rm == rounding_method::mcf_KL) {
                      // try fixing infeasible matchings computed by individual graph matching solvers with Kernighan&Lin
-                     auto cc = transform_multigraph_matching_to_correlation_clustering(mgm);
-                     auto cc_sol_to_improve = transform_multigraph_matching_labeling_to_correlation_clustering(labeling_to_improve, mgm, cc);
-                     auto cc_sol = compute_multicut_kernighan_lin(cc, cc_sol_to_improve);
-                     auto mgm_sol = transform_correlation_clustering_to_multigraph_matching(mgm, cc, cc_sol); 
+                     auto cc_sol_to_improve = mgm_cc_trafo.transform(labeling_to_improve);
+                     auto mc_sol_to_improve = cc_sol_to_improve.transform_to_multicut();
+                     auto mc_sol = compute_multicut_kernighan_lin(mc, mc_sol_to_improve);
+                     auto cc_sol = mc_sol.transform_to_correlation_clustering();
+                     auto mgm_sol = mgm_cc_trafo.transform(cc_sol); 
                      return mgm_sol;
                   } else if(rm == rounding_method::mcf_ps) {
-                     multigraph_matching_input::graph_size gs(mgm);
+                     multigraph_matching_input::graph_size gs(*mgm);
                      synchronize_multigraph_matching(gs, labeling_to_improve, allowed_matchings); // for sparse assignment problems
                      //synchronize_multigraph_matching(gs, labeling_to_improve); // when all edges are present in pairwise matching subproblems
                      return labeling_to_improve; 
@@ -867,7 +871,7 @@ public:
        }
     }
 
-    multigraph_matching_input::labeling write_out_labeling() const
+    multigraph_matching_input::labeling get_primal() const
     {
        multigraph_matching_input::labeling output;
        output.reserve(graph_matching_constructors.size());
@@ -875,7 +879,13 @@ public:
        for(auto& c : graph_matching_constructors)
           output.push_back( {c.first.p, c.first.q, c.second->write_out_labeling()} );
 
-       return output;
+       return output; 
+    }
+
+    // TODO: deprecated
+    multigraph_matching_input::labeling write_out_labeling() const
+    {
+        return get_primal();
     }
 
 private:
@@ -996,5 +1006,3 @@ private:
 }; 
 
 } // namespace LPMP
-
-#endif // LPMP_MULTIGRAPH_MATCHING_CONSTRUCTOR_HXX

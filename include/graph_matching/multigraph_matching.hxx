@@ -41,7 +41,7 @@ struct FMC_MGM { // factor message connection
          triplet_consistency_factor, triplet_consistency_factor_zero,
          pq_vector_triplet_consistency_message_container, qr_vector_triplet_consistency_message_container, pr_scalar_triplet_consistency_message_container,
          pq_vector_triplet_consistency_zero_message_container, qr_vector_triplet_consistency_zero_message_container >;
-   using ProblemDecompositionList = meta::list<mgm_constructor>;
+   using problem_constructor = mgm_constructor;
 };
 
 template<bool SEND_ASSIGNMENT_MESSAGES = true>
@@ -78,7 +78,7 @@ struct FMC_MGM_Q { // factor message connection
          triplet_consistency_factor, triplet_consistency_factor_zero,
          pq_vector_triplet_consistency_message_container, qr_vector_triplet_consistency_message_container, pr_scalar_triplet_consistency_message_container,
          pq_vector_triplet_consistency_zero_message_container, qr_vector_triplet_consistency_zero_message_container >;
-   using ProblemDecompositionList = meta::list<mgm_constructor>;
+   using problem_constructor = mgm_constructor;
 };
 
 template<bool SEND_ASSIGNMENT_MESSAGES = true>
@@ -123,7 +123,7 @@ struct FMC_MGM_T { // factor message connection with tightening triplets for und
          triplet_consistency_factor, triplet_consistency_factor_zero,
          pq_vector_triplet_consistency_message_container, qr_vector_triplet_consistency_message_container, pr_scalar_triplet_consistency_message_container,
          pq_vector_triplet_consistency_zero_message_container, qr_vector_triplet_consistency_zero_message_container>;
-   using ProblemDecompositionList = meta::list<mgm_constructor>;
+   using problem_constructor = mgm_constructor;
 };
 
 template<bool SEND_ASSIGNMENT_MESSAGES = true>
@@ -170,7 +170,7 @@ struct FMC_MGM_Q_T { // factor message connection with tightening triplets for u
          triplet_consistency_factor, triplet_consistency_factor_zero,
          pq_vector_triplet_consistency_message_container, qr_vector_triplet_consistency_message_container, pr_scalar_triplet_consistency_message_container,
          pq_vector_triplet_consistency_zero_message_container, qr_vector_triplet_consistency_zero_message_container>;
-   using ProblemDecompositionList = meta::list<mgm_constructor>;
+   using problem_constructor = mgm_constructor;
 };
 
 } // namespace LPMP

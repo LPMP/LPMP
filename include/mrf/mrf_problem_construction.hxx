@@ -1,5 +1,4 @@
-#ifndef LPMP_MRF_PROBLEM_CONSTRUCTION_HXX
-#define LPMP_MRF_PROBLEM_CONSTRUCTION_HXX
+#pragma once
 
 #include "LP.h"
 #include "solver.hxx"
@@ -9,13 +8,14 @@
 #include "mrf_input.h"
 
 #include <string>
+#include <vector>
 #include <functional>
 
 namespace LPMP {
 
 // expects simplex factor as unary and pairwise factors and marg message such that unary factor is on the left side and pairwise factor is on the right side
 // possibly use static inheritance instead of virtual functions
-template<class FACTOR_MESSAGE_CONNECTION, INDEX UNARY_FACTOR_NO, INDEX PAIRWISE_FACTOR_NO, INDEX LEFT_MESSAGE_NO, INDEX RIGHT_MESSAGE_NO>
+template<class FACTOR_MESSAGE_CONNECTION, std::size_t UNARY_FACTOR_NO, std::size_t PAIRWISE_FACTOR_NO, std::size_t LEFT_MESSAGE_NO, std::size_t RIGHT_MESSAGE_NO>
 class mrf_constructor {
 public:
    using FMC = FACTOR_MESSAGE_CONNECTION;
@@ -66,7 +66,7 @@ public:
    }
    
    // unary factor was created elsewhere, let mrf know it
-   void RegisterUnaryFactor(const INDEX node_number, UnaryFactorContainer* u)
+   void RegisterUnaryFactor(const std::size_t node_number, UnaryFactorContainer* u)
    {
        assert(false);
       if(node_number >= unaryFactor_.size()) {
@@ -95,8 +95,8 @@ public:
       assert(!has_pairwise_factor(var1,var2));
       auto* p = lp_->template add_factor<PairwiseFactorContainer>(get_number_of_labels(var1), get_number_of_labels(var2));
       pairwiseFactor_.push_back(p);
-      pairwiseIndices_.push_back(std::array<INDEX,2>({var1,var2}));
-      const INDEX factorId = pairwiseFactor_.size()-1;
+      pairwiseIndices_.push_back(std::array<std::size_t,2>({var1,var2}));
+      const std::size_t factorId = pairwiseFactor_.size()-1;
       pairwiseMap_.insert(std::make_pair(std::make_tuple(var1,var2), factorId));
 
       lp_->template add_message<LeftMessageContainer>(this->get_unary_factor(var1), p);
@@ -106,18 +106,18 @@ public:
    }
 
    // TODO: remove this function
-   PairwiseFactorContainer* add_empty_pairwise_factor(const INDEX var1, const INDEX var2)
+   PairwiseFactorContainer* add_empty_pairwise_factor(const std::size_t var1, const std::size_t var2)
    {
       assert(this->pairwiseMap_.find(std::make_tuple(var1,var2)) == this->pairwiseMap_.end()); 
       return this->add_pairwise_factor(var1, var2);
    } 
 
-   UnaryFactorContainer* get_unary_factor(const INDEX i) const { assert(i<unaryFactor_.size()); return unaryFactor_[i]; }
-   PairwiseFactorContainer* get_pairwise_factor(const INDEX i) const { assert(i<pairwiseFactor_.size()); return pairwiseFactor_[i]; }
-   PairwiseFactorContainer* get_pairwise_factor(const INDEX i, const INDEX j) const { 
+   UnaryFactorContainer* get_unary_factor(const std::size_t i) const { assert(i<unaryFactor_.size()); return unaryFactor_[i]; }
+   PairwiseFactorContainer* get_pairwise_factor(const std::size_t i) const { assert(i<pairwiseFactor_.size()); return pairwiseFactor_[i]; }
+   PairwiseFactorContainer* get_pairwise_factor(const std::size_t i, const std::size_t j) const { 
       assert(i<j);    
       assert(j<unaryFactor_.size());
-      const INDEX factor_id = get_pairwise_factor_id(i,j);
+      const std::size_t factor_id = get_pairwise_factor_id(i,j);
       return pairwiseFactor_[factor_id]; 
    }
 
@@ -147,18 +147,18 @@ public:
       return msgs[0];
    }
 
-   INDEX get_number_of_variables() const 
+   std::size_t get_number_of_variables() const 
    { 
       assert(!(unaryFactor_.size() == 0 && pairwiseFactor_.size() > 0)); 
       return unaryFactor_.size(); 
    } // note: this is not a good idea, if unaryFactors are populated elsewhere: take maximum in pairwise factor indices then.
-   INDEX get_pairwise_factor_id(const INDEX var1, const INDEX var2) const 
+   std::size_t get_pairwise_factor_id(const std::size_t var1, const std::size_t var2) const 
    {
       assert(var1<var2);
       assert(pairwiseMap_.find(std::make_tuple(var1,var2)) != pairwiseMap_.end());
       return pairwiseMap_.find(std::make_tuple(var1,var2))->second; 
    }
-   bool has_pairwise_factor(const INDEX var1, const INDEX var2) const
+   bool has_pairwise_factor(const std::size_t var1, const std::size_t var2) const
    {
       assert(var1<var2);
       if(pairwiseMap_.find(std::make_tuple(var1,var2)) != pairwiseMap_.end()) { 
@@ -167,10 +167,10 @@ public:
          return false;
       }
    }
-   INDEX get_number_of_pairwise_factors() const { return pairwiseFactor_.size(); }
-   std::array<INDEX,2> get_pairwise_variables(const INDEX factorNo) const { assert(factorNo < pairwiseIndices_.size()); return pairwiseIndices_[factorNo]; }
-   INDEX get_number_of_labels(const INDEX i) const { assert(i < unaryFactor_.size()); return unaryFactor_[i]->get_factor()->size(); }
-   REAL GetPairwiseValue(const INDEX factorId, const INDEX i1, const INDEX i2) const
+   std::size_t get_number_of_pairwise_factors() const { return pairwiseFactor_.size(); }
+   std::array<std::size_t,2> get_pairwise_variables(const std::size_t factorNo) const { assert(factorNo < pairwiseIndices_.size()); return pairwiseIndices_[factorNo]; }
+   std::size_t get_number_of_labels(const std::size_t i) const { assert(i < unaryFactor_.size()); return unaryFactor_[i]->get_factor()->size(); }
+   REAL GetPairwiseValue(const std::size_t factorId, const std::size_t i1, const std::size_t i2) const
    {
       assert(i1 < get_number_of_labels( get_pairwise_variables(factorId)[0] ));
       assert(i2 < get_number_of_labels( get_pairwise_variables(factorId)[1] ));
@@ -207,7 +207,7 @@ public:
       assert(pairwiseIndices_.size() == pairwiseFactor_.size());
    }
 
-   INDEX Tighten(const INDEX no_constraints_to_add)
+   std::size_t Tighten(const std::size_t no_constraints_to_add)
    {
       return 0;
    }
@@ -216,7 +216,7 @@ public:
    void WritePrimal(STREAM& s) const 
    {
       if(unaryFactor_.size() > 0) {
-         for(INDEX i=0; i<unaryFactor_.size()-1; ++i) {
+         for(std::size_t i=0; i<unaryFactor_.size()-1; ++i) {
             s << unaryFactor_[i]->get_factor()->primal() << ", ";
          }
          auto* f = unaryFactor_.back();
@@ -330,7 +330,7 @@ public:
 
   auto compute_forest_cover() { return compute_forest_cover(pairwiseIndices_); }
 
-  std::vector<factor_tree<FMC>> compute_forest_cover(const std::vector<std::array<INDEX,2>>& pairwiseIndices)
+  std::vector<factor_tree<FMC>> compute_forest_cover(const std::vector<std::array<std::size_t,2>>& pairwiseIndices)
   {
      UndirectedGraph g(unaryFactor_.size(), pairwiseFactor_.size());
      for(auto e : pairwiseIndices) {
@@ -339,43 +339,43 @@ public:
         g.AddEdge(i,j,1);
      }
      
-     const INDEX forest_num = g.Solve();
+     const std::size_t forest_num = g.Solve();
      if(diagnostics()) { std::cout << "decomposed mrf into " << forest_num << " trees\n"; }
      std::vector<factor_tree<FMC>> trees;
 
      std::vector<int> parents(unaryFactor_.size());
-     for(INDEX k=0; k<forest_num; ++k) {
+     for(std::size_t k=0; k<forest_num; ++k) {
         g.GetForestParents(k, parents.data()); // possible GetForestEdges will return pairwise ids, hence get_pairwise_factor(id) then can be called, which is faster
 
         union_find uf(unaryFactor_.size());
-        for(INDEX i=0; i<parents.size(); ++i) {
+        for(std::size_t i=0; i<parents.size(); ++i) {
            if(parents[i] != -1) {
               uf.merge(i, parents[i]);
            }
         }
         auto contiguous_ids = uf.get_contiguous_ids();
         
-        const INDEX no_trees = uf.count();
+        const std::size_t no_trees = uf.count();
         std::vector<std::vector<PairwiseFactorContainer*>> pairwise(no_trees);
 
-        for(INDEX i=0; i<parents.size(); ++i) {
+        for(std::size_t i=0; i<parents.size(); ++i) {
            if(parents[i] != -1) {
-              const INDEX tree_id = contiguous_ids[uf.find(i)];
-              const INDEX j = parents[i];
+              const std::size_t tree_id = contiguous_ids[uf.find(i)];
+              const std::size_t j = parents[i];
               assert(tree_id == contiguous_ids[uf.find(j)]);
               PairwiseFactorContainer* p = get_pairwise_factor(std::min(i,j), std::max(i,j));
               pairwise[tree_id].push_back(p);
            } 
         }
-        for(INDEX t=0; t<no_trees; ++t) {
+        for(std::size_t t=0; t<no_trees; ++t) {
            if(pairwise[t].size() > 0) {
               trees.push_back(add_tree(pairwise[t])); 
            }
         }
      }
 
-     auto check_pairwise_factors_present = [&trees]() -> INDEX {
-        INDEX pairwise_factors_in_trees = 0;
+     auto check_pairwise_factors_present = [&trees]() -> std::size_t {
+        std::size_t pairwise_factors_in_trees = 0;
         for(auto& tree : trees) {
            for(auto* f : tree.factors_) {
               if(dynamic_cast<PairwiseFactorContainer*>(f)) {
@@ -426,18 +426,18 @@ protected:
    std::vector<UnaryFactorContainer*> unaryFactor_;
    std::vector<PairwiseFactorContainer*> pairwiseFactor_;
    
-   std::vector<std::array<INDEX,2>> pairwiseIndices_;
+   std::vector<std::array<std::size_t,2>> pairwiseIndices_;
 
-   std::map<std::tuple<INDEX,INDEX>, INDEX> pairwiseMap_; // given two sorted indices, return factorId belonging to that index.
+   std::map<std::tuple<std::size_t,std::size_t>, std::size_t> pairwiseMap_; // given two sorted indices, return factorId belonging to that index.
 
-   //INDEX unaryFactorIndexBegin_, unaryFactorIndexEnd_; // do zrobienia: not needed anymore
+   //std::size_t unaryFactorIndexBegin_, unaryFactorIndexEnd_; // do zrobienia: not needed anymore
 
    LP<FMC>* lp_;
 };
 
 // derives from a given mrf problem constructor and adds tightening capabilities on top of it, as implemented in cycle_inequalities and proposed by David Sontag
 template<class MRF_PROBLEM_CONSTRUCTOR,
-   INDEX TERNARY_FACTOR_NO, INDEX PAIRWISE_TRIPLET_MESSAGE12_NO, INDEX PAIRWISE_TRIPLET_MESSAGE13_NO, INDEX PAIRWISE_TRIPLET_MESSAGE23_NO> // the last indices indicate triplet factor and possible messages
+   std::size_t TERNARY_FACTOR_NO, std::size_t PAIRWISE_TRIPLET_MESSAGE12_NO, std::size_t PAIRWISE_TRIPLET_MESSAGE13_NO, std::size_t PAIRWISE_TRIPLET_MESSAGE23_NO> // the last indices indicate triplet factor and possible messages
 class tightening_mrf_constructor : public MRF_PROBLEM_CONSTRUCTOR
 {
 public:
@@ -456,25 +456,25 @@ public:
       : MRF_PROBLEM_CONSTRUCTOR(pd)
    {}
 
-   TripletFactorContainer* add_triplet_factor(const INDEX var1, const INDEX var2, const INDEX var3, const std::vector<REAL>& cost)
+   TripletFactorContainer* add_triplet_factor(const std::size_t var1, const std::size_t var2, const std::size_t var3, const std::vector<REAL>& cost)
    {
       assert(var1<var2 && var2<var3);
       assert(var3<this->get_number_of_variables());
-      assert(tripletMap_.find(std::array<INDEX,3>({var1,var2,var3})) == tripletMap_.end());
+      assert(tripletMap_.find(std::array<std::size_t,3>({var1,var2,var3})) == tripletMap_.end());
       
       assert(this->pairwiseMap_.find(std::make_tuple(var1,var2)) != this->pairwiseMap_.end());
       assert(this->pairwiseMap_.find(std::make_tuple(var1,var3)) != this->pairwiseMap_.end());
       assert(this->pairwiseMap_.find(std::make_tuple(var2,var3)) != this->pairwiseMap_.end());
 
-      const INDEX factor12Id = this->pairwiseMap_.find(std::make_tuple(var1,var2))->second;
-      const INDEX factor13Id = this->pairwiseMap_.find(std::make_tuple(var1,var3))->second;
-      const INDEX factor23Id = this->pairwiseMap_.find(std::make_tuple(var2,var3))->second;
+      const std::size_t factor12Id = this->pairwiseMap_.find(std::make_tuple(var1,var2))->second;
+      const std::size_t factor13Id = this->pairwiseMap_.find(std::make_tuple(var1,var3))->second;
+      const std::size_t factor23Id = this->pairwiseMap_.find(std::make_tuple(var2,var3))->second;
 
       TripletFactorContainer* t = this->lp_->template add_factor<TripletFactorContainer>(this->get_number_of_labels(var1), this->get_number_of_labels(var2), this->get_number_of_labels(var3));
       tripletFactor_.push_back(t);
-      tripletIndices_.push_back(std::array<INDEX,3>({var1,var2,var3}));
-      const INDEX factorId = tripletFactor_.size()-1;
-      tripletMap_.insert(std::make_pair(std::array<INDEX,3>({var1,var2,var3}), factorId));
+      tripletIndices_.push_back(std::array<std::size_t,3>({var1,var2,var3}));
+      const std::size_t factorId = tripletFactor_.size()-1;
+      tripletMap_.insert(std::make_pair(std::array<std::size_t,3>({var1,var2,var3}), factorId));
 
       LinkPairwiseTripletFactor<PairwiseTripletMessage12Container>(factor12Id,factorId);
       LinkPairwiseTripletFactor<PairwiseTripletMessage13Container>(factor13Id,factorId);
@@ -490,7 +490,7 @@ public:
       return t;
    }
    template<typename PAIRWISE_TRIPLET_MESSAGE_CONTAINER>
-   void LinkPairwiseTripletFactor(const INDEX pairwiseFactorId, const INDEX tripletFactorId)
+   void LinkPairwiseTripletFactor(const std::size_t pairwiseFactorId, const std::size_t tripletFactorId)
    {
       using PairwiseTripletMessageType = typename PAIRWISE_TRIPLET_MESSAGE_CONTAINER::MessageType;
 
@@ -498,31 +498,31 @@ public:
       assert(this->pairwiseIndices_[pairwiseFactorId][0] < this->pairwiseIndices_[pairwiseFactorId][1]);
 
       TripletFactorContainer* const t = tripletFactor_[tripletFactorId];
-      const INDEX tripletVar1 = tripletIndices_[tripletFactorId][0];
-      const INDEX tripletVar2 = tripletIndices_[tripletFactorId][1];
-      const INDEX tripletVar3 = tripletIndices_[tripletFactorId][2];
+      const std::size_t tripletVar1 = tripletIndices_[tripletFactorId][0];
+      const std::size_t tripletVar2 = tripletIndices_[tripletFactorId][1];
+      const std::size_t tripletVar3 = tripletIndices_[tripletFactorId][2];
       assert(tripletVar1 < tripletVar2 && tripletVar2 < tripletVar3);
-      const INDEX tripletDim1 = this->get_number_of_labels(tripletVar1);
-      const INDEX tripletDim2 = this->get_number_of_labels(tripletVar2);
-      const INDEX tripletDim3 = this->get_number_of_labels(tripletVar3);
+      const std::size_t tripletDim1 = this->get_number_of_labels(tripletVar1);
+      const std::size_t tripletDim2 = this->get_number_of_labels(tripletVar2);
+      const std::size_t tripletDim3 = this->get_number_of_labels(tripletVar3);
          
       assert(this->get_number_of_labels(this->pairwiseIndices_[pairwiseFactorId][0]) * this->get_number_of_labels(this->pairwiseIndices_[pairwiseFactorId][1]) == p->get_factor()->size());
 
       this->lp_->template add_message<PAIRWISE_TRIPLET_MESSAGE_CONTAINER>(p, t, tripletDim1, tripletDim2, tripletDim3);
    }
-   INDEX get_number_of_triplet_factors() const { return tripletFactor_.size(); }
+   std::size_t get_number_of_triplet_factors() const { return tripletFactor_.size(); }
 
-   std::array<INDEX,3> get_triplet_indices(const INDEX factor_id)
+   std::array<std::size_t,3> get_triplet_indices(const std::size_t factor_id)
    {
       assert(factor_id < get_number_of_triplet_factors());
       return tripletIndices_[factor_id];
    }
 
    // do zrobienia: use references for pi
-   bool add_tightening_triplet(const INDEX var1, const INDEX var2, const INDEX var3)//, const std::vector<INDEX> pi1, const std::vector<INDEX> pi2, const std::vector<INDEX> pi3)
+   bool add_tightening_triplet(const std::size_t var1, const std::size_t var2, const std::size_t var3)//, const std::vector<std::size_t> pi1, const std::vector<std::size_t> pi2, const std::vector<std::size_t> pi3)
    {
       assert(var1 < var2 && var2 < var3 && var3 < this->get_number_of_variables());
-      if(tripletMap_.count(std::array<INDEX,3>({var1,var2,var3})) == 0) {
+      if(tripletMap_.count(std::array<std::size_t,3>({var1,var2,var3})) == 0) {
          // first check whether necessary pairwise factors are present. If not, add them.
          if(this->pairwiseMap_.find(std::make_tuple(var1,var2)) == this->pairwiseMap_.end()) {
             this->add_empty_pairwise_factor(var1,var2);
@@ -542,9 +542,9 @@ public:
       }
    }
 
-   INDEX add_triplets(const std::vector<triplet_candidate>& tc, const INDEX max_triplets_to_add = std::numeric_limits<INDEX>::max())
+   std::size_t add_triplets(const std::vector<triplet_candidate>& tc, const std::size_t max_triplets_to_add = std::numeric_limits<std::size_t>::max())
    {
-      INDEX no_triplets_added = 0;
+      std::size_t no_triplets_added = 0;
       for(const auto t : tc) {
          if(add_tightening_triplet(t.i, t.j, t.k)) {
             ++no_triplets_added;
@@ -556,20 +556,20 @@ public:
       return no_triplets_added; 
    }
 
-   INDEX Tighten(const INDEX noTripletsToAdd)
+   std::size_t Tighten(const std::size_t noTripletsToAdd)
    {
       assert(noTripletsToAdd > 0);
       if(debug()) {
          std::cout << "Tighten mrf with cycle inequalities, no triplets to add = " << noTripletsToAdd << "\n";
       }
 
-      //auto fp = [this](const INDEX v1, const INDEX v2, const INDEX v3) { return this->add_tightening_triplet(v1,v2,v3); }; // do zrobienia: do not give this via template, as Cycle already has gm_ object.
+      //auto fp = [this](const std::size_t v1, const std::size_t v2, const std::size_t v3) { return this->add_tightening_triplet(v1,v2,v3); }; // do zrobienia: do not give this via template, as Cycle already has gm_ object.
 
       triplet_search<typename std::remove_reference<decltype(*this)>::type> triplets(*this, eps);
       if(debug()) { std::cout << "search for triplets\n"; }
       auto triplet_candidates = triplets.search();
       if(debug()) { std::cout << "done\n"; }
-      INDEX no_triplets_added = add_triplets(triplet_candidates, noTripletsToAdd);
+      std::size_t no_triplets_added = add_triplets(triplet_candidates, noTripletsToAdd);
       if(diagnostics()) { std::cout << "added " << no_triplets_added << " by triplet search\n"; }
 
       if(no_triplets_added < 0.2*noTripletsToAdd) {
@@ -579,7 +579,7 @@ public:
          k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(*this)>::type, false> cycle_search(*this, eps);
          triplet_candidates = cycle_search.search();
          if(debug()) { std::cout << "... done\n"; }
-         const INDEX no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
+         const std::size_t no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
          if(diagnostics()) {std::cout << "added " << no_triplet_k_projection_graph << " by cycle search in k-projection graph\n"; }
          no_triplets_added += no_triplet_k_projection_graph;
 
@@ -591,7 +591,7 @@ public:
             k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(*this)>::type, true> cycle_search(*this, eps);
             triplet_candidates = cycle_search.search();
             if(debug()) { std::cout << "... done\n"; }
-            const INDEX no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
+            const std::size_t no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
             if(diagnostics()) { std::cout << "added " << no_triplet_k_projection_graph << " by cycle search in expanded projection graph\n";
             }
             no_triplets_added += no_triplet_k_projection_graph;
@@ -626,7 +626,7 @@ public:
          k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(*this)>::type, false> cycle_search(*this, std::numeric_limits<REAL>::epsilon());
          triplet_candidates = cycle_search.search();
          if(debug()) { std::cout << "... done\n"; }
-         const INDEX no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
+         const std::size_t no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
          if(diagnostics()) {
             std::cout << "added " << no_triplet_k_projection_graph << " by cycle search in k-projection grapa with no increase\n";
          }
@@ -640,7 +640,7 @@ public:
          k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(*this)>::type, true> cycle_search(*this, std::numeric_limits<REAL>::epsilon());
          triplet_candidates = cycle_search.search();
          if(debug()) { std::cout << "... done\n"; }
-         const INDEX no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
+         const std::size_t no_triplet_k_projection_graph = add_triplets(triplet_candidates, noTripletsToAdd-no_triplets_added);
          if(diagnostics()) {
             std::cout << "added " << no_triplet_k_projection_graph << " by cycle search in expanded projection graph with no increase\n";
          }
@@ -681,11 +681,8 @@ protected:
   }
 
    std::vector<TripletFactorContainer*> tripletFactor_;
-   std::vector<std::array<INDEX,3>> tripletIndices_;
-   std::map<std::array<INDEX,3>, INDEX> tripletMap_; // given two sorted indices, return factorId belonging to that index.
+   std::vector<std::array<std::size_t,3>> tripletIndices_;
+   std::map<std::array<std::size_t,3>, std::size_t> tripletMap_; // given two sorted indices, return factorId belonging to that index.
 };
 
 } // end namespace LPMP
-
-#endif // LPMP_MRF_PROBLEM_CONSTRUCTION_HXX
-

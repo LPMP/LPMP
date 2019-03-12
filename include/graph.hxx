@@ -1,5 +1,4 @@
-#ifndef LPMP_CUT_PACKING_HXX
-#define LPMP_CUT_PACKING_HXX
+#pragma once
 
 #include <vector>
 #include <array>
@@ -41,18 +40,9 @@ namespace LPMP {
 			EDGE_INFORMATION edge_;
 		};
 
-        graph() {}
-
-        constexpr static auto no_op = [](const auto& edge) { return EDGE_INFORMATION{}; };
-		template<typename EDGE_ITERATOR>
-		graph(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end)
-        : graph(edge_begin, edge_end, no_op)
-		{}
-
-		// compute sorted adjacency list representation of graph given by edges.
 		template<typename EDGE_ITERATOR, typename EDGE_INFORMATION_LAMBDA>
-		graph(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end, EDGE_INFORMATION_LAMBDA f)
-		{
+        void construct(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end, EDGE_INFORMATION_LAMBDA f)
+        {
 			std::vector<std::size_t> adjacency_list_count;
 			// first determine size for adjacency_list
 			for(auto edge_it=edge_begin; edge_it!=edge_end; ++edge_it) {
@@ -86,6 +76,22 @@ namespace LPMP {
 
             set_sister_pointers();
             check_graph();
+        }
+
+        graph() {}
+
+        constexpr static auto return_edge_op = [](const auto& edge) { return EDGE_INFORMATION{}; };
+
+		template<typename EDGE_ITERATOR>
+		graph(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end)
+        : graph(edge_begin, edge_end, return_edge_op)
+		{}
+
+		// compute sorted adjacency list representation of graph given by edges.
+		template<typename EDGE_ITERATOR, typename EDGE_INFORMATION_LAMBDA>
+		graph(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end, EDGE_INFORMATION_LAMBDA f)
+		{
+            construct(edge_begin, edge_end, f);
 		}
 
         void set_sister_pointers()
@@ -126,30 +132,35 @@ namespace LPMP {
 
 		}
 
+
+      struct edge_comparator {
+         bool operator()(const std::size_t i, const edge_type& e) const { return i < e.head(); }
+         bool operator()(const edge_type& e, const std::size_t i) const { return e.head() < i; }
+      };
+
 		bool edge_present(const std::size_t i, const std::size_t j) const
 		{
 			assert(i != j && std::max(i,j) < no_nodes());
-			struct comparator {
-				bool operator()(const std::size_t i, const edge_type& e) const { return i < e.head(); }
-				bool operator()(const edge_type& e, const std::size_t i) const { return e.head() < i; }
-			};
-			auto edge_it = std::lower_bound(begin(i), end(i), j, comparator{});
-			return edge_it != end(i);
-
+			auto edge_it = std::lower_bound(begin(i), end(i), j, edge_comparator{});
+			return edge_it != end(i); 
+		}
+		EDGE_INFORMATION& edge(const std::size_t i, const std::size_t j)
+		{
+			assert(edge_present(i,j));
+			auto edge_it = std::lower_bound(begin(i), end(i), j, edge_comparator{});
+			assert(edge_it->head() == j);
+			return edge_it->edge(); 
 		}
 		const EDGE_INFORMATION& edge(const std::size_t i, const std::size_t j) const
 		{
 			assert(edge_present(i,j));
-			struct comparator {
-				bool operator()(const std::size_t i, const edge_type& e) const { return i < e.head(); }
-				bool operator()(const edge_type& e, const std::size_t i) const { return e.head() < i; }
-			};
-			auto edge_it = std::lower_bound(begin(i), end(i), j, comparator{});
+			auto edge_it = std::lower_bound(begin(i), end(i), j, edge_comparator{});
 			assert(edge_it->head() == j);
 			return edge_it->edge(); 
 		}
 
 		std::size_t no_nodes() const { return edges_.size(); }
+		std::size_t no_edges() const { return edges_.no_elements(); }
 		std::size_t no_edges(const std::size_t i) const { return edges_[i].size(); }
 		std::size_t edge_no(const edge_type* e) const
 		{
@@ -164,6 +175,8 @@ namespace LPMP {
 			return std::distance(const_cast<const edge_type*>(edges_[i].begin()), &e); 
 		}
 		
+		auto begin(const std::size_t i) { return edges_[i].begin(); }
+		auto end(const std::size_t i) { return edges_[i].end(); }
 		auto begin(const std::size_t i) const { return edges_[i].begin(); }
 		auto end(const std::size_t i) const { return edges_[i].end(); }
 
@@ -202,7 +215,8 @@ namespace LPMP {
 							if(!(j<k)) { continue; }
 
 							assert(t.ik->tail() == i && t.jk->tail() == j);
-							f(i,j,k, *edge_it, *(t.ik), *(t.jk));
+							//f(i,j,k, *edge_it, *(t.ik), *(t.jk));
+							f(i,j,k, edge_it->edge(), t.ik->edge(), t.jk->edge()); // edge costs: 01, 02, 12
 						}
 					}
 				}
@@ -388,13 +402,18 @@ namespace LPMP {
             std::size_t flag; 
         };
 
-        bfs_data(const GRAPH& _g) : g(_g)
+        void update_graph()
         {
-            g.check_graph();
             d.resize(g.no_nodes());
             for(auto& i : d) { i.flag = 0; }
             flag1 = 0;
             flag2 = 1;
+
+        }
+        bfs_data(const GRAPH& _g) : g(_g)
+        {
+            g.check_graph();
+            update_graph();
         }
         void reset() 
         {
@@ -414,13 +433,14 @@ namespace LPMP {
         std::size_t parent(const std::size_t i) const { return d[i].parent; } 
 
         template<typename EDGE_OP>
-        std::vector<std::size_t> trace_path(const std::size_t i1, const std::size_t i2, EDGE_OP edge_op) const
+        std::vector<std::size_t> trace_path(const std::size_t i1, const std::size_t i2, EDGE_OP edge_op, const edge_information& edge_info) const
         {
             assert(i1 != i2);
 
             std::vector<std::size_t> path;
             path.push_back(i1);
             std::size_t j=i1;
+            edge_op(i1,i2,edge_info);
             while(parent(j) != j) {
                 edge_op(j, parent(j), d[j].e);
                 j = parent(j);
@@ -441,7 +461,7 @@ namespace LPMP {
 
         // do bfs with thresholded costs and iteratively lower threshold until enough cycles are found
         // only consider edges that have cost equal or larger than th
-        constexpr static auto no_mask_op = [](const auto i, const auto j, const auto& edge_info) -> bool { return true; };
+        constexpr static auto no_mask_op = [](const auto i, const auto j, const auto& edge_info, const std::size_t distance) -> bool { return true; };
         constexpr static auto no_edge_op = [](const auto i, const auto j, const edge_information& edge_info) {};
         auto find_path(const std::size_t start_node, const std::size_t end_node)
         {
@@ -466,13 +486,13 @@ namespace LPMP {
                 const std::size_t distance = visit.front()[1];
                 visit.pop_front();
 
-                assert(g.begin(i) < g.end(i));
+                assert(g.begin(i) <= g.end(i));
 
                 if(labelled1(i)) {
                     for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) { 
                         const std::size_t j = a_it->head();
 
-                        if(mask_op(i,j,*a_it)) {
+                        if(mask_op(i,j,a_it->edge(), distance)) {
 
                             if(!labelled(j)) {
                                 visit.push_back({j, distance+1});
@@ -481,7 +501,7 @@ namespace LPMP {
                                 label1(j);
                             } else if(labelled2(j)) { // shortest path found
                                 // trace back path from j to end_node and from i to start_node
-                                return trace_path(i,j, edge_op);
+                                return trace_path(i,j, edge_op, a_it->edge());
                             }
 
                         }
@@ -491,7 +511,7 @@ namespace LPMP {
                     for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) { 
                         const std::size_t j = a_it->head();
 
-                        if(mask_op(i,j,a_it->edge())) {
+                        if(mask_op(i,j,a_it->edge(), distance)) {
 
                             if(!labelled(j)) {
                                 visit.push_back({j, distance+1});
@@ -500,7 +520,7 @@ namespace LPMP {
                                 label2(j);
                             } else if(labelled1(j)) { // shortest path found
                                 // trace back path from j to end_node and from i to start_node
-                                return trace_path(i,j, edge_op);
+                                return trace_path(i,j, edge_op, a_it->edge());
                             }
 
                         }
@@ -512,7 +532,39 @@ namespace LPMP {
             return std::vector<std::size_t>({});
         }
 
-        private:
+        // traverse all edges that have at least one endpoint in current component
+        template<typename CUT_EDGE_OP>
+        void traverse_component(const std::size_t start_node, CUT_EDGE_OP cut_edge_op)
+        {
+           reset();
+           visit.push_back({start_node, 0});
+           label1(start_node);
+           parent(start_node) = start_node;
+
+           while(!visit.empty()) {
+              const std::size_t i = visit.front()[0];
+              const std::size_t distance = visit.front()[1];
+              visit.pop_front();
+
+              assert(g.begin(i) < g.end(i));
+
+              if(labelled1(i)) {
+                 for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) { 
+                    const std::size_t j = a_it->head();
+
+                    if(!cut_edge_op(i,j,*a_it)) {
+                       if(!labelled(j)) {
+                          visit.push_back({j, distance+1});
+                          parent(j) = i;
+                          label1(j);
+                       } 
+                    }
+                 }
+              } 
+           }
+        }
+
+       private:
         std::vector<item> d;
         std::deque<std::array<std::size_t,2>> visit; // node number, distance from start or end 
         std::size_t flag1, flag2;
@@ -520,5 +572,3 @@ namespace LPMP {
     };
 
 } // namespace LPMP
-
-#endif // LPMP_CUT_PACKING_HXX

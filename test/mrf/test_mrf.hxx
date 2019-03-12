@@ -34,7 +34,7 @@ std::vector<std::string> solver_options = {
    {"--primalComputationInterval"}, {"5"},
    {"--standardReparametrization"}, {"anisotropic"},
    {"--roundingReparametrization"}, {"anisotropic"},
-   {"-v"}, {"0"},
+   {"-v"}, {"2"},
    {"--inputFile"}, uai_test_input
 };
 

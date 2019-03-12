@@ -17,6 +17,6 @@ int main(int argc, char** argv)
 
     std::fstream s(argv[2], s.out);
     if(!s.is_open()) throw std::runtime_error(std::string("output file ") + argv[2] + " could not be opened");
-    max_cut_input.write(s); 
+    max_cut_input.write_problem(s); 
 }
 

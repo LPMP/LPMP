@@ -25,7 +25,7 @@ struct FMC_SRMP { // equivalent to SRMP or TRWS
    using MessageList = meta::list< UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer >;
 
    using mrf = mrf_constructor<FMC_SRMP,0,1,0,1>;
-   using ProblemDecompositionList = meta::list<mrf>;
+   using problem_constructor = mrf;
 };
 
 struct FMC_SRMP_T { // equivalent to SRMP or TRWS
@@ -49,7 +49,7 @@ struct FMC_SRMP_T { // equivalent to SRMP or TRWS
 
    using mrf = mrf_constructor<FMC_SRMP_T,0,1,0,1>;
    using tighteningMrf = tightening_mrf_constructor<mrf,2,2,3,4>;
-   using ProblemDecompositionList = meta::list<tighteningMrf>;
+   using problem_constructor = tighteningMrf;
 };
 
 
@@ -67,7 +67,7 @@ struct FMC_MPLP {
    using MessageList = meta::list< UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer >;
 
    using mrf = mrf_constructor<FMC_MPLP,0,1,0,1>;
-   using ProblemDecompositionList = meta::list<mrf>;
+   using problem_constructor = mrf;
 };
 
 } // namespace LPMP

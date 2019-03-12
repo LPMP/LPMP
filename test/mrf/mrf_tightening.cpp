@@ -13,7 +13,7 @@ int main()
     tightening_solver_options.push_back("--tightenIteration");
     tightening_solver_options.push_back("5");
     tightening_solver_options.push_back("--tightenConstraintsMax");
-    tightening_solver_options.push_back("1");
+    tightening_solver_options.push_back("10");
     tightening_solver_options.push_back("--tightenInterval");
     tightening_solver_options.push_back("10");
     tightening_solver_options.push_back("--tightenReparametrization");
@@ -23,7 +23,7 @@ int main()
     // binary triplet
     {
         SolverType s(tightening_solver_options);
-        auto& mrf = s.template GetProblemConstructor<0>();
+        auto& mrf = s.GetProblemConstructor();
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
@@ -38,13 +38,13 @@ int main()
 
         mrf.add_tightening_triplet(0,1,2);
         s.Solve();
-        test(std::abs(s.lower_bound() - 1.0) <= eps);
+        test(std::abs(s.lower_bound() - 1.0) <= 1e-6, "lower bound for cycle of length 3, binary labels");
     }
 
     // multi-label triplet
     {
         SolverType s(tightening_solver_options);
-        auto& mrf = s.template GetProblemConstructor<0>();
+        auto& mrf = s.GetProblemConstructor();
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
         mrf.add_unary_factor(std::vector<REAL>(3,0.0));
         mrf.add_unary_factor(std::vector<REAL>(4,0.0));
@@ -60,13 +60,13 @@ int main()
 
         mrf.add_tightening_triplet(0,1,2);
         s.Solve();
-        test(std::abs(s.lower_bound() - 1.0) <= eps);
+        test(std::abs(s.lower_bound() - 1.0) <= 1e-6, "lower bound for cycle of length 3, multiple labels");
     }
 
     // triplet search
     {
         SolverType s(tightening_solver_options);
-        auto& mrf = s.template GetProblemConstructor<0>(); 
+        auto& mrf = s.GetProblemConstructor(); 
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
         mrf.add_unary_factor(std::vector<REAL>(3,0.0));
         mrf.add_unary_factor(std::vector<REAL>(4,0.0));
@@ -81,13 +81,13 @@ int main()
         mrf.add_pairwise_factor(1,2,pos_potts_34);
 
         s.Solve();
-        test(std::abs(s.lower_bound() - 1.0) <= eps);
+        test(std::abs(s.lower_bound() - 1.0) <= 1e-6, "triplet search for binary label space");
     }
 
     // cycle: k projection graph (individual labels) can find violated cycle
     {
         SolverType s(tightening_solver_options);
-        auto& mrf = s.template GetProblemConstructor<0>();
+        auto& mrf = s.GetProblemConstructor();
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
         mrf.add_unary_factor(std::vector<REAL>(2,0.0));
@@ -102,7 +102,9 @@ int main()
         mrf.add_pairwise_factor(0,3,pos_potts);
 
         s.Solve();
-        test(std::abs(s.lower_bound() - 1.0) <= eps);
+
+        test(mrf.get_number_of_triplet_factors() >= 1, "k-projection graph must find additional triplets\n");
+        test(std::abs(s.lower_bound() - 1.0) <= 1e-6, "k -projection graph for cycle of length 4");
     }
 
     // to do: add test problem where only create_expanded_projection_graph, but not create_k_projection_graph, can find a violated cycle.
@@ -111,7 +113,7 @@ int main()
     {
        // cycle: expanded projection graph
        SolverType s(tightening_solver_options);
-       auto& mrf = s.template GetProblemConstructor<0>();
+       auto& mrf = s.GetProblemConstructor();
        mrf.add_unary_factor(std::vector<REAL>(4,0.0));
        mrf.add_unary_factor(std::vector<REAL>(4,0.0));
        mrf.add_unary_factor(std::vector<REAL>(4,0.0));
@@ -136,4 +138,6 @@ int main()
        test(s.lower_bound() == 1.0);
        }
      */
+
+    return 0;
 }

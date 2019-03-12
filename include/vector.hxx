@@ -723,8 +723,8 @@ public:
    template<typename E>
    void operator=(const vector_expression<T,E>& o) {
       assert(size() == o.size());
-      for(INDEX i=0; i<o.size(); ++i) { 
-         (*this)[i] = o[i]; }
+      for(std::size_t i=0; i<o.size(); ++i)
+         (*this)[i] = o[i]; 
    }
    template<typename E>
    void operator-=(const vector_expression<T,E>& o) {
@@ -749,7 +749,7 @@ public:
       }
    }
 
-   constexpr static INDEX size() { return N; }
+   constexpr static std::size_t size() { return N; }
 
    T operator[](const INDEX i) const {
       assert(i<size());

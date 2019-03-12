@@ -25,7 +25,7 @@ int main(int argc, char** argv)
                     pl.push_back(bd(gen));
                 } 
 
-                max_cut_instance::labeling mcl = transform_binary_Potts_labeling_to_max_cut(Potts,pl);
+                max_cut_edge_labeling mcl = transform_binary_Potts_labeling_to_max_cut(Potts,pl);
 
                 test(std::abs(Potts.evaluate(pl) - max_cut.evaluate(mcl)) <= 1e-8);
             } 

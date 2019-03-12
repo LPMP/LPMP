@@ -2,13 +2,28 @@ project(LPMP)
 
 cmake_minimum_required(VERSION 2.8.12)
 
-# C++11
-add_compile_options(-std=c++17)
+# C++17
+set(CMAKE_CXX_FLAGS "-std=c++17")
+#set(CMAKE_CXX_FLAGS "-fuse-ld=gold")
 
 # compiler options
 add_definitions(-march=native)
 
+#linker options
+#set(CMAKE_SHARED_LINKER_FLAGS "--compress-debug-sections=zlib")
+#add_link_options("--compress-debug-sections=zlib")
+
+# information for e.g. YouCompleteMe
+SET( CMAKE_EXPORT_COMPILE_COMMANDS ON )
+IF( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
+    EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+        ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
+        )
+ENDIF()
+
 add_library(LPMP INTERFACE)
+target_include_directories(LPMP INTERFACE external)
 target_include_directories(LPMP INTERFACE external/qpbo/include)
 target_include_directories(LPMP INTERFACE external/maxflow/include)
 target_include_directories(LPMP INTERFACE include)
@@ -21,6 +36,9 @@ target_include_directories(LPMP INTERFACE external/ConicBundle/include)
 target_include_directories(LPMP INTERFACE external/arboricity)
 target_include_directories(LPMP INTERFACE external/MCF-SSP)
 target_include_directories(LPMP INTERFACE external/andres-graph/include)
+target_include_directories(LPMP INTERFACE external/tsl-robin-map/include)
+
+target_link_libraries(LPMP INTERFACE pthread)
 
 # for opengm #
 target_include_directories(LPMP INTERFACE external/opengm/include)

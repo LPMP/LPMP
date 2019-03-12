@@ -1,5 +1,4 @@
-#ifndef LPMP_TEST_H
-#define LPMP_TEST_H
+#pragma once
 
 #include <stdexcept>
 #include <string>
@@ -12,7 +11,7 @@ struct test_exception
    std::string error_message; 
 };
 
-inline void test(const bool& pred, const std::string& error_message = "")
+inline void test(const bool pred, const std::string& error_message = "")
 {
     std::string msg;
     if(!error_message.empty()) {
@@ -26,6 +25,3 @@ inline void test(const bool& pred, const std::string& error_message = "")
 }
 
 }
-
-#endif // LPMP_TEST_H
-

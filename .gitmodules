@@ -41,3 +41,6 @@
 [submodule "external/Eigen"]
 	path = external/Eigen
 	url = https://github.com/eigenteam/eigen-git-mirror.git
+[submodule "external/tsl-robin-map"]
+	path = external/tsl-robin-map
+	url = https://github.com/Tessil/robin-map.git
