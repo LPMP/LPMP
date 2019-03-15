@@ -7,7 +7,7 @@
 #include <eigen3/unsupported/Eigen/KroneckerProduct>
 #include "MCF-SSP/mcf_ssp.hxx"
 #include "commutation_matrix.h"
-#include "cubic_function_roots.h"
+#include "polynomial_functions.h"
 
 namespace LPMP {
 
@@ -337,7 +337,7 @@ namespace LPMP {
             }
         }
 
-        quadratic_function f(quartic_term, cubic_term, quadratic_term, linear_term, 0.0);
+        quartic_function f(quartic_term, cubic_term, quadratic_term, linear_term, 0.0);
         auto minima = f.minima();
 
         const double gamma = 2.0/(0.1*double(iter)+3.0);
