@@ -7,6 +7,7 @@ namespace LPMP {
 
     constexpr static double tolerance = 1e-8;
 
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
     class graph_matching_frank_wolfe {
         public:
             graph_matching_frank_wolfe(const graph_matching_input& gm, const graph_matching_input::labeling& l = {});
@@ -14,33 +15,60 @@ namespace LPMP {
             std::size_t no_left_nodes() const;
             std::size_t no_right_nodes() const;
 
-            bool feasible() const;
-            double evaluate() const;
+            template<typename MATRIX>
+                bool feasible(const MATRIX& m) const;
+            bool feasible() const { return feasible(M); }
+            template<typename MATRIX>
+                double evaluate(const MATRIX& m) const;
+            double evaluate() const { return evaluate(M); }
             bool perform_fw_step(const std::size_t iter);
-            void round();
+            Eigen::SparseMatrix<double> round();
             void solve();
+
         private:
+            std::size_t linear_coeff(const std::size_t i, const std::size_t j) const { assert(i<no_left_nodes()); assert(j<no_right_nodes()); return i*no_right_nodes() + j; }
+
             template<typename MATRIX>
                 void update_costs(const MATRIX& m);
-            Eigen::MatrixXd read_solution() const;
+            Eigen::SparseVector<double> read_solution() const;
 
             std::array<std::size_t,2> quadratic_indices(const std::size_t l1, const std::size_t l2, const std::size_t r1, const std::size_t r2);
 
             // objective: M.vec().transpose() * Q * M.vec() + <L, M>
-            Eigen::MatrixXd Q; // quadratic costs
-            Eigen::MatrixXd L; // linear costs
-            Eigen::MatrixXd M; // current matching
+            const std::size_t no_left_nodes_, no_right_nodes_;
+            QUADRATIC_COST_TYPE Q; // quadratic costs
+            ASSIGNMENT_VECTOR_TYPE L; // linear costs
+            ASSIGNMENT_VECTOR_TYPE M; // current matching
             MCF::SSP<int, double> mcf; 
     };
 
-    graph_matching_frank_wolfe::graph_matching_frank_wolfe(const graph_matching_input& gm, const graph_matching_input::labeling& labeling)
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::graph_matching_frank_wolfe(const graph_matching_input& gm, const graph_matching_input::labeling& labeling)
         :
-            Q(Eigen::MatrixXd::Zero(gm.no_left_nodes*gm.no_right_nodes, gm.no_left_nodes*gm.no_right_nodes)),
-            L(Eigen::MatrixXd::Zero(gm.no_left_nodes, gm.no_right_nodes)),
-            M(Eigen::MatrixXd::Zero(gm.no_left_nodes, gm.no_right_nodes))
+            no_left_nodes_(gm.no_left_nodes),
+            no_right_nodes_(gm.no_right_nodes),
+            Q(gm.no_left_nodes*gm.no_right_nodes, gm.no_left_nodes*gm.no_right_nodes),
+            L(gm.no_left_nodes*gm.no_right_nodes),
+            M(gm.no_left_nodes*gm.no_right_nodes)
     {
-        for(const auto a : gm.assignments)
-            L(a.left_node, a.right_node) = a.cost; 
+        Q.setZero();
+        L.setZero();
+        M.setZero();
+
+        // TODO: reserve size for Q and L is they are sparse
+        L.reserve(gm.assignments.size());
+        Q.reserve(gm.quadratic_terms.size());
+
+        for(const auto a : gm.assignments) {
+            if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::VectorXd>) {
+                assert(L(linear_coeff(a.left_node, a.right_node)) == 0.0); 
+                L(linear_coeff(a.left_node, a.right_node)) = a.cost; 
+            } else if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::SparseVector<double>>) {
+                assert(L.coeff(linear_coeff(a.left_node, a.right_node)) == 0.0); 
+                L.insert(linear_coeff(a.left_node, a.right_node)) = a.cost; 
+            } else
+                static_assert("Only Eigen::MatrixXd and Eigen::SparseMatrix<double> allowed as template types");
+        }
 
         for(const auto& q : gm.quadratic_terms) {
             const std::size_t l1 = gm.assignments[q.assignment_1].left_node;
@@ -49,15 +77,33 @@ namespace LPMP {
             const std::size_t r2 = gm.assignments[q.assignment_2].right_node;
 
             const auto q_idx = quadratic_indices(l1,l2,r1,r2);
-            assert(Q(q_idx[0], q_idx[1]) == 0.0);
-            Q(q_idx[0], q_idx[1]) = q.cost;
+            if constexpr(std::is_same_v<QUADRATIC_COST_TYPE, Eigen::MatrixXd>) {
+                assert(Q(q_idx[0], q_idx[1]) == 0.0);
+                Q(q_idx[0], q_idx[1]) = q.cost;
+            } else if constexpr(std::is_same_v<QUADRATIC_COST_TYPE, Eigen::SparseMatrix<double>>) {
+                assert(Q.coeff(q_idx[0], q_idx[1]) == 0.0);
+                Q.insert(q_idx[0], q_idx[1]) = q.cost;
+            } else
+                static_assert("Only Eigen::MatrixXd and Eigen::SparseMatrix<double> allowed as template types");
         } 
+
+        if constexpr(std::is_same_v<QUADRATIC_COST_TYPE, Eigen::MatrixXd>)
+            Q = (0.5*(Q + Q.transpose())).eval();
+        else if constexpr(std::is_same_v<QUADRATIC_COST_TYPE, Eigen::SparseMatrix<double>>)
+            Q = (0.5*(Q + Eigen::SparseMatrix<double>(Q.transpose()))).eval(); 
+        else
+            static_assert("Only Eigen::MatrixXd and Eigen::SparseMatrix<double> allowed as template types");
 
         assert(labeling.size() <= M.rows());
         for(std::size_t l=0; l<labeling.size(); ++l) {
             if(labeling[l] != std::numeric_limits<std::size_t>::max()) {
                 assert(labeling[l] < no_right_nodes());
-                M(l, labeling[l]) = 1.0;
+                if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::VectorXd>)
+                    M(linear_coeff(l, labeling[l])) = 1.0;
+                else if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::SparseVector<double>>)
+                    M.insert(linear_coeff(l, labeling[l])) = 1.0;
+                else
+                    static_assert("Only Eigen::MatrixXd and Eigen::SparseMatrix<double> allowed as template types");
             }
         }
 
@@ -69,70 +115,98 @@ namespace LPMP {
         }
 
         gm.initialize_mcf(mcf);
+
+        std::cout << "initialized problem\n";
+
+        if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::SparseMatrix<double>>)
+            L.makeCompressed();
+
+        if constexpr(std::is_same_v<QUADRATIC_COST_TYPE, Eigen::SparseMatrix<double>>)
+            Q.makeCompressed();
     }
 
-    std::size_t graph_matching_frank_wolfe::no_left_nodes() const
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    std::size_t graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::no_left_nodes() const
     {
-        return L.rows();
+        return no_left_nodes_;
     }
-    std::size_t graph_matching_frank_wolfe::no_right_nodes() const
+
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    std::size_t graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::no_right_nodes() const
     {
-        return L.cols();
+        return no_right_nodes_;
     }
-    std::array<std::size_t,2> graph_matching_frank_wolfe::quadratic_indices(const std::size_t l1, const std::size_t l2, const std::size_t r1, const std::size_t r2)
+
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    std::array<std::size_t,2> graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::quadratic_indices(const std::size_t l1, const std::size_t l2, const std::size_t r1, const std::size_t r2)
     {
         assert(l1 < no_left_nodes() && l2 < no_left_nodes());
         assert(r1 < no_right_nodes() && r2 < no_right_nodes());
         return {l1*no_right_nodes() + r1, l2*no_right_nodes() + r2};
     }
 
-    bool graph_matching_frank_wolfe::feasible() const
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    template<typename MATRIX>
+        bool graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::feasible(const MATRIX& m) const
     {
-        if((M.array() < -tolerance).any())
+        return false;
+        /*
+        if((m.array() < -tolerance).any())
             return false;
 
-        const auto r_sum = M.rowwise().sum();
+        const auto r_sum = m.rowwise().sum();
         if( (r_sum.array() > 1.0 + tolerance).any() )
             return false;
 
-        const auto c_sum = M.colwise().sum();
+        const auto c_sum = m.colwise().sum();
         if( (c_sum.array() > 1.0 + tolerance).any() )
             return false;
 
         return true;
+        */
     }
-    double graph_matching_frank_wolfe::evaluate() const
+
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    template<typename MATRIX>
+        double graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::evaluate(const MATRIX& m) const
     {
         assert(feasible());
 
-        const double linear_cost = (L.array()*M.array()).sum();
+        const double linear_cost = L.dot(m); // (L.array()*m.array()).sum();
 
-        const Eigen::Map<const Eigen::VectorXd> M_v(M.data(), M.size());
-        const double quadratic_cost = (M_v.transpose() * Q * M_v)(0,0);
+        const double quadratic_cost = m.cwiseProduct(Q*m).sum();
         
         return linear_cost + quadratic_cost;
     }
 
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
     template<typename MATRIX>
-        void graph_matching_frank_wolfe::update_costs(const MATRIX& cost_m) 
+        void graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::update_costs(const MATRIX& cost_m) 
         {
             mcf.reset_costs();
-            assert(cost_m.rows() == no_left_nodes() && cost_m.cols() == no_right_nodes());
+            //assert(cost_m.rows() == no_left_nodes() && cost_m.cols() == no_right_nodes());
             for(std::size_t i=0; i<no_left_nodes(); ++i) {
                 auto e_first = mcf.first_outgoing_arc(i);
                 for(std::size_t e_c=0; e_c+1<mcf.no_outgoing_arcs(i); ++e_c) {
                     const std::size_t e = e_first + e_c;
                     assert(mcf.head(e) >= no_left_nodes());
                     const std::size_t j = mcf.head(e) - no_left_nodes();
-                    mcf.update_cost(e, cost_m(i,j));
+                    if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::VectorXd>)
+                        mcf.update_cost(e, cost_m(linear_coeff(i,j)));
+                    else if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::SparseVector<double>>)
+                        mcf.update_cost(e, cost_m.coeff(linear_coeff(i,j)));
+                    else
+                        static_assert("Only Eigen::MatrixXd and Eigen::SparseMatrix<double> allowed as template types");
                 }
             }
-        };
+        }
 
-    // possibly use sparse matrix here
-    Eigen::MatrixXd graph_matching_frank_wolfe::read_solution() const
+    // possibly sparse matrix does not accelerate
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    Eigen::SparseVector<double> graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::read_solution() const
     { 
-        Eigen::MatrixXd sol = Eigen::MatrixXd::Zero(no_left_nodes(), no_right_nodes());
+        Eigen::SparseVector<double> sol(no_left_nodes()*no_right_nodes());
+        sol.reserve(Eigen::VectorXi::Constant(sol.cols(), 1));
         for(std::size_t i=0; i<no_left_nodes(); ++i) {
             auto e_first = mcf.first_outgoing_arc(i);
             for(std::size_t e_c=0; e_c+1<mcf.no_outgoing_arcs(i); ++e_c) {
@@ -141,65 +215,79 @@ namespace LPMP {
                 if(mcf.flow(e) == 1) {
                     assert(mcf.head(e) >= no_left_nodes());
                     const std::size_t j = mcf.head(e) - no_left_nodes();
-                    sol(i,j) = 1.0;
+                    sol.insert(linear_coeff(i,j)) = 1.0;
                 }
             }
         }
         return sol; 
-    };
-    bool graph_matching_frank_wolfe::perform_fw_step(const std::size_t iter)
+    }
+
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    bool graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::perform_fw_step(const std::size_t iter)
     {
         assert(feasible());
 
         // compute gradient
-        const Eigen::Map<const Eigen::VectorXd> M_v(M.data(), M.size());
-        const Eigen::Map<const Eigen::VectorXd> L_v(L.data(), L.size());
-        const Eigen::VectorXd g_v = L_v + Q*M_v + Q.transpose()*M_v;
-        const Eigen::Map<const Eigen::MatrixXd> g(g_v.data(), M.rows(), M.cols());
+        const ASSIGNMENT_VECTOR_TYPE g(L + 2*Q*M);
+        //const Eigen::Map<const Eigen::MatrixXd> g(g_v.data(), M.rows(), M.cols());
 
         // min_x <x,g> s.t. x in matching polytope
         update_costs(g);
         mcf.solve();
         const auto s = read_solution();
-        const Eigen::MatrixXd d = s-M; // update direction
-        const Eigen::Map<const Eigen::VectorXd> d_v(d.data(), d.size()); 
-        const double gap = (d.array() * (-g.array())).sum();
-        std::cout << "gap = " << gap << "\n";
+        const ASSIGNMENT_VECTOR_TYPE d(s-M); // update direction
+        const double gap = -d.cwiseProduct(g).sum();
+        if(iter%20 == 0)
+            std::cout << "gap = " << gap << "\n";
         if(gap < 1e-4) {
             std::cout << "gap smaller than threshold, terminate!\n";
             return false;
         }
 
         // optimal step size
-        const double linear_term = (d.array()*L.array()).sum() + (d_v.transpose()*Q*M_v)(0,0) + (M_v.transpose()*Q*d_v)(0,0);
-        const double quadratic_term = ( d_v.transpose()*Q*d_v )(0,0);
-        //const double gamma = std::min(-linear_term / (2.0*quadratic_term), 1.0);
-        //assert(gamma >= 0.0);
-        //const double gamma = std::min(1.0, gap/10000); // TODO: estimate correctly
-        const double gamma = 2.0/(iter+3.0);
-        std::cout << "iteration = " << iter << ", optimal step size = " << gamma << ", quadratic term = " << quadratic_term << ", linear term = " << linear_term << "\n";
+        double linear_term = d.cwiseProduct(L).sum() + 2.0*d.cwiseProduct(Q*M).sum();
+        const double quadratic_term = d.cwiseProduct(Q*d).sum();
+        const double gamma = [&]() {
+            if(quadratic_term > 0.0)
+                return std::min(-linear_term / (2.0*quadratic_term), 1.0);
+            else
+                return 1.0;
+        }();
+
+        // diminishing step size
+        //const double gamma = 2.0/(iter+3.0);
+
         M += gamma * d;
+
+        if(iter%20 == 0)
+            std::cout << "iteration = " << iter << ", optimal step size = " << gamma << ", quadratic term = " << quadratic_term << ", linear term = " << linear_term << "\n";
 
         return true;
     }
 
-    void graph_matching_frank_wolfe::round()
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    Eigen::SparseMatrix<double> graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::round()
     {
-        update_costs(-M);
+        update_costs(ASSIGNMENT_VECTOR_TYPE(-M));
         mcf.solve();
-        M = read_solution();
+        return read_solution();
     }
 
-    void graph_matching_frank_wolfe::solve()
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    void graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::solve()
     {
-        for(std::size_t iter=0; iter<200; ++iter) {
+        for(std::size_t iter=0; iter<400; ++iter) {
             if(!perform_fw_step(iter))
                 break;
-            std::cout << "objective = " << evaluate() << "\n";
+            if(iter%20 == 0)
+                std::cout << "objective = " << evaluate() << "\n";
         }
 
-        round();
+        M = round();
         std::cout << "Rounded solution cost = " << evaluate() << "\n";
     }
+
+    using graph_matching_frank_wolfe_dense = graph_matching_frank_wolfe<Eigen::VectorXd, Eigen::MatrixXd>;
+    using graph_matching_frank_wolfe_sparse = graph_matching_frank_wolfe<Eigen::SparseVector<double>, Eigen::SparseMatrix<double>>;
 
 }

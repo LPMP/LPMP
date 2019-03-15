@@ -101,3 +101,6 @@ endforeach( source_file ${MGM_SOURCE_FILES} )
 
 add_executable(graph_matching_fw graph_matching_fw.cpp)
 target_link_libraries(graph_matching_fw LPMP graph_matching_input)
+
+add_executable(graph_matching_frank_wolfe_sparse_text_input graph_matching_frank_wolfe_sparse_text_input.cpp)
+target_link_libraries(graph_matching_frank_wolfe_sparse_text_input LPMP graph_matching_input)

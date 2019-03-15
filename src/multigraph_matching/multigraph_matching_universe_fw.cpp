@@ -13,5 +13,4 @@ int main(int argc, char** argv)
 
     multigraph_matching_frank_wolfe_universe s(input);
     s.solve();
-    std::cout << s.evaluate() << "\n";
 }

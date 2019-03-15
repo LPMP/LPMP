@@ -7,6 +7,7 @@
 #include <eigen3/unsupported/Eigen/KroneckerProduct>
 #include "MCF-SSP/mcf_ssp.hxx"
 #include "commutation_matrix.h"
+#include "cubic_function_roots.h"
 
 namespace LPMP {
 
@@ -16,8 +17,14 @@ namespace LPMP {
         public:
             multigraph_matching_frank_wolfe_universe(const multigraph_matching_input& instance, const std::size_t universe_size = std::numeric_limits<std::size_t>::max());
 
-            bool feasible() const;
-            double evaluate() const;
+            template<typename MATRIX>
+                bool feasible(const MATRIX& m) const;
+            bool feasible() const { return feasible(M); }
+
+            template<typename MATRIX>
+                double evaluate(const MATRIX& m) const;
+            double evaluate() const { return evaluate(M); }
+
             bool perform_fw_step(const std::size_t iter);
             void round();
             void solve();
@@ -28,15 +35,16 @@ namespace LPMP {
         private:
             template<typename MATRIX>
                 void update_costs(const MATRIX& m);
-            Eigen::MatrixXd read_solution() const;
+            Eigen::SparseMatrix<double> read_solution() const;
 
-            std::array<std::size_t,2> linear_indices(const std::size_t p, const std::size_t q, const std::size_t i, const std::size_t j); // graph 1, graph 2, node in graph 1, node in graph 2
+            std::array<std::size_t,2> linear_indices(const std::size_t p, const std::size_t q, const std::size_t i, const std::size_t j) const; // graph 1, graph 2, node in graph 1, node in graph 2
             std::array<std::size_t,2> quadratic_indices(const std::size_t p, const std::size_t q, const std::size_t l1, const std::size_t l2, const std::size_t r1, const std::size_t r2) const; // graph 1, graph 2, nodes in graph 1, nodes in graph 2
 
-            template<typename MATRIX>
-            auto get_assignment_slice(MATRIX& m, const std::size_t p) const { return m.block(gs.node_no(p,0), 0, gs.no_nodes(p), universe_size()); }
-
             auto get_cost(const std::size_t p, const std::size_t q) { return Q.block(q_gs.node_no(p,0), q_gs.node_no(q,0), q_gs.no_nodes(p), q_gs.no_nodes(q)); }
+            const auto get_cost(const std::size_t p, const std::size_t q) const { return Q.block(q_gs.node_no(p,0), q_gs.node_no(q,0), q_gs.no_nodes(p), q_gs.no_nodes(q)); }
+
+            template<typename MATRIX>
+                auto get_assignment_slice(MATRIX& m, const std::size_t p) const { return m.block(gs.node_no(p,0), 0, gs.no_nodes(p), universe_size()); }
             auto get_assignment_slice(const std::size_t p) { return get_assignment_slice(M, p); }
             const auto get_assignment_slice(const std::size_t p) const { return get_assignment_slice(M, p); }
 
@@ -97,23 +105,9 @@ namespace LPMP {
             mcfs.push_back(MCF::SSP<int,double>());
             gm.gm_input.initialize_mcf(mcfs.back());
         }
-
-        // product matrix for quadratic potential multiplication
-        l = Eigen::SparseMatrix<double>(q_gs.total_no_nodes(), std::pow(gs.total_no_nodes(),2));
-        l.reserve(Eigen::VectorXi::Constant(l.cols(), 1));
-        std::size_t i = 0;
-        for(std::size_t p=0; p<gs.no_graphs(); ++p) {
-            const std::size_t p_size = gs.no_nodes(p);
-            for(std::size_t q=0; q<gs.no_graphs(); ++q) {
-                const std::size_t q_size = gs.no_nodes(q);
-                for(std::size_t c=0; c<p_size*q_size; ++c) {
-                    l.insert(q_gs.node_no(p,c), i++) = 1.0;
-                }
-            }
-        }
     }
 
-    std::array<std::size_t,2> multigraph_matching_frank_wolfe_universe::linear_indices(const std::size_t p, const std::size_t q, const std::size_t l, const std::size_t r)
+    std::array<std::size_t,2> multigraph_matching_frank_wolfe_universe::linear_indices(const std::size_t p, const std::size_t q, const std::size_t l, const std::size_t r) const
     {
         assert(p < gs.no_graphs() && q < gs.no_graphs());
         assert(l < gs.no_nodes(p) && r < gs.no_nodes(q));
@@ -135,12 +129,15 @@ namespace LPMP {
         return M.cols();
     }
 
-    bool multigraph_matching_frank_wolfe_universe::feasible() const
+    template<typename MATRIX>
+    bool multigraph_matching_frank_wolfe_universe::feasible(const MATRIX& m) const
     {
-        if((M.array() < -tolerance).any())
+        assert(m.cols() == M.cols() && m.rows() == M.rows());
+
+        if((m.array() < -tolerance).any())
             return false;
 
-        const auto r_sum = M.rowwise().sum();
+        const auto r_sum = m.rowwise().sum();
         if( (r_sum.array() > 1.0 + tolerance).any() )
             return false;
 
@@ -154,16 +151,27 @@ namespace LPMP {
         return true;
     }
 
-    double multigraph_matching_frank_wolfe_universe::evaluate() const
+    template<typename MATRIX>
+    double multigraph_matching_frank_wolfe_universe::evaluate(const MATRIX& m) const
     {
-        assert(feasible());
+        assert(m.cols() == M.cols() && m.rows() == M.rows());
+        assert(feasible(m));
 
-        const double linear_cost = (L.array() * (M*M.transpose()).array()).sum();
+        const double linear_cost = (L.array() * (m*m.transpose()).array()).sum();
 
-        const Eigen::MatrixXd M_prod = M*M.transpose();
-        const Eigen::Map<const Eigen::VectorXd> M_prod_v(M_prod.data(), M_prod.size());
-
-        const double quadratic_cost = M_prod_v.transpose() * l.transpose() * Q * l * M_prod_v;
+        double quadratic_cost = 0.0;
+        for(std::size_t i=0; i<gs.no_graphs(); ++i) {
+            const auto m_i = get_assignment_slice(m, i);
+            for(std::size_t j=0; j<gs.no_graphs(); ++j) { // TODO: currently we could sum from i+1
+                if(i == j)
+                    continue;
+                const auto m_j = get_assignment_slice(m, j);
+                const Eigen::MatrixXd m_ij = m_i * m_j.transpose();
+                const Eigen::Map<const Eigen::VectorXd> m_ij_v(m_ij.data(), m_ij.size());
+                const auto c = get_cost(j,i);
+                quadratic_cost += m_ij_v.transpose() * c * m_ij_v; 
+            }
+        }
 
         return linear_cost + quadratic_cost; 
     }
@@ -172,9 +180,10 @@ namespace LPMP {
         void multigraph_matching_frank_wolfe_universe::update_costs(const MATRIX& cost_m) 
         {
             assert(cost_m.rows() == M.rows() && cost_m.cols() == M.cols());
-            // TODO: parallelize
-            for(auto& mcf : mcfs)
-                mcf.reset_costs();
+#pragma omp parallel for
+            for(std::size_t i=0; i<mcfs.size(); ++i) {
+                mcfs[i].reset_costs();
+            }
             assert(cost_m.rows() == gs.total_no_nodes() && cost_m.cols() == universe_size());
             for(std::size_t p=0; p<gs.no_graphs(); ++p) {
                 auto& mcf = mcfs[p];
@@ -193,12 +202,12 @@ namespace LPMP {
         };
 
     // possibly use sparse matrix here
-    Eigen::MatrixXd multigraph_matching_frank_wolfe_universe::read_solution() const
+    Eigen::SparseMatrix<double> multigraph_matching_frank_wolfe_universe::read_solution() const
     { 
-        Eigen::MatrixXd sol = Eigen::MatrixXd::Zero(M.rows(), M.cols());
+        Eigen::SparseMatrix<double> sol(M.rows(), M.cols());
+        sol.reserve(Eigen::VectorXi::Constant(sol.cols(), gs.no_graphs()));
         for(std::size_t p=0; p<gs.no_graphs(); ++p) {
-            auto& mcf = mcfs[p];
-            auto block = sol.block(gs.node_no(p,0), 0, gs.no_nodes(p), universe_size());
+            const auto& mcf = mcfs[p];
 
             for(std::size_t i=0; i<gs.no_nodes(p); ++i) {
                 auto e_first = mcf.first_outgoing_arc(i);
@@ -208,7 +217,7 @@ namespace LPMP {
                     if(mcf.flow(e) == 1) {
                         assert(mcf.head(e) >= gs.no_nodes(p));
                         const std::size_t j = mcf.head(e) - gs.no_nodes(p);
-                        block(i,j) = 1.0;
+                        sol.insert(gs.node_no(p,i),j) = 1.0;
                     }
                 }
             }
@@ -221,81 +230,120 @@ namespace LPMP {
         assert(feasible());
 
         // compute gradient
-
-        // from linear term
-        const auto l_g = L.transpose()*M + L*M;
+        // (i) linear term
+        const auto l_g = (L + L.transpose())*M;
         
-        // from quadratic term
+        // (ii) quadratic term
         Eigen::MatrixXd q_g(M.rows(), M.cols());
         q_g.setZero();
+
+#pragma omp parallel for
         for(std::size_t i=0; i<gs.no_graphs(); ++i) {
             auto g_i = get_assignment_slice(q_g, i);
             const Eigen::MatrixXd M_i = get_assignment_slice(M, i);
             const Eigen::Map<const Eigen::VectorXd> M_i_v(M_i.data(), M_i.size());
-            for(std::size_t j=0; j<i; ++j) {
+
+            for(std::size_t j=0; j<gs.no_graphs(); ++j) {
+                if(i == j) 
+                    continue;
                 const Eigen::MatrixXd M_j = get_assignment_slice(M, j);
-                const Eigen::Map<const Eigen::VectorXd> M_j_v(M_j.data(), M_j.size());
                 const auto Id = identity_matrix(gs.no_nodes(i));
-                const Eigen::MatrixXd c = get_cost(i,j) + get_cost(i,j).transpose();
-                const Eigen::VectorXd q_diff_v = Eigen::kroneckerProduct(M_j, Id).transpose() * c * Eigen::kroneckerProduct(M_j, Id) * M_i_v;
+                const auto c = get_cost(j,i);
+                const Eigen::MatrixXd Q = Eigen::kroneckerProduct(M_j.transpose(), Id) * (c+c.transpose()) * Eigen::kroneckerProduct(M_j, Id);
+                const Eigen::VectorXd q_diff_v = Q * M_i_v;
                 const Eigen::Map<const Eigen::MatrixXd> q_diff(q_diff_v.data(), g_i.rows(), g_i.cols());
                 g_i += q_diff;
-
             }
-            for(std::size_t j=i+1; j<gs.no_graphs(); ++j) {
-                auto g_j = get_assignment_slice(q_g, j);
+
+            for(std::size_t j=0; j<gs.no_graphs(); ++j) {
+                if(i == j)
+                    continue;
+                const auto K = commutation_matrix(M_i.cols(), M_i.rows());
+                const Eigen::MatrixXd M_j = get_assignment_slice(M, j);
+                const auto Id = identity_matrix(gs.no_nodes(i));
+                const auto c = get_cost(i,j);
+                const Eigen::MatrixXd Q = K.transpose() * Eigen::kroneckerProduct(Id, M_j.transpose()) * (c + c.transpose()) * Eigen::kroneckerProduct(Id, M_j) * K; 
+                const Eigen::VectorXd q_diff_v = Q * M_i_v;
+                const Eigen::Map<const Eigen::MatrixXd> q_diff(q_diff_v.data(), g_i.rows(), g_i.cols());
+                g_i += q_diff; 
             } 
         }
 
-        /*
-        const auto Q_bar = l.transpose() * Q * l;
-
-        const Eigen::MatrixXd M_prod = M*M.transpose();
-        const Eigen::Map<const Eigen::VectorXd> M_prod_v(M_prod.data(), M_prod.size());
-        const Eigen::Map<const Eigen::VectorXd> M_v(M.data(), M.size());
-
-        Eigen::SparseMatrix<double> Id(M.rows(), M.rows());
-
-        const Eigen::VectorXd q1_v = Eigen::kroneckerProduct(Id, M.transpose()) * Q_bar * M_prod_v;
-        const Eigen::Map<const Eigen::MatrixXd> q1_m(q1_v.data(), M.rows(), M.cols());
-
-        const Eigen::RowVectorXd q2_v = Eigen::kroneckerProduct(Id, M.transpose()) * Q_bar * M_prod_v;
-        const Eigen::Map<const Eigen::MatrixXd> q2_m_tmp(q2_v.data(), M.cols(), M.rows());
-        const Eigen::MatrixXd q2_m = q2_m_tmp.transpose();
-
-        std::cout << (q1_m - q2_m).norm() << "\n";
-
-        const Eigen::VectorXd q3_v = M_prod_v.transpose() * Q_bar * Eigen::kroneckerProduct(Id, M);
-        const Eigen::Map<const Eigen::MatrixXd> q3_m(q3_v.data(), M.rows(), M.cols());
-
-        const Eigen::VectorXd q4_v = M_prod_v.transpose() * Q_bar * Eigen::kroneckerProduct(Id, M);
-        const Eigen::Map<const Eigen::MatrixXd> q4_m_tmp(q4_v.data(), M.cols(), M.rows());
-        const Eigen::MatrixXd q4_m = q4_m_tmp.transpose();
-
-        const auto q_g = q1_m + q2_m + q3_m + q4_m;
-        */
-
-        const auto g = l_g + q_g;
-        //const auto g = l_g;
+        const auto g = l_g + q_g; // TODO: coefficient before quadratic gradient part: 0.5?
 
         // min_x <x,g> s.t. x in matching polytope
         update_costs(g);
-        // TODO: parallelize
-        for(auto& mcf : mcfs)
-            mcf.solve();
+
+#pragma omp parallel for
+        for(std::size_t i=0; i<mcfs.size(); ++i) {
+            mcfs[i].solve();
+        }
+
         const auto s = read_solution();
-        const Eigen::MatrixXd d = s-M; // update direction
+        Eigen::MatrixXd d = -M; // update direction
+        d += s;
         const Eigen::Map<const Eigen::VectorXd> d_v(d.data(), d.size()); 
         const double gap = (d.array() * (-g.array())).sum();
-        std::cout << "gap = " << gap << "\n";
+        if(iter % 20 == 0)
+            std::cout << "gap = " << gap << "\n";
         //if(gap < 1e-4) {
         //    std::cout << "gap smaller than threshold, terminate!\n";
         //    return false;
         //}
 
+
         // optimal step size
-        const double gamma = 2.0/(0.01*double(iter)+3.0);
-        std::cout << "iteration = " << iter << ", step size = " << gamma << "\n";
+        // quartic function has 3 possible optima and at most two minima. Since we need to cut off at 1.0, we evaluate the minima in (0,1] and evaluate at 1 as well
+        double linear_term = (L.array() * (M*d.transpose() + d*M.transpose()).array()).sum();
+        double quadratic_term = (L.array() * (d*d.transpose()).array()).sum();
+        double cubic_term = 0.0;
+        double quartic_term = 0.0;
+        for(std::size_t i=0; i<gs.no_graphs(); ++i) {
+            const auto m_i = get_assignment_slice(M, i);
+            const auto d_i = get_assignment_slice(d, i);
+            for(std::size_t j=0; j<gs.no_graphs(); ++j) {
+                if(i == j)
+                    continue;
+                const auto m_j = get_assignment_slice(M, j);
+                const auto d_j = get_assignment_slice(d, j);
+                const Eigen::MatrixXd m_i_m_j = m_i * m_j.transpose();
+                const Eigen::Map<const Eigen::VectorXd> m_i_m_j_v(m_i_m_j.data(), m_i_m_j.size());
+                const Eigen::MatrixXd m_i_d_j = m_i * d_j.transpose();
+                const Eigen::Map<const Eigen::VectorXd> m_i_d_j_v(m_i_d_j.data(), m_i_d_j.size());
+                const Eigen::MatrixXd d_i_m_j = d_i * m_j.transpose();
+                const Eigen::Map<const Eigen::VectorXd> d_i_m_j_v(d_i_m_j.data(), d_i_m_j.size());
+                const Eigen::MatrixXd d_i_d_j = d_i * d_j.transpose();
+                const Eigen::Map<const Eigen::VectorXd> d_i_d_j_v(d_i_d_j.data(), d_i_d_j.size());
+                const auto c = get_cost(j,i);
+                
+                quartic_term += d_i_d_j_v.transpose() * c * d_i_d_j_v;
+
+                cubic_term += m_i_d_j_v.transpose() * c * d_i_d_j_v;
+                cubic_term += d_i_m_j_v.transpose() * c * d_i_d_j_v;
+                cubic_term += d_i_d_j_v.transpose() * c * m_i_d_j_v;
+                cubic_term += d_i_d_j_v.transpose() * c * d_i_m_j_v;
+
+                quadratic_term += m_i_m_j_v.transpose() * c * d_i_d_j_v;
+                quadratic_term += m_i_d_j_v.transpose() * c * m_i_d_j_v;
+                quadratic_term += m_i_d_j_v.transpose() * c * d_i_m_j_v; 
+                quadratic_term += d_i_m_j_v.transpose() * c * m_i_d_j_v; 
+                quadratic_term += d_i_m_j_v.transpose() * c * d_i_m_j_v; 
+                quadratic_term += d_i_d_j_v.transpose() * c * m_i_m_j_v;
+
+                linear_term += d_i_m_j_v.transpose() * c * m_i_m_j_v;
+                linear_term += m_i_d_j_v.transpose() * c * m_i_m_j_v; 
+                linear_term += m_i_m_j_v.transpose() * c * d_i_m_j_v; 
+                linear_term += m_i_m_j_v.transpose() * c * m_i_d_j_v;
+            }
+        }
+
+        quadratic_function f(quartic_term, cubic_term, quadratic_term, linear_term, 0.0);
+        auto minima = f.minima();
+
+        const double gamma = 2.0/(0.1*double(iter)+3.0);
+
+        if(iter % 20 == 0)
+            std::cout << "iteration = " << iter << ", step size = " << gamma << "\n";
         M += gamma * d;
 
         return true;
@@ -304,9 +352,12 @@ namespace LPMP {
     void multigraph_matching_frank_wolfe_universe::round()
     {
         update_costs(-M);
-        // TODO: parallelize
-        for(auto& mcf : mcfs)
-            mcf.solve();
+
+#pragma omp parallel for
+        for(std::size_t i=0; i<mcfs.size(); ++i) {
+            mcfs[i].solve();
+        }
+
         M = read_solution();
     }
 
@@ -315,13 +366,24 @@ namespace LPMP {
         for(std::size_t iter=0; iter<200; ++iter) {
             if(!perform_fw_step(iter))
                 break;
-            std::cout << "objective = " << evaluate() << "\n";
+            if(iter % 20 == 0)
+                std::cout << "objective = " << evaluate() << "\n";
         }
 
         round();
+
+        for(std::size_t iter=0; iter<200; ++iter) {
+            if(!perform_fw_step(iter))
+                break;
+            if(iter % 20 == 0)
+                std::cout << "objective = " << evaluate() << "\n";
+        }
+
+        round();
+
         std::cout << "Rounded solution cost = " << evaluate() << "\n";
         const auto s = get_solution();
-        std::cout << "exported solution cost = " << instance_.evaluate(s) << "\n";
+        std::cout << "Exported solution cost = " << instance_.evaluate(s) << "\n";
     }
 
     multigraph_matching_input::labeling multigraph_matching_frank_wolfe_universe::get_solution() const
@@ -341,7 +403,8 @@ namespace LPMP {
             for(std::size_t i=0; i<gs.no_nodes(p); ++i) {
                 for(std::size_t j=0; j<gs.no_nodes(q); ++j) {
                     assert(std::abs(M_pq(i,j)) <= tolerance || std::abs(M_pq(i,j) - 1.0) <= tolerance);
-                    if(M_pq(i,j) > 0.5) {
+                    if(M_pq(i,j) > 0.5) { 
+                        assert(gm_l.labeling[i] == std::numeric_limits<std::size_t>::max());
                         gm_l.labeling[i] = j;
                     }
                 }
