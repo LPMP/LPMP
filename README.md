@@ -8,14 +8,11 @@ For a theoretical introduction to the techniques used and the class of problems 
 
 ## Solvers
 We provide a range of solvers for various discrete optimization problems, including
-* **[Discrete graphical models](https://github.com/LPMP/LPMP/include/mrf)**,
-* **[Multicut](https://github.com/LPMP/LPMP/include/multicut)**, 
-* **[Max-cut](https://github.com/LPMP/LPMP/include/max_cut)**, 
-* **[Graph matching](https://github.com/LPMP/LPMP/include/graph_matching)**, 
-* **[Multi-graph matching](https://github.com/LPMP/LPMP/include/multigraph_matching)**, 
-* **[Discrete tomography](https://github.com/LPMP/LPMP/include/discrete_tomography)**.
-
-## Documentation on how to write an own solver
+* **[Discrete graphical models](/include/mrf)**,
+* **[Multicut](/include/multicut)**, 
+* **[Max-cut](/include/max_cut)**, 
+* **[Graph matching](include/graph_matching)**, 
+* **[Multi-graph matching](/include/multigraph_matching)**, 
 
 ## Optimization techniques
 Optimization techniques include
@@ -31,4 +28,4 @@ Prerequisites:
 
 ## References
 * [1]: [`P. Swoboda, J. Kuske and B. Savchynskyy. A Dual Ascent Framework for Lagrangean Decomposition of Combinatorial Problems. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Dual_Ascent_CVPR_2017_paper.html)
-* [2]: `P. Swoboda and V. Kolmogorov. MAP inference via Block-Coordinate Frank-Wolfe Algorithm. arXiv.`
+* [2]: `P. Swoboda and V. Kolmogorov. MAP inference via Block-Coordinate Frank-Wolfe Algorithm. arXiv
