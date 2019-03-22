@@ -4,7 +4,7 @@
 [submodule "external/PEGTL"]
 	path = external/PEGTL
 	url = https://github.com/taocpp/PEGTL.git
-	branch = 1.3.x
+	branch = 1.x
 [submodule "external/maxflow"]
 	path = external/maxflow
 	url = https://github.com/DerThorsten/maxflow.git
