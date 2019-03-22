@@ -259,3 +259,4 @@ namespace mrf_uai_input {
 
 #endif // LPMP_MRF_UAI_INPUT_IMPL_HXX
 
+

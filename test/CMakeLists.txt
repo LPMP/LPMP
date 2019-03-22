@@ -55,3 +55,7 @@ add_test(graph_test graph_test)
 add_executable(test_commutation_matrix test_commutation_matrix.cpp)
 target_link_libraries(test_commutation_matrix LPMP)
 add_test(test_commutation_matrix test_commutation_matrix)
+
+add_executable(test_polynomial_functions test_polynomial_functions.cpp)
+target_link_libraries(test_polynomial_functions LPMP)
+add_test(test_polynomial_function test_polynomial_functions)

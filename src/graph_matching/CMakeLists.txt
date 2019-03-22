@@ -1,5 +1,8 @@
 add_subdirectory(eval)
 
+add_library(graph_matching_instance  graph_matching_instance.cpp)
+target_link_libraries(graph_matching_instance LPMP)
+
 add_library(multigraph_matching_triplet_consistency_factor multigraph_matching_triplet_consistency_factor.cpp)
 target_link_libraries(multigraph_matching_triplet_consistency_factor LPMP)
 
@@ -17,6 +20,9 @@ target_link_libraries(multigraph_matching_factors INTERFACE transform_multigraph
 
 add_library(graph_matching_input graph_matching_input.cpp)
 target_link_libraries(graph_matching_input LPMP)
+
+add_library(graph_matching_koopmans_beckmann_input graph_matching_koopmans_beckmann_input.cpp)
+target_link_libraries(graph_matching_koopmans_beckmann_input LPMP)
 
 add_library(multigraph_matching_input multigraph_matching_input.cpp)
 target_link_libraries(multigraph_matching_input LPMP graph_matching_input)
@@ -104,3 +110,6 @@ target_link_libraries(graph_matching_fw LPMP graph_matching_input)
 
 add_executable(graph_matching_frank_wolfe_sparse_text_input graph_matching_frank_wolfe_sparse_text_input.cpp)
 target_link_libraries(graph_matching_frank_wolfe_sparse_text_input LPMP graph_matching_input)
+
+add_executable(graph_matching_frank_wolfe_koopmans_beckmann_text_input graph_matching_frank_wolfe_koopmans_beckmann_text_input.cpp)
+target_link_libraries(graph_matching_frank_wolfe_koopmans_beckmann_text_input LPMP graph_matching_koopmans_beckmann_input)

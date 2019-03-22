@@ -51,7 +51,6 @@ namespace LPMP {
             Eigen::MatrixXd Q;
             Eigen::MatrixXd L;
             Eigen::MatrixXd M;
-            Eigen::SparseMatrix<double> l;
             std::vector<MCF::SSP<int, double>> mcfs;
             multigraph_matching_input::graph_size gs;
             multigraph_matching_input::graph_size q_gs;
@@ -62,7 +61,6 @@ namespace LPMP {
     multigraph_matching_frank_wolfe_universe::multigraph_matching_frank_wolfe_universe(const multigraph_matching_input& instance, const std::size_t universe_size)
         : gs(instance),
         instance_(instance)
-
     {
         // TODO: can be better solved with transformed iterators
         std::vector<std::size_t> squared_node_no;
@@ -339,10 +337,21 @@ namespace LPMP {
 
         quartic_function f(quartic_term, cubic_term, quadratic_term, linear_term, 0.0);
         auto minima = f.minima();
+        double best_step_size = 1.0;
+        double best_val = f.evaluate(1.0);
+        for(const double x : minima) {
+            if(x > 0.0 && x != std::numeric_limits<double>::infinity()) {
+                if(f.evaluate(x) < best_val) {
+                    best_val = f.evaluate(x);
+                    best_step_size = x;
+                }
+            }
+        }
+        const double gamma = 0.1*best_step_size;
 
-        const double gamma = 2.0/(0.1*double(iter)+3.0);
+        //const double gamma = 2.0/(0.1*double(iter)+3.0);
 
-        if(iter % 20 == 0)
+        //if(iter % 20 == 0)
             std::cout << "iteration = " << iter << ", step size = " << gamma << "\n";
         M += gamma * d;
 

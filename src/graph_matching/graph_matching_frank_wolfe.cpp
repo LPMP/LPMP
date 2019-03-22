@@ -55,9 +55,7 @@ namespace LPMP {
         L.setZero();
         M.setZero();
 
-        // TODO: reserve size for Q and L is they are sparse
-        L.reserve(gm.assignments.size());
-        Q.reserve(gm.quadratic_terms.size());
+        // TODO: do input with triplets for sparse matrices
 
         for(const auto a : gm.assignments) {
             if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::VectorXd>) {
@@ -206,7 +204,7 @@ namespace LPMP {
     Eigen::SparseVector<double> graph_matching_frank_wolfe<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::read_solution() const
     { 
         Eigen::SparseVector<double> sol(no_left_nodes()*no_right_nodes());
-        sol.reserve(Eigen::VectorXi::Constant(sol.cols(), 1));
+        sol.reserve(no_left_nodes());
         for(std::size_t i=0; i<no_left_nodes(); ++i) {
             auto e_first = mcf.first_outgoing_arc(i);
             for(std::size_t e_c=0; e_c+1<mcf.no_outgoing_arcs(i); ++e_c) {

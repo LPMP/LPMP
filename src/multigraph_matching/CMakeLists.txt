@@ -1,2 +1,5 @@
+add_library(multigraph_matching_instance multigraph_matching_instance.cpp)
+target_link_libraries(multigraph_matching_instance LPMP graph_matching_instance)
+
 add_executable(multigraph_matching_universe_fw multigraph_matching_universe_fw.cpp)
-target_link_libraries(multigraph_matching_universe_fw LPMP multigraph_matching_input)
+target_link_libraries(multigraph_matching_universe_fw LPMP multigraph_matching_input) 
