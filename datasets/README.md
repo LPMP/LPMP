@@ -1,0 +1,123 @@
+# Datasets
+
+## Graph matching
+
+### Problem
+
+The graph matching problem can be stated as
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\min_{X&space;\in&space;\mathbb{P}_{n&space;\times&space;m}}&space;\text{vec}(X)^{\top}&space;W&space;\text{vec}(X)" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\min_{X&space;\in&space;\mathbb{R}^{n&space;\times&space;m}}&space;\text{vec}(X)^{\top}&space;W&space;\text{vec}(X)" title="\min_{X \in \mathbb{R}^{n \times m}} \text{vec}(X)^{\top} W \text{vec}(X)" />
+
+where the set of partial assignments is
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\mathbb{P}_{n&space;\times&space;m}&space;=&space;\{&space;X&space;\in&space;\{0,1\}^{n&space;\times&space;m}&space;:&space;X&space;\mathbbmss{1}&space;\leq&space;\mathbbmss{1},&space;X^\top&space;\mathbbmss{1}&space;\leq&space;\mathbbmss{1}&space;\}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\mathbb{P}_{n&space;\times&space;m}&space;=&space;\{&space;X&space;\in&space;\{0,1\}^{n&space;\times&space;m}&space;:&space;X&space;\mathbbmss{1}&space;\leq&space;\mathbbmss{1},&space;X^\top&space;\mathbbmss{1}&space;\leq&space;\mathbbmss{1}&space;\}" title="\mathbb{P}_{n \times m} = \{ X \in \{0,1\}^{n \times m} : X \mathbbmss{1} \leq \mathbbmss{1}, X^\top \mathbbmss{1} \leq \mathbbmss{1} \}" /></a>
+
+We decompose the cost into the following terms
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\sum_{ij&space;\in&space;A}&space;c_{ij}&space;X_{ij}&space;&plus;&space;\sum_{(ij,kl)&space;\in&space;E}&space;d_{ijkl}&space;X_{ij}&space;X_{kl}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\sum_{ij&space;\in&space;A}&space;c_{ij}&space;X_{ij}&space;&plus;&space;\sum_{(ij,kl)&space;\in&space;E}&space;d_{ijkl}&space;X_{ij}&space;X_{kl}" title="\sum_{ij \in A} c_{ij} X_{ij} + \sum_{(ij,kl) \in E} d_{ijkl} X_{ij} X_{kl}" /></a>
+
+The elements in A correspond to non-zero entries on the diagonal of W and the elements in E to non-zero entries on the off-diagonal of W.
+
+### File format
+
+We use the file format used by the dual decomposition based graph matching solver by Torresani et al, [corresponding publication](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=6197199).
+Namely, it is structured as follows:
+
+```
+p <n> <m> <#A> <#E>   // n, m, # elements of A, # elements of E
+a <a> <i> <j> {cost}  // specify assignment
+...
+
+e <a0> <a1> {cost}    // nodes ij and kl come from the assignments endpoints
+...
+```
+
+### Datasets
+
+* [C.elegans annotation dataset (worms)](https://datarep.app.ist.ac.at/57/1/wormMatchingProblems.zip), 
+by Kainmueller et al, [corresponding publication](http://dx.doi.org/10.1007/978-3-319-10404-1_11).
+
+* [GraphFlow – 6D Large Displacement Scene Flow via Graph Matching](https://datarep.app.ist.ac.at/id/eprint/82) by Alhaija et al, [corresponding publication](https://link.springer.com/chapter/10.1007/978-3-319-24947-6_23).
+
+* [cars and motor dataset](https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/car_motor_graph_matching.zip) by M. Leordeanu and M. Hebert, [corresponding publication](https://ieeexplore.ieee.org/document/5206533/).
+
+---
+
+## Multi-graph matching
+
+The multigraph matching problem can be stated as a number of pairwise graph matching problems
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\min_{(X^{[pq]}&space;\in&space;\mathbb{P}_{n_p&space;\times&space;n_q})_{p,q&space;\in&space;[d]]}&space;}\sum_{p,q&space;\in&space;[d]}&space;\text{vec}(X^{[pq]})^\top&space;W^{[pq]}&space;\text{vec}(X^{[pq]})" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\min_{(X^{[pq]}&space;\in&space;\mathbb{P}_{n_p&space;\times&space;n_q})_{p,q&space;\in&space;[d]]}&space;}\sum_{p,q&space;\in&space;[d]}&space;\text{vec}(X^{[pq]})^\top&space;W^{[pq]}&space;\text{vec}(X^{[pq]})" title="\min_{(X^{[pq]} \in \mathbb{P}_{n_p \times n_q})_{p,q \in [d]]} }\sum_{p,q \in [d]} \text{vec}(X^{[pq]})^\top W^{[pq]} \text{vec}(X^{[pq]})" /></a>
+
+with the additional cycle consistency constraints
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=X^{[pq]}&space;X^{[qr]}&space;\leq&space;X^{[pr]}&space;\quad&space;\forall&space;p,q&space;\in&space;[d]" target="_blank"><img src="https://latex.codecogs.com/gif.latex?X^{[pq]}&space;X^{[qr]}&space;\leq&space;X^{[pr]}&space;\quad&space;\forall&space;p,q&space;\in&space;[d]" title="X^{[pq]} X^{[qr]} \leq X^{[pr]} \quad \forall p,q \in [d]" /></a>
+
+### File format
+
+We use a file format similar to the one used for graph matching.
+
+```
+gm <p> <q>                  // pairwise graph matching problem between graph p and q
+p <n_p> <n_q> <#A> <#E>     // now comes the graph matching problem file format
+a <a> <i> <j> {cost}
+...
+e <a0> <a1> {cost}
+...
+```
+
+### Datasets
+
+* [C.elegans annotation dataset (worms)](https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/worms_mgm.zip)
+
+* [Hotel/House/Synthetic](https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/hotel_house_synthetic_mgm.zip) by Florian Bernard et al, [corresponding publication](https://arxiv.org/pdf/1711.10733.pdf).
+
+---
+
+## Multicut
+
+The multicut problem is to find a decomposition of a given weighted graph G=(V,E), namely
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\Pi&space;=&space;(\Pi_1,\ldots,\Pi_k)\quad&space;\text{s.t.&space;}&space;\Pi_i&space;\cap&space;\Pi_j&space;=&space;\varnothing&space;\text{&space;for&space;}&space;i&space;\neq&space;j,\&space;\Pi_1&space;\cup&space;\ldots&space;\cup&space;\Pi_k&space;=&space;V" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\Pi&space;=&space;(\Pi_1,\ldots,\Pi_k)\quad&space;\text{s.t.&space;}&space;\Pi_i&space;\cap&space;\Pi_j&space;=&space;\varnothing&space;\text{&space;for&space;}&space;i&space;\neq&space;j,\&space;\Pi_1&space;\cup&space;\ldots&space;\cup&space;\Pi_k&space;=&space;V" title="\Pi = (\Pi_1,\ldots,\Pi_k)\quad \text{s.t. } \Pi_i \cap \Pi_j = \varnothing \text{ for } i \neq j,\ \Pi_1 \cup \ldots \cup \Pi_k = V" />
+
+The number of components is determined as part of the optimization process
+The objective function is given by the weighted sum of edges straddling distinct components, i.e.
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\min_{\Pi&space;=&space;(\Pi_1,\ldots,\Pi_k)}&space;\sum_{ij&space;\in&space;E,&space;ij&space;\notin&space;\Pi_l&space;\forall&space;l&space;\in&space;[k]}&space;c_{ij}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\min_{\Pi&space;=&space;(\Pi_1,\ldots,\Pi_k)}&space;\sum_{ij&space;\in&space;E,&space;ij&space;\notin&space;\Pi_l&space;\forall&space;l&space;\in&space;[k]}&space;c_{ij}" title="\min_{\Pi = (\Pi_1,\ldots,\Pi_k)} \sum_{ij \in E, ij \notin \Pi_l \forall l \in [k]} c_{ij}" />
+
+### File format
+
+The file format for the multicut problem is
+
+```
+MULTICUT
+<i> <j> <cost>
+...
+```
+
+### Datasets
+
+* [multicut problems for circuit reconstruction from electron microscopy images from the CREMI challenge](https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/CREMI_multicut_nature_methods.zip) by Thorsten Beier et al, [corresponding publication](https://www.nature.com/articles/nmeth.4151)
+
+* [large scale fruit fly brain segmentation problems](https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/fruit_fly_brain_segmentation_Pape.zip) by Constantin Pape et al, [corresponding publication](http://openaccess.thecvf.com/content_ICCV_2017_workshops/papers/w1/Pape_Solving_Large_Multicut_ICCV_2017_paper.pdf)
+
+---
+
+## Discrete tomography
+
+### Problem
+
+The discrete tomography problem is, given a graph G=(V,E) to find an assignment of natural numbers to nodes that (i) minimize an energy coming from an MRF on G
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\min_{x&space;\in&space;\{0,1,\ldots,k\}^{\abs{V}}}&space;\sum_{i&space;\in&space;V}&space;\theta_i(x_i)&space;&plus;&space;\sum_{ij&space;\in&space;E}&space;\theta_{ij}(x_i,&space;x_j)" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\min_{x&space;\in&space;\{0,1,\ldots,k\}^{\abs{V}}}&space;\sum_{i&space;\in&space;V}&space;\theta_i(x_i)&space;&plus;&space;\sum_{ij&space;\in&space;E}&space;\theta_{ij}(x_i,&space;x_j)" title="\min_{x \in \{0,1,\ldots,k\}^{\abs{V}}} \sum_{i \in V} \theta_i(x_i) + \sum_{ij \in E} \theta_{ij}(x_i, x_j)" />
+
+and (ii) fulfills constraints that come from tomographi projections:
+
+<img src="https://www.codecogs.com/eqnedit.php?latex=\sum_{i&space;\in&space;V}&space;a_{ij}&space;x_i&space;=&space;b_i&space;\quad&space;\forall&space;j&space;\in&space;[m]&space;\text{&space;where&space;}&space;A&space;\in&space;\mathbb{R}_&plus;^{m&space;\times&space;\abs{V}}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\sum_{i&space;\in&space;V}&space;a_{ij}&space;x_i&space;=&space;b_i&space;\quad&space;\forall&space;j&space;\in&space;[m]&space;\text{&space;where&space;}&space;A&space;\in&space;\mathbb{R}_&plus;^{m&space;\times&space;\abs{V}}" title="\sum_{i \in V} a_{ij} x_i = b_i \quad \forall j \in [m] \text{ where } A \in \mathbb{R}_+^{m \times \abs{V}}" />
+
+### File format
+
+### Datasets
+
+[synthetic multi-label problems](https://datarep.app.ist.ac.at/46/1/discrete_tomography_synthetic.zip)
+by Kuske et al.
