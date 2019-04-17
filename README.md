@@ -30,7 +30,7 @@ Prerequisites:
 
 ## References
 * [1]: [`P. Swoboda, J. Kuske and B. Savchynskyy. A Dual Ascent Framework for Lagrangean Decomposition of Combinatorial Problems. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Dual_Ascent_CVPR_2017_paper.html)
-* [2]: `P. Swoboda and V. Kolmogorov. MAP inference via Block-Coordinate Frank-Wolfe Algorithm. In CVPR 2019
+* [2]: `P. Swoboda and V. Kolmogorov. MAP inference via Block-Coordinate Frank-Wolfe Algorithm. In CVPR 2019`
 * [3]: [`P. Swoboda and B. Andres. Message passing for multicut. In CVPR 2017.`]()
 * [4]: [`P. Swoboda and B. Savchynskyy. A study of. In CVPR 2017.`]()
 * [5]: `P. Swoboda, D. Kainmueller, A. Mokarian, C. Theobalt and F. Bernard. A convex approach to multi-graph matching. In CVPR 2019.`
