@@ -1,0 +1,7 @@
+#!/bin/bash
+
+wget -nc https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/MQLib.zip -O @MAX_CUT_EVAL_DIRECTORY@/MQLib.zip
+unzip @MAX_CUT_EVAL_DIRECTORY@/MQLib.zip -d @MAX_CUT_EVAL_DIRECTORY@
+
+wget -nc https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/Ising_models.zip -O @MAX_CUT_EVAL_DIRECTORY@/Ising_models.zip
+unzip @MAX_CUT_EVAL_DIRECTORY@/Ising_models.zip -d @MAX_CUT_EVAL_DIRECTORY@/Ising_models
