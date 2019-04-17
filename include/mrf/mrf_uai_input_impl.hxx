@@ -1,7 +1,7 @@
-#ifndef LPMP_MRF_UAI_INPUT_IMPL_HXX
-#define LPMP_MRF_UAI_INPUT_IMPL_HXX
+#pragma once
 
 #include "mrf_input.h"
+#include "binary_MRF_instance.hxx"
 #include "pegtl_parse_rules.h"
 #include "pegtl/parse.hh"
 #include <variant>
@@ -40,10 +40,11 @@ namespace mrf_uai_input {
    struct new_clique_scope : pegtl::seq< positive_integer > {};
    struct clique_scope : pegtl::seq< positive_integer > {};
    struct clique_scope_line : pegtl::seq< opt_whitespace, new_clique_scope, pegtl::plus< opt_whitespace, clique_scope >, opt_whitespace, pegtl::eol > {};
+
    struct clique_scopes_end
    {
-      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-         static bool match(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input, typename MRF >
+         static bool match(const Input& in, MRF& input, mrf_input_helper& input_helper) 
          {
             return input_helper.number_of_cliques == input_helper.clique_scopes.size();
          }
@@ -56,8 +57,8 @@ namespace mrf_uai_input {
    struct function_table_entry : pegtl::seq< real_number > {};
    struct function_tables_end
    {
-      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-         static bool match(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input, typename MRF >
+         static bool match(const Input& in, MRF& input, mrf_input_helper& input_helper) 
          {
              return input_helper.number_of_cliques == input_helper.current_clique_number;
          }
@@ -65,8 +66,44 @@ namespace mrf_uai_input {
    };
    struct function_table_end
    {
-      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-         static bool match(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+       template<typename TABLE>
+       static void write_matrix_into_instance(mrf_input& input, const TABLE& table, const mrf_input_helper& input_helper, const std::array<std::size_t,2> vars)
+       {
+           assert(input.cardinality(vars[0])*input.cardinality(vars[1]) == table.size());
+           for(std::size_t i=0; i<input.cardinality(vars[0]); ++i) {
+               for(std::size_t j=0; j<input.cardinality(vars[1]); ++j) {
+                   input.pairwise_values(input_helper.current_pairwise_clique_number, i, j) = table[i*input.cardinality(vars[1]) + j];
+               }
+           } 
+       }
+       template<typename VECTOR>
+       static void write_vector_into_instance(mrf_input& input, const VECTOR& table, const std::size_t var)
+       {
+           assert(input.cardinality(var) == table.size());
+           for(std::size_t i=0; i<table.size(); ++i) {
+               assert(input.unaries[var][i] == 0.0);
+               input.unaries[var][i] = table[i];
+           } 
+       }
+
+       template<typename TABLE>
+       static void write_matrix_into_instance(binary_MRF_instance& input, const TABLE& table, const mrf_input_helper& input_helper, const std::array<std::size_t,2> vars)
+       {
+           assert(4 == table.size());
+           binary_MRF_instance::binary_pairwise_potential pot(vars[0], vars[1], {{{table[0], table[1]},{table[2], table[3]}}});
+           input.pairwise_potentials.push_back(pot);
+       }
+       template<typename VECTOR>
+       static void write_vector_into_instance(binary_MRF_instance& input, const VECTOR& table, const std::size_t var)
+       {
+           assert(2 == table.size());
+           assert(var < input.unaries.size());
+           assert(input.unaries[var][0] == 0.0 && input.unaries[var][1] == 0.0);
+           input.unaries[var] = {table[0], table[1]};
+       }
+
+      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input, typename MRF >
+         static bool match(const Input& in, MRF& input, mrf_input_helper& input_helper) 
          {
              if(input_helper.current_function_table.size() == input_helper.current_function_table_size) {
 
@@ -76,18 +113,10 @@ namespace mrf_uai_input {
                 // write function table into unary, pairwise or higher order table
                 if( std::holds_alternative<std::size_t>( clique_scope ) ) {
                     const auto var = std::get<std::size_t>(clique_scope);
-                    assert(input.cardinality(var) == table.size());
-                    for(std::size_t i=0; i<table.size(); ++i) {
-                        input.unaries[var][i] = table[i];
-                    }
+                    write_vector_into_instance(input, table, var);
                 } else if( std::holds_alternative<std::array<std::size_t,2>>( clique_scope ) ) {
                     auto& vars = std::get<std::array<std::size_t,2>>(clique_scope);
-                    assert(input.cardinality(vars[0])*input.cardinality(vars[1]) == table.size());
-                    for(std::size_t i=0; i<input.cardinality(vars[0]); ++i) {
-                        for(std::size_t j=0; j<input.cardinality(vars[1]); ++j) {
-                            input.pairwise_values(input_helper.current_pairwise_clique_number, i, j) = table[i*input.cardinality(vars[1]) + j];
-                        }
-                    }
+                    write_matrix_into_instance(input, table, input_helper, vars);
                     input_helper.current_pairwise_clique_number++; 
                 } else {
                     assert(std::holds_alternative<std::vector<std::size_t>>(clique_scope));
@@ -103,6 +132,7 @@ namespace mrf_uai_input {
             }
          }
    };
+
    struct function_table : pegtl::seq< new_function_table, opt_invisible, pegtl::until< function_table_end, opt_invisible, function_table_entry >, opt_invisible > {};
    struct function_tables : pegtl::seq< opt_invisible, pegtl::until< function_tables_end, function_table >, opt_invisible > {};
 
@@ -111,24 +141,24 @@ namespace mrf_uai_input {
       : pegtl::nothing< Rule > {};
 
    template<> struct action< number_of_variables > {
-      template<typename Input>
-      static void apply(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template<typename Input, typename MRF>
+      static void apply(const Input& in, MRF& input, mrf_input_helper& input_helper) 
       {
          input_helper.cardinality.reserve(std::stoul(in.string()));
       }
    };
 
    template<> struct action< number_of_cliques > {
-      template<typename Input>
-      static void apply(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template<typename Input, typename MRF>
+      static void apply(const Input& in, MRF& input, mrf_input_helper& input_helper) 
       {
          input_helper.number_of_cliques = std::stoul(in.string()); 
       }
    };
 
    template<> struct action< cardinality > {
-      template<typename Input>
-      static void apply(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template<typename Input, typename MRF>
+      static void apply(const Input& in, MRF& input, mrf_input_helper& input_helper) 
       {
          input_helper.cardinality.push_back(std::stoul(in.string()));
       }
@@ -155,11 +185,19 @@ namespace mrf_uai_input {
 
           input.pairwise_values.resize(pairwise_size.begin(), pairwise_size.end());
       } 
+      template<typename Input>
+      static void apply(const Input& in, binary_MRF_instance& input, mrf_input_helper& input_helper) 
+      {
+          for(const auto x : input_helper.cardinality) {
+              assert(x == 2);
+          }
+          input.unaries.resize(input_helper.cardinality.size(), {0.0, 0.0});
+      }
    };
 
    template<> struct action< new_clique_scope > {
-      template<typename Input>
-      static void apply(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template<typename Input, typename MRF>
+      static void apply(const Input& in, MRF& input, mrf_input_helper& input_helper) 
       {
           const std::size_t arity = std::stoul(in.string());
           assert(arity == 1 || arity == 2); // higher order not yet supported
@@ -176,8 +214,8 @@ namespace mrf_uai_input {
    };
 
    template<> struct action< clique_scope > {
-      template<typename Input>
-      static void apply(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template<typename Input, typename MRF>
+      static void apply(const Input& in, MRF& input, mrf_input_helper& input_helper) 
       {
           const auto var_no = std::stoul(in.string());
           assert(var_no < input_helper.cardinality.size());
@@ -191,7 +229,9 @@ namespace mrf_uai_input {
               } else {
                   assert(pairwise_idx[1] == std::numeric_limits<std::size_t>::max());
                   pairwise_idx[1] = var_no;
-                  input.pairwise_indices.push_back({pairwise_idx[0], pairwise_idx[1]});
+                  if constexpr(std::is_same_v<MRF, mrf_input>) {
+                      input.pairwise_indices.push_back({pairwise_idx[0], pairwise_idx[1]});
+                  }
               }
           } else {
               assert(std::holds_alternative<std::vector<std::size_t>>(clique_scope));
@@ -200,8 +240,8 @@ namespace mrf_uai_input {
       }
    };
    template<> struct action< new_function_table > {
-      template<typename Input>
-      static void apply(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template<typename Input, typename MRF>
+      static void apply(const Input& in, MRF& input, mrf_input_helper& input_helper) 
       {
          input_helper.current_function_table.clear();
          input_helper.current_function_table_size  = std::stoul(in.string());
@@ -209,8 +249,8 @@ namespace mrf_uai_input {
       }
    };
    template<> struct action< function_table_entry > {
-      template<typename Input>
-      static void apply(const Input& in, mrf_input& input, mrf_input_helper& input_helper) 
+      template<typename Input, typename MRF>
+      static void apply(const Input& in, MRF& input, mrf_input_helper& input_helper) 
       {
          input_helper.current_function_table.push_back(std::stod(in.string()));
       }
@@ -230,10 +270,10 @@ namespace mrf_uai_input {
                         > {};
    }; 
 
-   template<typename PEGTL_STRING>
-   mrf_input parse_file(const std::string& filename)
+   template<typename PEGTL_STRING, typename RETURN_TYPE = mrf_input>
+   RETURN_TYPE parse_file(const std::string& filename)
    {
-       mrf_input input;
+       RETURN_TYPE input;
        mrf_input_helper input_helper;
        pegtl::file_parser problem(filename);
 
@@ -242,10 +282,10 @@ namespace mrf_uai_input {
        return input; 
    }
 
-   template<typename PEGTL_STRING>
-   mrf_input parse_string(const std::string& uai_string)
+   template<typename PEGTL_STRING, typename RETURN_TYPE = mrf_input>
+   RETURN_TYPE parse_string(const std::string& uai_string)
    {
-       mrf_input input;
+       RETURN_TYPE input;
        mrf_input_helper input_helper;
 
        const bool read_success = pegtl::parse<typename grammar<PEGTL_STRING>::type, action>(uai_string, "", input, input_helper);
@@ -256,7 +296,3 @@ namespace mrf_uai_input {
 } // namespace mrf_uai_input
 
 } // namespace LPMP
-
-#endif // LPMP_MRF_UAI_INPUT_IMPL_HXX
-
-

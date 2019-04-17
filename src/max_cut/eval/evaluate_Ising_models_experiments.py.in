@@ -1,0 +1,9 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+from Ising_models_evaluation_data import *
+import LPMP_evaluate_log
+
+LPMP_evaluate_log.evaluate_experiments(chain_instances, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'ising-chain') 
+LPMP_evaluate_log.evaluate_experiments(torus_2d_instances, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'torus-2d') 
+LPMP_evaluate_log.evaluate_experiments(torus_3d_instances, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'torus-3d') 

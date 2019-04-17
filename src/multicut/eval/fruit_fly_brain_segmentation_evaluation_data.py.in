@@ -1,0 +1,28 @@
+import os
+
+small_instances_list = [
+        '/small/small_problem_sampleA.txt',
+        '/small/small_problem_sampleB.txt',
+        '/small/small_problem_sampleC.txt'
+        ]
+medium_instances_list = [
+        '/medium/small_problem_sampleA.txt',
+        '/medium/small_problem_sampleB.txt',
+        '/medium/small_problem_sampleC.txt'
+        ]
+large_instances_list = [
+        'large/large_problem_L0.txt',
+        'large/large_problem_L1.txt',
+        'large/large_problem_L2.txt',
+        'large/large_problem_L3.txt',
+        'large/large_problem_L4.txt'
+        ]
+
+
+algorithms = ['multicut_cycle_text_input', 'multicut_odd_wheel_text_input', 'multicut_odd_bicycle_wheel_text_input']
+
+solver_options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 1 --tightenConstraintsPercentage 0.05  --primalComputationStart 1 --primalComputationInterval 10 -v 2 --lowerBoundComputationInterval 10 --tighten"
+
+executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")
+instance_dir = "@iFRUIT_FLY_BRAIN_SEGMENTATION_INSTANCE_DIRECTORY@"
+output_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "fruit_fly_brain_segmentation")

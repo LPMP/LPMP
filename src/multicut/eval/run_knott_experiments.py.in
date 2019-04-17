@@ -1,0 +1,10 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+from knott_evaluation_data import *
+import LPMP_evaluate_log
+
+LPMP_evaluate_log.run_experiments(knott_150 , algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(knott_300 , algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(knott_450 , algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.run_experiments(knott_550 , algorithms, executable_dir, instance_dir, output_dir, solver_options) 

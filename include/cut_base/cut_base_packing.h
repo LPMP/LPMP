@@ -23,7 +23,6 @@ namespace LPMP {
     // TODO: find more than one subcycle
     inline std::vector<std::size_t> find_subcycle(std::vector<std::size_t>& cycle)
     {
-        assert(cycle.size() >= 4 && cycle[0] == cycle.back());
         assert(cycle.size() >= 4);
         assert(cycle[0] == cycle.back());
 

@@ -1,10 +1,10 @@
-#ifndef LPMP_BINARY_MRF_INSTANCE_HXX
-#define LPMP_BINARY_MRF_INSTANCE_HXX
+#pragma once
 
 #include <vector>
 #include <array>
 #include <tuple>
 #include <map>
+#include <algorithm>
 #include <cassert>
 
 namespace LPMP {
@@ -103,6 +103,16 @@ struct binary_MRF_instance {
         return cost;
     }
 
+    double lower_bound() const
+    {
+        double lb = constant;
+        for(const auto& u : unaries)
+            lb += std::min(u[0], u[1]);
+        for(const auto& p : pairwise_potentials)
+            lb += std::min({p.cost[0][0], p.cost[0][1], p.cost[1][0], p.cost[1][1]});
+        return lb;
+    }
+
     // write file in uai format
     template<typename STREAM>
     void write_uai(STREAM& s) const
@@ -166,6 +176,16 @@ struct binary_Potts_instance {
         return cost;
     }
 
+    double lower_bound() const
+    {
+        double lb = constant;
+        for(const auto& u : unaries)
+            lb += std::min(u[0], u[1]);
+        for(const auto& p : pairwise_potentials)
+            lb += std::min(0.0, p.cost);
+        return lb;
+    } 
+
     // write file in uai format
     template<typename STREAM>
     void write_uai(STREAM& s) const
@@ -196,31 +216,29 @@ struct binary_Potts_instance {
     }
 };
 
-binary_Potts_instance transform_binary_MRF_to_Potts(const binary_MRF_instance& binary_MRF)
+inline binary_Potts_instance transform_binary_MRF_to_Potts(const binary_MRF_instance& binary_MRF)
 {
     binary_Potts_instance potts;
     potts.unaries = binary_MRF.unaries;
+    potts.constant = binary_MRF.constant;
 
     for(const auto& pairwise_pot : binary_MRF.pairwise_potentials) {
-        // see Schraudolph2009, eq. (3)
         const std::size_t i = pairwise_pot.i;
         const std::size_t j = pairwise_pot.j;
         const auto& p = pairwise_pot.cost;
-        const auto c = 0.5*(p[0][1] + p[1][0] - p[0][0] - p[1][1]);
-        const auto delta_i = p[1][0] - p[0][0] - c;
-        const auto delta_j = p[0][1] - p[0][0] - c;
+        const auto c = p[0][1] - p[1][1] + 0.5*(p[1][0] - p[0][1] - p[0][0] + p[1][1]);//0.5*(p[0][1] + p[1][0] - p[0][0] - p[1][1]);
+        const std::array<double,2> phi_i = {0.0, 0.5*(p[1][0] - p[0][1] - p[0][0] + p[1][1])};
+        const std::array<double,2> phi_j = {p[0][0], p[1][1] - 0.5*(p[1][0] - p[0][1] - p[0][0] + p[1][1])};
 
-        potts.unaries[i][0] -= delta_i;
-        potts.unaries[j][0] -= delta_j;
+        potts.unaries[i][0] += phi_i[0];
+        potts.unaries[i][1] += phi_i[1];
+        potts.unaries[j][0] += phi_j[0];
+        potts.unaries[j][1] += phi_j[1];
         binary_Potts_instance::weighted_edge e(i,j,c);
         potts.pairwise_potentials.push_back(e);
-
-        //potts.constant += // TODO
     }
 
     return potts;
 }
 
 } // namespace LPMP
-
-#endif // LPMP_BINARY_MRF_INSTANCE_HXX

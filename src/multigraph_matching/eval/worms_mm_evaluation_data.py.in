@@ -2,7 +2,7 @@
 import sys
 sys.path.append('@EVAL_MODULE_PATH@')
 
-3_instance_list = [
+instance_list_3 = [
    '3/0.mm',
    '3/1.mm',
    '3/10.mm',
@@ -55,7 +55,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '3/9.mm',
 ]
 
-4_instance_list = [
+instance_list_4 = [
    '4/0.mm',
    '4/1.mm',
    '4/10.mm',
@@ -108,7 +108,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '4/9.mm',
 ]
 
-5_instance_list = [
+instance_list_5 = [
    '5/0.mm',
    '5/1.mm',
    '5/10.mm',
@@ -161,7 +161,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '5/9.mm',
 ]
 
-6_instance_list = [
+instance_list_6 = [
    '6/0.mm',
    '6/10.mm',
    '6/11.mm',
@@ -214,7 +214,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '6/9.mm' 
 ]
 
-7_instance_list = [
+instance_list_7 = [
    '7/0.mm',
    '7/10.mm',
    '7/11.mm',
@@ -267,7 +267,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '7/9.mm' 
 ]
 
-8_instance_list = [
+instance_list_8 = [
    '8/0.mm',
    '8/10.mm',
    '8/11.mm',
@@ -320,7 +320,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '8/9.mm' 
 ]
 
-9_instance_list = [
+instance_list_9 = [
    '9/0.mm',
    '9/10.mm',
    '9/11.mm',
@@ -373,7 +373,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '9/9.mm' 
 ]
 
-10_instance_list = [
+instance_list_10 = [
    '10/0.mm',
    '10/10.mm',
    '10/11.mm',
@@ -426,7 +426,7 @@ sys.path.append('@EVAL_MODULE_PATH@')
    '10/9.mm' 
 ]
 
-30_instance_list = [
+instance_list_30 = [
    '30/0.mm',
 ]
 

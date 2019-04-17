@@ -1,0 +1,29 @@
+set(EVAL_MODULE_PATH "${PROJECT_SOURCE_DIR}/include/eval")
+set(MULTICUT_EVAL_DIRECTORY "${PROJECT_SOURCE_DIR}/src/multicut/eval/")
+set(KNOTT_INSTANCE_DIRECTORY "${PROJECT_SOURCE_DIR}/src/multicut/eval/knott/")
+set(CREMI_NATURE_METHODS_INSTANCE_DIRECTORY "${PROJECT_SOURCE_DIR}/src/multicut/eval/CREMI_multicut_nature_methods/")
+set(FRUIT_FLY_BRAIN_SEGMENTATION_INSTANCE_DIRECTORY "${PROJECT_SOURCE_DIR}/src/multicut/eval/fruit_fly_brain_segmentation_Pape/")
+set(IMAGESEG_INSTANCE_DIRECTORY "${PROJECT_SOURCE_DIR}/src/multicut/eval/image-seg/")
+set(MODULARITY_CLUSTERING_INSTANCE_DIRECTORY "${PROJECT_SOURCE_DIR}/src/multicut/eval/modularity-clustering/")
+
+configure_file(download_multicut_datasets.sh.in download_multicut_datasets.sh)
+
+configure_file(knott_evaluation_data.py.in knott_evaluation_data.py)
+configure_file(run_knott_experiments.py.in run_knott_experiments.py)
+configure_file(evaluate_knott_experiments.py.in evaluate_knott_experiments.py)
+
+configure_file(CREMI_nature_methods_evaluation_data.py.in CREMI_nature_methods_evaluation_data.py)
+configure_file(run_CREMI_nature_methods_experiments.py.in run_CREMI_nature_methods_experiments.py)
+configure_file(evaluate_CREMI_nature_methods_experiments.py.in evaluate_CREMI_nature_methods_experiments.py)
+
+configure_file(fruit_fly_brain_segmentation_evaluation_data.py.in fruit_fly_brain_segmentation_evaluation_data.py)
+configure_file(run_fruit_fly_brain_segmentation_experiments.py.in run_fruit_fly_brain_segmentation_experiments.py)
+configure_file(evaluate_fruit_fly_brain_segmentation_experiments.py.in evaluate_fruit_fly_brain_segmentation_experiments.py)
+
+configure_file(imageseg_evaluation_data.py.in imageseg_evaluation_data.py)
+configure_file(run_imageseg_experiments.py.in run_imageseg_experiments.py)
+configure_file(evaluate_imageseg_experiments.py.in evaluate_imageseg_experiments.py)
+
+configure_file(modularity_clustering_evaluation_data.py.in modularity_clustering_evaluation_data.py)
+configure_file(run_modularity_clustering_experiments.py.in run_modularity_clustering_experiments.py)
+configure_file(evaluate_modularity_clustering_experiments.py.in evaluate_modularity_clustering_experiments.py)

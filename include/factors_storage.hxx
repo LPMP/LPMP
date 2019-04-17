@@ -1,11 +1,11 @@
-#ifndef LPMP_FACTOR_STORAGE_HXX
-#define LPMP_FACTOR_STORAGE_HXX
+#pragma once
 
 #include <vector>
 #include <array>
 #include <unordered_map>
 #include <tuple>
 #include <cassert>
+#include <tsl/robin_map.h>
 #include "meta/meta.hpp"
 #include "topological_sort.hxx"
 #include "factor_container_interface.h"
@@ -51,7 +51,8 @@ private:
       sort_factors(const std::vector<std::array<FactorTypeAdapter*,2>>& factor_rel);
 
    std::vector<FactorTypeAdapter*> factors_;
-   std::unordered_map<const FactorTypeAdapter*,std::size_t> factor_address_to_index_;
+   tsl::robin_map<const FactorTypeAdapter*,std::size_t> factor_address_to_index_;
+   //std::unordered_map<const FactorTypeAdapter*,std::size_t> factor_address_to_index_;
    std::vector<std::array<FactorTypeAdapter*,2>> forward_pass_factor_relation_, backward_pass_factor_relation_;
    std::vector<FactorTypeAdapter*> forward_pass_factor_ordering_, backward_pass_factor_ordering_;
    std::vector<FactorTypeAdapter*> forward_pass_factor_update_ordering_, backward_pass_factor_update_ordering_;
@@ -196,5 +197,3 @@ factors_storage<FMC>::sort_factors(const std::vector<std::array<FactorTypeAdapte
 }
 
 } // namespace LPMP
-
-#endif // LPMP_FACTOR_STORAGE_HXX

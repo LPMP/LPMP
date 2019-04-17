@@ -1,7 +1,7 @@
-#ifndef LPMP_MRF_UAI_INPUT_H
-#define LPMP_MRF_UAI_INPUT_H
+#pragma once
 
 #include "mrf_input.h"
+#include "binary_MRF_instance.hxx"
 
 #include <string>
 #include <cassert>
@@ -9,10 +9,18 @@
 namespace LPMP {
 
 // file format described in http://www.cs.huji.ac.il/project/PASCAL/fileFormat.php
+namespace binary_MRF_uai_input {
+
+   binary_MRF_instance parse_file(const std::string& filename);
+   binary_MRF_instance parse_string(const std::string& input);
+
+}
+
 namespace mrf_uai_input {
 
    mrf_input parse_file(const std::string& filename);
-   mrf_input parse_string(const std::string& filename);
+   mrf_input parse_string(const std::string& input);
+
 /*
 
 
@@ -140,5 +148,3 @@ namespace mrf_uai_input {
 } // namespace mrf_uai_input
 
 } // namespace LPMP
-
-#endif // LPMP_MRF_UAI_INPUT_H

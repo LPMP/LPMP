@@ -1,3 +1,5 @@
+add_subdirectory(eval)
+
 add_library(MRF_factors pairwise_simplex_factor.cpp pairwise_Potts_factor.cpp ternary_simplex_factor)
 target_link_libraries(MRF_factors LPMP) 
 

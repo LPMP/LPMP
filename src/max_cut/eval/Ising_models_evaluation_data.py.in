@@ -1,0 +1,66 @@
+import os
+
+chain_instances = [
+        'ising-chain/ising2.5-100_5555',
+        'ising-chain/ising2.5-100_6666',
+        'ising-chain/ising2.5-100_7777',
+        'ising-chain/ising2.5-150_5555',
+        'ising-chain/ising2.5-150_6666',
+        'ising-chain/ising2.5-150_7777',
+        'ising-chain/ising2.5-200_5555',
+        'ising-chain/ising2.5-200_6666',
+        'ising-chain/ising2.5-200_7777',
+        'ising-chain/ising2.5-250_5555',
+        'ising-chain/ising2.5-250_6666',
+        'ising-chain/ising2.5-250_7777',
+        'ising-chain/ising2.5-300_5555',
+        'ising-chain/ising2.5-300_6666',
+        'ising-chain/ising2.5-300_7777',
+        'ising-chain/ising3.0-100_5555',
+        'ising-chain/ising3.0-100_6666',
+        'ising-chain/ising3.0-100_7777',
+        'ising-chain/ising3.0-150_5555',
+        'ising-chain/ising3.0-150_6666',
+        'ising-chain/ising3.0-150_7777',
+        'ising-chain/ising3.0-200_5555',
+        'ising-chain/ising3.0-200_6666',
+        'ising-chain/ising3.0-200_7777',
+        'ising-chain/ising3.0-250_5555',
+        'ising-chain/ising3.0-250_6666',
+        'ising-chain/ising3.0-250_7777',
+        'ising-chain/ising3.0-300_5555',
+        'ising-chain/ising3.0-300_6666',
+        'ising-chain/ising3.0-300_7777'
+   ]
+
+torus_2d_instances = [
+        '2d-torus/t2g10_5555',
+        '2d-torus/t2g10_6666',
+        '2d-torus/t2g10_7777',
+        '2d-torus/t2g15_5555',
+        '2d-torus/t2g15_6666',
+        '2d-torus/t2g15_7777',
+        '2d-torus/t2g20_5555',
+        '2d-torus/t2g20_6666',
+        '2d-torus/t2g20_7777' 
+   ]
+
+torus_3d_instances = [
+        '3d-torus/t3g5_5555',
+        '3d-torus/t3g5_6666',
+        '3d-torus/t3g5_7777',
+        '3d-torus/t3g6_5555',
+        '3d-torus/t3g6_6666',
+        '3d-torus/t3g6_7777',
+        '3d-torus/t3g7_5555',
+        '3d-torus/t3g7_6666',
+        '3d-torus/t3g7_7777'
+   ]
+
+algorithms = ['max_cut_cycle_text_input', 'max_cut_odd_bicycle_wheel_text_input']
+
+solver_options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 1 --tightenConstraintsPercentage 0.05  --primalComputationStart 1 --primalComputationInterval 10 -v 2 --lowerBoundComputationInterval 10 --tighten"
+
+executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")
+instance_dir = "@ISING_MODELS_INSTANCE_DIRECTORY@"
+output_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "Ising_models")

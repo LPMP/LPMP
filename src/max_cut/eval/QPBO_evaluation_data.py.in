@@ -1,0 +1,128 @@
+import os
+
+deconv_instances = [
+        'deconv/graph3x3.uai',
+        'deconv/graph5x5.uai' 
+   ]
+
+dtf_instances = [
+'dtf/printed_graph100.txt.uai',
+'dtf/printed_graph10.txt.uai',
+'dtf/printed_graph11.txt.uai',
+'dtf/printed_graph12.txt.uai',
+'dtf/printed_graph13.txt.uai',
+'dtf/printed_graph14.txt.uai',
+'dtf/printed_graph15.txt.uai',
+'dtf/printed_graph16.txt.uai',
+'dtf/printed_graph17.txt.uai',
+'dtf/printed_graph18.txt.uai',
+'dtf/printed_graph19.txt.uai',
+'dtf/printed_graph1.txt.uai',
+'dtf/printed_graph20.txt.uai',
+'dtf/printed_graph21.txt.uai',
+'dtf/printed_graph22.txt.uai',
+'dtf/printed_graph23.txt.uai',
+'dtf/printed_graph24.txt.uai',
+'dtf/printed_graph25.txt.uai',
+'dtf/printed_graph26.txt.uai',
+'dtf/printed_graph27.txt.uai',
+'dtf/printed_graph28.txt.uai',
+'dtf/printed_graph29.txt.uai',
+'dtf/printed_graph2.txt.uai',
+'dtf/printed_graph30.txt.uai',
+'dtf/printed_graph31.txt.uai',
+'dtf/printed_graph32.txt.uai',
+'dtf/printed_graph33.txt.uai',
+'dtf/printed_graph34.txt.uai',
+'dtf/printed_graph35.txt.uai',
+'dtf/printed_graph36.txt.uai',
+'dtf/printed_graph37.txt.uai',
+'dtf/printed_graph38.txt.uai',
+'dtf/printed_graph39.txt.uai',
+'dtf/printed_graph3.txt.uai',
+'dtf/printed_graph40.txt.uai',
+'dtf/printed_graph41.txt.uai',
+'dtf/printed_graph42.txt.uai',
+'dtf/printed_graph43.txt.uai',
+'dtf/printed_graph44.txt.uai',
+'dtf/printed_graph45.txt.uai',
+'dtf/printed_graph46.txt.uai',
+'dtf/printed_graph47.txt.uai',
+'dtf/printed_graph48.txt.uai',
+'dtf/printed_graph49.txt.uai',
+'dtf/printed_graph4.txt.uai',
+'dtf/printed_graph50.txt.uai',
+'dtf/printed_graph51.txt.uai',
+'dtf/printed_graph52.txt.uai',
+'dtf/printed_graph53.txt.uai',
+'dtf/printed_graph54.txt.uai',
+'dtf/printed_graph55.txt.uai',
+'dtf/printed_graph56.txt.uai',
+'dtf/printed_graph57.txt.uai',
+'dtf/printed_graph59.txt.uai',
+'dtf/printed_graph5.txt.uai',
+'dtf/printed_graph60.txt.uai',
+'dtf/printed_graph61.txt.uai',
+'dtf/printed_graph62.txt.uai',
+'dtf/printed_graph63.txt.uai',
+'dtf/printed_graph64.txt.uai',
+'dtf/printed_graph65.txt.uai',
+'dtf/printed_graph66.txt.uai',
+'dtf/printed_graph67.txt.uai',
+'dtf/printed_graph68.txt.uai',
+'dtf/printed_graph69.txt.uai',
+'dtf/printed_graph6.txt.uai',
+'dtf/printed_graph70.txt.uai',
+'dtf/printed_graph71.txt.uai',
+'dtf/printed_graph72.txt.uai',
+'dtf/printed_graph73.txt.uai',
+'dtf/printed_graph74.txt.uai',
+'dtf/printed_graph75.txt.uai',
+'dtf/printed_graph76.txt.uai',
+'dtf/printed_graph77.txt.uai',
+'dtf/printed_graph78.txt.uai',
+'dtf/printed_graph79.txt.uai',
+'dtf/printed_graph7.txt.uai',
+'dtf/printed_graph80.txt.uai',
+'dtf/printed_graph81.txt.uai',
+'dtf/printed_graph82.txt.uai',
+'dtf/printed_graph83.txt.uai',
+'dtf/printed_graph84.txt.uai',
+'dtf/printed_graph85.txt.uai',
+'dtf/printed_graph86.txt.uai',
+'dtf/printed_graph87.txt.uai',
+'dtf/printed_graph88.txt.uai',
+'dtf/printed_graph89.txt.uai',
+'dtf/printed_graph8.txt.uai',
+'dtf/printed_graph90.txt.uai',
+'dtf/printed_graph91.txt.uai',
+'dtf/printed_graph92.txt.uai',
+'dtf/printed_graph93.txt.uai',
+'dtf/printed_graph94.txt.uai',
+'dtf/printed_graph95.txt.uai',
+'dtf/printed_graph96.txt.uai',
+'dtf/printed_graph97.txt.uai',
+'dtf/printed_graph98.txt.uai',
+'dtf/printed_graph99.txt.uai',
+'dtf/printed_graph9.txt.uai'
+        ]
+
+super_resolution_instances = [
+        'super_resolution/super_res-E1.txt.uai',
+        'super_resolution/super_res-E2.txt.uai',
+        'super_resolution/super_res-Paper1.txt.uai'
+        ]
+
+texture_restoration_instances = [
+        'texture_restoration/texture-Cremer.txt.uai',
+        'texture_restoration/texture-OLD-D103.txt.uai',
+        'texture_restoration/texture-Paper1.txt.uai',
+        'texture_restoration/texture-Temp.txt.uai'
+
+algorithms = ['max_cut_cycle_qpbo_uai_input', 'max_cut_odd_bicycle_wheel_qpbo_uai_input']
+
+solver_options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 1 --tightenConstraintsPercentage 0.05  --primalComputationStart 1 --primalComputationInterval 10 -v 2 --lowerBoundComputationInterval 10 --tighten --maxIter 5000"
+
+executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")
+instance_dir = "@QPBO_INSTANCE_DIRECTORY@"
+output_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "QPBO")

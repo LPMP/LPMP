@@ -1,5 +1,4 @@
-#ifndef LPMP_MAIN
-#define LPMP_MAIN
+#pragma once
 
 #include "config.hxx"
 #include "factors_storage.hxx"
@@ -105,6 +104,7 @@ public:
 
 protected:
 
+   //tsl::robin_map<lp_reparametrization, message_passing_weight_storage> message_passing_weights_;
    std::unordered_map<lp_reparametrization, message_passing_weight_storage> message_passing_weights_;
    lp_reparametrization repam_mode_ = lp_reparametrization(lp_reparametrization_mode::Undefined, 0.0);
    std::size_t rounding_iteration_ = 1;
@@ -523,5 +523,3 @@ std::vector<FactorTypeAdapter*> LP<FMC>::get_masked_factors(
 }
 
 } // end namespace LPMP
-
-#endif // LPMP_MAIN

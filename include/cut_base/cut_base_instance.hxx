@@ -1,4 +1,5 @@
 #pragma once 
+
 #include <array>
 #include <vector>
 #include <cassert>
@@ -42,6 +43,7 @@ namespace LPMP {
         auto end() { return edges_.end(); }
 
         void add_to_constant(const double delta) { constant_ += delta; }
+        double constant() const { return constant_; }
 
         double evaluate(const cut_base_node_labeling& l) const; 
         double evaluate(const cut_base_edge_labeling& l) const;

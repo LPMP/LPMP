@@ -192,6 +192,9 @@ def compute_primal_dual_table(methods, input_folders):
 def get_log_file_names(instance_file, algorithm, output_dir):
    instance_dir = os.path.dirname(instance_file)
    instance_name = os.path.splitext(os.path.basename(instance_file))[0]
+   ending = os.path.splitext(os.path.basename(instance_file))[1]
+   if(ending not in ('.txt', '.uai', '.hdf5', '.h5')):
+       instance_name = instance_name + ending
    log_file = instance_name + "_" + algorithm + "_log.txt"
    result_file = instance_name + "_" + algorithm + "_result.txt"
    log_file = os.path.join(instance_dir, log_file)

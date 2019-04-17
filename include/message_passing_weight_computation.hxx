@@ -1,5 +1,4 @@
-#ifndef LPMP_MESSAGE_PASSING_WEIGHT_COMPUTATION_HXX
-#define LPMP_MESSAGE_PASSING_WEIGHT_COMPUTATION_HXX
+#pragma once
 
 #include "two_dimensional_variable_array.hxx"
 #include "message_passing_schedule.hxx"
@@ -8,6 +7,7 @@
 #include <vector>
 #include <unordered_map>
 #include <cassert>
+#include <tsl/robin_map.h>
 
 namespace LPMP {
 
@@ -77,8 +77,7 @@ weight_array compute_isotropic_weights
        const auto weight = (1.0-leave_percentage)/double((*factor_it)->no_send_messages());
        for(auto msg : msgs) {
            if(message_passing_schedule_factor_view::sends_message_to_adjacent_factor(msg.mps)) {
-               omega[c][k] = weight;
-               ++k;
+               omega[c][k++] = weight;
          }
        }
        assert(k == omega[c].size());
@@ -91,9 +90,9 @@ weight_array compute_isotropic_weights
 }
 
 template<typename FACTOR_ITERATOR>
-std::unordered_map<FactorTypeAdapter*, std::size_t> get_factor_indices(FACTOR_ITERATOR f_begin, FACTOR_ITERATOR f_end)
+tsl::robin_map<FactorTypeAdapter*, std::size_t> get_factor_indices(FACTOR_ITERATOR f_begin, FACTOR_ITERATOR f_end)
 {
-    std::unordered_map<FactorTypeAdapter*, std::size_t> indices;
+    tsl::robin_map<FactorTypeAdapter*, std::size_t> indices;
     indices.reserve( std::distance(f_begin, f_end) );
     std::size_t i=0;
     for(auto f_it=f_begin; f_it!=f_end; ++f_it, ++i) {
@@ -148,17 +147,28 @@ compute_anisotropic_weights(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor
 
    // now take into account factors that are not iterated over, but from which a factor that is iterated over may send and another can receive.
    // It still makes sense to send and receive from such factors
-   std::unordered_map<FactorTypeAdapter*, std::size_t> min_adjacent_sending;
-   min_adjacent_sending.reserve(n);
-   std::unordered_map<FactorTypeAdapter*, std::size_t> max_adjacent_receiving;
-   max_adjacent_receiving.reserve(n);
+   // TODO: min_adjacent_factor and max_adjacent_factor should be held in one map
+   //tsl::robin_map<FactorTypeAdapter*, std::size_t> min_adjacent_sending;
+   //std::unordered_map<FactorTypeAdapter*, std::size_t> min_adjacent_sending;
+   //min_adjacent_sending.reserve(n);
+   //tsl::robin_map<FactorTypeAdapter*, std::size_t> max_adjacent_receiving;
+   //std::unordered_map<FactorTypeAdapter*, std::size_t> max_adjacent_receiving;
+   //max_adjacent_receiving.reserve(n);
+
+   struct adjacent_index_stat {
+       std::size_t min_adjacent_sending = std::numeric_limits<std::size_t>::max();
+       std::size_t max_adjacent_receiving = 0;
+   };
+   tsl::robin_map<FactorTypeAdapter*, adjacent_index_stat> adjacent_minmax;
 
 
    // there are factors connected to the ones given to which we also send messages. We do so only if we can afterwards receive messages from those later.
    if(connected_factor_not_in_list) {
+       adjacent_minmax.reserve(n);
+       assert(false);
 
        // get vector of factors that are (i) not in iteration list and (ii) are connected to two or more factors in iteration list.
-       std::unordered_map<FactorTypeAdapter*, std::size_t> adjacent_factors;
+       tsl::robin_map<FactorTypeAdapter*, std::size_t> adjacent_factors;
        for(auto f_it=factor_begin; f_it!=factor_end; ++f_it) {
            for(auto* f : (*f_it)->get_adjacent_factors()) {
                if(factor_address_to_sorted_index.count(f) == 0) {
@@ -171,8 +181,10 @@ compute_anisotropic_weights(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor
        for(auto e : adjacent_factors) {
            if(e.second >= 2) {
                FactorTypeAdapter* f = e.first;
-               auto& min_adjacent_sending_index = min_adjacent_sending[f];
-               auto& max_adjacent_receiving_index = max_adjacent_receiving[f] = 0;
+               //auto& min_adjacent_sending_index = min_adjacent_sending[f];
+               auto& min_adjacent_sending_index = adjacent_minmax[f].min_adjacent_sending;
+               //auto& max_adjacent_receiving_index = max_adjacent_receiving[f] = 0;
+               auto& max_adjacent_receiving_index = adjacent_minmax[f].max_adjacent_receiving;
                min_adjacent_sending_index = std::numeric_limits<std::size_t>::max();
                max_adjacent_receiving_index = 0;
                const auto adjacent_factors = e.first->get_messages();
@@ -207,7 +219,8 @@ compute_anisotropic_weights(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor
            return false;
        } else {
            assert(connected_factor_not_in_list);
-           const auto min_adjacent_sending_index = min_adjacent_sending[adjacent_factor];
+           //const auto min_adjacent_sending_index = min_adjacent_sending[adjacent_factor];
+           const auto min_adjacent_sending_index = adjacent_minmax[adjacent_factor].min_adjacent_sending;
            if(min_adjacent_sending_index < factor_index) { return true; }
            return false;
        } 
@@ -227,7 +240,8 @@ compute_anisotropic_weights(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor
            return false;
        } else {
            assert(connected_factor_not_in_list);
-           const auto max_adjacent_receiving_index = max_adjacent_receiving[adjacent_factor];
+           //const auto max_adjacent_receiving_index = max_adjacent_receiving[adjacent_factor];
+           const auto max_adjacent_receiving_index = adjacent_minmax[adjacent_factor].max_adjacent_receiving;
            if(factor_index < max_adjacent_receiving_index) { return true; }
            return false; 
        }
@@ -308,6 +322,7 @@ template<typename FACTOR_ITERATOR>
 std::tuple<weight_array, receive_array> 
 compute_anisotropic_weights_2(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end, const double leave_percentage)
 {
+    assert(false);
    auto factor_address_to_sorted_index = get_factor_indices(factor_begin, factor_end); 
 
    auto omega = allocate_omega(factor_begin, factor_end);
@@ -378,16 +393,10 @@ template<typename FACTOR_ITERATOR>
 receive_array compute_full_receive_mask(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end)
 {
     std::vector<std::size_t> mask_size;
-    mask_size.reserve(std::distance(factor_begin, factor_end));
-    for(auto it=factor_begin; it!=factor_end; ++it) {
-        if((*it)->FactorUpdated()) {
-            mask_size.push_back( (*it)->no_receive_messages() );
-        } 
-    }
-    receive_array receive_mask(mask_size.begin(), mask_size.end());
+    receive_array receive_mask = allocate_receive_mask(factor_begin, factor_end);
     for(std::size_t i=0; i<receive_mask.size(); ++i) {
         for(std::size_t j=0; j<receive_mask[i].size(); ++j) {
-            receive_mask(i,j) = true;
+            receive_mask(i,j) = 1;
         }
     }
 
@@ -429,5 +438,3 @@ void receive_mask_valid(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end
 }
 
 } // namespace LPMP
-
-#endif // LPMP_MESSAGE_PASSING_WEIGHT_COMPUTATION_HXX

@@ -69,7 +69,6 @@ namespace LPMP {
                 add_compressed_node(edge_func(*it)[1]);
             }
 
-            // TODO: reuse by basing union find on std::vector
             uf_.init(2*compressed_to_orig_node.size());
             const std::size_t no_compressed_nodes = compressed_to_orig_node.size();
             compressed_bipartite_edges.clear();
@@ -84,12 +83,9 @@ namespace LPMP {
                 uf_.merge(cj, ci + no_compressed_nodes);
             }
 
-            // TODO: reuse graph structure by reusing two_dim_variable_array
             auto copy_edge_info = [](const compressed_edge& e) { return e.e; };
             g_.construct(compressed_bipartite_edges.begin(), compressed_bipartite_edges.end(), copy_edge_info);
             //std::cout << "bipartite search graph has " << compressed_bipartite_edges.size() << " edges\n";
-            // TODO: reuse bfs_data
-            //bfs_data<decltype(g)> bfs(g); 
             bfs_.update_graph();
         }
 
@@ -99,7 +95,5 @@ namespace LPMP {
             for(auto& v : p)
                 v = compressed_to_original_node(v % no_compressed_nodes());
         }
-
-
 
 }

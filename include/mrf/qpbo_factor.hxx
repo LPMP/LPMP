@@ -1,10 +1,10 @@
-#ifndef LPMP_QPBO_FACTOR_HXX
-#define LPMP_QPBO_FACTOR_HXX
+#pragma once
 
 #include "mrf_input.h"
 #include "max_flow_instance.hxx"
 #include "binary_MRF_instance.hxx"
 #include "qpbo/qpbo.hpp"
+#include <iostream> // TODO: remove
 
 namespace LPMP {
 
@@ -79,9 +79,12 @@ public:
 
     binary_MRF_instance get_reduced_problem() const
     {
-       q.Solve();
-       q.ComputeWeakPersistencies();
+        std::cout << "LB = " << LowerBound() << ", energy = " << q.ComputeTwiceEnergy()/2.0 << "\n";
        binary_MRF_instance output;
+       q.Solve();
+       output.constant = q.ComputeTwiceLowerBound()/2.0;
+       //std::cout << "constant lb model = " << output.lower_bound() << "\n";
+       q.ComputeWeakPersistencies();
 
        std::size_t no_reduced_nodes = 0;
        std::vector<std::size_t> original_to_reduced_node;
@@ -97,41 +100,45 @@ public:
        };
 
        for(std::size_t i=0; i<q.GetNodeNum(); ++i) {
-          if(q.GetLabel(i) < 0) { // node persistently labelled
-             double E0, E1;
-             q.GetTwiceUnaryTerm(i, E0, E1);
-             output.unaries.push_back({0.5*E0, 0.5*E1});
-             original_to_reduced_node.push_back(no_reduced_nodes++);
-          } else {
-             assert(q.GetLabel(i) == 0 || q.GetLabel(i) == 1);
-             original_to_reduced_node.push_back(node_fixed_val);
-          }
+           double E0, E1;
+           q.GetTwiceUnaryTerm(i, E0, E1);
+           // substraction by below value keeps lower bound intact
+           E0 = E0 - std::min(E0,E1);
+           E1 = E1 - std::min(E0,E1);
+           if(q.GetLabel(i) < 0) { // node persistently labelled
+               output.unaries.push_back({0.5*E0, 0.5*E1});
+               original_to_reduced_node.push_back(no_reduced_nodes++);
+           } else {
+               assert(q.GetLabel(i) == 0 || q.GetLabel(i) == 1);
+               original_to_reduced_node.push_back(node_fixed_val);
+               output.constant += 0.5 * (q.GetLabel(i) == 0 ? E0 : E1);
+           }
        }
 
        for(std::size_t e=0; e<no_edges(); ++e) {
-          int i, j;
-          std::array<std::array<double,2>,2> E;
-          q.GetTwicePairwiseTerm(e, i, j, E[0][0], E[0][1], E[1][0], E[1][1]);
-          binary_MRF_instance::binary_pairwise_potential p(i,j, E);
-          p.cost[0][0] *= 0.5;
-          p.cost[0][1] *= 0.5;
-          p.cost[1][0] *= 0.5;
-          p.cost[1][1] *= 0.5;
-          if(!node_fixed(p.i) && !node_fixed(p.j)) {
-             p.i = get_reduced_node(p.i);
-             p.j = get_reduced_node(p.j);
-             output.pairwise_potentials.push_back(p);
-          } else if(!node_fixed(p.i) && node_fixed(p.j)) {
-             const std::size_t reduced_i = get_reduced_node(p.i);
-             output.unaries[reduced_i][0] += p.cost[0][q.GetLabel(p.j)];
-             output.unaries[reduced_i][1] += p.cost[1][q.GetLabel(p.j)];
-          } else if(node_fixed(p.i) && !node_fixed(p.j)) {
-             const std::size_t reduced_j = get_reduced_node(p.j);
-             output.unaries[reduced_j][0] += p.cost[q.GetLabel(p.i)][0];
-             output.unaries[reduced_j][1] += p.cost[q.GetLabel(p.i)][1];
-          } else {
-             output.constant += p.cost[q.GetLabel(p.i)][q.GetLabel(p.j)]; 
-          }
+           int i, j;
+           std::array<std::array<double,2>,2> E;
+           q.GetTwicePairwiseTerm(e, i, j, E[0][0], E[0][1], E[1][0], E[1][1]);
+           binary_MRF_instance::binary_pairwise_potential p(i,j, E);
+           p.cost[0][0] *= 0.5;
+           p.cost[0][1] *= 0.5;
+           p.cost[1][0] *= 0.5;
+           p.cost[1][1] *= 0.5;
+           if(!node_fixed(p.i) && !node_fixed(p.j)) {
+               p.i = get_reduced_node(p.i);
+               p.j = get_reduced_node(p.j);
+               output.pairwise_potentials.push_back(p);
+           } else if(!node_fixed(p.i) && node_fixed(p.j)) {
+               const std::size_t reduced_i = get_reduced_node(p.i);
+               output.unaries[reduced_i][0] += p.cost[0][q.GetLabel(p.j)];
+               output.unaries[reduced_i][1] += p.cost[1][q.GetLabel(p.j)];
+           } else if(node_fixed(p.i) && !node_fixed(p.j)) {
+               const std::size_t reduced_j = get_reduced_node(p.j);
+               output.unaries[reduced_j][0] += p.cost[q.GetLabel(p.i)][0];
+               output.unaries[reduced_j][1] += p.cost[q.GetLabel(p.i)][1];
+           } else {
+               output.constant += p.cost[q.GetLabel(p.i)][q.GetLabel(p.j)]; 
+           }
        }
 
        output.merge_parallel_edges();
@@ -144,5 +151,3 @@ private:
 };
 
 } // namespace LPMP
-
-#endif // LPMP_QPBO_FACTOR_HXX

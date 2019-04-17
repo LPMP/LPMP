@@ -1903,6 +1903,7 @@ public:
 
    void update_factor_uniform(const REAL leave_weight) final
    {
+       assert(false); // not used currently
        receive_messages();
        MaximizePotential();
        send_messages(leave_weight);
@@ -2127,7 +2128,6 @@ public:
       assert(receive_mask.size() == 0 || *std::max_element(receive_mask.begin(), receive_mask.end()) <= 1);
       assert(receive_mask.size() == 0 || *std::min_element(receive_mask.begin(), receive_mask.end()) >= 0);
 
-      assert(receive_mask.size() == no_receive_messages());
       auto receive_it = receive_mask.begin();
 
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&receive_it](auto l) {

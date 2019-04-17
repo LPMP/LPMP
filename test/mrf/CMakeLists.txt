@@ -54,6 +54,10 @@ add_executable(mrf_chain_test mrf_chain_test.cpp)
 target_link_libraries(mrf_chain_test LPMP mrf_uai_input MRF_factors)
 add_test(mrf_chain_test mrf_chain_test)
 
+add_executable(test_transform_binary_MRF_to_Potts test_transform_binary_MRF_to_Potts.cpp)
+target_link_libraries(test_transform_binary_MRF_to_Potts LPMP)
+add_test(test_transform_binary_MRF_to_Potts test_transform_binary_MRF_to_Potts)
+
 if(WITH_GUROBI)
   add_executable(combiLP combiLP.cpp)
   target_link_libraries(combiLP LPMP  stdc++ pthread GUROBI HDF5 lingeling) #somehow currently needs to be linked against. Remove this!

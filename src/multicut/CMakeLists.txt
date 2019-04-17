@@ -1,3 +1,5 @@
+add_subdirectory(eval)
+
 add_library(multicut_factors_messages multicut_factors_messages.cpp)
 target_link_libraries(multicut_factors_messages LPMP)
 

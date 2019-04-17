@@ -1,0 +1,16 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+import worms_mm_evaluation_data
+import LPMP_evaluate_log
+
+LPMP_evaluate_log.evaluate_experiments(instance_list_3, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_4, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_5, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_6, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_7, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_8, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_8, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_9, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_10, algorithms, executable_dir, instance_dir, output_dir, solver_options) 
+LPMP_evaluate_log.evaluate_experiments(instance_list_30, algorithms, executable_dir, instance_dir, output_dir, solver_options) 

@@ -1,6 +1,7 @@
 #include "max_cut/max_cut_cycle_packing.h"
 #include "graph.hxx"
 #include "cut_base/cut_base_apply_packing.hxx"
+#include "sequence_compression.h"
 #include <iostream>
 #include <array>
 #include <vector>
@@ -49,8 +50,10 @@ cycle_packing max_cut_cycle_packing_impl(const max_cut_instance input, const boo
    };
 
    cycle_packing cp;
+   sequence_compression sc(input.no_nodes()); // for detecting subcycles
    // iteratively pack cycles of given length
-   for (std::size_t cycle_length = 1; cycle_length <= input.no_nodes()-1; cycle_length++) {
+   std::array<std::size_t,11> cycle_lengths = {1,2,3,4,5,6,7,8,9,10,std::numeric_limits<std::size_t>::max()};
+   for(const std::size_t cycle_length : cycle_lengths) {
       std::cout << "find cycles of length " << cycle_length << "\n";
 
       compute_connectivity();
@@ -77,7 +80,20 @@ cycle_packing max_cut_cycle_packing_impl(const max_cut_instance input, const boo
 
             lower_bound += cycle_cap;
 
-            // TODO: select shortest subcycle
+            sc.reset();
+            for(std::size_t c=1; c<cycle.size(); ++c) {
+                const std::size_t node = cycle[c] % input.no_nodes();
+                if(sc.index_added(node)) { // find first position of repeated
+                    const std::size_t first_occurence = std::find_if(cycle.begin()+1, cycle.begin()+c-1, [=](const std::size_t x) { return x % input.no_nodes() == node; }) - cycle.begin();
+                    std::copy(cycle.begin() + first_occurence, cycle.begin() + c+1, cycle.begin());
+                    cycle.resize(c - first_occurence);
+                    assert(cycle.size() > 0);
+                    assert(cycle[0] % input.no_nodes() == cycle.back() % input.no_nodes());
+                    break;
+                }
+                sc.add_index(node); 
+            }
+
             // subtract minimum weight and remove edges of negligible weight
             for(std::size_t c=1; c<cycle.size(); ++c) {
                const std::size_t u = cycle[c-1];
@@ -119,6 +135,8 @@ cycle_packing max_cut_cycle_packing_impl(const max_cut_instance input, const boo
          }
       }
    }
+
+   std::cout << "final lower bound after cycle packing= " << lower_bound << "\n";
    return cp;
 }
 

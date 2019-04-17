@@ -4,13 +4,13 @@
 #include "max_cut/max_cut_factors_messages.h"
 #include <array>
 #include <vector>
-#include <unordered_map>
 #include <variant>
 #include <limits>
 #include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <variant>
+#include <tsl/robin_map.h>
 
 namespace LPMP {
 
@@ -193,7 +193,9 @@ namespace LPMP {
             return std::lexicographical_compare(t1.other_nodes.begin(), t1.other_nodes.end(), t2.other_nodes.begin(), t2.other_nodes.end());
         };
 
-        std::unordered_map<std::array<std::size_t,2>, std::size_t> edge_nodes_to_edge_index;
+        tsl::robin_map<std::array<std::size_t,2>, std::size_t> edge_nodes_to_edge_index;
+        edge_nodes_to_edge_index.reserve(input.edges().size()); // TODO: investigate good value
+        //std::unordered_map<std::array<std::size_t,2>, std::size_t> edge_nodes_to_edge_index;
         std::vector<std::size_t> no_triplets_per_node(input.no_nodes(), 0);
 
         std::vector<std::size_t> no_triplets_per_edge(input.no_edges(), 0);
@@ -277,6 +279,13 @@ namespace LPMP {
             double weight;
         };
         compressed_bipartite_graph_helper<bfs_item> bfs_helper(input.no_nodes());
+
+        struct triplet_intersection_type {
+            std::array<std::size_t,2> wheel_nodes;
+            std::array<std::size_t,2> triplet_item_index;
+        };
+        std::vector<triplet_intersection_type> triplet_intersection; // preallocate
+
         for(const auto& e : input.edges()) {
             // check whether edge would be on. For this, compute over all triplets that share this edge
             // TODO: collect all edge activations and sort
@@ -298,11 +307,7 @@ namespace LPMP {
 
             const std::array<std::size_t,2> axle_nodes {e[0], e[1]};
 
-            struct triplet_intersection_type {
-                std::array<std::size_t,2> wheel_nodes;
-                std::array<std::size_t,2> triplet_item_index;
-            };
-            std::vector<triplet_intersection_type> triplet_intersection; // TODO: make more efficient by preallocating
+            triplet_intersection.clear();
             set_intersection_merge(
                     triplets_per_node[axle_nodes[0]].begin(), triplets_per_node[axle_nodes[0]].end(),
                     triplets_per_node[axle_nodes[1]].begin(), triplets_per_node[axle_nodes[1]].end(),
@@ -367,9 +372,11 @@ namespace LPMP {
                         if(cycle.size() == 0) 
                             break;
                         assert(cycle_cap >= tolerance);
+                        assert(cycle.size() % 2 == 0);
 
                         std::transform(cycle.begin(), cycle.end(), cycle.begin(), [&](const std::size_t val) { return val % bfs_helper.no_compressed_nodes(); });
                         cycle = find_subcycle(cycle);
+                        assert(cycle.size() % 2 == 0);
 
                         lower_bound += cycle_cap;
                         edge_cost += cycle_cap;

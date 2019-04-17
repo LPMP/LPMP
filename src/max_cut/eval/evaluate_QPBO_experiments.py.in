@@ -1,0 +1,10 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+from QPBO_evaluation_data import *
+import LPMP_evaluate_log
+
+LPMP_evaluate_log.evaluate_experiments(deconv_instances, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'deconv') 
+LPMP_evaluate_log.evaluate_experiments(dtf_instances, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'dtf') 
+LPMP_evaluate_log.evaluate_experiments(super_resolution_instances, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'super_resolution') 
+LPMP_evaluate_log.evaluate_experiments(texture_restoration_instances, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'texture_restoration') 

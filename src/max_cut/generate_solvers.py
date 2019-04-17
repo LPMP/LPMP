@@ -9,12 +9,14 @@ preamble = """
 """
 
 preamble_text_input = preamble + "\n#include \"max_cut/max_cut_text_input.h\"\n";
-preamble_opengm_input = preamble + "\n#include \"max_cut/max_cut_opengm_input.h\"\n";
-preamble_andres_input = preamble + "\n#include \"max_cut/max_cut_andres_input.h\"\n";
+preamble_uai_input = preamble + "\n#include \"mrf/mrf_uai_input.h\"\n";
 
 solvers = [
     solver(preamble_text_input, 'FMC_MAX_CUT', 'LP', 'max_cut_text_input::parse_file', "max_cut_cycle_text_input.cpp"),
     solver(preamble_text_input, 'FMC_ODD_BICYCLE_WHEEL_MAX_CUT', 'LP', 'max_cut_text_input::parse_file', "max_cut_odd_bicycle_wheel_text_input.cpp"),
+
+    solver(preamble_uai_input, 'FMC_MAX_CUT', 'LP', 'binary_MRF_uai_input::parse_file', 'max_cut_cycle_qpbo_uai_input.cpp'),
+    solver(preamble_uai_input, 'FMC_ODD_BICYCLE_WHEEL_MAX_CUT', 'LP', 'binary_MRF_uai_input::parse_file', 'max_cut_odd_bicycle_wheel_qpbo_uai_input.cpp'),
     ]
 
 

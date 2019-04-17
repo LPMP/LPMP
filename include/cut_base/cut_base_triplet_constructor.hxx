@@ -285,6 +285,12 @@ namespace LPMP {
         {
             // TODO: use method send_messages_to_right_residual
             auto [msg_0, msg_1, msg_2] = get_edge_triplet_messages(t); 
+            assert(msg_0->GetRightFactor() == t);
+            assert(msg_1->GetRightFactor() == t);
+            assert(msg_2->GetRightFactor() == t);
+            assert(msg_0->GetLeftFactor() != msg_1->GetLeftFactor());
+            assert(msg_0->GetLeftFactor() != msg_2->GetLeftFactor());
+            assert(msg_1->GetLeftFactor() != msg_2->GetLeftFactor());
 
             msg_0->send_message_to_right();
             msg_1->send_message_to_right();
@@ -303,8 +309,11 @@ namespace LPMP {
     template<class FACTOR_MESSAGE_CONNECTION, typename EDGE_FACTOR, typename TRIPLET_FACTOR, typename EDGE_TRIPLET_MESSAGE_0, typename EDGE_TRIPLET_MESSAGE_1, typename EDGE_TRIPLET_MESSAGE_2> 
         void cut_base_triplet_constructor<FACTOR_MESSAGE_CONNECTION, EDGE_FACTOR, TRIPLET_FACTOR, EDGE_TRIPLET_MESSAGE_0, EDGE_TRIPLET_MESSAGE_1, EDGE_TRIPLET_MESSAGE_2>::send_messages_to_edges()
         {
-            for(auto& t : triplet_factors())
-                send_messages_to_edges(t.second); 
+            std::cout << "kwaskwas: " << triplet_factors().size() << "\n";
+            for(std::size_t i=0; i<triplet_factors().size(); ++i)
+                send_messages_to_edges(triplet_factors()[i].second);
+            //for(auto& t : triplet_factors())
+            //    send_messages_to_edges(t.second); 
         }
 
     template<class FACTOR_MESSAGE_CONNECTION, typename EDGE_FACTOR, typename TRIPLET_FACTOR, typename EDGE_TRIPLET_MESSAGE_0, typename EDGE_TRIPLET_MESSAGE_1, typename EDGE_TRIPLET_MESSAGE_2> 

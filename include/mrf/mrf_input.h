@@ -1,5 +1,4 @@
-#ifndef LPMP_MRF_INPUT_H
-#define LPMP_MRF_INPUT_H
+#pragma once
 
 #include <vector>
 #include "two_dimensional_variable_array.hxx"
@@ -22,6 +21,3 @@ namespace LPMP {
    };
 
 } // namespace LPMP
-
-#endif // LPMP_MRF_INPUT_H
-

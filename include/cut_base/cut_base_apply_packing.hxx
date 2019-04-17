@@ -42,27 +42,6 @@ namespace LPMP {
                 }
             };
 
-            /*
-            auto get_incoming_chord_msg = [&](auto cycle_iterator, const triplet_type nodes) -> msg_variant {
-                if(cycle_begin+1 != cycle_iterator) {
-                    const std::size_t chord_node_0 = std::min(first_node, *cycle_iterator);
-                    const std::size_t chord_node_1 = std::max(first_node, *cycle_iterator);
-                    return get_msg_func({chord_node_0, chord_node_1}, nodes);
-                }
-                return std::nullopt;
-            };
-
-            auto get_outgoing_chord_msg = [&](const auto cycle_iterator, const triplet_type nodes) -> msg_variant {
-                if(cycle_iterator+2 != cycle_end) {
-                    const std::size_t chord_node_0 = std::min(first_node, *(cycle_iterator+1));
-                    const std::size_t chord_node_1 = std::max(first_node, *(cycle_iterator+1));
-                    return get_msg_func({chord_node_0, chord_node_1}, nodes);
-                } else {
-                    return std::nullopt;
-                }
-            };
-            */
-
             // TODO: make msg types in lambda const auto&
             auto send_message_to_triplet = [&](auto& edge, auto& triplet, auto& msg) {
                 typename std::remove_reference_t<decltype(msg)>::msg_val_type msg_val;
@@ -112,38 +91,6 @@ namespace LPMP {
                     send_msg_forward(edge_01_type, edge_01, t, edge_01_msg);
                     send_msg_forward(edge_02_type, edge_02, t, edge_02_msg);
                     send_msg_forward(edge_12_type, edge_12, t, edge_12_msg);
-                    //auto& edge_01 = get_edge_func({nodes[0], nodes[1]});
-                    //auto& edge_02 = get_edge_func({nodes[0], nodes[2]});
-                    //auto& edge_12 = get_edge_func({nodes[1], nodes[2]});
-
-                    /*
-                    auto incoming_chord_msg = get_incoming_chord_msg(it, nodes);
-                    if(incoming_chord_msg.has_value()) {
-                        std::visit([&](auto& msg) {
-                                msg.RepamRight(t, std::array<double,1>{+cycle_weight});
-                                }, incoming_chord_msg.value());
-                    }
-
-                    auto outgoing_chord_msg = get_outgoing_chord_msg(it, nodes);
-                    if(outgoing_chord_msg.has_value()) {
-                        std::visit([&](auto& msg) {
-                                msg.RepamRight(t, std::array<double,1>{-cycle_weight});
-                                }, outgoing_chord_msg.value());
-                    }
-
-                    auto repam_non_chord_msg = [&](auto& edge, auto msg) {
-                        std::visit([&](auto msg) {
-                                if(!incoming_chord_msg.has_value() || !std::holds_alternative<decltype(msg)>(incoming_chord_msg.value())) {
-                                if(!outgoing_chord_msg.has_value() || !std::holds_alternative<decltype(msg)>(outgoing_chord_msg.value())) {
-                                    send_message_to_triplet(edge, t, msg);
-                                    }
-                                }
-                        }, msg); 
-                    };
-                    */
-                    //repam_non_chord_msg(edge_01, get_msg_func({0,1},{0,1,2})); 
-                    //repam_non_chord_msg(edge_02, get_msg_func({0,2},{0,1,2})); 
-                    //repam_non_chord_msg(edge_12, get_msg_func({1,2},{0,1,2})); 
                 } else {
                     assert(false);
                 }

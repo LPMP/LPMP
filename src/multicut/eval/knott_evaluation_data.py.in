@@ -1,0 +1,52 @@
+import os
+
+knott_150 = [
+        'knott-3d-150/gm_knott_3d_032.txt',
+        'knott-3d-150/gm_knott_3d_033.txt',
+        'knott-3d-150/gm_knott_3d_034.txt',
+        'knott-3d-150/gm_knott_3d_035.txt',
+        'knott-3d-150/gm_knott_3d_036.txt',
+        'knott-3d-150/gm_knott_3d_037.txt',
+        'knott-3d-150/gm_knott_3d_038.txt',
+        'knott-3d-150/gm_knott_3d_039.txt'
+        ]
+knott_300 = [
+        'knott-3d-300/gm_knott_3d_072.txt',
+        'knott-3d-300/gm_knott_3d_073.txt',
+        'knott-3d-300/gm_knott_3d_074.txt',
+        'knott-3d-300/gm_knott_3d_075.txt',
+        'knott-3d-300/gm_knott_3d_076.txt',
+        'knott-3d-300/gm_knott_3d_077.txt',
+        'knott-3d-300/gm_knott_3d_078.txt',
+        'knott-3d-300/gm_knott_3d_079.txt'
+        ]
+knott_450 = [
+        'knott-3d-450/gm_knott_3d_092.txt',
+        'knott-3d-450/gm_knott_3d_093.txt',
+        'knott-3d-450/gm_knott_3d_094.txt',
+        'knott-3d-450/gm_knott_3d_095.txt',
+        'knott-3d-450/gm_knott_3d_096.txt',
+        'knott-3d-450/gm_knott_3d_097.txt',
+        'knott-3d-450/gm_knott_3d_098.txt',
+        'knott-3d-450/gm_knott_3d_099.txt'
+
+        ]
+knott_550 = [
+        'knott-3d-550/gm_knott_3d_112.txt',
+        'knott-3d-550/gm_knott_3d_113.txt',
+        'knott-3d-550/gm_knott_3d_114.txt',
+        'knott-3d-550/gm_knott_3d_115.txt',
+        'knott-3d-550/gm_knott_3d_116.txt',
+        'knott-3d-550/gm_knott_3d_117.txt',
+        'knott-3d-550/gm_knott_3d_118.txt',
+        'knott-3d-550/gm_knott_3d_119.txt'
+        ]
+
+
+algorithms = ['multicut_cycle_text_input', 'multicut_odd_wheel_text_input', 'multicut_odd_bicycle_wheel_text_input']
+
+solver_options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 1 --tightenConstraintsPercentage 0.05  --primalComputationStart 1 --primalComputationInterval 10 -v 2 --lowerBoundComputationInterval 10 --tighten"
+
+executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")
+instance_dir = "@KNOTT_INSTANCE_DIRECTORY@"
+output_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "knott")
