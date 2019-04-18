@@ -1,14 +1,14 @@
 import os
 
 small_instances_list = [
-        '/small_problems/gm_small_1.txt',
-        '/small_problems/gm_small_2.txt',
-        '/small_problems/gm_small_3.txt'
+        'small_problems/gm_small_1.txt',
+        'small_problems/gm_small_2.txt',
+        'small_problems/gm_small_3.txt'
         ]
 large_instances_list = [
-        '/large_problems/gm_large_1.txt',
-        '/large_problems/gm_large_2.txt',
-        '/large_problems/gm_large_3.txt'
+        'large_problems/gm_large_1.txt',
+        'large_problems/gm_large_2.txt',
+        'large_problems/gm_large_3.txt'
         ]
 
 
@@ -17,5 +17,5 @@ algorithms = ['multicut_cycle_text_input', 'multicut_odd_wheel_text_input', 'mul
 solver_options = "--standardReparametrization anisotropic --roundingReparametrization uniform:0.5 --tightenReparametrization uniform:0.5 --tightenInterval 50 --tightenIteration 1 --tightenConstraintsPercentage 0.05  --primalComputationStart 1 --primalComputationInterval 10 -v 2 --lowerBoundComputationInterval 10 --tighten"
 
 executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")
-instance_dir = "@CREMI_NATURE_MATHODS_INSTANCE_DIRECTORY@"
+instance_dir = "@CREMI_NATURE_METHODS_INSTANCE_DIRECTORY@"
 output_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "CREMI_nature_methods")

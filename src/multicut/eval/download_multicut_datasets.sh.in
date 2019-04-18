@@ -12,5 +12,5 @@ unzip @MULTICUT_EVAL_DIRECTORY@/knott.zip -d @MULTICUT_EVAL_DIRECTORY@/knott
 wget -nc https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/CREMI_multicut_nature_methods.zip -O @MULTICUT_EVAL_DIRECTORY@/CREMI_multicut_nature_methods.zip
 unzip @MULTICUT_EVAL_DIRECTORY@/CREMI_multicut_nature_methods.zip -d @MULTICUT_EVAL_DIRECTORY@
 
-wget -nc https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/fruit_fly_brain_segmentation_Paper.zip -O @MULTICUT_EVAL_DIRECTORY@/fruit_fly_brain_segmentation_Paper.zip
-unzip @MULTICUT_EVAL_DIRECTORY@/fruit_fly_brain_segmentation_Paper.zip -d @MULTICUT_EVAL_DIRECTORY@
+wget -nc https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/fruit_fly_brain_segmentation_Pape.zip -O @MULTICUT_EVAL_DIRECTORY@/fruit_fly_brain_segmentation_Pape.zip
+unzip @MULTICUT_EVAL_DIRECTORY@/fruit_fly_brain_segmentation_Pape.zip -d @MULTICUT_EVAL_DIRECTORY@
