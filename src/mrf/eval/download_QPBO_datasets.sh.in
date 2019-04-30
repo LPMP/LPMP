@@ -1,4 +1,4 @@
 #!/bin/bash
 
-wget -nc https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/QPBO_CV_problems.zip -O @QPBO_INSTANCE_DIRECTORY@
-unzip @QPBO_INSTANCE_DIRECTORY@/QPBO_CV_problems.zip -d @QPBO_INSTANCE_DIRECTORY@
+wget -nc https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/QPBO_CV_problems.zip -O @MRF_EVAL_DIRECTORY@/QPBO_CV_problems.zip
+unzip @MRF_EVAL_DIRECTORY@/QPBO_CV_problems.zip -d @MRF_EVAL_DIRECTORY@/QPBO_problems/

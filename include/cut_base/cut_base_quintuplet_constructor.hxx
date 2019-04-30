@@ -12,7 +12,7 @@ namespace LPMP {
         class cut_base_quintuplet_storage {
             public:
                 template<typename LP>
-                QUINTUPLET_FACTOR* add_quintuplet_factor(const std::array<std::size_t,5> idx, LP* lp);
+                QUINTUPLET_FACTOR* add_quintuplet_factor_to_storage(const std::array<std::size_t,5> idx, LP* lp);
                 bool has_quintuplet_factor(const std::array<std::size_t,5>& idx) const;
                 QUINTUPLET_FACTOR* get_quintuplet_factor(const std::array<std::size_t,5>& idx) const;
 
@@ -109,7 +109,7 @@ namespace LPMP {
 
     template<typename QUINTUPLET_FACTOR>
         template<typename LP>
-        QUINTUPLET_FACTOR* cut_base_quintuplet_storage<QUINTUPLET_FACTOR>::add_quintuplet_factor(const std::array<std::size_t,5> idx, LP* lp)
+        QUINTUPLET_FACTOR* cut_base_quintuplet_storage<QUINTUPLET_FACTOR>::add_quintuplet_factor_to_storage(const std::array<std::size_t,5> idx, LP* lp)
         {
             assert(!has_quintuplet_factor(idx));
             assert(quintuplet_factors_.size() == quintuplet_factor_vector_.size());
@@ -123,7 +123,7 @@ namespace LPMP {
     template<typename QUINTUPLET_FACTOR>
         bool cut_base_quintuplet_storage<QUINTUPLET_FACTOR>::has_quintuplet_factor(const std::array<std::size_t,5>& idx) const
         {
-            assert(idx[0] < idx[1] && idx[1] < idx[2] && idx[2] < idx[3] && idx[3] < idx[4]);
+            assert(idx[0] < idx[1] && idx[1] < idx[2] && idx[2] < idx[3]);
             return quintuplet_factors_.find(idx) != quintuplet_factors_.end(); 
         }
 
@@ -149,7 +149,14 @@ namespace LPMP {
         typename QUADRUPLET_CONSTRUCTOR::quadruplet_factor_container* cut_base_quadruplet_quintuplet_constructor< QUADRUPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, QUADRUPLET_QUINTUPLET_MESSAGE_0123, QUADRUPLET_QUINTUPLET_MESSAGE_0124, QUADRUPLET_QUINTUPLET_MESSAGE_0134, QUADRUPLET_QUINTUPLET_MESSAGE_0234, QUADRUPLET_QUINTUPLET_MESSAGE_1234>::connect_quintuplet_factor(QUINTUPLET_FACTOR* f, const std::array<std::size_t,4> idx)
         {
             assert(idx[0] < idx[1] && idx[1] < idx[2] && idx[2] < idx[3]);
-            auto* o = this->get_quadruplet_factor(idx[0], idx[1], idx[2], idx[3]);
+
+            auto* o = [&]() { 
+                if(!this->has_quadruplet_factor(idx[0], idx[1], idx[2], idx[3]))
+                    return this->add_quadruplet_factor(idx[0], idx[1], idx[2], idx[3]);
+                else
+                    return this->get_quadruplet_factor(idx[0], idx[1], idx[2], idx[3]);
+            }(); 
+
             auto* m = this->lp_->template add_message<MSG_TYPE>(o, f);
             return o;
         }
@@ -158,26 +165,17 @@ namespace LPMP {
     template<typename QUADRUPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename QUADRUPLET_QUINTUPLET_MESSAGE_0123, typename QUADRUPLET_QUINTUPLET_MESSAGE_0124, typename QUADRUPLET_QUINTUPLET_MESSAGE_0134, typename QUADRUPLET_QUINTUPLET_MESSAGE_0234, typename QUADRUPLET_QUINTUPLET_MESSAGE_1234 >
         QUINTUPLET_FACTOR* cut_base_quadruplet_quintuplet_constructor< QUADRUPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, QUADRUPLET_QUINTUPLET_MESSAGE_0123, QUADRUPLET_QUINTUPLET_MESSAGE_0124, QUADRUPLET_QUINTUPLET_MESSAGE_0134, QUADRUPLET_QUINTUPLET_MESSAGE_0234, QUADRUPLET_QUINTUPLET_MESSAGE_1234>::add_quintuplet_factor(const std::array<std::size_t,5> idx)
         {
+            assert(idx[4] << this->no_nodes());
             assert(!this->has_quintuplet_factor(idx));
-            auto* f = this->add_quintuplet_factor(idx, this->lp_);
-
-            if(!this->has_quadruplet_factor(idx[0], idx[1], idx[2], idx[3]))
-                this->add_quadruplet_factor(idx[0], idx[1], idx[2], idx[3]);
-            if(!this->has_quadruplet_factor(idx[0], idx[1], idx[2], idx[4]))
-                this->add_quadruplet_factor(idx[0], idx[1], idx[2], idx[4]);
-            if(!this->has_quadruplet_factor(idx[0], idx[1], idx[3], idx[4]))
-                this->add_quadruplet_factor(idx[0], idx[1], idx[3], idx[4]);
-            if(!this->has_quadruplet_factor(idx[0], idx[2], idx[3], idx[4]))
-                this->add_quadruplet_factor(idx[0], idx[2], idx[3], idx[4]);
-            if(!this->has_quadruplet_factor(idx[1], idx[2], idx[3], idx[4]))
-                this->add_quadruplet_factor(idx[1], idx[2], idx[3], idx[4]);
+            auto* f = this->add_quintuplet_factor_to_storage(idx, this->lp_);
 
             auto* o_0123 = connect_quintuplet_factor<quadruplet_quintuplet_message_0123_container>(f, {idx[0], idx[1], idx[2], idx[3]});
-            this->lp_->add_factor_relation(o_0123, f);
-            connect_quintuplet_factor<quadruplet_quintuplet_message_0124_container>(f, {idx[0], idx[1], idx[2], idx[4]});
-            connect_quintuplet_factor<quadruplet_quintuplet_message_0134_container>(f, {idx[0], idx[1], idx[3], idx[4]});
-            connect_quintuplet_factor<quadruplet_quintuplet_message_0234_container>(f, {idx[0], idx[2], idx[3], idx[4]});
+            auto* o_0124 = connect_quintuplet_factor<quadruplet_quintuplet_message_0124_container>(f, {idx[0], idx[1], idx[2], idx[4]});
+            auto* o_0134 = connect_quintuplet_factor<quadruplet_quintuplet_message_0134_container>(f, {idx[0], idx[1], idx[3], idx[4]});
+            auto* o_0234 = connect_quintuplet_factor<quadruplet_quintuplet_message_0234_container>(f, {idx[0], idx[2], idx[3], idx[4]});
             auto* o_1234 = connect_quintuplet_factor<quadruplet_quintuplet_message_1234_container>(f, {idx[1], idx[2], idx[3], idx[4]});
+
+            this->lp_->add_factor_relation(o_0123, f);
             this->lp_->add_factor_relation(o_1234, f);
 
             return f;
@@ -189,8 +187,6 @@ namespace LPMP {
         {
             INSTANCE output = this->export_quadruplets();
             this->export_quintuplets(output);
-            for(const auto& q : this->quintuplet_factors())
-                output.add_quintuplet(q.first[0], q.first[1], q.first[2], q.first[3], q.first[4], *q.second);
             return output;
         }
 
@@ -213,7 +209,8 @@ namespace LPMP {
                 std::array<std::size_t,5> nodes{triplet_nodes[0], triplet_nodes[1], triplet_nodes[2], axle[0], axle[1]};
                 std::sort(nodes.begin(), nodes.end());
                 if(!this->has_quintuplet_factor(nodes))
-                    static_cast<cut_base_quintuplet_storage<QUINTUPLET_FACTOR>*>(this)->add_quintuplet_factor(nodes, this->lp_);
+                    this->add_quintuplet_factor(nodes);
+                    //static_cast<cut_base_quintuplet_storage<QUINTUPLET_FACTOR>*>(this)->add_quintuplet_factor_to_storage(nodes, this->lp_);
                 return *(this->get_quintuplet_factor(nodes)->get_factor());
             };
 
@@ -315,7 +312,8 @@ namespace LPMP {
     template<typename TRIPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename TRIPLET_QUINTUPLET_MESSAGE_012, typename TRIPLET_QUINTUPLET_MESSAGE_013, typename TRIPLET_QUINTUPLET_MESSAGE_014, typename TRIPLET_QUINTUPLET_MESSAGE_023, typename TRIPLET_QUINTUPLET_MESSAGE_024, typename TRIPLET_QUINTUPLET_MESSAGE_034, typename TRIPLET_QUINTUPLET_MESSAGE_123, typename TRIPLET_QUINTUPLET_MESSAGE_124, typename TRIPLET_QUINTUPLET_MESSAGE_134, typename TRIPLET_QUINTUPLET_MESSAGE_234>
             QUINTUPLET_FACTOR* cut_base_triplet_quintuplet_constructor<TRIPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, TRIPLET_QUINTUPLET_MESSAGE_012, TRIPLET_QUINTUPLET_MESSAGE_013, TRIPLET_QUINTUPLET_MESSAGE_014, TRIPLET_QUINTUPLET_MESSAGE_023, TRIPLET_QUINTUPLET_MESSAGE_024, TRIPLET_QUINTUPLET_MESSAGE_034, TRIPLET_QUINTUPLET_MESSAGE_123, TRIPLET_QUINTUPLET_MESSAGE_124, TRIPLET_QUINTUPLET_MESSAGE_134, TRIPLET_QUINTUPLET_MESSAGE_234>::add_quintuplet_factor(const std::array<std::size_t,5> idx)
             {
-                auto* f = quintuplet_storage::add_quintuplet_factor(idx, this->lp_); 
+                assert(idx[4] << this->no_nodes());
+                auto* f = quintuplet_storage::add_quintuplet_factor_to_storage(idx, this->lp_); 
                 connect_quintuplet_factor<TRIPLET_QUINTUPLET_MESSAGE_012>(f, {idx[0], idx[1], idx[2]});
                 connect_quintuplet_factor<TRIPLET_QUINTUPLET_MESSAGE_013>(f, {idx[0], idx[1], idx[3]});
                 connect_quintuplet_factor<TRIPLET_QUINTUPLET_MESSAGE_014>(f, {idx[0], idx[1], idx[4]});

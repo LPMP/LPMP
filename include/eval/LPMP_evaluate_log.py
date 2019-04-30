@@ -266,7 +266,9 @@ def create_table(parths, methods):
 
 def evaluate_experiments(instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, dataset_name):
    log_files = []
+   print instance_list
    for instance in instance_list:
+      print instance
       for algorithm in algorithms:
          log_files.append(get_log_file_names(instance, algorithm, output_dir)[0])
          if not log_valid(instance, algorithm, output_dir):

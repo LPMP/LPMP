@@ -165,7 +165,7 @@ compute_anisotropic_weights(FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor
    // there are factors connected to the ones given to which we also send messages. We do so only if we can afterwards receive messages from those later.
    if(connected_factor_not_in_list) {
        adjacent_minmax.reserve(n);
-       assert(false);
+       //assert(false);
 
        // get vector of factors that are (i) not in iteration list and (ii) are connected to two or more factors in iteration list.
        tsl::robin_map<FactorTypeAdapter*, std::size_t> adjacent_factors;

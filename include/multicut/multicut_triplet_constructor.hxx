@@ -43,7 +43,7 @@ public:
 
    std::size_t find_violated_cycles(const std::size_t max_triplets_to_add);
 
-   void construct(const multicut_instance& mc);
+   void construct(multicut_instance mc);
    bool CheckPrimalConsistency() const;
    std::size_t Tighten(const std::size_t no_constraints);
    //static std::vector<char> round(std::vector<typename base_constructor::edge> edges);
@@ -218,8 +218,9 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
    }
 
 template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
-   void multicut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::construct(const multicut_instance& mc)
+   void multicut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::construct(multicut_instance mc)
    {
+       mc.normalize();
       for(const auto& e : mc.edges())
          this->add_edge_factor(e[0], e[1], e.cost);
       this->no_original_edges_ = this->unary_factors_vector_.size();

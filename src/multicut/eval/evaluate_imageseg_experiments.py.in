@@ -1,10 +1,7 @@
 #!/usr/bin/python
 import sys
 sys.path.append('@EVAL_MODULE_PATH@')
-from Ising_models_evaluation_data import *
+from imageseg_evaluation_data import *
 import LPMP_evaluate_log
 
-LPMP_evaluate_log.evaluate_experiments(knott_150, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'knott-3d-150') 
-LPMP_evaluate_log.evaluate_experiments(knott_300, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'knott-3d-300') 
-LPMP_evaluate_log.evaluate_experiments(knott_450, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'knott-3d-450') 
-LPMP_evaluate_log.evaluate_experiments(knott_550, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'knott-3d-550') 
+LPMP_evaluate_log.evaluate_experiments(instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, 'image-seg') 
