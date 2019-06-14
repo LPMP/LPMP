@@ -34,9 +34,6 @@ namespace LPMP {
 		bool edge_present(const std::size_t i, const std::size_t j) const;
         EDGE_INFORMATION& edge(const std::size_t i, const std::size_t j);
         const EDGE_INFORMATION& edge(const std::size_t i, const std::size_t j) const;
-        std::size_t tail(const std::size_t edge_index) const;
-        std::size_t head(const std::size_t edge_index) const;
-        std::array<std::size_t,2> endpoints(const std::size_t edge_index) const;
 
 		std::size_t no_nodes() const { return edge_maps_.size(); }
 		std::size_t no_edges(const std::size_t i) const { assert(i < no_nodes()); return edge_maps_[i].size(); }
@@ -44,6 +41,8 @@ namespace LPMP {
         void insert_edge(const std::size_t i, const std::size_t j, const EDGE_INFORMATION& e);
         void remove_edge(const std::size_t i, const std::size_t j);
         void remove_node(const std::size_t i);
+
+        const auto edges(const std::size_t i) const { assert(i < no_nodes()); return edge_maps_[i]; }
 
         private:
         std::array<std::size_t,2> normal_edge(const std::size_t i, const std::size_t j) const { return {std::min(i,j), std::max(i,j)}; }
