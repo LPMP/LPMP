@@ -28,9 +28,13 @@ Type `git clone https://github.com/LPMP/LPMP.git` for downloading, then `cd LPMP
 Prerequisites:
 * Clang 5.0 or GCC 8.0 upwards for C++17 compatibility.
 
+## Documentation
+
+A tutorial on writing a new solver from scratch can be found [here](/doc/Getting-Started.md).
+
 ## References
 * [1]: [`P. Swoboda, J. Kuske and B. Savchynskyy. A Dual Ascent Framework for Lagrangean Decomposition of Combinatorial Problems. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Dual_Ascent_CVPR_2017_paper.html)
-* [2]: `P. Swoboda and V. Kolmogorov. MAP inference via Block-Coordinate Frank-Wolfe Algorithm. In CVPR 2019`
+* [2]: [`P. Swoboda and V. Kolmogorov. MAP inference via Block-Coordinate Frank-Wolfe Algorithm. In CVPR 2019`](http://openaccess.thecvf.com/content_CVPR_2019/html/Swoboda_MAP_Inference_via_Block-Coordinate_Frank-Wolfe_Algorithm_CVPR_2019_paper.html)
 * [3]: [`P. Swoboda and B. Andres. A Message Passing Algorithm for the Minimum Cost Multicut Problem. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Message_Passing_CVPR_2017_paper.html)
 * [4]: [`P. Swoboda, C. Rother, H. A. Alhaija, D. Kainmuller, B. Savchynskyy. A Study of Lagrangean Decompositions and Dual Ascent Solvers for Graph Matching. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Study_of_CVPR_2017_paper.html)
-* [5]: `P. Swoboda, D. Kainmueller, A. Mokarian, C. Theobalt and F. Bernard. A convex approach to multi-graph matching. In CVPR 2019.`
+* [5]: [`P. Swoboda, D. Kainmueller, A. Mokarian, C. Theobalt and F. Bernard. A convex approach to multi-graph matching. In CVPR 2019.`](http://openaccess.thecvf.com/content_CVPR_2019/html/Swoboda_A_Convex_Relaxation_for_Multi-Graph_Matching_CVPR_2019_paper.html)
