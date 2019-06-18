@@ -29,7 +29,7 @@ The QPBO problem can be stated as follows:
 
 Note that the solver we write will not be state-of-the-art. There are much more efficient ways to solve LP relaxations equivalent to the one we will optimize, foremost [max-flow based ones](http://pub.ist.ac.at/~vnk/papers/EXTENDED-ROOF-DUALITY.html).
 
-All code lives in the namespace LPMP. The complete example code can be found [here](example).
+All code lives in the namespace LPMP. The complete example code can be found [here](/doc).
 
 ## Lagrange decomposition
 
@@ -59,7 +59,7 @@ using QPBO_instance = std::vector<std::vector<double>>;
 ```
 
 Next, given a matrix given in the CSV file format, we write a parser that reads the given file and returns a QPBO_instance.
-All the solvers in the LPMP project use the [PEGTL](https://github.com/PEGTL/PEGTL) library for parsing files. We do so as well here. We also assume for simplicity that all input numbers are integral.
+All the solvers in the LPMP project use the [PEGTL](https://github.com/taocpp/PEGTL) library for parsing files. We do so as well here. We also assume for simplicity that all input numbers are integral.
 
 ``` c++
 struct number : pegtl::seq< pegtl::opt< pegtl::string<'-'> >, pegtl::star< pegtl::blank >, pegtl::plus< pegtl::digit > > {};
