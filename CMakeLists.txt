@@ -69,6 +69,7 @@ target_link_libraries(LPMP INTERFACE DD_ILP)
 add_subdirectory(src)
 enable_testing()
 add_subdirectory(test)
+add_subdirectory(doc)
 
 option(BUILD_DOC "Build documentation" OFF)
 if(BUILD_DOC)
