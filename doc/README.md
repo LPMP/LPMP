@@ -1,0 +1,18 @@
+# LPMP documentation
+
+* [Project](https://github.com/LPMP/LPMP)
+* [Getting Started](/doc/Getting-Started.md)
+  * [Introduction](/doc/Getting-Started.md#introduction)
+  * [Lagrange decomposition](/doc/Getting-Started.md#lagrange-decomposition)
+  * [Parser](/doc/Getting-Started.md#parser)
+  * [Factors](/doc/Getting-Started.md#factors)
+  * [Message](/doc/Getting-Started.md#message)
+  * [Problem constructor](/doc/Getting-Started.md#problem-constructor)
+  * [Solver executable](/doc/Getting-Started.md#solver-executable)
+  * [Compilation and running](/doc/Getting-Started.md#compilation-and-running)
+* [Advanced LPMP capabilities](/doc/Advanced-Functions.md)
+  * [Advanced factor functions](/doc/Advanced-Functions.md#advanced-factor-functions)
+  * [Advanced message functions](/doc/Advanced-Functions.md#advanced-message-functions)
+  * [Advanced problem constructor functions](/doc/Advanced-Functions.md#advanced-problem-constructor-functions)
+  * [Advanced LP functions](/doc/Advanced-Functions.md#advanced-LP-functions)
+  * [Lagrange decomposition into trees](/doc/Advanced-Functions.md#lagrange-decomposition-into-trees)
