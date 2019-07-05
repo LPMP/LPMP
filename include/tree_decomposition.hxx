@@ -1,5 +1,4 @@
-#ifndef LPMP_TREE_DECOMPOSITION_HXX
-#define LPMP_TREE_DECOMPOSITION_HXX
+#pragma once
 
 #include "LP.h"
 #include "serialization.hxx"
@@ -1027,5 +1026,3 @@ private:
 };
 
 } // end namespace LPMP
-
-#endif // LPMP_TREE_DECOMPOSITION_HXX

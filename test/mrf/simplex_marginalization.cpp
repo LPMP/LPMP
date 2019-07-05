@@ -57,7 +57,7 @@ int main()
          PairwiseSimplexFactor p(i,i);
          UnaryPairwiseMessage<Chirality::left> msg_left;
 
-         vector<double> msg_vec(i);
+         LPMP::vector<double> msg_vec(i);
          test_repam_message(s, p, msg_left, msg_vec, rd);
       }
    }

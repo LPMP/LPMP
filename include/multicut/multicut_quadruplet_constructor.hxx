@@ -69,7 +69,9 @@ namespace LPMP {
         std::size_t multicut_quadruplet_constructor<BASE_CONSTRUCTOR, QUADRUPLET_FACTOR, TRIPLET_QUADRUPLET_MESSAGE_012, TRIPLET_QUADRUPLET_MESSAGE_013, TRIPLET_QUADRUPLET_MESSAGE_023, TRIPLET_QUADRUPLET_MESSAGE_123>::Tighten(const std::size_t no_constraints_to_add)
         {
             // TODO: search asynchronously
-            this->send_messages_to_triplets();
+            if(!this->no_informative_factors_arg_.isSet())
+                this->send_messages_to_triplets();
+
             triplet_multicut_instance mc = this->template export_triplets<triplet_multicut_instance>();
             auto owp = compute_multicut_odd_wheel_packing(mc);
             if(debug())
@@ -78,7 +80,7 @@ namespace LPMP {
                 const auto [cycle_begin, cycle_end] = owp.get_cycle(c);
                 const double odd_wheel_weight = owp.get_odd_wheel_weight(c);
                 const std::size_t center_node = owp.get_center_node(c);
-                this->triangulate_odd_wheel(center_node, cycle_begin, cycle_end, odd_wheel_weight);
+                this->triangulate_odd_wheel(center_node, cycle_begin, cycle_end, odd_wheel_weight, !this->no_tightening_packing_arg_.isSet());
             } 
 
             const std::size_t base_constraints_added = BASE_CONSTRUCTOR::Tighten(no_constraints_to_add);
@@ -89,7 +91,9 @@ namespace LPMP {
     template<typename BASE_CONSTRUCTOR, typename QUADRUPLET_FACTOR, typename TRIPLET_QUADRUPLET_MESSAGE_012, typename TRIPLET_QUADRUPLET_MESSAGE_013, typename TRIPLET_QUADRUPLET_MESSAGE_023, typename TRIPLET_QUADRUPLET_MESSAGE_123>
         void multicut_quadruplet_constructor<BASE_CONSTRUCTOR, QUADRUPLET_FACTOR, TRIPLET_QUADRUPLET_MESSAGE_012, TRIPLET_QUADRUPLET_MESSAGE_013, TRIPLET_QUADRUPLET_MESSAGE_023, TRIPLET_QUADRUPLET_MESSAGE_123>::ComputePrimal()
         {
-            this->send_messages_to_triplets();
+            // TODO: this is problematic: We only want to send messages if and only this is done also in base_constructor
+            if(!this->no_informative_factors_arg_.isSet())
+                this->send_messages_to_triplets();
             base_constructor::ComputePrimal();
         }
 

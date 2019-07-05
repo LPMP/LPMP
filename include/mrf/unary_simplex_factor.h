@@ -1,5 +1,4 @@
-#ifndef LPMP_UNARY_SIMPLEX_FACTOR_H
-#define LPMP_UNARY_SIMPLEX_FACTOR_H
+#pragma once
 
 #include "vector.hxx"
 
@@ -101,5 +100,3 @@ void UnarySimplexFactor::convert_primal(EXTERNAL_SOLVER& s, typename EXTERNAL_SO
 }
 
 } // namespace LPMP
-
-#endif // LPMP_UNARY_SIMPLEX_FACTOR_H

@@ -8,12 +8,11 @@
 #include <tsl/robin_map.h>
 #include "hash_helper.hxx"
 
-// This class provides a similar interface as dynamic_graph_thread_safe, but edges can be added/deleted concurrently if they do not share endpoints
+// This class provides a similar interface as dynamic_graph, but edges can be added/deleted concurrently if they do not share endpoints
 namespace LPMP {
 
     template<typename EDGE_INFORMATION>
     class dynamic_graph_thread_safe {
-        //constexpr static std::size_t free_edge_store_factor = 2;  // for each node, we store the edges consecutively. For later edge additions, we leave some room for later input
         public:
 
 		template<typename EDGE_ITERATOR, typename EDGE_INFORMATION_LAMBDA>
@@ -47,8 +46,6 @@ namespace LPMP {
         private:
         std::array<std::size_t,2> normal_edge(const std::size_t i, const std::size_t j) const { return {std::min(i,j), std::max(i,j)}; }
         std::vector< tsl::robin_map<std::size_t, EDGE_INFORMATION> > edge_maps_;
-
-        void assert_edge_valid(const std::size_t edge_index, const std::size_t tail_node = std::numeric_limits<std::size_t>::max()) const;
     };
 
     template<typename EDGE_INFORMATION>

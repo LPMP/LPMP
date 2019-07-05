@@ -53,21 +53,23 @@ namespace LPMP {
         double min_other_cases = 0.0;
         const auto [axle_edge_index, wheel_edge_index] = get_axle_wheel_edge_indices(axle_nodes, wheel_nodes);
         auto update_costs = [&](const std::bitset<6> labeling, const double cost) {
-            if(labeling[axle_edge_index] && labeling[wheel_edge_index])
+            if(labeling.count() == 4 && labeling[axle_edge_index] == 0 && labeling[wheel_edge_index] == 0)
                 participating_cases = std::min(cost, participating_cases);
             else
                 min_other_cases = std::min(cost, min_other_cases); 
         };
         t.for_each_labeling(update_costs);
-        return participating_cases - min_other_cases;
+        //return participating_cases - min_other_cases;
+        return -(participating_cases - min_other_cases);
     }
 
     void reparametrize_quadruplet(multicut_quadruplet_factor& t, const std::array<std::size_t,2> axle_nodes, const std::array<std::size_t,2> wheel_nodes, const double weight)
     {
+        assert(nodes_valid(axle_nodes, wheel_nodes));
         assert(weight >= 0.0);
         const auto [axle_edge_index, wheel_edge_index] = get_axle_wheel_edge_indices(axle_nodes, wheel_nodes);
         auto update_costs = [&](const std::bitset<6> labeling, double& cost) {
-            if(labeling[axle_edge_index] && labeling[wheel_edge_index])
+            if(labeling.count() == 4 && labeling[axle_edge_index] == 0 && labeling[wheel_edge_index] == 0)
                 cost -= weight;
         };
         t.for_each_labeling(update_costs);
@@ -144,7 +146,8 @@ namespace LPMP {
                     return quadruple_item{q.other_nodes, cost, q.f}; 
                     } );
 
-            for(std::size_t cycle_length=2; cycle_length<=bfs_helper.get_graph().no_nodes(); ++cycle_length) {
+            const std::array<std::size_t,6> cycle_lengths = {3,4,5,6,7,std::numeric_limits<std::size_t>::max()};
+            for(const std::size_t cycle_length : cycle_lengths) {
                 for(std::size_t ci=0; ci<bfs_helper.no_compressed_nodes(); ++ci) {
 
                     double cycle_cap = std::numeric_limits<double>::infinity();

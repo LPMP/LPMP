@@ -2,26 +2,34 @@
 #include "graph.hxx"
 #include "dynamic_graph.hxx"
 #include "dynamic_graph_thread_safe.hxx"
-#include <unordered_map>
 
 using namespace LPMP;
 
 static std::vector<std::array<std::size_t,2>> edges = { {0,1}, {1,2}, {2,3}, {0,3}, {0,2} };
+struct empty {};
 
 template<typename GRAPH_TYPE>
 GRAPH_TYPE construct_and_test_graph()
 {
-
 	GRAPH_TYPE g(edges.begin(), edges.end());
 
 	test(g.no_nodes() == 4);
-	test(g.no_edges(0) == 3);
+	test(g.no_edges(0) == 3); 
 	test(g.no_edges(1) == 2);
 	test(g.no_edges(2) == 3);
 	test(g.no_edges(3) == 2);
 
+    test(g.edge_present(0,1)); test(g.edge_present(1,0));
+    test(g.edge_present(1,2)); test(g.edge_present(2,1));
+    test(g.edge_present(2,3)); test(g.edge_present(3,2));
+    test(g.edge_present(0,3)); test(g.edge_present(3,0));
+    test(g.edge_present(0,2)); test(g.edge_present(2,0));
+
+    test(!g.edge_present(1,3)); test(!g.edge_present(3,1));
+
 	for(auto e : edges) {
 		test(g.edge_present(e[0], e[1]));
+		test(g.edge_present(e[1], e[0]));
 	}
 
     return g;
@@ -31,7 +39,6 @@ int main(int argc, char** argv)
 {
 	std::sort(edges.begin(), edges.end(), [](const auto& e1, const auto& e2) { return std::lexicographical_compare(e1.begin(), e1.end(), e2.begin(), e2.end()); });
 
-	struct empty {};
     construct_and_test_graph<dynamic_graph<empty>>();
     construct_and_test_graph<dynamic_graph_thread_safe<empty>>();
     auto g = construct_and_test_graph<graph<empty>>();

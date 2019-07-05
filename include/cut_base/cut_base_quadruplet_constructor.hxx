@@ -48,7 +48,7 @@ namespace LPMP {
                         INSTANCE export_quadruplets() const;
 
                     template<typename ITERATOR>
-                        void triangulate_odd_wheel(const std::size_t center_node, ITERATOR path_begin, ITERATOR path_end, const double cost);
+                        void triangulate_odd_wheel(const std::size_t center_node, ITERATOR path_begin, ITERATOR path_end, const double cost, const bool pack_odd_wheel = true);
 
                     std::size_t enumerate_quadruplets();
 
@@ -147,7 +147,7 @@ namespace LPMP {
 
     template<class BASE_CONSTRUCTOR, typename QUADRUPLET_FACTOR, typename TRIPLET_QUADRUPLET_MESSAGE_012, typename TRIPLET_QUADRUPLET_MESSAGE_013, typename TRIPLET_QUADRUPLET_MESSAGE_023, typename TRIPLET_QUADRUPLET_MESSAGE_123>
         template<typename ITERATOR>
-        void cut_base_quadruplet_constructor<BASE_CONSTRUCTOR, QUADRUPLET_FACTOR, TRIPLET_QUADRUPLET_MESSAGE_012, TRIPLET_QUADRUPLET_MESSAGE_013, TRIPLET_QUADRUPLET_MESSAGE_023, TRIPLET_QUADRUPLET_MESSAGE_123>::triangulate_odd_wheel(const std::size_t center_node, ITERATOR path_begin, ITERATOR path_end, const double cost)
+        void cut_base_quadruplet_constructor<BASE_CONSTRUCTOR, QUADRUPLET_FACTOR, TRIPLET_QUADRUPLET_MESSAGE_012, TRIPLET_QUADRUPLET_MESSAGE_013, TRIPLET_QUADRUPLET_MESSAGE_023, TRIPLET_QUADRUPLET_MESSAGE_123>::triangulate_odd_wheel(const std::size_t center_node, ITERATOR path_begin, ITERATOR path_end, const double cost, const bool pack_odd_wheel)
         {
             using edge_factor_type = typename base_constructor::triplet_factor::FactorType;
             auto get_edge_func = [&,this](const std::array<std::size_t,2> edge_nodes) -> edge_factor_type& {
@@ -184,12 +184,46 @@ namespace LPMP {
                 return typename TRIPLET_QUADRUPLET_MESSAGE_123::MessageType();
             };
 
-            LPMP::triangulate_cycle(path_begin, path_end, get_edge_func, get_triplet_func, get_msg_func, cost);
+            LPMP::triangulate_cycle(path_begin, path_end, get_edge_func, get_triplet_func, get_msg_func, cost, pack_odd_wheel);
         }
 
     template<class BASE_CONSTRUCTOR, typename QUADRUPLET_FACTOR, typename TRIPLET_QUADRUPLET_MESSAGE_012, typename TRIPLET_QUADRUPLET_MESSAGE_013, typename TRIPLET_QUADRUPLET_MESSAGE_023, typename TRIPLET_QUADRUPLET_MESSAGE_123>
         std::size_t cut_base_quadruplet_constructor<BASE_CONSTRUCTOR, QUADRUPLET_FACTOR, TRIPLET_QUADRUPLET_MESSAGE_012, TRIPLET_QUADRUPLET_MESSAGE_013, TRIPLET_QUADRUPLET_MESSAGE_023, TRIPLET_QUADRUPLET_MESSAGE_123>::enumerate_quadruplets()
         {
+            // build graph
+            graph<double> g(this->unary_factors_vector_.begin(), this->unary_factors_vector_.end(), [](const auto& e) { return std::array<std::size_t,2>{std::get<0>(e)[0], std::get<0>(e)[1]}; }, [](const auto& e) { return e.second->get_factor()->operator[](0); });
+            //graph<double> g(this->unary_factors_vector_.begin(), this->unary_factors_vector_.end(), [](const auto e) { return std::array<std::size_t,2>{0,1}; }, [](const auto e) { return 0.0; });
+
+            g.for_each_quadrangle([&](std::array<std::size_t,4> v) {
+                    // check if lower bound given by edges is smaller than lower bound given by quadruplet factor
+                    auto get_edge_val = [&](const std::size_t i, const std::size_t j) {
+                        if(g.edge_present(i, j)) return g.edge(i, j);
+                        else return 0.0;
+                    };
+                    const double c01 = get_edge_val(v[0], v[1]);
+                    const double c02 = get_edge_val(v[0], v[2]);
+                    const double c03 = get_edge_val(v[0], v[3]);
+                    const double c12 = get_edge_val(v[1], v[2]);
+                    const double c13 = get_edge_val(v[1], v[3]);
+                    const double c23 = get_edge_val(v[2], v[3]);
+
+                    const double edge_lb = std::min(c01,0.0) + std::min(c02,0.0) + std::min(c03,0.0) + std::min(c12,0.0) + std::min(c13,0.0) + std::min(c23,0.0);
+
+                    typename QUADRUPLET_FACTOR::FactorType q;
+                    double q_lb = 0.0;
+                    q.for_each_labeling([&](std::bitset<6> labeling, const double ignore) {
+                            // TODO: this assumes that edges are arranged as 01,02,12,03,13,23
+                            const double cost = labeling[0]*c01 + labeling[1]*c02 + labeling[2]*c12 + labeling[3]*c03 + labeling[4]*c13 + labeling[5]*c23; 
+                            q_lb = std::min(q_lb, cost);
+                            });
+
+                    assert(q_lb + eps >= edge_lb);
+                    if(q_lb >= edge_lb + eps) {
+                        std::sort(v.begin(), v.end());
+                        if(!this->has_quadruplet_factor(v[0], v[1], v[2], v[3])) 
+                                this->add_quadruplet_factor(v[0], v[1], v[2], v[3]);
+                    }
+                    });
             return 0;
             /*
             std::vector<std::size_t> adjacency_list_count(this->noNodes_,0);
@@ -213,20 +247,20 @@ namespace LPMP {
             }
 
             // Sort the adjacency list, for fast intersections later
-#pragma omp parallel for  schedule(guided)
+//#pragma omp parallel for  schedule(guided)
             for(int i=0; i < adjacency_list.size(); i++) {
                 std::sort(adjacency_list[i].begin(), adjacency_list[i].end());
             } 
 
             std::vector<quadruplet_candidate> quadruplet_candidates;
 
-#pragma omp parallel
+//#pragma omp parallel
             {
                 std::vector<quadruplet_candidate> quadruplet_candidates_local;
                 typename quadruplet_factor_container::FactorType test_quadruplet_factor;
 
                 std::vector<std::size_t> commonNodes(this->noNodes_);
-#pragma omp for schedule(guided) nowait
+//#pragma omp for schedule(guided) nowait
                 for(std::size_t i=0; i<triplet_vector_.size(); ++i) {
                     const std::size_t i1 = std::get<0>(triplet_vector_[i]);
                     const std::size_t i2 = std::get<1>(triplet_vector_[i]);
@@ -284,7 +318,7 @@ namespace LPMP {
                         }
                     }
                 }
-#pragma omp critical
+//#pragma omp critical
                 quadruplet_candidates.insert(quadruplet_candidates.end(), quadruplet_candidates_local.begin(), quadruplet_candidates_local.end());
             }
 

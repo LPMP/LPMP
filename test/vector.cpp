@@ -34,7 +34,7 @@ int main() {
 
   { // vector minimum
 
-    vector<REAL> v(5);
+      LPMP::vector<REAL> v(5);
     v[0] = -1.0;
     v[1] = 0.0;
     v[2] = 1.0;
@@ -56,7 +56,7 @@ int main() {
     std::random_device rd{};
 
     for(std::size_t n=2; n<100; ++n) {
-        test_vector_minima<vector<double>>(n, rd);
+        test_vector_minima<LPMP::vector<double>>(n, rd);
         test_vector_minima<min_vector<double>>(n, rd);
     }
   }

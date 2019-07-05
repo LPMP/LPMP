@@ -52,7 +52,9 @@ private:
     std::future<cycle_packing> cycle_inequalities_tighten_handle_;
     max_cut_instance original_model;
 
+protected:
     TCLAP::ValueArg<std::string> rounding_method_arg_;
+    TCLAP::SwitchArg no_informative_factors_arg_;
 };
 
 template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
@@ -60,6 +62,7 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
 max_cut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::max_cut_triplet_constructor(SOLVER& s)
     :
         rounding_method_arg_("", "maxCutRounding", "method for rounding primal solution", false, "gaec", "{gaec|sahni_gonzalez}", s.get_cmd()),
+        no_informative_factors_arg_("", "noInformativeFactorReparametrization", "do not make factors informative when rounding and tightening", s.get_cmd(), false),
         base_constructor(s)
 {}
 
@@ -117,8 +120,9 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
 
     if(!cycle_inequalities_tighten_handle_.valid() || cycle_inequalities_tighten_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
         if(debug())
-            std::cout << "search for violated cycle inequalities\n";
-        this->send_messages_to_edges(); // TODO: check if this is always helpful or only for triplet tightening
+        std::cout << "search for violated cycle inequalities\n";
+        if(!no_informative_factors_arg_.isSet())
+            this->send_messages_to_edges(); // TODO: check if this is always helpful or only for triplet tightening
         const auto mc = this->template export_edges<max_cut_instance>();
         cycle_inequalities_tighten_handle_ = std::async(std::launch::async, compute_max_cut_cycle_packing, std::move(mc));
     }
@@ -126,7 +130,8 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
     return no_cycles_added;
     */
 
-    this->send_messages_to_edges();
+    if(!no_informative_factors_arg_.isSet())
+        this->send_messages_to_edges();
     const auto mc = this->template export_edges<max_cut_instance>();
     cycle_packing cp = compute_max_cut_cycle_packing(mc);
     for(std::size_t c=0; c<cp.no_cycles(); ++c) {
@@ -176,7 +181,10 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
     template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
     void max_cut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::ComputePrimal()
 {
-    this->send_messages_to_edges(); // If we do it only when needed, we will get varying results depending on how fast primal rounding is.
+    if(!no_informative_factors_arg_.isSet()) {
+        std::cout << "kwaskwaskwas ....\n";
+        this->send_messages_to_edges(); // If we do it only when needed, we will get varying results depending on how fast primal rounding is.
+    }
 
     if(primal_result_handle_.valid() && primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         if(debug()) 

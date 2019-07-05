@@ -21,7 +21,6 @@ namespace LPMP {
 
 // do zrobienia: possibly rename unary to edge factor
 
-template<MessageSendingType MESSAGE_SENDING>
 struct FMC_MULTICUT {
    constexpr static const char* name = "Multicut with cycle constraints";
    //constexpr static MessageSendingType MESSAGE_SENDING = MessageSendingType::SRMP;
@@ -41,7 +40,6 @@ struct FMC_MULTICUT {
 };
 
 // It would be nice to be able to derive from FMC_MULTICUT. This is not possible due to deviating FMCs. Possibly parametrize above FMC with template
-template<MessageSendingType MESSAGE_SENDING>
 struct FMC_ODD_WHEEL_MULTICUT {
    constexpr static const char* name = "Multicut with cycle and odd wheel constraints";
 

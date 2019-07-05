@@ -1,5 +1,4 @@
-#ifndef LPMP_TERNARY_SIMPLEX_FACTOR_H
-#define LPMP_TERNARY_SIMPLEX_FACTOR_H
+#pragma once
 
 #include <array>
 #include "vector.hxx"
@@ -93,5 +92,3 @@ void SimpleTighteningTernarySimplexFactor::convert_primal(SOLVER& s, typename SO
 } 
 
 } // namespace LPMP
-
-#endif // LPMP_TERNARY_SIMPLEX_FACTOR_H

@@ -88,6 +88,7 @@ inline bool max_cut_edge_labeling::check_primal_consistency(const max_cut_instan
 template<typename STREAM>
 void max_cut_instance::write_problem(STREAM& s) const
 {
+    s << "MAX-CUT\n";
     for(const auto& e : this->edges())
         s << e[0] << " " << e[1] << " " << -e.cost << "\n";
 }

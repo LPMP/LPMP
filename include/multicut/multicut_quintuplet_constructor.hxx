@@ -331,7 +331,8 @@ private:
     template<typename QUADRUPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename QUADRUPLET_QUINTUPLET_MESSAGE_0123, typename QUADRUPLET_QUINTUPLET_MESSAGE_0124, typename QUADRUPLET_QUINTUPLET_MESSAGE_0134, typename QUADRUPLET_QUINTUPLET_MESSAGE_0234, typename QUADRUPLET_QUINTUPLET_MESSAGE_1234>
 std::size_t multicut_quintuplet_constructor<QUADRUPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, QUADRUPLET_QUINTUPLET_MESSAGE_0123, QUADRUPLET_QUINTUPLET_MESSAGE_0124, QUADRUPLET_QUINTUPLET_MESSAGE_0134, QUADRUPLET_QUINTUPLET_MESSAGE_0234, QUADRUPLET_QUINTUPLET_MESSAGE_1234>::Tighten(const std::size_t no_constraints_to_add)
 {
-    this->send_messages_to_quadruplets();
+    if(!this->no_informative_factors_arg_.isSet())
+        this->send_messages_to_quadruplets();
     quadruplet_multicut_instance mc = this->template export_quadruplets<quadruplet_multicut_instance>();
     const odd_bicycle_wheel_packing obwp = compute_multicut_odd_bicycle_wheel_packing(mc);
     if(debug())
@@ -340,7 +341,7 @@ std::size_t multicut_quintuplet_constructor<QUADRUPLET_CONSTRUCTOR, QUINTUPLET_F
         const auto [cycle_begin, cycle_end] = obwp.get_cycle(c);
         const double odd_bicycle_wheel_weight = obwp.get_odd_bicycle_wheel_weight(c);
         const auto axle = obwp.get_axle(c);
-        this->triangulate_odd_bicycle_wheel(axle, cycle_begin, cycle_end, odd_bicycle_wheel_weight);
+        this->triangulate_odd_bicycle_wheel(axle, cycle_begin, cycle_end, odd_bicycle_wheel_weight, !this->no_tightening_packing_arg_.isSet());
     }
 
     const std::size_t base_constraints_added = base_constructor::Tighten(no_constraints_to_add);
@@ -350,7 +351,9 @@ std::size_t multicut_quintuplet_constructor<QUADRUPLET_CONSTRUCTOR, QUINTUPLET_F
     template<typename QUADRUPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename QUADRUPLET_QUINTUPLET_MESSAGE_0123, typename QUADRUPLET_QUINTUPLET_MESSAGE_0124, typename QUADRUPLET_QUINTUPLET_MESSAGE_0134, typename QUADRUPLET_QUINTUPLET_MESSAGE_0234, typename QUADRUPLET_QUINTUPLET_MESSAGE_1234>
 void multicut_quintuplet_constructor<QUADRUPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, QUADRUPLET_QUINTUPLET_MESSAGE_0123, QUADRUPLET_QUINTUPLET_MESSAGE_0124, QUADRUPLET_QUINTUPLET_MESSAGE_0134, QUADRUPLET_QUINTUPLET_MESSAGE_0234, QUADRUPLET_QUINTUPLET_MESSAGE_1234>::ComputePrimal()
 {
-    this->send_messages_to_quadruplets();
+    // TODO: this is problematic: We only want to send messages if and only this is done also in base_constructor
+    if(!this->no_informative_factors_arg_.isSet())
+        this->send_messages_to_quadruplets();
     base_constructor::ComputePrimal(); 
 }
 

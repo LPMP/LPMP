@@ -107,9 +107,9 @@ struct FMC_MP_T {
    using UnaryPairwiseMessageRightContainer = MessageContainer<UnaryPairwiseMessage<Chirality::right,false>, 0, 1, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 2 >;
 
    using EmptyTripletFactor = FactorContainer<SimpleTighteningTernarySimplexFactor, FMC_MP_PARAM, 2 >;
-   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 3>;
-   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 4>;
-   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 5>;
+   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 3>;
+   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 4>;
+   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 5>;
 
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, EmptyTripletFactor>;
    using MessageList = meta::list< 
@@ -146,9 +146,9 @@ struct FMC_MP_Q_T {
    using inter_quadratic_message_container = MessageContainer<graph_matching_inter_quadratic_message, 1, 1, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, FMC_MP_PARAM, 3 >;
 
    using EmptyTripletFactor = FactorContainer<SimpleTighteningTernarySimplexFactor, FMC_MP_PARAM, 2 >;
-   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 4>;
-   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 5>;
-   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 6>;
+   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 4>;
+   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 5>;
+   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_MP_PARAM, 6>;
 
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, EmptyTripletFactor>;
    using MessageList = meta::list< 
@@ -232,9 +232,9 @@ struct FMC_MCF_T {
    using UnaryToAssignmentMessageType = unary_min_cost_flow_message<McfCoveringFactor>;
    using UnaryToAssignmentMessageContainer = MessageContainer<UnaryToAssignmentMessageType, 1, 0, message_passing_schedule::left, 1, variableMessageNumber, FMC_MCF_PARAM, 2>;
 
-   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1>, 2, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MCF_PARAM, 3>;
-   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2>, 2, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MCF_PARAM, 4>;
-   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2>, 2, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MCF_PARAM, 5>;
+   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1,true>, 2, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MCF_PARAM, 3>;
+   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2,true>, 2, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MCF_PARAM, 4>;
+   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2,true>, 2, 3, message_passing_schedule::left, variableMessageNumber, 1, FMC_MCF_PARAM, 5>;
 
    using AssignmentConstraintMessage = MessageContainer<EqualityMessage, 1, 1, message_passing_schedule::left, variableMessageNumber, variableMessageNumber, FMC_MCF_PARAM, 6 >;
 
@@ -298,9 +298,9 @@ struct FMC_GM_T {
 
    // tightening
    using EmptyTripletFactor = FactorContainer<SimpleTighteningTernarySimplexFactor, FMC_GM_PARAM, 2 >;
-   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_GM_PARAM, 2>;
-   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_GM_PARAM, 3>;
-   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_GM_PARAM, 4>;
+   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_GM_PARAM, 2>;
+   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_GM_PARAM, 3>;
+   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2,true>, 1, 2, message_passing_schedule::left, variableMessageNumber, 1, FMC_GM_PARAM, 4>;
 
    using FactorList = meta::list< UnaryFactor, PairwiseFactor, EmptyTripletFactor >;
    using MessageList = meta::list<
@@ -376,9 +376,9 @@ struct FMC_HUNGARIAN_BP_T {
 
    // tightening
    using EmptyTripletFactor = FactorContainer<SimpleTighteningTernarySimplexFactor, FMC_PARAM, 3 >;
-   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1>, 2, 3, message_passing_schedule::right, variableMessageNumber, 1, FMC_PARAM, 3>;
-   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2>, 2, 3, message_passing_schedule::right, variableMessageNumber, 1, FMC_PARAM, 4>;
-   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2>, 2, 3, message_passing_schedule::right, variableMessageNumber, 1, FMC_PARAM, 5>;
+   using PairwiseTriplet12MessageContainer = MessageContainer<PairwiseTripletMessage<0,1,true>, 2, 3, message_passing_schedule::right, variableMessageNumber, 1, FMC_PARAM, 3>;
+   using PairwiseTriplet13MessageContainer = MessageContainer<PairwiseTripletMessage<0,2,true>, 2, 3, message_passing_schedule::right, variableMessageNumber, 1, FMC_PARAM, 4>;
+   using PairwiseTriplet23MessageContainer = MessageContainer<PairwiseTripletMessage<1,2,true>, 2, 3, message_passing_schedule::right, variableMessageNumber, 1, FMC_PARAM, 5>;
 
    using FactorList = meta::list<MinCostFlowAssignmentFactor, UnaryFactor, PairwiseFactor, EmptyTripletFactor>;
    using MessageList = meta::list<
