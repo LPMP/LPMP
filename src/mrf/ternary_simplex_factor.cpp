@@ -7,9 +7,9 @@ SimpleTighteningTernarySimplexFactor::SimpleTighteningTernarySimplexFactor(const
    msg13(_dim1, _dim3, 0.0),
    msg23(_dim2, _dim3, 0.0)
 {
-   std::fill(msg12.begin(), msg12.end(), 0.0);
-   std::fill(msg13.begin(), msg13.end(), 0.0);
-   std::fill(msg23.begin(), msg23.end(), 0.0);
+//   std::fill(msg12.begin(), msg12.end(), 0.0);
+//   std::fill(msg13.begin(), msg13.end(), 0.0);
+//   std::fill(msg23.begin(), msg23.end(), 0.0);
 }
 
 /*

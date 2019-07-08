@@ -1,5 +1,4 @@
-#ifndef LPMP_GRAPH_MATCHING_CONSTRUCTOR_HXX
-#define LPMP_GRAPH_MATCHING_CONSTRUCTOR_HXX
+#pragma once
 
 #include "graph_matching.h"
 #include "mrf/mrf_problem_construction.hxx"
@@ -51,7 +50,7 @@ public:
 
     void pre_iterate()
     {
-       reparametrize_linear_assignment_problem();
+        reparametrize_linear_assignment_problem();
     }
 
     std::vector<FactorTypeAdapter*> get_factors()
@@ -789,6 +788,3 @@ public:
 };
 
 } // namespace LPMP
-
-#endif // LPMP_GRAPH_MATCHING_CONSTRUCTOR_HXX
-

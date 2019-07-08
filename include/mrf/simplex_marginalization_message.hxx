@@ -1,5 +1,4 @@
-#ifndef LPMP_SIMPLEX_MARGINALIZATION_MESSAGE_HXX
-#define LPMP_SIMPLEX_MARGINALIZATION_MESSAGE_HXX
+#pragma once
 
 #include "LP.h"
 #include "factors_messages.hxx"
@@ -344,6 +343,9 @@ public:
          for(std::size_t x1=0; x1<dim1; ++x1) {
              for(std::size_t x2=0; x2<dim2; ++x2) {
                  assert(!std::isnan(l(x1,x2))); 
+                 if(SUPPORT_INFINITY == false) {
+                     assert(l(x1,x2) != std::numeric_limits<double>::infinity());
+                 }
              } 
          }
 
@@ -400,5 +402,3 @@ public:
 };
 
 } // end namespace LPMP
-
-#endif // LPMP_SIMPLEX_MARGINALIZATION_MESSAGE_HXX

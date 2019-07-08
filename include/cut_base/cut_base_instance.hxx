@@ -161,6 +161,13 @@ namespace LPMP {
                 }) == edges_copy.end(); 
     }
 
+    template<typename STREAM>
+        void cut_base_instance::write_problem(STREAM& s) const
+        {
+            for(const auto& e : edges_)
+                s << e[0] << " " << e[1] << " " << e.cost << "\n";
+        }
+
     inline cut_base_edge_labeling::cut_base_edge_labeling(const cut_base_instance& instance, union_find& uf)
     {
         assert(instance.no_nodes() == uf.size());

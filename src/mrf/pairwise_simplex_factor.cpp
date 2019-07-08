@@ -150,15 +150,12 @@ PairwiseSimplexFactor::min_marginal_1() const
    auto min = pairwise_.min1(right_msg_);
    min += left_msg_;
 #ifndef NDEBUG
-   vector<double> msg_test(dim1(), std::numeric_limits<double>::infinity());
    for(std::size_t x1=0; x1<dim1(); ++x1) {
-      for(std::size_t x2=0; x2<dim2(); ++x2) {
-         msg_test[x1] = std::min(msg_test[x1],(*this)(x1,x2));
-      }
+       double msg_test = std::numeric_limits<double>::infinity();
+       for(std::size_t x2=0; x2<dim2(); ++x2)
+           msg_test = std::min(msg_test, (*this)(x1,x2));
+       assert(std::abs(msg_test - min[x1]) <= eps);
    } 
-   for(std::size_t i=0; i<dim1(); ++i) {
-      assert(std::abs(msg_test[i] - min[i]) <= eps || msg_test[i] == min[i]);
-   }
 #endif
    return min;
 }
@@ -169,15 +166,12 @@ PairwiseSimplexFactor::min_marginal_2() const
    auto min = pairwise_.min2(left_msg_);
    min += right_msg_;
 #ifndef NDEBUG
-   vector<double> msg_test(dim2(), std::numeric_limits<double>::infinity());
-   for(std::size_t x1=0; x1<dim1(); ++x1) {
-      for(std::size_t x2=0; x2<dim2(); ++x2) {
-         msg_test[x2] = std::min(msg_test[x2],(*this)(x1,x2));
-      }
+   for(std::size_t x2=0; x2<dim2(); ++x2) {
+       double msg_test = std::numeric_limits<double>::infinity();
+       for(std::size_t x1=0; x1<dim1(); ++x1)
+           msg_test = std::min(msg_test, (*this)(x1,x2));
+       assert(std::abs(msg_test - min[x2]) <= eps);
    } 
-   for(std::size_t i=0; i<dim2(); ++i) {
-      assert(std::abs(msg_test[i] - min[i]) <= eps || msg_test[i] == min[i]);
-   }
 #endif 
    return min; 
 }

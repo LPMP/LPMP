@@ -29,6 +29,13 @@ namespace LPMP {
 
         dynamic_graph(const std::size_t no_nodes);
 
+        constexpr static auto return_edge_op = [](const auto& edge) { return EDGE_INFORMATION{}; };
+
+        template<typename EDGE_ITERATOR>
+            dynamic_graph(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end)
+            : dynamic_graph(edge_begin, edge_end, return_edge_op)
+            {}
+
 		template<typename EDGE_ITERATOR, typename EDGE_INFORMATION_LAMBDA>
             dynamic_graph(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end, EDGE_INFORMATION_LAMBDA edge_information_func);
 

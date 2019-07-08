@@ -2092,6 +2092,7 @@ public:
            //std::cout << "no messages to send: " << no_msgs << "\n";
            using messages_list = meta::list<MESSAGES...>;
            
+           const auto orig_vars = factor_.export_variables();
            FactorType tmp_factor(factor_);
            meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&no_msgs,&tmp_factor](auto l) {
                    constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();

@@ -45,7 +45,7 @@ namespace LPMP {
         void multicut_instance::write_problem(STREAM& s) const
         {
             s << "MULTICUT\n";
-            this->write_problem(s);
+            cut_base_instance::write_problem(s);
         }
 
 } // namespace LPMP

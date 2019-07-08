@@ -52,6 +52,7 @@ namespace LPMP {
             }
 
             if(!odd_bicycle_wheel_inequalities_tighten_handle_.valid() || odd_bicycle_wheel_inequalities_tighten_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
+            if(!this->no_informative_factors_arg_.isSet())
                 this->send_messages_to_triplets();
                 triplet_max_cut_instance mc = this->template export_triplets<triplet_max_cut_instance>();
                 odd_bicycle_wheel_inequalities_tighten_handle_ = std::async(std::launch::async, compute_max_cut_odd_bicycle_wheel_packing, std::move(mc));
@@ -60,7 +61,8 @@ namespace LPMP {
             return no_quintuplets_added;
             */
 
-            this->send_messages_to_triplets();
+            if(!this->no_informative_factors_arg_.isSet())
+                this->send_messages_to_triplets();
             triplet_max_cut_instance mc = this->template export_triplets<triplet_max_cut_instance>();
             const odd_bicycle_wheel_packing obwp = compute_max_cut_odd_bicycle_wheel_packing(mc);
             if(debug())
@@ -84,7 +86,8 @@ namespace LPMP {
     template<typename TRIPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename... MSGS>
         void max_cut_quintuplet_constructor<TRIPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, MSGS...>::ComputePrimal()
         {
-            //this->send_messages_to_triplets();
+            if(!this->no_informative_factors_arg_.isSet())
+                this->send_messages_to_triplets();
             base_constructor::ComputePrimal(); 
         }
 

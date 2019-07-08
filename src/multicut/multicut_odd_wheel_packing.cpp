@@ -114,6 +114,9 @@ odd_wheel_packing multicut_odd_wheel_packing_impl(const triplet_multicut_instanc
    };
    compressed_bipartite_graph_helper<triplet_edge> bfs_helper(input.no_nodes());
 
+   std::chrono::duration<double> graph_construction_time;
+   std::chrono::duration<double> cycle_search_time;
+
    // TODO: iterate over vertices in random order
    for(std::size_t i=0; i<input.no_nodes(); ++i) {
        auto center_node_index_func = [&](const odd_wheel_edge& e) {
@@ -122,6 +125,7 @@ odd_wheel_packing multicut_odd_wheel_packing_impl(const triplet_multicut_instanc
            else return 2;
        };
 
+       auto start = std::chrono::system_clock::now();
        bfs_helper.construct_compressed_bipartite_graph(triangle_thresholds[i].begin(), triangle_thresholds[i].end(), 
                [&](const odd_wheel_edge& e) -> std::array<std::size_t,2> { 
                return {e[0],e[1]};
@@ -132,10 +136,13 @@ odd_wheel_packing multicut_odd_wheel_packing_impl(const triplet_multicut_instanc
                return triplet_edge{cost, e.triplet, center_node_index};
                }
                );
+       graph_construction_time += std::chrono::system_clock::now()- start;
 
+       start = std::chrono::system_clock::now();
       // TODO: regularly recompute union find?
       // TODO: interchange cycle length and iterating over all nodes
-      for(std::size_t cycle_length=3; cycle_length<=bfs_helper.no_compressed_nodes(); ++cycle_length) {
+      const std::array<std::size_t,6> cycle_lengths = {3,4,5,6,7,std::numeric_limits<std::size_t>::max()};
+      for(const std::size_t cycle_length : cycle_lengths) {
          for(std::size_t ci=0; ci<bfs_helper.no_compressed_nodes(); ++ci) {
             if(ci + bfs_helper.no_compressed_nodes() < bfs_helper.get_graph().no_nodes() && (true)) {// || uf.connected(ci, ci+no_compressed_nodes))) { // TODO: activate uf again
 
@@ -199,7 +206,12 @@ odd_wheel_packing multicut_odd_wheel_packing_impl(const triplet_multicut_instanc
             }
          }
       }
+      cycle_search_time += std::chrono::system_clock::now()- start;
    }
+
+      std::cout << "time for compressed graph construction = " << graph_construction_time.count() << "\n";
+      std::cout << "time for cycle search = " << cycle_search_time.count() << "\n";
+
 
    std::cout << "final lower bound = " << lower_bound << "\n";
    return owp;

@@ -52,11 +52,12 @@ namespace LPMP {
 
                     std::tuple<edge_triplet_message_0*, edge_triplet_message_1*, edge_triplet_message_2*>
                         get_edge_triplet_messages(triplet_factor* t);
+                    void send_messages_to_triplets();
                     void send_messages_to_edges(triplet_factor* t);
                     void send_messages_to_edges();
 
                     template<typename ITERATOR>
-                    void triangulate_cycle(ITERATOR cycle_begin, ITERATOR cycle_end, const double cycle_weight);
+                    void triangulate_cycle(ITERATOR cycle_begin, ITERATOR cycle_end, const double cycle_weight, const bool pack_cycle = true);
 
                     template<typename INSTANCE>
                         INSTANCE export_edges() const;
@@ -281,6 +282,13 @@ namespace LPMP {
         }
 
     template<class FACTOR_MESSAGE_CONNECTION, typename EDGE_FACTOR, typename TRIPLET_FACTOR, typename EDGE_TRIPLET_MESSAGE_0, typename EDGE_TRIPLET_MESSAGE_1, typename EDGE_TRIPLET_MESSAGE_2> 
+        void cut_base_triplet_constructor<FACTOR_MESSAGE_CONNECTION, EDGE_FACTOR, TRIPLET_FACTOR, EDGE_TRIPLET_MESSAGE_0, EDGE_TRIPLET_MESSAGE_1, EDGE_TRIPLET_MESSAGE_2>::send_messages_to_triplets()
+        {
+            for(const auto& e : unary_factors_vector_)
+                e->template send_messages_uniform<EDGE_TRIPLET_MESSAGE_0, EDGE_TRIPLET_MESSAGE_1, EDGE_TRIPLET_MESSAGE_2>();
+        }
+
+    template<class FACTOR_MESSAGE_CONNECTION, typename EDGE_FACTOR, typename TRIPLET_FACTOR, typename EDGE_TRIPLET_MESSAGE_0, typename EDGE_TRIPLET_MESSAGE_1, typename EDGE_TRIPLET_MESSAGE_2> 
         void cut_base_triplet_constructor<FACTOR_MESSAGE_CONNECTION, EDGE_FACTOR, TRIPLET_FACTOR, EDGE_TRIPLET_MESSAGE_0, EDGE_TRIPLET_MESSAGE_1, EDGE_TRIPLET_MESSAGE_2>::send_messages_to_edges(triplet_factor* t)
         {
             // TODO: use method send_messages_to_right_residual
@@ -309,7 +317,6 @@ namespace LPMP {
     template<class FACTOR_MESSAGE_CONNECTION, typename EDGE_FACTOR, typename TRIPLET_FACTOR, typename EDGE_TRIPLET_MESSAGE_0, typename EDGE_TRIPLET_MESSAGE_1, typename EDGE_TRIPLET_MESSAGE_2> 
         void cut_base_triplet_constructor<FACTOR_MESSAGE_CONNECTION, EDGE_FACTOR, TRIPLET_FACTOR, EDGE_TRIPLET_MESSAGE_0, EDGE_TRIPLET_MESSAGE_1, EDGE_TRIPLET_MESSAGE_2>::send_messages_to_edges()
         {
-            std::cout << "kwaskwas: " << triplet_factors().size() << "\n";
             for(std::size_t i=0; i<triplet_factors().size(); ++i)
                 send_messages_to_edges(triplet_factors()[i].second);
             //for(auto& t : triplet_factors())
@@ -318,7 +325,7 @@ namespace LPMP {
 
     template<class FACTOR_MESSAGE_CONNECTION, typename EDGE_FACTOR, typename TRIPLET_FACTOR, typename EDGE_TRIPLET_MESSAGE_0, typename EDGE_TRIPLET_MESSAGE_1, typename EDGE_TRIPLET_MESSAGE_2> 
         template<typename ITERATOR>
-        void cut_base_triplet_constructor<FACTOR_MESSAGE_CONNECTION, EDGE_FACTOR, TRIPLET_FACTOR, EDGE_TRIPLET_MESSAGE_0, EDGE_TRIPLET_MESSAGE_1, EDGE_TRIPLET_MESSAGE_2>::triangulate_cycle(ITERATOR cycle_begin, ITERATOR cycle_end, const double cycle_weight)
+        void cut_base_triplet_constructor<FACTOR_MESSAGE_CONNECTION, EDGE_FACTOR, TRIPLET_FACTOR, EDGE_TRIPLET_MESSAGE_0, EDGE_TRIPLET_MESSAGE_1, EDGE_TRIPLET_MESSAGE_2>::triangulate_cycle(ITERATOR cycle_begin, ITERATOR cycle_end, const double cycle_weight, const bool pack_cycle)
         {
             using edge_factor_type = typename EDGE_FACTOR::FactorType;
             auto get_edge_func = [&,this](const std::array<std::size_t,2> nodes) -> edge_factor_type& {
@@ -346,7 +353,7 @@ namespace LPMP {
                 } 
             };
 
-            LPMP::triangulate_cycle(cycle_begin, cycle_end, get_edge_func, get_triplet_func, get_msg_func, cycle_weight);
+            LPMP::triangulate_cycle(cycle_begin, cycle_end, get_edge_func, get_triplet_func, get_msg_func, cycle_weight, pack_cycle);
         }
 
     template<class FACTOR_MESSAGE_CONNECTION, typename EDGE_FACTOR, typename TRIPLET_FACTOR, typename EDGE_TRIPLET_MESSAGE_0, typename EDGE_TRIPLET_MESSAGE_1, typename EDGE_TRIPLET_MESSAGE_2> 

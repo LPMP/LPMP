@@ -51,10 +51,12 @@ public:
    void ComputePrimal();
    void Begin();
    void End();
-private:
+protected:
     std::future<multicut_edge_labeling> primal_result_handle_;
 
     TCLAP::ValueArg<std::string> rounding_method_arg_;
+    TCLAP::SwitchArg no_informative_factors_arg_;
+    TCLAP::SwitchArg no_tightening_packing_arg_;
 };
 
 template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
@@ -62,6 +64,8 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
 multicut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::multicut_triplet_constructor(SOLVER& s)
     :
         rounding_method_arg_("", "multicutRounding", "method for rounding primal solution", false, "gaec", "{gaec|gef}", s.get_cmd()),
+        no_informative_factors_arg_("", "noInformativeFactorReparametrization", "do not make factors informative when rounding and tightening", s.get_cmd(), false),
+        no_tightening_packing_arg_("", "noTighteningPacking", "do not pack inequalities after tightening", s.get_cmd(), false),
         base_constructor(s)
 {}
 
@@ -221,9 +225,9 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
    void multicut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::construct(multicut_instance mc)
    {
        mc.normalize();
-      for(const auto& e : mc.edges())
-         this->add_edge_factor(e[0], e[1], e.cost);
-      this->no_original_edges_ = this->unary_factors_vector_.size();
+       for(const auto& e : mc.edges())
+           this->add_edge_factor(e[0], e[1], e.cost);
+       this->no_original_edges_ = this->unary_factors_vector_.size();
    }
 
 template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
@@ -266,16 +270,20 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
     template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
     std::size_t multicut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::Tighten(const std::size_t no_constraints)
 {
-    this->send_messages_to_edges(); // TODO: check if this is always helpful or only for triplet tightening
+    if(!no_informative_factors_arg_.isSet())
+        this->send_messages_to_edges(); // TODO: check if this is always helpful or only for triplet tightening
     const auto mc = this->template export_edges<multicut_instance>();
     cycle_packing cp = compute_multicut_cycle_packing(mc);
+    if(debug())
+        std::cout << "Found " << cp.no_cycles() << " cycles through cycle packing\n";
+    const std::size_t no_triplets_before = this->number_of_triplets();
     for(std::size_t c=0; c<cp.no_cycles(); ++c) {
         const auto [cycle_begin, cycle_end] = cp.get_cycle(c);
         const double cycle_weight = cp.get_cycle_weight(c);
-        this->triangulate_cycle(cycle_begin, cycle_end, cycle_weight);
+        this->triangulate_cycle(cycle_begin, cycle_end, cycle_weight, !no_tightening_packing_arg_.isSet());
     } 
     if(debug())
-        std::cout << "Added " << cp.no_cycles() << " cycles through cycle packing\n";
+        std::cout << "Added " << this->number_of_triplets() - no_triplets_before << " triplets\n";
     return cp.no_cycles();
 }
 
@@ -293,21 +301,22 @@ template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLE
     template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
     void multicut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPLET_FACTOR, UNARY_TRIPLET_MESSAGE_0, UNARY_TRIPLET_MESSAGE_1, UNARY_TRIPLET_MESSAGE_2>::ComputePrimal()
 {
-       if(primal_result_handle_.valid() && primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-          if(debug()) 
-             std::cout << "read in primal multicut solution\n";
-          auto multicut_sol = primal_result_handle_.get();
-          this->write_labeling_into_factors(multicut_sol); 
-       }
+    if(!no_informative_factors_arg_.isSet())
+        this->send_messages_to_edges();
+    if(primal_result_handle_.valid() && primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        if(debug()) 
+            std::cout << "read in primal multicut solution\n";
+        auto multicut_sol = primal_result_handle_.get();
+        this->write_labeling_into_factors(multicut_sol); 
+    }
 
-       if(!primal_result_handle_.valid() || primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
-          if(debug()) 
-             std::cout << "export multicut problem for rounding\n";
+    if(!primal_result_handle_.valid() || primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
+        if(debug()) 
+            std::cout << "export multicut problem for rounding\n";
 
-          this->send_messages_to_edges();
-          const auto instance = this->template export_edges<multicut_instance>();
-          primal_result_handle_ = std::async(std::launch::async, round, std::move(instance), rounding_method_arg_.getValue());
-       } 
+        const auto instance = this->template export_edges<multicut_instance>();
+        primal_result_handle_ = std::async(std::launch::async, round, std::move(instance), rounding_method_arg_.getValue());
+    } 
 }
 
     template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>
@@ -318,12 +327,13 @@ void multicut_triplet_constructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR, TRIPL
     primal_result_handle_ = std::async(std::launch::async, round, instance, rounding_method_arg_.getValue());
 
     // compute cycle packing and add returned cycles to problem formulation. Also reparametrize edges (possibly do not do this?)
-    cycle_packing cp = compute_multicut_cycle_packing(instance);
-    for(std::size_t c=0; c<cp.no_cycles(); ++c) {
-        const auto [cycle_begin, cycle_end] = cp.get_cycle(c);
-        const double cycle_weight = cp.get_cycle_weight(c);
-        this->triangulate_cycle(cycle_begin, cycle_end, cycle_weight);
-    }
+    Tighten(std::numeric_limits<std::size_t>::max());
+    //cycle_packing cp = compute_multicut_cycle_packing(instance);
+    //for(std::size_t c=0; c<cp.no_cycles(); ++c) {
+    //    const auto [cycle_begin, cycle_end] = cp.get_cycle(c);
+    //    const double cycle_weight = cp.get_cycle_weight(c);
+    //    this->triangulate_cycle(cycle_begin, cycle_end, cycle_weight);
+    //}
 }
 
     template<class FACTOR_MESSAGE_CONNECTION, typename UNARY_FACTOR, typename TRIPLET_FACTOR, typename UNARY_TRIPLET_MESSAGE_0, typename UNARY_TRIPLET_MESSAGE_1, typename UNARY_TRIPLET_MESSAGE_2>

@@ -1,5 +1,4 @@
-#ifndef LPMP_GRAPH_MATCHING_H
-#define LPMP_GRAPH_MATCHING_H
+#pragma once
 
 #include "factors_messages.hxx"
 #include "LP.h"
@@ -71,6 +70,3 @@ struct FMC_MPLP {
 };
 
 } // namespace LPMP
-
-#endif // LPMP_GRAPH_MATCHING_H
-

@@ -20,7 +20,7 @@ namespace LPMP {
     }
 
     template<typename ITERATOR, typename GET_EDGE_FUNC, typename GET_TRIPLET_FUNC, typename GET_MSG_FUNC>
-        void triangulate_cycle(ITERATOR cycle_begin, ITERATOR cycle_end, GET_EDGE_FUNC get_edge_func, GET_TRIPLET_FUNC get_triplet_func, GET_MSG_FUNC get_msg_func, const double cycle_weight)
+        void triangulate_cycle(ITERATOR cycle_begin, ITERATOR cycle_end, GET_EDGE_FUNC get_edge_func, GET_TRIPLET_FUNC get_triplet_func, GET_MSG_FUNC get_msg_func, const double cycle_weight, const bool pack_cycle = true)
         {
             assert(std::distance(cycle_begin, cycle_end) >= 3);
             assert(cycle_weight > 0.0); // TODO: current version works without cycle weight. lower bound increase should be at least as big as cycle weight, though.
@@ -88,9 +88,11 @@ namespace LPMP {
                     auto [edge_01_msg, edge_01_type] = get_msg_type_func(it, {nodes[0], nodes[1]}, nodes);
                     auto [edge_02_msg, edge_02_type] = get_msg_type_func(it, {nodes[0], nodes[2]}, nodes);
                     auto [edge_12_msg, edge_12_type] = get_msg_type_func(it, {nodes[1], nodes[2]}, nodes);
-                    send_msg_forward(edge_01_type, edge_01, t, edge_01_msg);
-                    send_msg_forward(edge_02_type, edge_02, t, edge_02_msg);
-                    send_msg_forward(edge_12_type, edge_12, t, edge_12_msg);
+                    if(pack_cycle) {
+                        send_msg_forward(edge_01_type, edge_01, t, edge_01_msg);
+                        send_msg_forward(edge_02_type, edge_02, t, edge_02_msg);
+                        send_msg_forward(edge_12_type, edge_12, t, edge_12_msg);
+                    }
                 } else {
                     assert(false);
                 }
@@ -110,22 +112,24 @@ namespace LPMP {
             }; 
 
             // go over triplets backwards now and put as much weight back on the edges
-            for(auto it=cycle_end-2; it!=cycle_begin; --it) {
-                triplet_type nodes({first_node, *it, *(it+1)});
-                std::sort(nodes.begin(), nodes.end());
+            if(pack_cycle) {
+                for(auto it=cycle_end-2; it!=cycle_begin; --it) {
+                    triplet_type nodes({first_node, *it, *(it+1)});
+                    std::sort(nodes.begin(), nodes.end());
 
-                auto& t = get_triplet_func(nodes);
-                using edge_type = decltype(get_edge_func(std::array<std::size_t,2>{}));
-                edge_type edge_01 = get_edge_func({nodes[0], nodes[1]});
-                edge_type edge_02 = get_edge_func({nodes[0], nodes[2]});
-                edge_type edge_12 = get_edge_func({nodes[1], nodes[2]});
-                auto [edge_01_msg, edge_01_type] = get_msg_type_func(it, {nodes[0], nodes[1]}, nodes);
-                auto [edge_02_msg, edge_02_type] = get_msg_type_func(it, {nodes[0], nodes[2]}, nodes);
-                auto [edge_12_msg, edge_12_type] = get_msg_type_func(it, {nodes[1], nodes[2]}, nodes);
-                send_msg_backward(edge_01_type, edge_01, t, edge_01_msg);
-                send_msg_backward(edge_02_type, edge_02, t, edge_02_msg);
-                send_msg_backward(edge_12_type, edge_12, t, edge_12_msg);
+                    auto& t = get_triplet_func(nodes);
+                    using edge_type = decltype(get_edge_func(std::array<std::size_t,2>{}));
+                    edge_type edge_01 = get_edge_func({nodes[0], nodes[1]});
+                    edge_type edge_02 = get_edge_func({nodes[0], nodes[2]});
+                    edge_type edge_12 = get_edge_func({nodes[1], nodes[2]});
+                    auto [edge_01_msg, edge_01_type] = get_msg_type_func(it, {nodes[0], nodes[1]}, nodes);
+                    auto [edge_02_msg, edge_02_type] = get_msg_type_func(it, {nodes[0], nodes[2]}, nodes);
+                    auto [edge_12_msg, edge_12_type] = get_msg_type_func(it, {nodes[1], nodes[2]}, nodes);
+                    send_msg_backward(edge_01_type, edge_01, t, edge_01_msg);
+                    send_msg_backward(edge_02_type, edge_02, t, edge_02_msg);
+                    send_msg_backward(edge_12_type, edge_12, t, edge_12_msg);
 
+                }
             }
         }
 

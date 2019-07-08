@@ -60,6 +60,13 @@ using multicut_odd_3_wheel_labelings = labelings<
    >;
 using multicut_odd_3_wheel_factor = labeling_factor< multicut_odd_3_wheel_labelings, true >;
 
+//using multicut_edge_quadruplet_message_01 = labeling_message< multicut_edge_labelings, multicut_odd_3_wheel_labelings, 0>;
+//using multicut_edge_quadruplet_message_02 = labeling_message< multicut_edge_labelings, multicut_odd_3_wheel_labelings, 1>;
+//using multicut_edge_quadruplet_message_12 = labeling_message< multicut_edge_labelings, multicut_odd_3_wheel_labelings, 2>;
+//using multicut_edge_quadruplet_message_03 = labeling_message< multicut_edge_labelings, multicut_odd_3_wheel_labelings, 3>;
+//using multicut_edge_quadruplet_message_13 = labeling_message< multicut_edge_labelings, multicut_odd_3_wheel_labelings, 4>;
+//using multicut_edge_quadruplet_message_23 = labeling_message< multicut_edge_labelings, multicut_odd_3_wheel_labelings, 5>;
+
 using multicut_triplet_odd_3_wheel_message_012 = labeling_message< multicut_triplet_labelings, multicut_odd_3_wheel_labelings, 0,1,2>;
 using multicut_triplet_odd_3_wheel_message_013 = labeling_message< multicut_triplet_labelings, multicut_odd_3_wheel_labelings, 0,3,4>;
 using multicut_triplet_odd_3_wheel_message_023 = labeling_message< multicut_triplet_labelings, multicut_odd_3_wheel_labelings, 1,3,5>;

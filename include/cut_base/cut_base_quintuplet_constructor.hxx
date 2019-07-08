@@ -58,7 +58,7 @@ namespace LPMP {
                         INSTANCE export_quintuplets() const;
 
                     template<typename ITERATOR>
-                        void triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost);
+                        void triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost, const bool pack_odd_bicycle_wheel = true);
 
                     std::tuple<quadruplet_quintuplet_message_0123_container*, quadruplet_quintuplet_message_0124_container*, quadruplet_quintuplet_message_0134_container*, quadruplet_quintuplet_message_0234_container*, quadruplet_quintuplet_message_1234_container*>
                         get_quadruplet_quintuplet_messages(quintuplet_factor_container* f) const;
@@ -97,7 +97,7 @@ namespace LPMP {
                         INSTANCE export_quintuplets() const;
 
                     template<typename ITERATOR>
-                        void triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost);
+                        void triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost, const bool pack_odd_bicycle_wheel = true);
 
                     std::tuple<TRIPLET_QUINTUPLET_MESSAGE_012*, TRIPLET_QUINTUPLET_MESSAGE_013*, TRIPLET_QUINTUPLET_MESSAGE_014*, TRIPLET_QUINTUPLET_MESSAGE_023*, TRIPLET_QUINTUPLET_MESSAGE_024*, TRIPLET_QUINTUPLET_MESSAGE_034*, TRIPLET_QUINTUPLET_MESSAGE_123*, TRIPLET_QUINTUPLET_MESSAGE_124*, TRIPLET_QUINTUPLET_MESSAGE_134*, TRIPLET_QUINTUPLET_MESSAGE_234*>
                         get_triplet_quintuplet_messages(quintuplet_factor_container* f) const;
@@ -193,7 +193,7 @@ namespace LPMP {
 
     template<typename QUADRUPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename QUADRUPLET_QUINTUPLET_MESSAGE_0123, typename QUADRUPLET_QUINTUPLET_MESSAGE_0124, typename QUADRUPLET_QUINTUPLET_MESSAGE_0134, typename QUADRUPLET_QUINTUPLET_MESSAGE_0234, typename QUADRUPLET_QUINTUPLET_MESSAGE_1234 >
         template<typename ITERATOR>
-        void cut_base_quadruplet_quintuplet_constructor< QUADRUPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, QUADRUPLET_QUINTUPLET_MESSAGE_0123, QUADRUPLET_QUINTUPLET_MESSAGE_0124, QUADRUPLET_QUINTUPLET_MESSAGE_0134, QUADRUPLET_QUINTUPLET_MESSAGE_0234, QUADRUPLET_QUINTUPLET_MESSAGE_1234>::triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost)
+        void cut_base_quadruplet_quintuplet_constructor< QUADRUPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, QUADRUPLET_QUINTUPLET_MESSAGE_0123, QUADRUPLET_QUINTUPLET_MESSAGE_0124, QUADRUPLET_QUINTUPLET_MESSAGE_0134, QUADRUPLET_QUINTUPLET_MESSAGE_0234, QUADRUPLET_QUINTUPLET_MESSAGE_1234>::triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost, const bool pack_odd_bicycle_wheel)
         {
             using edge_factor_type = typename base_constructor::quadruplet_factor_container::FactorType;
             auto get_edge_func = [&,this](const std::array<std::size_t,2> edge_nodes) -> edge_factor_type& {
@@ -234,7 +234,7 @@ namespace LPMP {
                 return typename QUADRUPLET_QUINTUPLET_MESSAGE_1234::MessageType();
             };
 
-            LPMP::triangulate_cycle(path_begin, path_end, get_edge_func, get_triplet_func, get_msg_func, cost);
+            LPMP::triangulate_cycle(path_begin, path_end, get_edge_func, get_triplet_func, get_msg_func, cost, pack_odd_bicycle_wheel);
 
         }
 
@@ -338,7 +338,7 @@ namespace LPMP {
 
     template<typename TRIPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename TRIPLET_QUINTUPLET_MESSAGE_012, typename TRIPLET_QUINTUPLET_MESSAGE_013, typename TRIPLET_QUINTUPLET_MESSAGE_014, typename TRIPLET_QUINTUPLET_MESSAGE_023, typename TRIPLET_QUINTUPLET_MESSAGE_024, typename TRIPLET_QUINTUPLET_MESSAGE_034, typename TRIPLET_QUINTUPLET_MESSAGE_123, typename TRIPLET_QUINTUPLET_MESSAGE_124, typename TRIPLET_QUINTUPLET_MESSAGE_134, typename TRIPLET_QUINTUPLET_MESSAGE_234>
                     template<typename ITERATOR>
-            void cut_base_triplet_quintuplet_constructor<TRIPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, TRIPLET_QUINTUPLET_MESSAGE_012, TRIPLET_QUINTUPLET_MESSAGE_013, TRIPLET_QUINTUPLET_MESSAGE_014, TRIPLET_QUINTUPLET_MESSAGE_023, TRIPLET_QUINTUPLET_MESSAGE_024, TRIPLET_QUINTUPLET_MESSAGE_034, TRIPLET_QUINTUPLET_MESSAGE_123, TRIPLET_QUINTUPLET_MESSAGE_124, TRIPLET_QUINTUPLET_MESSAGE_134, TRIPLET_QUINTUPLET_MESSAGE_234>::triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost)
+            void cut_base_triplet_quintuplet_constructor<TRIPLET_CONSTRUCTOR, QUINTUPLET_FACTOR, TRIPLET_QUINTUPLET_MESSAGE_012, TRIPLET_QUINTUPLET_MESSAGE_013, TRIPLET_QUINTUPLET_MESSAGE_014, TRIPLET_QUINTUPLET_MESSAGE_023, TRIPLET_QUINTUPLET_MESSAGE_024, TRIPLET_QUINTUPLET_MESSAGE_034, TRIPLET_QUINTUPLET_MESSAGE_123, TRIPLET_QUINTUPLET_MESSAGE_124, TRIPLET_QUINTUPLET_MESSAGE_134, TRIPLET_QUINTUPLET_MESSAGE_234>::triangulate_odd_bicycle_wheel(std::array<std::size_t,2> axle, ITERATOR path_begin, ITERATOR path_end, const double cost, const bool pack_odd_bicycle_wheel)
             {
                 using edge_factor_type = typename std::array<typename triplet_factor_container::FactorType*, 2>;
                 auto get_edge_func = [&,this](const std::array<std::size_t,2> edge_nodes) -> edge_factor_type {
@@ -451,7 +451,7 @@ namespace LPMP {
                     return msg_type_impl{m1,m2}; 
                 };
 
-                LPMP::triangulate_cycle(path_begin, path_end, get_edge_func, get_triplet_func, get_msg_func, cost);
+                LPMP::triangulate_cycle(path_begin, path_end, get_edge_func, get_triplet_func, get_msg_func, cost, pack_odd_bicycle_wheel);
             }
 
     template<typename TRIPLET_CONSTRUCTOR, typename QUINTUPLET_FACTOR, typename TRIPLET_QUINTUPLET_MESSAGE_012, typename TRIPLET_QUINTUPLET_MESSAGE_013, typename TRIPLET_QUINTUPLET_MESSAGE_014, typename TRIPLET_QUINTUPLET_MESSAGE_023, typename TRIPLET_QUINTUPLET_MESSAGE_024, typename TRIPLET_QUINTUPLET_MESSAGE_034, typename TRIPLET_QUINTUPLET_MESSAGE_123, typename TRIPLET_QUINTUPLET_MESSAGE_124, typename TRIPLET_QUINTUPLET_MESSAGE_134, typename TRIPLET_QUINTUPLET_MESSAGE_234>

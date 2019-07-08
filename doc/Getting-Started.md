@@ -235,6 +235,31 @@ struct QPBO_FMC {
 };
 ```
 
+For every factor, the template parameters in `FactorContainer` are as follows:
+1. The factor class that is used.
+2. The ''factor message connection'' which is currently defined.
+3. The factor number, consecutively numbered from 0 up.
+
+For every message, the template parameters in `MessageContainer` are as follows:
+1. The message class that is used.
+2. The factor number of the left factor (the third parameter in the respective  `FactorContainer`).
+3. The factor number of the right factor.
+4. An identifier that tells LPMP how message updates are scheduled. Possible values are
+   * `message_passing_schedule::left`: Whenever left factor is visited, first receive message from right and then send message to right factor.
+   * `message_passing_schedule::right`: Whenever right factor is visited, first receive message from left and then send message to left factor.
+   * `message_passing_schedule::both`: A combination of `message_passing_schedule::left` and `message_passing_schedule::right`.
+   * `message_passing_schedule::none`: Do not update the message.
+5. The number of messages that the left factor is connected to of the current type. Possible values are either a positive number, if exactly that number of messages is connected to the respective factor, `variableMessageNumber` if that number is unknown, or `atMostOneMessage`, `atMostTwoMessages`, ... if the number of messages is bounded by the respective number.
+6. The number of messages that the right factor is connected to of the current type.
+7. The ''factor message message connection'' currently defined.
+8. The message number, consecutively numbered from 0 up.
+
+Next, we need to collect all factors in ``FactorList``. Factors must be given in the order of their factor number.
+The same mustb e done for messages in ``MessageList``.
+
+Last, the problem constructor is given in ``problem_constructor``.
+  
+
 ## Solver executable
 
 Finally, we can combine everything together to obtain an executable that solves QPBO instances. To that end we need to provide a visitor. The visitor controls how many iterations are performed, in which intervals primal solutions are decoded, how often cutting plane procedures are invoked etc.
