@@ -20,11 +20,12 @@ namespace LPMP {
     struct edge_type_q : public std::array<std::size_t,2> {
         double cost;
         std::size_t stamp;
-        std::size_t no_neighbors;
+        //std::size_t no_neighbors;
     };
 
-    std::mutex partition_mutex;
-    auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost/e1.no_neighbors < e2.cost/e2.no_neighbors;  };
+    //std::mutex partition_mutex;
+    //auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost/e1.no_neighbors < e2.cost/e2.no_neighbors;  };
+    auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost < e2.cost;  };
     using pq_t = std::priority_queue<edge_type_q, std::vector<edge_type_q>, decltype(pq_cmp)>;
 
     //char bool_clear = false, bool_mark = true;
@@ -115,7 +116,7 @@ main_loop:
             assert(marked_nodes.size() == neighbor.size());
             
             {
-                std::lock_guard<std::mutex> lck(partition_mutex);
+                //std::lock_guard<std::mutex> lck(partition_mutex);
                 partition.merge(i,j);
             }
 
@@ -144,11 +145,11 @@ main_loop:
                         pp_reverse.cost += p.cost;
                         pp_reverse.stamp++; 
                         if(pp.cost >= 0.0)
-                            Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp, neighbor.size()});
+                            Q.push(edge_type_q{stable_node, head, pp.cost/neighbor.size(), pp.stamp});
 
                     } else {
                         if(p.cost >= 0.0)
-                            Q.push(edge_type_q{stable_node, head, p.cost, 0, neighbor.size()});
+                            Q.push(edge_type_q{stable_node, head, p.cost/neighbor.size(), 0});
 //                        std::cout << "Insert node " << stable_node << " " << head << std::endl;
                         insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
                     } 
@@ -172,10 +173,12 @@ main_loop:
     {
         const auto begin_time = std::chrono::steady_clock::now();
 
-        union_find partition(instance.no_nodes());
-
         tf::Executor executor;
         tf::Taskflow taskflow;
+
+        union_find partition;
+        auto create_partition = [&]() { partition = union_find(instance.no_nodes()); };
+        auto P = taskflow.emplace(create_partition);
 
         std::vector<std::atomic<char>>  mask(instance.no_nodes());
         auto fill_mask = [&]() { std::fill(mask.begin(), mask.end(), false); };
@@ -193,7 +196,7 @@ main_loop:
                 for(std::size_t e=first_edge; e<last_edge; ++e) {
                 auto& edge = instance.edges()[e];
                 if(edge.cost > 0.0)
-                queues[thread_no].push(edge_type_q{edge[0], edge[1], edge.cost, 0, g.edges(edge[0]).size() + g.edges(edge[1]).size()});
+                queues[thread_no].push(edge_type_q{edge[0], edge[1], edge.cost/(g.edges(edge[0]).size() + g.edges(edge[1]).size()), 0 });
                 }
                 });
 
@@ -222,6 +225,8 @@ main_loop:
                 });
 
         GAEC_begin.gather(Q_end);
+        GAEC_begin.gather(P);
+        GAEC_begin.gather(M);
 
         executor.run(taskflow);
         executor.wait_for_all();

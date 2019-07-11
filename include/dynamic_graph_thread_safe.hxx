@@ -39,6 +39,7 @@ namespace LPMP {
 		std::size_t no_nodes() const { return edge_maps_.size(); }
 		std::size_t no_edges(const std::size_t i) const { assert(i < no_nodes()); return edge_maps_[i].size(); }
 
+        void insert_arc(const std::size_t i, const std::size_t j, const EDGE_INFORMATION& e);
         void insert_edge(const std::size_t i, const std::size_t j, const EDGE_INFORMATION& e);
         void remove_edge(const std::size_t i, const std::size_t j);
         void remove_node(const std::size_t i);
@@ -69,16 +70,50 @@ namespace LPMP {
 
             for(std::size_t i=0; i<adjacency_list_count.size(); ++i)
                 edge_maps_[i].reserve(adjacency_list_count[i]);
-            //tf::Taskflow taskflow;
-            //taskflow.parallel_for(std::size_t(0), adjacency_list_count.size(), std::size_t(1), [&](const std::size_t i) {
-            //    edge_maps_[i].reserve(adjacency_list_count[i]);
-            //    });
-
             for(auto edge_it=edge_begin; edge_it!=edge_end; ++edge_it) {
 				const auto i = (*edge_it)[0];
-				const auto j = (*edge_it)[1];
+                const auto j = (*edge_it)[1];
                 insert_edge(i, j, edge_information_func(*edge_it));
             }
+
+            // parallel implementation slower than sequential one
+            /*
+            tf::Executor executor;
+            tf::Taskflow taskflow;
+
+            auto [E_begin, E_end] = taskflow.parallel_for(std::size_t(0), adjacency_list_count.size(), std::size_t(1), [&](const std::size_t i) {
+                edge_maps_[i].reserve(adjacency_list_count[i]);
+                });
+
+            std::vector<std::atomic<char>> edge_occupied(edge_maps_.size());
+            std::fill(edge_occupied.begin(), edge_occupied.end(), false);
+
+            auto mark = [&](const std::size_t i) {
+                char mark_val = false;
+                auto& mark_var = edge_occupied[i];
+                while(!mark_var.compare_exchange_strong(mark_val, 1, std::memory_order_relaxed));
+            };
+            auto unmark = [&](const std::size_t i) {
+                assert(edge_occupied[i] == true);
+                edge_occupied[i].store(false);
+            };
+
+            auto [I_begin, I_end] = taskflow.parallel_for(edge_begin, edge_end, [&](auto edge) {
+				const auto i = edge[0];
+				const auto j = edge[1];
+                mark(i);
+                insert_arc(i, j, edge_information_func(edge));
+                unmark(i);
+                mark(j);
+                insert_arc(j, i, edge_information_func(edge));
+                unmark(j);
+            });
+
+            I_begin.gather(E_end);
+
+            executor.run(taskflow);
+            executor.wait_for_all();
+            */
         }
 
     template<typename EDGE_INFORMATION>
@@ -115,6 +150,12 @@ namespace LPMP {
             assert(std::max(i,j) < no_nodes());
             assert(i != j);
             return edge_maps_[i].count(j) > 0;
+        }
+
+    template<typename EDGE_INFORMATION>
+        void dynamic_graph_thread_safe<EDGE_INFORMATION>::insert_arc(const std::size_t i, const std::size_t j, const EDGE_INFORMATION& edge_info)
+        {
+            edge_maps_[i].insert(std::make_pair(j, edge_info));
         }
 
     template<typename EDGE_INFORMATION>
