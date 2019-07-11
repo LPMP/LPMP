@@ -2,6 +2,7 @@
 #include "graph.hxx"
 #include "dynamic_graph.hxx"
 #include "dynamic_graph_thread_safe.hxx"
+#include <atomic>
 
 using namespace LPMP;
 
@@ -66,4 +67,5 @@ int main(int argc, char** argv)
 	decltype(edges) contraction_edges({{0,2}});
 	auto [contracted_graph, contraction_mapping] = g.contract(contraction_edges.begin(), contraction_edges.end());
 	test(contracted_graph.no_nodes() == 3);
+
 }

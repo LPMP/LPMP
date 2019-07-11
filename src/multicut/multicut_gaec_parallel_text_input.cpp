@@ -34,11 +34,11 @@ int main(int argc, char** argv)
     }
 
     {
-        const auto begin_time = std::chrono::steady_clock::now();
-        const multicut_edge_labeling andres_gaec = compute_gaec(input);
-        const auto end_time = std::chrono::steady_clock::now();
-        std::cout << "Andres gaec energy = " << input.evaluate(andres_gaec) << "\n";
-        std::cout << "Andres optimization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
+        //const auto begin_time = std::chrono::steady_clock::now();
+        //const multicut_edge_labeling andres_gaec = compute_gaec(input);
+        //const auto end_time = std::chrono::steady_clock::now();
+        //std::cout << "Andres gaec energy = " << input.evaluate(andres_gaec) << "\n";
+        //std::cout << "Andres optimization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
     } 
 
     //{

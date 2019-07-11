@@ -33,7 +33,8 @@ namespace LPMP {
                         const EDGE_INFORMATION& edge() const { return edge_; }
 
                         bool operator<(const edge_type& o) const { return head() < o.head(); }
-                        edge_type& operator=(const EDGE_INFORMATION& o) { edge() = o; }
+                        template<typename T>
+                        edge_type& operator=(const T& o) { edge() = o; }
 
                         std::size_t head_;
                         edge_type* sister_;

@@ -1,5 +1,4 @@
-#ifndef LPMP_TWO_DIMENSIONAL_VARIABLE_ARRAY_HXX
-#define LPMP_TWO_DIMENSIONAL_VARIABLE_ARRAY_HXX
+#pragma once
 
 #include <vector>
 #include <cassert>
@@ -26,9 +25,11 @@ public:
    // iterator holds size of each dimension of the two dimensional array
    template<typename I>
    two_dim_variable_array(const std::vector<I>& size)
+   : offsets_(compute_offsets(size.begin(), size.end())),
+    data_(offsets_.back())
    {
-      const std::size_t s = set_dimensions(size.begin(), size.end());
-      data_.resize(s);
+      //const std::size_t s = set_dimensions(size.begin(), size.end());
+      //data_.resize(s);
    }
 
    two_dim_variable_array(const std::vector<std::vector<T>>& o)
@@ -47,18 +48,25 @@ public:
          }
       }
    }
+
    // iterator holds size of each dimension of the two dimensional array
    template<typename ITERATOR>
    two_dim_variable_array(ITERATOR size_begin, ITERATOR size_end)
+   : offsets_(compute_offsets(size_begin, size_end)),
+    data_(offsets_.back())
    {
-      const std::size_t s = set_dimensions(size_begin, size_end);
-      data_.resize(s);
+      //const std::size_t s = set_dimensions(size_begin, size_end);
+      //data_.resize(s);
    }
+
+   // iterator holds size of each dimension of the two dimensional array
    template<typename ITERATOR>
-   two_dim_variable_array(ITERATOR size_begin, ITERATOR size_end, T val)
+   two_dim_variable_array(ITERATOR size_begin, ITERATOR size_end, const T& val)
+   : offsets_(compute_offsets(size_begin, size_end)),
+    data_(offsets_.back(), val)
    {
-      const std::size_t s = set_dimensions(size_begin, size_end);
-      data_.resize(s, val);
+      //const std::size_t s = set_dimensions(size_begin, size_end);
+      //data_.resize(s);
    }
 
    /*
@@ -237,6 +245,21 @@ private:
       return offsets_.back();
    }
 
+   template<typename ITERATOR>
+   static std::vector<std::size_t> compute_offsets(ITERATOR begin, ITERATOR end)
+   {
+      // first calculate amount of memory needed in bytes
+      const auto s = std::distance(begin, end);
+      std::vector<std::size_t> offsets;
+      offsets.reserve(s);
+      offsets.push_back(0);
+      for(auto it=begin; it!=end; ++it) {
+         assert(*it >= 0);
+         offsets.push_back( offsets.back() + *it );
+      }
+      return offsets;
+   }
+
    std::vector<std::size_t> offsets_;
    std::vector<T> data_;
    // memory is laid out like this:
@@ -245,5 +268,3 @@ private:
 };
 
 } // namespace LPMP
-
-#endif // LPMP_TWO_DIMENSIONAL_VARIABLE_ARRAY_HXX

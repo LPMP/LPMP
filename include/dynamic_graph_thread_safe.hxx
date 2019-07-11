@@ -6,6 +6,7 @@
 #include <limits>
 #include <algorithm>
 #include <tsl/robin_map.h>
+#include <taskflow/taskflow.hpp>
 #include "hash_helper.hxx"
 
 // This class provides a similar interface as dynamic_graph, but edges can be added/deleted concurrently if they do not share endpoints
@@ -18,6 +19,7 @@ namespace LPMP {
 		template<typename EDGE_ITERATOR, typename EDGE_INFORMATION_LAMBDA>
             void construct(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end, EDGE_INFORMATION_LAMBDA edge_information_func);
 
+        dynamic_graph_thread_safe() {}
         dynamic_graph_thread_safe(const std::size_t no_nodes);
 
         constexpr static auto return_edge_op = [](const auto& edge) { return EDGE_INFORMATION{}; };
@@ -64,8 +66,13 @@ namespace LPMP {
 			}
 
             edge_maps_.resize(adjacency_list_count.size());
+
             for(std::size_t i=0; i<adjacency_list_count.size(); ++i)
                 edge_maps_[i].reserve(adjacency_list_count[i]);
+            //tf::Taskflow taskflow;
+            //taskflow.parallel_for(std::size_t(0), adjacency_list_count.size(), std::size_t(1), [&](const std::size_t i) {
+            //    edge_maps_[i].reserve(adjacency_list_count[i]);
+            //    });
 
             for(auto edge_it=edge_begin; edge_it!=edge_end; ++edge_it) {
 				const auto i = (*edge_it)[0];

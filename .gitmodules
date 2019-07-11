@@ -44,3 +44,6 @@
 [submodule "external/tsl-robin-map"]
 	path = external/tsl-robin-map
 	url = https://github.com/Tessil/robin-map.git
+[submodule "external/cpp-taskflow"]
+	path = external/cpp-taskflow
+	url = https://github.com/cpp-taskflow/cpp-taskflow.git

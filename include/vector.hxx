@@ -8,7 +8,7 @@
 //#include "cereal/archives/binary.hpp"
 //#include <heaplayers>
 //#include <heaps/special/obstackheap.h>
-#include "aligned_allocator.h"
+//#include "aligned_allocator.h"
 
 namespace LPMP {
 

@@ -38,7 +38,7 @@ target_include_directories(LPMP INTERFACE external/arboricity)
 target_include_directories(LPMP INTERFACE external/MCF-SSP)
 target_include_directories(LPMP INTERFACE external/andres-graph/include)
 target_include_directories(LPMP INTERFACE external/tsl-robin-map/include)
-
+target_include_directories(LPMP INTERFACE external/cpp-taskflow) 
 target_link_libraries(LPMP INTERFACE pthread)
 
 # for opengm #
