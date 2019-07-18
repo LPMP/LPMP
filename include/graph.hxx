@@ -20,10 +20,10 @@ namespace LPMP {
 
                 class edge_type {
                     public:
-                        const std::size_t tail() const 
-                        { 
+                        const std::size_t tail() const
+                        {
                             assert(sister_->sister_ == this);
-                            return sister_->head(); 
+                            return sister_->head();
                         }
                         const std::size_t head() const { return head_; }
                         const edge_type& sister() const { return *sister_; }
@@ -121,10 +121,10 @@ namespace LPMP {
             using edge_type = typename GRAPH::edge_type;
             using edge_information = typename GRAPH::edge_information;
 
-            struct item { 
+            struct item {
                 edge_information e;
                 std::size_t parent;
-                std::size_t flag; 
+                std::size_t flag;
             };
 
             void update_graph();
@@ -139,7 +139,7 @@ namespace LPMP {
             bool labelled2(const std::size_t i) const { return d[i].flag == flag2; }
 
             std::size_t& parent(const std::size_t i) { return d[i].parent; }
-            std::size_t parent(const std::size_t i) const { return d[i].parent; } 
+            std::size_t parent(const std::size_t i) const { return d[i].parent; }
 
             template<typename EDGE_OP>
                 std::vector<std::size_t> trace_path(const std::size_t i1, const std::size_t i2, EDGE_OP edge_op, const edge_information& edge_info) const;
@@ -159,7 +159,7 @@ namespace LPMP {
 
             private:
             std::vector<item> d;
-            std::deque<std::array<std::size_t,2>> visit; // node number, distance from start or end 
+            std::deque<std::array<std::size_t,2>> visit; // node number, distance from start or end
             std::size_t flag1, flag2;
             const GRAPH& g;
         };
@@ -177,7 +177,7 @@ namespace LPMP {
                 const auto [i,j] = e(*edge_it);
                 adjacency_list_count.resize(std::max({i+1,j+1,adjacency_list_count.size()}));
                 adjacency_list_count[i]++;
-                adjacency_list_count[j]++; 
+                adjacency_list_count[j]++;
             }
 
             edges_.resize(adjacency_list_count.begin(), adjacency_list_count.end());
@@ -232,8 +232,8 @@ namespace LPMP {
                         auto* sister = &edges_(head, adjacency_list_count[head]++);
                         edge_it->sister_ = sister;
                         sister->sister_ = &(*edge_it);
-                    } 
-                } 
+                    }
+                }
             }
         }
 
@@ -275,7 +275,7 @@ namespace LPMP {
             assert(edge_present(i,j));
             auto edge_it = std::lower_bound(begin(i), end(i), j, edge_comparator{});
             assert(edge_it->head() == j);
-            return edge_it->edge(); 
+            return edge_it->edge();
         }
 
     template<typename EDGE_INFORMATION, bool SUPPORT_SISTER, bool SUPPORT_MASKING>
@@ -284,7 +284,7 @@ namespace LPMP {
             assert(edge_present(i,j));
             auto edge_it = std::lower_bound(begin(i), end(i), j, edge_comparator{});
             assert(edge_it->head() == j);
-            return edge_it->edge(); 
+            return edge_it->edge();
         }
 
     template<typename EDGE_INFORMATION, bool SUPPORT_SISTER, bool SUPPORT_MASKING>
@@ -292,7 +292,7 @@ namespace LPMP {
         {
             const std::size_t i = e->tail();
             assert(std::distance(const_cast<const edge_type*>(edges_[i].begin()), e) < no_edges(i));
-            return std::distance(const_cast<const edge_type*>(edges_[i].begin()), e); 
+            return std::distance(const_cast<const edge_type*>(edges_[i].begin()), e);
         }
 
     template<typename EDGE_INFORMATION, bool SUPPORT_SISTER, bool SUPPORT_MASKING>
@@ -300,7 +300,7 @@ namespace LPMP {
         {
             const std::size_t i = e.tail();
             assert(std::distance(const_cast<const edge_type*>(edges_[i].begin()), &e) < no_edges(i));
-            return std::distance(const_cast<const edge_type*>(edges_[i].begin()), &e); 
+            return std::distance(const_cast<const edge_type*>(edges_[i].begin()), &e);
         }
 
     // enumerate all triangles and call f on each. f expects the three node indices (i<j<k) of triangles (sorted) and references to edges in lexicographical order (ij,ik,jk)
@@ -314,7 +314,7 @@ namespace LPMP {
                 const edge_type* ik;
                 const edge_type* jk;
             };
-            auto edge_intersection_merge = [](const edge_type& e1, const edge_type& e2) -> triangle_intersection_type { 
+            auto edge_intersection_merge = [](const edge_type& e1, const edge_type& e2) -> triangle_intersection_type {
                 assert(e1.head() == e2.head());
                 const auto k = e1.head();
                 return triangle_intersection_type(k, &e1, &e2);
@@ -335,7 +335,7 @@ namespace LPMP {
                         for(const triangle_intersection_type t : common_nodes) {
                             const auto k = t.k;
 
-                            // Since a triplet shows up three times as an edge plus a node, we only consider it for the case when i<j<k 
+                            // Since a triplet shows up three times as an edge plus a node, we only consider it for the case when i<j<k
                             if(!(j<k)) { continue; }
 
                             assert(t.ik->tail() == i && t.jk->tail() == j);
@@ -378,10 +378,10 @@ namespace LPMP {
                         if(edge_mask(u,c_u) == false) { continue; }
                         const std::size_t w = edges_(u,c_u).head();
                         if(w != v) {
-                            U[w].push_back(u); 
+                            U[w].push_back(u);
                             if(U[w].size() == 1) { nonempty_U_entries.push_back(w); }
                             if(U[w].size() == 2) { relevant_U_entries.push_back(w); }
-                        } 
+                        }
                     }
                 }
                 for(const std::size_t w : relevant_U_entries) {
@@ -396,7 +396,7 @@ namespace LPMP {
                 for(const auto w : nonempty_U_entries)
                     U[w].clear();
                 nonempty_U_entries.clear();
-                for(const auto& l : U) { assert(l.empty()); } 
+                for(const auto& l : U) { assert(l.empty()); }
 
                 // mask all edges with v as its endpoint
                 for(std::size_t c=0; c<no_edges(v); ++c) {
@@ -422,7 +422,7 @@ namespace LPMP {
             auto contracted_ids = uf.get_contiguous_ids();
             struct contracted_edge_type : public std::array<std::size_t,2> {
                 contracted_edge_type(const std::size_t i, const std::size_t j, EDGE_INFORMATION e) : std::array<std::size_t,2>({i,j}), edge(e) {}
-                EDGE_INFORMATION edge; 
+                EDGE_INFORMATION edge;
             };
             std::vector<contracted_edge_type> contracted_edges;
 
@@ -431,7 +431,7 @@ namespace LPMP {
                     const auto contracted_j = contracted_ids[ uf.find(j) ];
                     if(contracted_i != contracted_j) {
                         contracted_edge_type contracted_edge(contracted_i, contracted_j, edge);
-                        contracted_edges.push_back(contracted_edge); 
+                        contracted_edges.push_back(contracted_edge);
                     }
             });
 
@@ -445,9 +445,9 @@ namespace LPMP {
                     contracted_edges[i+1].edge = merge_func(contracted_edges[i].edge, contracted_edges[i+1].edge);
                 } else {
                     unique_contracted_edges.push_back(contracted_edges[i]);
-                } 
+                }
             }
-            unique_contracted_edges.push_back(contracted_edges.back()); 
+            unique_contracted_edges.push_back(contracted_edges.back());
 
             type contracted_graph(unique_contracted_edges.begin(), unique_contracted_edges.end());
 
@@ -456,7 +456,7 @@ namespace LPMP {
                 contraction_mapping[i] = contracted_ids[ uf.find(i) ];
             }
 
-            return std::make_tuple(contracted_graph, contraction_mapping); 
+            return std::make_tuple(contracted_graph, contraction_mapping);
         }
 
     template<typename EDGE_INFORMATION, bool SUPPORT_SISTER, bool SUPPORT_MASKING>
@@ -471,7 +471,7 @@ namespace LPMP {
         void graph<EDGE_INFORMATION, SUPPORT_SISTER, SUPPORT_MASKING>::check_graph() const
         {
             for(std::size_t i=0; i<edges_.size(); ++i) {
-                // check that graph is simple 
+                // check that graph is simple
                 assert(std::is_sorted(edges_[i].begin(), edges_[i].end()));
 
                 // check sister pointers have been set correctly
@@ -480,7 +480,7 @@ namespace LPMP {
                     assert(edge_it->tail() == i);
                     if(edge_it+1 != edges_[i].end()) {
                         assert(edge_it->head() < (edge_it+1)->head());
-                    } 
+                    }
                 }
 
                 // check access with indices
@@ -524,11 +524,11 @@ namespace LPMP {
         update_graph();
     }
     template<typename GRAPH>
-        void bfs_data<GRAPH>::reset() 
+        void bfs_data<GRAPH>::reset()
         {
             visit.clear();
             flag1 += 2;
-            flag2 += 2; 
+            flag2 += 2;
         }
 
     template<typename GRAPH>
@@ -586,7 +586,7 @@ namespace LPMP {
                 assert(g.begin(i) <= g.end(i));
 
                 if(labelled1(i)) {
-                    for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) { 
+                    for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) {
                         const std::size_t j = a_it->head();
 
                         if(mask_op(i,j,a_it->edge(), distance)) {
@@ -605,7 +605,7 @@ namespace LPMP {
                     }
                 } else {
                     assert(labelled2(i));
-                    for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) { 
+                    for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) {
                         const std::size_t j = a_it->head();
 
                         if(mask_op(i,j,a_it->edge(), distance)) {
@@ -647,7 +647,7 @@ namespace LPMP {
                 assert(g.begin(i) < g.end(i));
 
                 if(labelled1(i)) {
-                    for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) { 
+                    for(auto a_it=g.begin(i); a_it!=g.end(i); ++a_it) {
                         const std::size_t j = a_it->head();
 
                         if(!cut_edge_op(i,j,*a_it)) {
@@ -655,10 +655,10 @@ namespace LPMP {
                                 visit.push_back({j, distance+1});
                                 parent(j) = i;
                                 label1(j);
-                            } 
+                            }
                         }
                     }
-                } 
+                }
             }
         }
 

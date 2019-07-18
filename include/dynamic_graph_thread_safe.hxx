@@ -63,7 +63,7 @@ namespace LPMP {
 				const auto j = (*edge_it)[1];
 				adjacency_list_count.resize(std::max({i+1,j+1,adjacency_list_count.size()}));
 				adjacency_list_count[i]++;
-				adjacency_list_count[j]++; 
+				adjacency_list_count[j]++;
 			}
 
             edge_maps_.resize(adjacency_list_count.size());
@@ -183,4 +183,3 @@ namespace LPMP {
             edge_maps_[i].clear();
         }
 }
-
