@@ -98,6 +98,7 @@ namespace LPMP {
         Q.first.gather(prev);
     }
 
+    template<bool SYNCHRONIZE=true>
     void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::atomic<char>>& mask)
     {
         const auto begin_time = std::chrono::steady_clock::now();
@@ -109,10 +110,12 @@ namespace LPMP {
 main_loop:
         while(!Q.empty() || !conflicted.empty()) {
             if (Q.empty()) {
-                std::cout << std::this_thread::get_id() << ": number of edges in conflicted set: " << conflicted.size() << std::endl;
-                for (auto & c: conflicted) Q.push(c);
-                conflicted.clear();
-                return;
+                if constexpr (SYNCHRONIZE) {
+                    std::cout << std::this_thread::get_id() << ": number of edges in conflicted set: " << conflicted.size() << std::endl;
+                    for (auto & c: conflicted) Q.push(c);
+                    conflicted.clear();
+                    return;
+                }
             }
 
             const edge_type_q e_q = Q.top();
@@ -120,62 +123,68 @@ main_loop:
             const std::size_t i = e_q[0];
             const std::size_t j = e_q[1];
 
-            if (marked(mask[i])){
-                conflicted.push_back(e_q);
-                continue;
-            }
-            if (marked(mask[j])){
-                unmark(mask[i]);
-                conflicted.push_back(e_q);
-                continue;
-            }
-            if(!g.edge_present(i,j)){
-                unmark(mask[i]);
-                unmark(mask[j]);
-                continue;
-            }
-            const auto& e = g.edge(i,j);
-            if(e_q.stamp < e.stamp){
-                unmark(mask[i]);
-                unmark(mask[j]);
-                continue;
-            }
-            if(e.cost <= 0.0){
-                unmark(mask[i]);
-                unmark(mask[j]);
-                break;
-            }
-
-            // Mark relevant nodes
-            neighbor.clear();
-            for (auto& e : g.edges(i))
-                neighbor.push_back(e.first);
-            for (auto& e : g.edges(j))
-                neighbor.push_back(e.first);
-            std::sort(neighbor.begin(), neighbor.end());
-            neighbor.erase(std::unique(neighbor.begin(), neighbor.end()), neighbor.end());
-
-            marked_nodes.clear();
-            marked_nodes.push_back(i);
-            marked_nodes.push_back(j);
-            for (auto& n: neighbor){
-                if (n == i || n == j)
-                    continue;
-                if (marked(mask[n])){
+            if constexpr(SYNCHRONIZE) {
+                if (marked(mask[i])){
                     conflicted.push_back(e_q);
-                    for (auto& m: marked_nodes) unmark(mask[m]);
-                    goto main_loop;
-                } else {
-                    marked_nodes.push_back(n);
+                    continue;
+                }
+                if (marked(mask[j])){
+                    unmark(mask[i]);
+                    conflicted.push_back(e_q);
+                    continue;
+                }
+                if(!g.edge_present(i,j)){
+                    unmark(mask[i]);
+                    unmark(mask[j]);
+                    continue;
                 }
             }
 
-            assert(marked_nodes.size() == neighbor.size());
-
-            {
-                std::lock_guard<std::mutex> lck(partition_mutex);
-                partition.merge(i,j);
+            const auto& e = g.edge(i,j);
+            if(e_q.stamp < e.stamp){
+                if constexpr(SYNCHRONIZE) {
+                    unmark(mask[i]);
+                    unmark(mask[j]);
+                }
+                continue;
             }
+            if(e.cost <= 0.0){
+                if constexpr(SYNCHRONIZE) {
+                    unmark(mask[i]);
+                    unmark(mask[j]);
+                }
+                break;
+            }
+
+            if constexpr(SYNCHRONIZE) {
+                // Mark relevant nodes
+                neighbor.clear();
+                for (auto& e : g.edges(i))
+                    neighbor.push_back(e.first);
+                for (auto& e : g.edges(j))
+                    neighbor.push_back(e.first);
+                std::sort(neighbor.begin(), neighbor.end());
+                neighbor.erase(std::unique(neighbor.begin(), neighbor.end()), neighbor.end());
+
+                marked_nodes.clear();
+                marked_nodes.push_back(i);
+                marked_nodes.push_back(j);
+                for (auto& n: neighbor){
+                    if (n == i || n == j)
+                        continue;
+                    if (marked(mask[n])){
+                        conflicted.push_back(e_q);
+                        for (auto& m: marked_nodes) unmark(mask[m]);
+                        goto main_loop;
+                    } else {
+                        marked_nodes.push_back(n);
+                    }
+                }
+
+                assert(marked_nodes.size() == neighbor.size());
+            }
+
+            partition.merge(i,j);
 
             std::size_t stable_node, merge_node;
 
@@ -217,8 +226,9 @@ main_loop:
                 g.insert_edge(e.first[0], e.first[1], e.second);
             insert_candidates.clear();
 
-
-            for (auto& n: neighbor) unmark(mask[n]);
+            if constexpr(SYNCHRONIZE)
+                for (auto& n: neighbor) 
+                    unmark(mask[n]);
         }
         const auto end_time = std::chrono::steady_clock::now();
         //std::cout << "Parallel gaec time for thread " << std::this_thread::get_id() << " : "<<
@@ -277,7 +287,7 @@ main_loop:
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
                 //std::cout << "Edges in thread " << thread_no << ": " << queues[thread_no].size() << std::endl;
-                gaec_single(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
+                gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
         });
         GAEC_begin.gather(Q.second);
 
