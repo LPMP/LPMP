@@ -62,7 +62,7 @@ namespace LPMP {
             const std::size_t last_node = std::min((thread_no+1)*nodes_batch_size, instance.no_nodes());
             for(std::size_t n=first_node; n<last_node; ++n){
                 for (auto& neighbor_edge : g.edges(n)){
-                    std::size_t neighbor_node = neighbor_edge.first;
+                    const std::size_t neighbor_node = neighbor_edge.first;
                     if (neighbor_node != n) {
                         auto edge_cost = g.edge(n, neighbor_node).cost;
                         if (edge_cost > 0.0)
@@ -73,6 +73,43 @@ namespace LPMP {
         });
         Q.first.gather(prev);
     }
+
+    tf::Task distribute_edges_no_conflicts(tf::Taskflow& taskflow, const dynamic_graph_thread_safe<edge_type>& g, const multicut_instance& instance, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
+        auto extract = [&](){
+            const std::size_t nodes_batch_size = instance.no_nodes()/nr_threads + 1;
+            for(std::size_t n=0; n < instance.no_nodes(); ++n){
+                bool within = true;
+                for (auto& neighbor_edge : g.edges(n)){
+                    const std::size_t neighbor_node = neighbor_edge.first;
+                    if (neighbor_node > n && !((int)(n/nodes_batch_size) == (int)(neighbor_node/nodes_batch_size))){
+                        within = false;
+                        break;
+                    }
+                }
+                for (auto& neighbor_edge : g.edges(n)){
+                    const std::size_t neighbor_node = neighbor_edge.first;
+                    if (neighbor_node > n) {
+                        auto edge_cost = g.edge(n, neighbor_node).cost;
+                        if (edge_cost > 0.0) {
+                            if (within) {
+                                queues[n/nodes_batch_size].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
+                                queues[n/nodes_batch_size].push(edge_type_q{neighbor_node, n, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
+                            }
+                            else {
+                                queues[nr_threads].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
+                                queues[nr_threads].push(edge_type_q{neighbor_node, n, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
+                            }
+                        }
+                    }
+                }
+            }
+            std::cout << "Edges in final queue: " << queues[nr_threads].size() << std::endl;
+        };
+        auto Q = taskflow.emplace(extract);
+        Q.gather(prev);
+        return Q;
+    }
+
 
     void distribute_edges_round_robin(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, std::pair<tf::Task, tf::Task>& Q, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
         if (SHUFFLE) std::random_shuffle(positive_edges.begin(), positive_edges.end());
@@ -133,11 +170,14 @@ main_loop:
                     conflicted.push_back(e_q);
                     continue;
                 }
-                if(!g.edge_present(i,j)){
+            }
+
+            if(!g.edge_present(i,j)){
+                if constexpr(SYNCHRONIZE) {
                     unmark(mask[i]);
                     unmark(mask[j]);
-                    continue;
                 }
+                continue;
             }
 
             const auto& e = g.edge(i,j);
@@ -156,8 +196,8 @@ main_loop:
                 break;
             }
 
+            // Mark relevant nodes
             if constexpr(SYNCHRONIZE) {
-                // Mark relevant nodes
                 neighbor.clear();
                 for (auto& e : g.edges(i))
                     neighbor.push_back(e.first);
@@ -180,13 +220,13 @@ main_loop:
                         marked_nodes.push_back(n);
                     }
                 }
-
                 assert(marked_nodes.size() == neighbor.size());
             }
 
-            partition.merge(i,j);
-
-            std::size_t stable_node, merge_node;
+            {
+                std::lock_guard<std::mutex> lck(partition_mutex);
+                partition.merge(i,j);
+            }
 
             const auto node_pair  = [&]() -> std::array<std::size_t,2> {
                 if(g.no_edges(i) < g.no_edges(j))
@@ -194,8 +234,8 @@ main_loop:
                 else
                     return {i,j};
             }();
-            stable_node = node_pair[0];
-            merge_node = node_pair[1];
+            auto stable_node = node_pair[0];
+            auto merge_node = node_pair[1];
 
             for (auto& e: g.edges(merge_node)){
                 std::size_t head = e.first;
@@ -211,12 +251,10 @@ main_loop:
                     pp_reverse.cost += p.cost;
                     pp_reverse.stamp++;
                     if(pp.cost >= 0.0)
-                        Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp, neighbor.size()});
-
+                        Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp, g.edges(stable_node).size() + g.edges(head).size()});
                 } else {
                     if(p.cost >= 0.0)
-                        Q.push(edge_type_q{stable_node, head, p.cost, 0, neighbor.size()});
-//                        std::cout << "Insert node " << stable_node << " " << head << std::endl;
+                        Q.push(edge_type_q{stable_node, head, p.cost, 0, g.edges(stable_node).size() + g.edges(head).size()});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
                 }
             }
@@ -227,7 +265,7 @@ main_loop:
             insert_candidates.clear();
 
             if constexpr(SYNCHRONIZE)
-                for (auto& n: neighbor) 
+                for (auto& n: neighbor)
                     unmark(mask[n]);
         }
         const auto end_time = std::chrono::steady_clock::now();
@@ -253,47 +291,63 @@ main_loop:
         auto construct_graph = [&]() { g.construct(instance.edges().begin(), instance.edges().end(), [](const auto& e) -> edge_type { return {e.cost, 0}; }); };
         auto G = taskflow.emplace(construct_graph);
 
-	    std::vector<pq_t> queues(nr_threads, pq_t(pq_cmp));
+	    std::vector<pq_t> queues(nr_threads+1, pq_t(pq_cmp));
         std::vector<edge_type_q> positive_edges;
         std::pair<tf::Task, tf::Task> Q;
-        tf::Task E;
+        tf::Task E, prev;
 
         switch(option){
             case 1:
                 E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
                 distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
                 break;
             case 2:
                 distribute_edges_by_endnodes(taskflow, g, instance, Q, G, queues, nr_threads);
+                prev = Q.second;
                 break;
             case 3:
                 E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
                 distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
                 break;
             case 4:
                 E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
                 distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
                 break;
             case 5:
                 E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
                 distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
+                break;
+            case 6:
+                E = distribute_edges_no_conflicts(taskflow, g, instance, G, queues, nr_threads);
+                prev = E;
                 break;
             default:
                 break;
         }
 
-        //const auto end_time = std::chrono::steady_clock::now();
-        //std::cout << "Initialization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
+        // const auto end_time = std::chrono::steady_clock::now();
+        // std::cout << "Initialization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
+
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
-                //std::cout << "Edges in thread " << thread_no << ": " << queues[thread_no].size() << std::endl;
+            std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
+            if (option == 6)
+                gaec_single<false>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
+            else
                 gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
         });
-        GAEC_begin.gather(Q.second);
-
+        GAEC_begin.gather(prev);
         executor.run(taskflow);
         executor.wait_for_all();
 
+        if (option == 6 && !queues[nr_threads].empty()) {
+            std::cout << "Edges in the final thread " << nr_threads << ": " << queues[nr_threads].size() << std::endl;
+            gaec_single<false>(std::ref(g), std::ref(queues[nr_threads]), std::ref(partition), std::ref(mask));
+        }
 	    return multicut_edge_labeling(instance, partition);
    }
 
