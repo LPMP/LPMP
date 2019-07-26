@@ -14,9 +14,18 @@ int main(int argc, char** argv)
     try {
         TCLAP::CmdLine cmd("GAEC Parallel");
         //TCLAP: command line library. -i ${input file} --numThreads ${x} --edgeDistribution ${...}
+        std::vector<std::string> allowed;
+		allowed.push_back("round_robin_not_sorted");
+		allowed.push_back("endnodes");
+		allowed.push_back("chunk_sorted");
+		allowed.push_back("round_robin_sorted");
+		allowed.push_back("chunk_not_sorted");
+        allowed.push_back("non-blocking");
+		TCLAP::ValuesConstraint<std::string> allowedVals(allowed);
+
         TCLAP::ValueArg<std::string> nameArg("i","inputFile","Path to the input file.",true,"","string");
         TCLAP::ValueArg<std::string> threadArg("t","numThreads","Number of threads.",true,"1","int");
-        TCLAP::ValueArg<std::string> optArg("x","edgeDistribution","Methods to distribute edges.",true,"1","int");
+        TCLAP::ValueArg<std::string> optArg("x","edgeDistribution","Methods to distribute edges.",true,"round_robin_sorted", &allowedVals);
 
         cmd.add(nameArg);
         cmd.add(threadArg);
@@ -26,7 +35,7 @@ int main(int argc, char** argv)
         const std::string filename = nameArg.getValue();
         const multicut_instance input = multicut_text_input::parse_file(filename);
         const int nr_of_threads = std::stoi(threadArg.getValue());
-        const int option = std::stoi(optArg.getValue());
+        const std::string option = optArg.getValue();
 
         {
         	const auto begin_time = std::chrono::steady_clock::now();

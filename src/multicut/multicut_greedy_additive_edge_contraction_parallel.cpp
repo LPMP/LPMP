@@ -63,7 +63,7 @@ namespace LPMP {
             for(std::size_t n=first_node; n<last_node; ++n){
                 for (auto& neighbor_edge : g.edges(n)){
                     const std::size_t neighbor_node = neighbor_edge.first;
-                    if (neighbor_node != n) {
+                    if (neighbor_node > n) {
                         auto edge_cost = g.edge(n, neighbor_node).cost;
                         if (edge_cost > 0.0)
                             queues[thread_no].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
@@ -93,11 +93,9 @@ namespace LPMP {
                         if (edge_cost > 0.0) {
                             if (within) {
                                 queues[n/nodes_batch_size].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
-                                queues[n/nodes_batch_size].push(edge_type_q{neighbor_node, n, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
                             }
                             else {
                                 queues[nr_threads].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
-                                queues[nr_threads].push(edge_type_q{neighbor_node, n, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
                             }
                         }
                     }
@@ -245,9 +243,9 @@ main_loop:
 
                 if(g.edge_present(stable_node, head)) {
                     auto& pp = g.edge(stable_node, head);
-                    auto& pp_reverse = g.edge(head, stable_node);
                     pp.cost += p.cost;
                     pp.stamp++;
+                    auto& pp_reverse = g.edge(head, stable_node);
                     pp_reverse.cost += p.cost;
                     pp_reverse.stamp++;
                     if(pp.cost >= 0.0)
@@ -274,7 +272,7 @@ main_loop:
     }
 
 
-    multicut_edge_labeling greedy_additive_edge_contraction_parallel(const multicut_instance& instance, const int nr_threads, const int option)
+    multicut_edge_labeling greedy_additive_edge_contraction_parallel(const multicut_instance& instance, const int nr_threads, const std::string option)
     {
         const auto begin_time = std::chrono::steady_clock::now();
 
@@ -296,37 +294,28 @@ main_loop:
         std::pair<tf::Task, tf::Task> Q;
         tf::Task E, prev;
 
-        switch(option){
-            case 1:
-                E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
-                distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
-                break;
-            case 2:
-                distribute_edges_by_endnodes(taskflow, g, instance, Q, G, queues, nr_threads);
-                prev = Q.second;
-                break;
-            case 3:
-                E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
-                distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
-                break;
-            case 4:
-                E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
-                distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
-                break;
-            case 5:
-                E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
-                distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
-                break;
-            case 6:
-                E = distribute_edges_no_conflicts(taskflow, g, instance, G, queues, nr_threads);
-                prev = E;
-                break;
-            default:
-                break;
+        if(option == "round_robin_not_sorted"){
+            E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
+            distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
+            prev = Q.second;
+        } else if (option == "endnodes"){
+            distribute_edges_by_endnodes(taskflow, g, instance, Q, G, queues, nr_threads);
+            prev = Q.second;
+        } else if (option == "chunk_not_sorted"){
+            E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
+            distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
+            prev = Q.second;
+        } else if (option == "round_robin_sorted"){
+            E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
+            distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
+            prev = Q.second;
+        } else if (option == "chunk_sorted"){
+            E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
+            distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
+            prev = Q.second;
+        } else { // non-blocking
+            E = distribute_edges_no_conflicts(taskflow, g, instance, G, queues, nr_threads);
+            prev = E;
         }
 
         // const auto end_time = std::chrono::steady_clock::now();
@@ -335,7 +324,7 @@ main_loop:
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
-            if (option == 6)
+            if (option == "non-blocking")
                 gaec_single<false>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
             else
                 gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
@@ -344,7 +333,7 @@ main_loop:
         executor.run(taskflow);
         executor.wait_for_all();
 
-        if (option == 6 && !queues[nr_threads].empty()) {
+        if (option == "non-blocking" && !queues[nr_threads].empty()) {
             std::cout << "Edges in the final thread " << nr_threads << ": " << queues[nr_threads].size() << std::endl;
             gaec_single<false>(std::ref(g), std::ref(queues[nr_threads]), std::ref(partition), std::ref(mask));
         }
