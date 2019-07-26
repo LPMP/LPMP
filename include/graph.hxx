@@ -187,13 +187,14 @@ namespace LPMP {
                 //const auto i = (*edge_it)[0];
                 //const auto j = (*edge_it)[1];
                 const auto [i,j] = e(*edge_it);
+                const auto edge_info = f(*edge_it);
 
                 edges_[i][adjacency_list_count[i]].head_ = j;
-                edges_[i][adjacency_list_count[i]].edge() = f(*edge_it);
+                edges_[i][adjacency_list_count[i]].edge() = edge_info;
                 adjacency_list_count[i]++;
 
                 edges_[j][adjacency_list_count[j]].head_ = i;
-                edges_[j][adjacency_list_count[j]].edge() = f(*edge_it);
+                edges_[j][adjacency_list_count[j]].edge() = edge_info;
                 adjacency_list_count[j]++;
             }
 
