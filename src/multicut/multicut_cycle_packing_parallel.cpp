@@ -91,7 +91,6 @@ namespace LPMP {
                         pos_edge_weights[idx_1] = pos_edge_weights[idx_1] - cycle_cap;
 
                         if(pos_edge_weights[idx_1] < 0.0){
-                            std::cout << "swap\n.";
                             auto imax = repulsive_edges.size() - 1;
                             for(std::size_t c_p=1; c_p <=c; ++c_p){
                                 size_t p = pos_edge_index.edge(cycle[c_p-1],cycle[c_p]);
