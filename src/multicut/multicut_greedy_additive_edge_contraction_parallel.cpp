@@ -65,36 +65,22 @@ namespace LPMP {
         Q.first.gather(prev);
     }
 
-    tf::Task distribute_edges_no_conflicts(tf::Taskflow& taskflow, const dynamic_graph_thread_safe<edge_type>& g, const multicut_instance& instance, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads, dynamic_graph_thread_safe<edge_type>& partial_graph, std::vector<std::tuple<std::size_t, std::size_t, double>>& remaining_edges) {
+    tf::Task distribute_edges_no_conflicts(tf::Taskflow& taskflow, const multicut_instance& instance,  std::vector<pq_t>& queues, const int& nr_threads, dynamic_graph_thread_safe<edge_type>& partial_graph, std::vector<std::tuple<std::size_t, std::size_t, double>>& remaining_edges) {
         auto extract = [&](){
             const std::size_t nodes_batch_size = instance.no_nodes()/nr_threads + 1;
-            for(std::size_t n=0; n < instance.no_nodes(); ++n){
-                bool within = true;
-                for (auto& neighbor_edge : g.edges(n)){
-                    const std::size_t neighbor_node = neighbor_edge.first;
-                    if (neighbor_node > n && !((int)(n/nodes_batch_size) == (int)(neighbor_node/nodes_batch_size))){
-                        within = false;
-                        break;
-                    }
-                }
-                for (auto& neighbor_edge : g.edges(n)){
-                    const std::size_t neighbor_node = neighbor_edge.first;
-                    if (neighbor_node > n) {
-                        auto edge_cost = g.edge(n, neighbor_node).cost;
-                        if (within) {
-                            partial_graph.insert_edge(n, neighbor_node, {edge_cost,0});
-                            if (edge_cost > 0.0) queues[n/nodes_batch_size].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
-                        } else {
-                            remaining_edges.push_back(std::make_tuple(n, neighbor_node, edge_cost));
-                            if (edge_cost > 0.0) queues[nr_threads].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
-                        }
-                    }
+            for (auto& edge : instance.edges()){
+                int nth = (int)(edge[0]/nodes_batch_size);
+                if (nth == (int)(edge[1]/nodes_batch_size)){
+                    partial_graph.insert_edge(edge[0], edge[1], {edge.cost,0});
+                    if (edge.cost > 0.0) queues[nth].push(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
+                } else {
+                    remaining_edges.push_back(std::make_tuple(edge[0], edge[1], edge.cost));
+                    if (edge.cost > 0.0) queues[nr_threads].push(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
                 }
             }
             std::cout << "Edges in final queue: " << queues[nr_threads].size() << std::endl;
         };
         auto Q = taskflow.emplace(extract);
-        Q.gather(prev);
         return Q;
     }
 
@@ -278,38 +264,40 @@ main_loop:
         };
         auto M = taskflow.emplace(fill_mask);
 
-        dynamic_graph_thread_safe<edge_type> g(instance.no_nodes()), partial_graph(instance.no_nodes());
-        auto construct_graph = [&]() { g.construct(instance.edges().begin(), instance.edges().end(), [](const auto& e) -> edge_type { return {e.cost, 0}; }); };
-        auto G = taskflow.emplace(construct_graph);
-
-	    std::vector<pq_t> queues(nr_threads+1, pq_t(pq_cmp));
+        std::vector<pq_t> queues(nr_threads+1, pq_t(pq_cmp));
         std::vector<edge_type_q> positive_edges;
         std::vector<std::tuple<std::size_t, std::size_t, double>> remaining_edges;
         //std::unordered_map<std::size_t, std::pair<std::size_t, double>> remaining_edges;
         std::pair<tf::Task, tf::Task> Q;
         tf::Task E, prev;
+        dynamic_graph_thread_safe<edge_type>  g(instance.no_nodes()), partial_graph(instance.no_nodes());
 
-        if(option == "round_robin_not_sorted"){
-            E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
-            distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
-            prev = Q.second;
-        } else if (option == "endnodes"){
-            distribute_edges_by_endnodes(taskflow, g, instance, Q, G, queues, nr_threads);
-            prev = Q.second;
-        } else if (option == "chunk_not_sorted"){
-            E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
-            distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
-            prev = Q.second;
-        } else if (option == "round_robin_sorted"){
-            E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
-            distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
-            prev = Q.second;
-        } else if (option == "chunk_sorted"){
-            E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
-            distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
-            prev = Q.second;
+        if (option != "non-blocking") {
+            auto construct_graph = [&]() { g.construct(instance.edges().begin(), instance.edges().end(), [](const auto& e) -> edge_type { return {e.cost, 0}; }); };
+            auto G = taskflow.emplace(construct_graph);
+
+            if(option == "round_robin_not_sorted"){
+                E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
+                distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
+            } else if (option == "endnodes"){
+                distribute_edges_by_endnodes(taskflow, g, instance, Q, G, queues, nr_threads);
+                prev = Q.second;
+            } else if (option == "chunk_not_sorted"){
+                E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
+                distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
+            } else if (option == "round_robin_sorted"){
+                E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
+                distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
+            } else {// (option == "chunk_sorted"){
+                E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
+                distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
+                prev = Q.second;
+            }
         } else { // non-blocking
-            E = distribute_edges_no_conflicts(taskflow, g, instance, G, queues, nr_threads, partial_graph, remaining_edges);
+            E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, partial_graph, remaining_edges);
             prev = E;
         }
 
