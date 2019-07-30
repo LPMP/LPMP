@@ -23,18 +23,9 @@ namespace LPMP {
         std::size_t no_neighbors;
     };
 
-    std::mutex partition_mutex;
+    // std::mutex partition_mutex;
     auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost/e1.no_neighbors < e2.cost/e2.no_neighbors;  };
     using pq_t = std::priority_queue<edge_type_q, std::vector<edge_type_q>, decltype(pq_cmp)>;
-
-    void unmark(std::atomic<char>& node) {
-        assert(node == 1);
-        node.store(0);
-    }
-    bool marked(std::atomic<char>& node){
-        char bool_clear = false;
-        return !(node.compare_exchange_strong(bool_clear, 1, std::memory_order_relaxed));
-    }
 
     tf::Task extract_positive_edges(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, const multicut_instance& instance, const bool& sort, const dynamic_graph_thread_safe<edge_type>& g, tf::Task prev) {
         auto extract = [&]() {
@@ -133,7 +124,7 @@ namespace LPMP {
     }
 
     template<bool SYNCHRONIZE=true>
-    void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::atomic<char>>& mask)
+    void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::atomic_flag>& mask)
     {
         const auto begin_time = std::chrono::steady_clock::now();
 	    std::vector<edge_type_q> conflicted;
@@ -158,12 +149,12 @@ main_loop:
             const std::size_t j = e_q[1];
 
             if constexpr(SYNCHRONIZE) {
-                if (marked(mask[i])){
+                if (mask[i].test_and_set(std::memory_order_relaxed)){
                     conflicted.push_back(e_q);
                     continue;
                 }
-                if (marked(mask[j])){
-                    unmark(mask[i]);
+                if (mask[i].test_and_set(std::memory_order_relaxed)){
+                    mask[i].clear(std::memory_order_relaxed);
                     conflicted.push_back(e_q);
                     continue;
                 }
@@ -171,8 +162,8 @@ main_loop:
 
             if(!g.edge_present(i,j)){
                 if constexpr(SYNCHRONIZE) {
-                    unmark(mask[i]);
-                    unmark(mask[j]);
+                    mask[i].clear(std::memory_order_relaxed);
+                    mask[j].clear(std::memory_order_relaxed);
                 }
                 continue;
             }
@@ -180,15 +171,15 @@ main_loop:
             const auto& e = g.edge(i,j);
             if(e_q.stamp < e.stamp){
                 if constexpr(SYNCHRONIZE) {
-                    unmark(mask[i]);
-                    unmark(mask[j]);
+                    mask[i].clear(std::memory_order_relaxed);
+                    mask[j].clear(std::memory_order_relaxed);
                 }
                 continue;
             }
             if(e.cost <= 0.0){
                 if constexpr(SYNCHRONIZE) {
-                    unmark(mask[i]);
-                    unmark(mask[j]);
+                    mask[i].clear(std::memory_order_relaxed);
+                    mask[j].clear(std::memory_order_relaxed);
                 }
                 break;
             }
@@ -209,9 +200,9 @@ main_loop:
                 for (auto& n: neighbor){
                     if (n == i || n == j)
                         continue;
-                    if (marked(mask[n])){
+                    if (mask[n].test_and_set(std::memory_order_relaxed)){
                         conflicted.push_back(e_q);
-                        for (auto& m: marked_nodes) unmark(mask[m]);
+                        for (auto& m: marked_nodes) mask[m].clear(std::memory_order_relaxed);
                         goto main_loop;
                     } else {
                         marked_nodes.push_back(n);
@@ -220,10 +211,7 @@ main_loop:
                 assert(marked_nodes.size() == neighbor.size());
             }
 
-            {
-            //std::lock_guard<std::mutex> lck(partition_mutex);
             partition.merge(i,j);
-            }
 
             const auto node_pair  = [&]() -> std::array<std::size_t,2> {
                 if(g.no_edges(i) < g.no_edges(j))
@@ -263,7 +251,7 @@ main_loop:
 
             if constexpr(SYNCHRONIZE)
                 for (auto& n: neighbor)
-                    unmark(mask[n]);
+                    mask[n].clear(std::memory_order_relaxed);;
         }
         const auto end_time = std::chrono::steady_clock::now();
         //std::cout << "Parallel gaec time for thread " << std::this_thread::get_id() << " : "<<
@@ -280,8 +268,11 @@ main_loop:
         tf::Executor executor;
         tf::Taskflow taskflow;
 
-        std::vector<std::atomic<char>>  mask(instance.no_nodes());
-        auto fill_mask = [&]() { std::fill(mask.begin(), mask.end(), false); };
+        std::vector<std::atomic_flag>  mask(instance.no_nodes());
+        auto fill_mask = [&]() {
+            for (auto& m: mask)
+                m.clear(std::memory_order_relaxed);
+        };
         auto M = taskflow.emplace(fill_mask);
 
         dynamic_graph_thread_safe<edge_type> g(instance.no_nodes()), partial_graph(instance.no_nodes());
@@ -324,9 +315,8 @@ main_loop:
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
-            if (option == "non-blocking"){
+            if (option == "non-blocking")
                 gaec_single<false>(std::ref(partial_graph), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
-            }
             else
                 gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
         });
