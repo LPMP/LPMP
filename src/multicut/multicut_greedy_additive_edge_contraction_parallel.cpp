@@ -149,12 +149,14 @@ main_loop:
             const std::size_t j = e_q[1];
 
             if constexpr(SYNCHRONIZE) {
-                if (mask[i].test_and_set(std::memory_order_relaxed)){
+                if (mask[i].test_and_set(std::memory_order_acquire)){
+                    mask[i].clear(std::memory_order_release);
                     conflicted.push_back(e_q);
                     continue;
                 }
-                if (mask[i].test_and_set(std::memory_order_relaxed)){
-                    mask[i].clear(std::memory_order_relaxed);
+                if (mask[j].test_and_set(std::memory_order_acquire)){
+                    mask[i].clear(std::memory_order_release);
+                    mask[j].clear(std::memory_order_release);
                     conflicted.push_back(e_q);
                     continue;
                 }
@@ -162,8 +164,8 @@ main_loop:
 
             if(!g.edge_present(i,j)){
                 if constexpr(SYNCHRONIZE) {
-                    mask[i].clear(std::memory_order_relaxed);
-                    mask[j].clear(std::memory_order_relaxed);
+                    mask[i].clear(std::memory_order_release);
+                    mask[j].clear(std::memory_order_release);
                 }
                 continue;
             }
@@ -171,15 +173,15 @@ main_loop:
             const auto& e = g.edge(i,j);
             if(e_q.stamp < e.stamp){
                 if constexpr(SYNCHRONIZE) {
-                    mask[i].clear(std::memory_order_relaxed);
-                    mask[j].clear(std::memory_order_relaxed);
+                    mask[i].clear(std::memory_order_release);
+                    mask[j].clear(std::memory_order_release);
                 }
                 continue;
             }
             if(e.cost <= 0.0){
                 if constexpr(SYNCHRONIZE) {
-                    mask[i].clear(std::memory_order_relaxed);
-                    mask[j].clear(std::memory_order_relaxed);
+                    mask[i].clear(std::memory_order_release);
+                    mask[j].clear(std::memory_order_release);
                 }
                 break;
             }
@@ -200,9 +202,10 @@ main_loop:
                 for (auto& n: neighbor){
                     if (n == i || n == j)
                         continue;
-                    if (mask[n].test_and_set(std::memory_order_relaxed)){
+                    if (mask[n].test_and_set(std::memory_order_acquire)){
                         conflicted.push_back(e_q);
-                        for (auto& m: marked_nodes) mask[m].clear(std::memory_order_relaxed);
+                        mask[n].clear(std::memory_order_release);
+                        for (auto& m: marked_nodes) mask[m].clear(std::memory_order_release);
                         goto main_loop;
                     } else {
                         marked_nodes.push_back(n);
@@ -251,7 +254,7 @@ main_loop:
 
             if constexpr(SYNCHRONIZE)
                 for (auto& n: neighbor)
-                    mask[n].clear(std::memory_order_relaxed);;
+                    mask[n].clear(std::memory_order_release);;
         }
         const auto end_time = std::chrono::steady_clock::now();
         //std::cout << "Parallel gaec time for thread " << std::this_thread::get_id() << " : "<<
@@ -268,7 +271,7 @@ main_loop:
         tf::Executor executor;
         tf::Taskflow taskflow;
 
-        std::vector<std::atomic_flag>  mask(instance.no_nodes());
+        std::vector<std::atomic_flag> mask(instance.no_nodes());
         auto fill_mask = [&]() {
             for (auto& m: mask)
                 m.clear(std::memory_order_relaxed);
