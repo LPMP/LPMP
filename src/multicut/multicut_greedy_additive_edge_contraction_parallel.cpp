@@ -75,10 +75,8 @@ namespace LPMP {
                     if (edge.cost > 0.0) queues[nth].push(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
                 } else {
                     remaining_edges.push_back(std::make_tuple(edge[0], edge[1], edge.cost));
-                    if (edge.cost > 0.0) queues[nr_threads].push(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
                 }
             }
-            std::cout << "Edges in final queue: " << queues[nr_threads].size() << std::endl;
         };
         auto Q = taskflow.emplace(extract);
         return Q;
@@ -109,8 +107,10 @@ namespace LPMP {
         Q.first.gather(prev);
     }
 
+    static std::vector<std::unordered_map<std::size_t, std::size_t>> empty_partition_node = {};
+
     template<bool SYNCHRONIZE=true>
-    void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::atomic_flag>& mask)
+    void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::atomic_flag>& mask, std::vector<std::unordered_map<std::size_t, std::size_t>>& partition_to_node=empty_partition_node)
     {
         const auto begin_time = std::chrono::steady_clock::now();
 	    std::vector<edge_type_q> conflicted;
@@ -234,6 +234,15 @@ main_loop:
             }
 
             g.remove_node(merge_node);
+
+            if constexpr (!SYNCHRONIZE){
+                if (!partition_to_node.empty()) {
+                    const std::size_t t = partition.find(stable_node);
+                    assert(t == partition.find(merge_node));
+                    partition_to_node[t][merge_node] = stable_node;
+                }
+            }
+
             for(const auto& e : insert_candidates)
                 g.insert_edge(e.first[0], e.first[1], e.second);
             insert_candidates.clear();
@@ -271,6 +280,7 @@ main_loop:
         std::pair<tf::Task, tf::Task> Q;
         tf::Task E, prev;
         dynamic_graph_thread_safe<edge_type>  g(instance.no_nodes()), partial_graph(instance.no_nodes());
+        std::vector<std::unordered_map<std::size_t, std::size_t>> partition_to_node(instance.no_nodes());
 
         if (option != "non-blocking") {
             auto construct_graph = [&]() { g.construct(instance.edges().begin(), instance.edges().end(), [](const auto& e) -> edge_type { return {e.cost, 0}; }); };
@@ -306,8 +316,9 @@ main_loop:
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
-            if (option == "non-blocking")
-                gaec_single<false>(std::ref(partial_graph), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
+            if (option == "non-blocking") {
+                gaec_single<false>(std::ref(partial_graph), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask), std::ref(partition_to_node));
+            }
             else
                 gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
         });
@@ -315,12 +326,22 @@ main_loop:
         executor.run(taskflow);
         executor.wait_for_all();
 
-        if (option == "non-blocking" && !queues[nr_threads].empty()) {
+        if (option == "non-blocking") {
+            for (auto& e : remaining_edges) {
+                const double cost = std::get<2>(e);
+                const std::size_t pi = partition.find(std::get<0>(e));
+                const std::size_t i = (pi == std::get<0>(e)) ? pi:partition_to_node[pi][std::get<0>(e)];
+
+                const std::size_t pj = partition.find(std::get<1>(e));
+                const std::size_t j = (pj == std::get<1>(e)) ? pj:partition_to_node[pj][std::get<1>(e)];
+
+                assert(!partial_graph.edge_present(i,j));
+                partial_graph.insert_edge(i,j, {cost,0});
+
+                if (cost > 0.0) queues[nr_threads].push(edge_type_q{i,j,cost,0,1});
+            }
             std::cout << "Edges in the final thread " << nr_threads << ": " << queues[nr_threads].size() << std::endl;
-            // for (auto& e : remaining_edges) {
-            //     partial_graph.insert_edge(std::get<0>(e),std::get<1>(e),{std::get<2>(e),0});
-            // }
-            //gaec_single<false>(std::ref(g), std::ref(queues[nr_threads]), std::ref(partition), std::ref(mask));
+            gaec_single<false>(std::ref(partial_graph), std::ref(queues[nr_threads]), std::ref(partition), std::ref(mask));
         }
 	    return multicut_edge_labeling(instance, partition);
    }
