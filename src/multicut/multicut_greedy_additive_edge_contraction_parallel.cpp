@@ -64,6 +64,12 @@ namespace LPMP {
     }
 
     tf::Task distribute_edges_no_conflicts(tf::Taskflow& taskflow, const multicut_instance& instance,  std::vector<pq_t>& queues, const int& nr_threads, dynamic_graph_thread_safe<edge_type>& partial_graph, std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>>& remaining_edges) {
+        std::vector<size_t> degree(instance.no_nodes());
+        for (auto& edge: instance.edges()){
+            degree[edge[0]]++;
+            degree[edge[1]]++;
+        }
+        partial_graph.pre_allocate(degree.begin(), degree.end());
         auto [extract_begin, extract_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             const std::size_t nodes_batch_size = instance.no_nodes()/nr_threads + 1;
             for (auto& edge: instance.edges()){
@@ -71,8 +77,8 @@ namespace LPMP {
                 if (nth == thread_no){
                     if (nth == (int)(edge[1]/nodes_batch_size)) {
                         partial_graph.insert_edge(edge[0], edge[1], {edge.cost,0});
-                       if (edge.cost > 0.0)
-                           queues[thread_no].emplace(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
+                        if (edge.cost > 0.0)
+                            queues[thread_no].emplace(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
                     } else {
                         remaining_edges[thread_no].push_back(std::make_tuple(edge[0], edge[1], edge.cost));
                     }

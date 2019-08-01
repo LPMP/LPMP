@@ -60,7 +60,7 @@ namespace LPMP {
         {
             assert(std::distance(degree_begin, degree_end) == no_nodes());
             auto degree_iter = degree_begin;
-            for(std::size_t i=0; i<no_nodes; ++i, ++degree_iter) {
+            for(std::size_t i=0; i<no_nodes(); ++i, ++degree_iter) {
                 const std::size_t degree = *degree_iter;
                 edge_maps_[i].reserve(degree);
             }
