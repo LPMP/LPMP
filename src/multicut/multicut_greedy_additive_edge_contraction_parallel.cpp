@@ -71,8 +71,8 @@ namespace LPMP {
                 if (nth == thread_no){
                     if (nth == (int)(edge[1]/nodes_batch_size)) {
                         partial_graph.insert_edge(edge[0], edge[1], {edge.cost,0});
-                        if (edge.cost > 0.0)
-                            queues[thread_no].emplace(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
+                       if (edge.cost > 0.0)
+                           queues[thread_no].emplace(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
                     } else {
                         remaining_edges[thread_no].push_back(std::make_tuple(edge[0], edge[1], edge.cost));
                     }
@@ -334,7 +334,7 @@ namespace LPMP {
 
         if (option == "non-blocking") {
             const auto remaining_edges_begin_time = std::chrono::steady_clock::now();
-            for (auto& v : remaining_edges) {
+            for (auto& v: remaining_edges) {
                 for (auto& e: v){
                     const double cost = std::get<2>(e);
                     const std::size_t pi = partition.find(std::get<0>(e));
