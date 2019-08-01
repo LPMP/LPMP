@@ -29,7 +29,7 @@ namespace LPMP {
         auto extract = [&]() {
             for (auto& edge : instance.edges()){
                 if (edge.cost > 0.0)
-                    positive_edges.push_back(edge_type_q{edge[0], edge[1], edge.cost, 0, g.edges(edge[0]).size() + g.edges(edge[1]).size()});
+                positive_edges.push_back(edge_type_q{edge[0], edge[1], edge.cost, 0, g.edges(edge[0]).size() + g.edges(edge[1]).size()});
             }
         };
         auto Q = taskflow.emplace(extract);
@@ -55,7 +55,7 @@ namespace LPMP {
                     if (neighbor_node > n) {
                         auto edge_cost = g.edge(n, neighbor_node).cost;
                         if (edge_cost > 0.0)
-                            queues[thread_no].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
+                        queues[thread_no].push(edge_type_q{n, neighbor_node, edge_cost, 0, g.edges(n).size() + g.edges(neighbor_node).size()});
                     }
                 }
             }
@@ -63,31 +63,23 @@ namespace LPMP {
         Q.first.gather(prev);
     }
 
-    tf::Task distribute_edges_no_conflicts(tf::Taskflow& taskflow, const multicut_instance& instance,  std::vector<pq_t>& queues, const int& nr_threads, dynamic_graph_thread_safe<edge_type>& partial_graph, std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>>& remaining_edges,
-    std::vector<std::vector<edge_type_q>>& tmp) {
-        const std::size_t nodes_batch_size = instance.no_nodes()/nr_threads + 1;
-        const std::size_t edges_batch_size = instance.edges().size()/nr_threads + 1;
-        auto [extract_begin, extract_end]= taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
-            const std::size_t first_edge = thread_no*edges_batch_size;
-            const std::size_t last_edge = std::min((thread_no+1)*edges_batch_size, instance.edges().size());
-
-            for (auto n=first_edge; n<last_edge;++n){
-                auto edge = instance.edges()[n];
+    tf::Task distribute_edges_no_conflicts(tf::Taskflow& taskflow, const multicut_instance& instance,  std::vector<pq_t>& queues, const int& nr_threads, dynamic_graph_thread_safe<edge_type>& partial_graph, std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>>& remaining_edges) {
+        auto [extract_begin, extract_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+            const std::size_t nodes_batch_size = instance.no_nodes()/nr_threads + 1;
+            for (auto& edge: instance.edges()){
                 int nth = (int)(edge[0]/nodes_batch_size);
-                if (nth == thread_no && nth == (int)(edge[1]/nodes_batch_size)){
-                    partial_graph.insert_edge(edge[0], edge[1], {edge.cost,0});
-                    if (edge.cost > 0.0)
-                        tmp[thread_no].push_back(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
-                } else {
-                    remaining_edges[thread_no].push_back(std::make_tuple(edge[0], edge[1], edge.cost));
+                if (nth == thread_no){
+                    if (nth == (int)(edge[1]/nodes_batch_size)) {
+                        partial_graph.insert_edge(edge[0], edge[1], {edge.cost,0});
+                        if (edge.cost > 0.0)
+                            queues[thread_no].emplace(edge_type_q{edge[0], edge[1], edge.cost, 0, 1});
+                    } else {
+                        remaining_edges[thread_no].push_back(std::make_tuple(edge[0], edge[1], edge.cost));
+                    }
                 }
             }
         });
-        auto [make_queue_begin, make_queue_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
-            for (auto& e: tmp[thread_no]) queues[thread_no].emplace(e);
-        });
-        make_queue_begin.gather(extract_end);
-        return make_queue_end;
+        return extract_end;
     }
 
 
@@ -110,7 +102,7 @@ namespace LPMP {
             const std::size_t first_edge = thread_no*positive_edges_batch_size;
             const std::size_t last_edge = std::min((thread_no+1)*positive_edges_batch_size, positive_edges.size());
             for(std::size_t e=first_edge; e<last_edge; ++e)
-                queues[thread_no].push(positive_edges[e]);
+            queues[thread_no].push(positive_edges[e]);
         });
         Q.first.gather(prev);
     }
@@ -121,12 +113,12 @@ namespace LPMP {
     void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::atomic_flag>& mask, std::vector<std::size_t>& partition_to_node=empty_partition_node)
     {
         const auto begin_time = std::chrono::steady_clock::now();
-	    std::vector<edge_type_q> conflicted;
+        std::vector<edge_type_q> conflicted;
         std::vector<std::pair<std::array<std::size_t,2>, edge_type>> insert_candidates;
         std::vector<std::size_t> marked_nodes;
         std::vector<std::size_t> neighbor;
 
-main_loop:
+        main_loop:
         while(!Q.empty() || !conflicted.empty()) {
             if (Q.empty()) {
                 if constexpr (SYNCHRONIZE) {
@@ -184,9 +176,9 @@ main_loop:
             if constexpr(SYNCHRONIZE) {
                 neighbor.clear();
                 for (auto& e : g.edges(i))
-                    neighbor.push_back(e.first);
+                neighbor.push_back(e.first);
                 for (auto& e : g.edges(j))
-                    neighbor.push_back(e.first);
+                neighbor.push_back(e.first);
                 std::sort(neighbor.begin(), neighbor.end());
                 neighbor.erase(std::unique(neighbor.begin(), neighbor.end()), neighbor.end());
 
@@ -195,7 +187,7 @@ main_loop:
                 marked_nodes.push_back(j);
                 for (auto& n: neighbor){
                     if (n == i || n == j)
-                        continue;
+                    continue;
                     if (mask[n].test_and_set(std::memory_order_acquire)){
                         conflicted.push_back(e_q);
                         mask[n].clear(std::memory_order_release);
@@ -212,9 +204,9 @@ main_loop:
 
             const auto node_pair  = [&]() -> std::array<std::size_t,2> {
                 if(g.no_edges(i) < g.no_edges(j))
-                    return {j,i};
+                return {j,i};
                 else
-                    return {i,j};
+                return {i,j};
             }();
             auto stable_node = node_pair[0];
             auto merge_node = node_pair[1];
@@ -222,7 +214,7 @@ main_loop:
             for (auto& e: g.edges(merge_node)){
                 std::size_t head = e.first;
                 if(head == stable_node)
-                    continue;
+                continue;
                 auto& p = g.edge(merge_node,head);
 
                 if(g.edge_present(stable_node, head)) {
@@ -233,10 +225,10 @@ main_loop:
                     pp_reverse.cost += p.cost;
                     pp_reverse.stamp++;
                     if(pp.cost >= 0.0)
-                        Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp, g.edges(stable_node).size() + g.edges(head).size()});
+                    Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp, g.edges(stable_node).size() + g.edges(head).size()});
                 } else {
                     if(p.cost >= 0.0)
-                        Q.push(edge_type_q{stable_node, head, p.cost, 0, g.edges(stable_node).size() + g.edges(head).size()});
+                    Q.push(edge_type_q{stable_node, head, p.cost, 0, g.edges(stable_node).size() + g.edges(head).size()});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
                 }
             }
@@ -252,12 +244,12 @@ main_loop:
             }
 
             for(const auto& e : insert_candidates)
-                g.insert_edge(e.first[0], e.first[1], e.second);
+            g.insert_edge(e.first[0], e.first[1], e.second);
             insert_candidates.clear();
 
             if constexpr(SYNCHRONIZE)
-                for (auto& n: neighbor)
-                    mask[n].clear(std::memory_order_release);;
+            for (auto& n: neighbor)
+            mask[n].clear(std::memory_order_release);;
         }
         const auto end_time = std::chrono::steady_clock::now();
         //std::cout << "Parallel gaec time for thread " << std::this_thread::get_id() << " : "<<
@@ -278,21 +270,19 @@ main_loop:
         std::vector<std::atomic_flag> mask(instance.no_nodes());
         auto fill_mask = [&]() {
             for (auto& m: mask)
-                m.clear(std::memory_order_relaxed);
+            m.clear(std::memory_order_relaxed);
         };
         auto M = taskflow.emplace(fill_mask);
 
         std::vector<pq_t> queues(nr_threads+1, pq_t(pq_cmp));
-        std::vector<std::vector<edge_type_q>> tmp(nr_threads+1);
         std::vector<edge_type_q> positive_edges;
         std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>> remaining_edges(nr_threads+1);
         std::pair<tf::Task, tf::Task> Q;
 
         dynamic_graph_thread_safe<edge_type>  g(instance.no_nodes()), partial_graph(instance.no_nodes());
         std::vector<std::size_t> partition_to_node(instance.no_nodes());
-        for(std::size_t i=0; i<instance.no_nodes(); ++i) {
-            partition_to_node[partition.find(i)] = i;
-        }
+        for(std::size_t i=0; i<instance.no_nodes(); ++i)
+        partition_to_node[partition.find(i)] = i;
 
         if (option != "non-blocking") {
             auto construct_graph = [&]() { g.construct(instance.edges().begin(), instance.edges().end(), [](const auto& e) -> edge_type { return {e.cost, 0}; }); };
@@ -313,13 +303,13 @@ main_loop:
                 E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
                 distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
                 prev = Q.second;
-            } else {// (option == "chunk_sorted"){
+            } else {    // (option == "chunk_sorted")
                 E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
                 distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
                 prev = Q.second;
             }
         } else { // non-blocking
-            E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, partial_graph, remaining_edges, tmp);
+            E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, partial_graph, remaining_edges);
             prev = E;
         }
 
@@ -331,12 +321,12 @@ main_loop:
         IE.gather(prev);
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
-//            std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
+            //    std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
             if (option == "non-blocking") {
                 gaec_single<false>(std::ref(partial_graph), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask), std::ref(partition_to_node));
             }
             else
-                gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
+            gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
         });
         GAEC_begin.gather(prev);
         executor.run(taskflow);
@@ -361,10 +351,12 @@ main_loop:
             }
             std::cout << "Edges in the final thread " << nr_threads << ": " << queues[nr_threads].size() << std::endl;
             gaec_single<false>(std::ref(partial_graph), std::ref(queues[nr_threads]), std::ref(partition), std::ref(mask));
+
             const auto remaining_edges_end_time = std::chrono::steady_clock::now();
             std::cout << "handling remaining edges took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(remaining_edges_end_time - remaining_edges_begin_time).count() << " milliseconds\n";
         }
-	    return multicut_edge_labeling(instance, partition);
-   }
+
+        return multicut_edge_labeling(instance, partition);
+    }
 
 } // namespace LPMP
