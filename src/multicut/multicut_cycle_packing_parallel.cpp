@@ -19,21 +19,6 @@ namespace LPMP {
     constexpr static double tolerance = 1e-8;
 
     struct weighted_edge : public std::array<std::size_t,2> { double cost; };
-    //struct atomic_weighted_edge : public std::array<std::size_t,2> { std::atomic<double> cost; };
-    struct atomic_weighted_edge {
-        std::array<size_t,2> edges;
-        std::atomic<double> cost;
-        atomic_weighted_edge(){}
-        ~atomic_weighted_edge(){}
-        atomic_weighted_edge(std::array<size_t,2> e, double c): edges(e), cost(c) {}
-        atomic_weighted_edge(size_t e1, size_t e2, double c): edges({e1, e2}), cost(c) {}
-        atomic_weighted_edge(const atomic_weighted_edge& we){ edges = we.edges; cost = we.cost.load(); }
-        atomic_weighted_edge& operator=(const atomic_weighted_edge& we){
-            edges = we.edges;
-            cost = we.cost.load();
-            return *this;
-        }
-    };
 
     template<class T>
     class CopyableAtomic : public std::atomic<T>
@@ -81,7 +66,6 @@ namespace LPMP {
             // periodically update component labeling for speed-up
             progress++;
             if (progress > 0.05 * repulsive_edges.size()) {
-                //std::cout<<"update component labeling\n";
                 compute_connectivity(uf, pos_edges_graph);
                 progress = 0;
             }
@@ -152,27 +136,21 @@ namespace LPMP {
         std::vector<weighted_edge> positive_edges;
         std::vector<std::vector<weighted_edge>> repulsive_edge_vec(nr_threads);
         std::size_t no_nodes = input.no_nodes();
-        std::vector<atomic_weighted_edge> positive_atomic_weighted_edge;
 
         auto classify_edges = [&] () {
             for (const auto& e : input.edges()){
                 if(e.cost < 0.0)
                     repulsive_edges.push_back({e[0], e[1], e.cost});
-                else if(e.cost > 0.0){
-                    std::atomic<double> atomic_cost;
-                    atomic_cost.store(e.cost);
+                else if(e.cost > 0.0)
                     positive_edges.push_back({e[0], e[1], e.cost});
-                    positive_atomic_weighted_edge.push_back({e[0], e[1], atomic_cost});
-                }
                 lower_bound = lower_bound + std::min(0.0, e.cost[0]);
             }
         };
         auto CE = taskflow.emplace(classify_edges);
 
         graph<CopyableAtomic<double>> pos_edges_graph;
-        auto construct_pos_edges_graph = [&]() { pos_edges_graph.construct(positive_atomic_weighted_edge.begin(), positive_atomic_weighted_edge.end(),
-                [](const atomic_weighted_edge& e) -> std::array<size_t,2> { return {e.edges[0], e.edges[1]}; },
-                [](const atomic_weighted_edge& e) { return e.cost.load(); }); };
+        auto construct_pos_edges_graph = [&]() { pos_edges_graph.construct(positive_edges.begin(), positive_edges.end(),
+                [](const weighted_edge& e) { return e.cost; }); };
         auto CPE = taskflow.emplace(construct_pos_edges_graph);
 
         CPE.gather(CE);
