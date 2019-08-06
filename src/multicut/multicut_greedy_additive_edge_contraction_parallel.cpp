@@ -349,8 +349,10 @@ namespace LPMP {
                     const std::size_t pj = partition.find(std::get<1>(e));
                     const std::size_t j = partition_to_node[pj];
 
-                    assert(!partial_graph.edge_present(i,j));
-                    partial_graph.insert_edge(i,j, {cost,0});
+                    if (partial_graph.edge_present(i,j)){
+                        partial_graph.edge(i,j).cost += cost;
+                    } else
+                        partial_graph.insert_edge(i,j, {cost,0});
 
                     if (cost > 0.0) queues[nr_threads].push(edge_type_q{i,j,cost,0,1});
                 }

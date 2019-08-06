@@ -53,6 +53,39 @@ namespace LPMP {
 
     bool connected(union_find& uf, const std::size_t i, const std::size_t j) { return uf.connected(i,j); };
 
+    tf::Task distribute_edges_round_robin(tf::Taskflow& taskflow, const multicut_instance& input, std::vector<std::vector<weighted_edge>>& positive_edge_vec, std::vector<std::vector<weighted_edge>>& repulsive_edge_vec, const int& nr_threads, std::vector<double>& lower) {
+        auto Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+            std::size_t e = thread_no;
+            while(e < input.edges().size()) {
+                auto edge = input.edges()[e];
+                if(edge.cost < 0.0)
+                    repulsive_edge_vec[thread_no].push_back({edge[0], edge[1], edge.cost});
+                else if(edge.cost > 0.0)
+                    positive_edge_vec[thread_no].push_back({edge[0], edge[1], edge.cost});
+                lower[thread_no] += std::min(0.0, edge.cost[0]);
+                e += nr_threads;
+            }
+        });
+        return Q.second;
+    }
+
+    tf::Task distribute_edges_in_chunks(tf::Taskflow& taskflow, const multicut_instance& input, std::vector<std::vector<weighted_edge>>& positive_edge_vec, std::vector<std::vector<weighted_edge>>& repulsive_edge_vec, const int& nr_threads, std::vector<double>& lower) {
+        auto Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+            std::size_t edges_batch_size = input.edges().size()/nr_threads + 1;
+            const std::size_t first_edge = thread_no*edges_batch_size;
+            const std::size_t last_edge = std::min((thread_no+1)*edges_batch_size, input.edges().size());
+            for(std::size_t e=first_edge; e<last_edge; ++e){
+                auto edge = input.edges()[e];
+                if(edge.cost < 0.0)
+                    repulsive_edge_vec[thread_no].push_back({edge[0], edge[1], edge.cost});
+                else if(edge.cost > 0.0)
+                    positive_edge_vec[thread_no].push_back({edge[0], edge[1], edge.cost});
+                lower[thread_no] += std::min(0.0, edge.cost[0]);
+            }
+        });
+        return Q.second;
+    }
+
     void cp_single(std::vector<weighted_edge>& repulsive_edges,graph<CopyableAtomic<double>>& pos_edges_graph, const std::size_t& cycle_length, std::size_t& no_nodes, const bool& record_cycles, std::atomic<double>& lower_bound, cycle_packing& cp){
 
         bfs_data<graph<CopyableAtomic<double>>> bfs(pos_edges_graph);
@@ -131,45 +164,34 @@ namespace LPMP {
         tf::Taskflow taskflow;
         cycle_packing cp;
 
+        std::vector<double> lower(nr_threads, 0.0);
         std::atomic<double> lower_bound = 0.0;
-        std::vector<weighted_edge> repulsive_edges;
         std::vector<weighted_edge> positive_edges;
         std::vector<std::vector<weighted_edge>> repulsive_edge_vec(nr_threads);
+        std::vector<std::vector<weighted_edge>> positive_edge_vec(nr_threads);
         std::size_t no_nodes = input.no_nodes();
 
-        auto classify_edges = [&] () {
-            for (const auto& e : input.edges()){
-                if(e.cost < 0.0)
-                    repulsive_edges.push_back({e[0], e[1], e.cost});
-                else if(e.cost > 0.0)
-                    positive_edges.push_back({e[0], e[1], e.cost});
-                lower_bound = lower_bound + std::min(0.0, e.cost[0]);
-            }
-        };
-        auto CE = taskflow.emplace(classify_edges);
+        //auto init_edge = distribute_edges_round_robin(taskflow, input, positive_edge_vec, repulsive_edge_vec, nr_threads, lower);
+        auto init_edge = distribute_edges_in_chunks(taskflow, input, positive_edge_vec, repulsive_edge_vec, nr_threads, lower);
 
         graph<CopyableAtomic<double>> pos_edges_graph;
-        auto construct_pos_edges_graph = [&]() { pos_edges_graph.construct(positive_edges.begin(), positive_edges.end(),
+        auto construct_pos_edges_graph = [&]() {
+            for (auto l: lower) lower_bound = lower_bound + l;
+            for (auto& pos: positive_edge_vec) std::move(pos.begin(), pos.end(), std::back_inserter(positive_edges));
+            pos_edges_graph.construct(positive_edges.begin(), positive_edges.end(),
                 [](const weighted_edge& e) { return e.cost; }); };
         auto CPE = taskflow.emplace(construct_pos_edges_graph);
 
-        CPE.gather(CE);
-
-        auto RV = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no) {
-            std::size_t e = thread_no;
-            while (e < repulsive_edges.size()) {
-                repulsive_edge_vec[thread_no].push_back(repulsive_edges[e]);
-                e += nr_threads;
-            }
-        });
-        RV.first.gather(CE);
+        CPE.gather(init_edge);
 
         std::future<void> fu = executor.run(taskflow);
         fu.get();
 
+        const auto initialization_end_time = std::chrono::steady_clock::now();
+        std::cout << "initialization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(initialization_end_time - begin_time).count() << " milliseconds\n";
+
         std::cout << "cycle packing\n";
         std::cout << "initial lower bound = " << lower_bound << "\n";
-        std::cout << "#repulsive edges = " << repulsive_edges.size() << "\n";
         std::cout << "#attractive edges = " << positive_edges.size() << "\n";
         std::cout << "pos_edges_graph.no_nodes:" << pos_edges_graph.no_nodes() << std::endl;
         std::cout << "pos_edges_graph.no_edges:" << pos_edges_graph.no_edges() << std::endl;
@@ -178,22 +200,20 @@ namespace LPMP {
         const std::array<std::size_t,11> cycle_lengths = {1,2,3,4,5,6,7,8,9,10,std::numeric_limits<std::size_t>::max()};
         for(const std::size_t cycle_length : cycle_lengths) {
 
-            tf::Executor executor2(nr_threads);
-            tf::Taskflow taskflow2;
-
+            taskflow.clear();
             std::cout << "find cycles of length " << cycle_length << " lower bound = " << lower_bound << "\n";
 
-            // shuffling can give great speed-up if edges with similar indices are spatially close in the graph
+            //shuffling can give great speed-up if edges with similar indices are spatially close in the graph
             for (auto& re: repulsive_edge_vec)
                 std::random_shuffle(re.begin(), re.end());
 
-            auto CP = taskflow2.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
+            auto CP = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
             //    std::cout << "#repulsive edges :" << repulsive_edge_vec[thread_no].size() << " remaining in thread " << thread_no << std::endl;
                 cp_single(std::ref(repulsive_edge_vec[thread_no]), std::ref(pos_edges_graph), std::ref(cycle_length),  std::ref(no_nodes), std::ref(record_cycles), std::ref(lower_bound), std::ref(cp));
             });
 
-            executor2.run(taskflow2);
-            executor2.wait_for_all();
+            executor.run(taskflow);
+            executor.wait_for_all();
             // terminate if no conflicted cycle remain
             size_t remain_repulsive_edges = 0;
             for (auto& re: repulsive_edge_vec) { remain_repulsive_edges += re.size(); }
