@@ -114,9 +114,10 @@ namespace LPMP {
     }
 
     static std::vector<std::size_t> empty_partition_node = {};
+    static std::vector<std::atomic_flag> empty_mask = {};
 
     template<bool SYNCHRONIZE=true>
-    void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::atomic_flag>& mask, std::vector<std::size_t>& partition_to_node=empty_partition_node)
+    void gaec_single(dynamic_graph_thread_safe<edge_type>& g, pq_t& Q, union_find& partition, std::vector<std::size_t>& partition_to_node=empty_partition_node, std::vector<std::atomic_flag>& mask=empty_mask)
     {
         const auto begin_time = std::chrono::steady_clock::now();
         std::vector<edge_type_q> conflicted;
@@ -273,25 +274,21 @@ namespace LPMP {
         tf::Taskflow taskflow;
         tf::Task E, prev;
 
-        std::vector<std::atomic_flag> mask(instance.no_nodes());
-        auto fill_mask = [&]() {
-            for (auto& m: mask)
-            m.clear(std::memory_order_relaxed);
-        };
-        auto M = taskflow.emplace(fill_mask);
-
         std::vector<pq_t> queues(nr_threads+1, pq_t(pq_cmp));
         std::vector<edge_type_q> positive_edges;
         std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>> remaining_edges(nr_threads+1);
         std::pair<tf::Task, tf::Task> Q;
+        std::vector<std::atomic_flag> mask(instance.no_nodes());
 
-        dynamic_graph_thread_safe<edge_type>  g(instance.no_nodes()), partial_graph(instance.no_nodes());
+        dynamic_graph_thread_safe<edge_type>  g(instance.no_nodes());
         std::vector<std::size_t> partition_to_node(instance.no_nodes());
         for(std::size_t i=0; i<instance.no_nodes(); ++i)
         partition_to_node[partition.find(i)] = i;
 
         if (option != "non-blocking") {
-            auto construct_graph = [&]() { g.construct(instance.edges().begin(), instance.edges().end(), [](const auto& e) -> edge_type { return {e.cost, 0}; }); };
+            auto construct_graph = [&]() {
+                for (auto& m: mask) m.clear(std::memory_order_relaxed);
+                g.construct(instance.edges().begin(), instance.edges().end(), [](const auto& e) -> edge_type { return {e.cost, 0}; }); };
             auto G = taskflow.emplace(construct_graph);
 
             if(option == "round_robin_not_sorted"){
@@ -315,7 +312,7 @@ namespace LPMP {
                 prev = Q.second;
             }
         } else { // non-blocking
-            E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, partial_graph, remaining_edges);
+            E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, g, remaining_edges);
             prev = E;
         }
 
@@ -328,11 +325,10 @@ namespace LPMP {
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             //    std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
-            if (option == "non-blocking") {
-                gaec_single<false>(std::ref(partial_graph), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask), std::ref(partition_to_node));
-            }
+            if (option == "non-blocking")
+                gaec_single<false>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(partition_to_node));
             else
-            gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(mask));
+                gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(partition_to_node), std::ref(mask));
         });
         GAEC_begin.gather(prev);
         executor.run(taskflow);
@@ -349,16 +345,16 @@ namespace LPMP {
                     const std::size_t pj = partition.find(std::get<1>(e));
                     const std::size_t j = partition_to_node[pj];
 
-                    if (partial_graph.edge_present(i,j)){
-                        partial_graph.edge(i,j).cost += cost;
+                    if (g.edge_present(i,j)){
+                        g.edge(i,j).cost += cost;
                     } else
-                        partial_graph.insert_edge(i,j, {cost,0});
+                        g.insert_edge(i,j, {cost,0});
 
                     if (cost > 0.0) queues[nr_threads].push(edge_type_q{i,j,cost,0,1});
                 }
             }
             std::cout << "Edges in the final thread " << nr_threads << ": " << queues[nr_threads].size() << std::endl;
-            gaec_single<false>(std::ref(partial_graph), std::ref(queues[nr_threads]), std::ref(partition), std::ref(mask));
+            gaec_single<false>(std::ref(g), std::ref(queues[nr_threads]), std::ref(partition));
 
             const auto remaining_edges_end_time = std::chrono::steady_clock::now();
             std::cout << "handling remaining edges took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(remaining_edges_end_time - remaining_edges_begin_time).count() << " milliseconds\n";

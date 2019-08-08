@@ -28,7 +28,7 @@ int main(int argc, char** argv)
         const auto end_time = std::chrono::steady_clock::now();
         std::cout << "Andres gaec energy = " << input.evaluate(andres_gaec) << "\n";
         std::cout << "Andres optimization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
-    } 
+    }
 
     //{
     //    const multicut_edge_labeling sol = greedy_additive_edge_contraction(input);

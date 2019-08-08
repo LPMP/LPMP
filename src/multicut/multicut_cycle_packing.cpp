@@ -12,7 +12,7 @@
 
 namespace LPMP {
 
-constexpr static double tolerance = 1e-8; 
+constexpr static double tolerance = 1e-8;
 
 struct weighted_edge : public std::array<std::size_t,2> { double cost; };
 
@@ -38,6 +38,9 @@ cycle_packing multicut_cycle_packing_impl(const multicut_instance& input, const 
 
    graph<double> pos_edges_graph(positive_edges.begin(), positive_edges.end(), [](const weighted_edge& e) { return e.cost; });
    cycle_packing cp;
+
+   const auto initialization_end_time = std::chrono::steady_clock::now();
+   std::cout << "initialization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(initialization_end_time - begin_time).count() << " milliseconds\n";
 
    // build up connectivity w.r.t. current positive edges
    union_find uf(input.no_nodes());
@@ -82,12 +85,12 @@ cycle_packing multicut_cycle_packing_impl(const multicut_instance& input, const 
          }
 
          // balance short cycles as long as available and positive weight left
-         auto mask_small_edges = [cycle_length](const std::size_t i, const std::size_t j, const double cost, const std::size_t distance) { 
+         auto mask_small_edges = [cycle_length](const std::size_t i, const std::size_t j, const double cost, const std::size_t distance) {
             if(cost <= tolerance) return false;
             if(distance >= cycle_length) return false;
             return true;
          };
-         std::vector<std::size_t> cycle; 
+         std::vector<std::size_t> cycle;
 
          while(-re.cost > tolerance) {
             double cycle_cap = std::numeric_limits<double>::infinity();

@@ -171,8 +171,8 @@ namespace LPMP {
         std::vector<std::vector<weighted_edge>> positive_edge_vec(nr_threads);
         std::size_t no_nodes = input.no_nodes();
 
-        //auto init_edge = distribute_edges_round_robin(taskflow, input, positive_edge_vec, repulsive_edge_vec, nr_threads, lower);
-        auto init_edge = distribute_edges_in_chunks(taskflow, input, positive_edge_vec, repulsive_edge_vec, nr_threads, lower);
+        auto init_edge = distribute_edges_round_robin(taskflow, input, positive_edge_vec, repulsive_edge_vec, nr_threads, lower);
+        //auto init_edge = distribute_edges_in_chunks(taskflow, input, positive_edge_vec, repulsive_edge_vec, nr_threads, lower);
 
         graph<CopyableAtomic<double>> pos_edges_graph;
         auto construct_pos_edges_graph = [&]() {
@@ -204,8 +204,8 @@ namespace LPMP {
             std::cout << "find cycles of length " << cycle_length << " lower bound = " << lower_bound << "\n";
 
             //shuffling can give great speed-up if edges with similar indices are spatially close in the graph
-            for (auto& re: repulsive_edge_vec)
-                std::random_shuffle(re.begin(), re.end());
+            // for (auto& re: repulsive_edge_vec)
+            //     std::random_shuffle(re.begin(), re.end());
 
             auto CP = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
             //    std::cout << "#repulsive edges :" << repulsive_edge_vec[thread_no].size() << " remaining in thread " << thread_no << std::endl;
