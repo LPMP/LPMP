@@ -103,8 +103,7 @@ namespace LPMP {
         }
         partial_graph.pre_allocate(degree.begin(), degree.end());
         auto [extract_begin, extract_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
-            const std::size_t nodes_batch_size = instance.size()/nr_threads + 1;
-            std::cout<< "nodes_batch_size "<< nodes_batch_size << std::endl;
+            const std::size_t nodes_batch_size = no_nodes/nr_threads + 1;
             for (auto& edge: instance){
                 int nth = (int)(edge.first[0]/nodes_batch_size);
                 if (nth == thread_no){
