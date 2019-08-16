@@ -120,7 +120,9 @@ namespace LPMP {
         return extract_end;
     }
 
-    void add_triangles(std::vector<std::size_t>& cycle, double cycle_cap, edge_to_triangle_map& M, multicut_triangle_factor& T){
+    std::mutex T_mutex, M_mutex;
+
+    void add_triangles(const std::vector<std::size_t> cycle, double cycle_cap, edge_to_triangle_map& M, multicut_triangle_factor& T){
         for(std::size_t c=1; c<cycle.size()-1; ++c) {
             std::vector<std::pair<size_t, int>> nodes = {{cycle[0],0}, {cycle[c],1}, {cycle[c+1],2}};
             std::sort(nodes.begin(), nodes.end(), [](std::pair<size_t, double> n1, std::pair<size_t, double> n2) {return n1.first < n2.first;});
@@ -133,18 +135,24 @@ namespace LPMP {
             } else {
                 w_ij = -cycle_cap; w_jk = cycle_cap; w_ik = cycle_cap;
             }
-            if (T.find({i,j,k}) != T.end()){
-     //           std::cout << "Triangle already exists: " << std::endl;
-                T[{i,j,k}][0].store(T[{i,j,k}][0] + w_ij); 
-                T[{i,j,k}][1].store(T[{i,j,k}][1] + w_jk); 
-                T[{i,j,k}][2].store(T[{i,j,k}][2] + w_ik);
-            } else {
-                std::vector<CopyableAtomic<double>> weights = {w_ij, w_jk, w_ik};
-                T[{i,j,k}] = weights;
+            {
+                std::lock_guard<std::mutex> guard(T_mutex);
+                if (T.find({i,j,k}) != T.end()){
+         //           std::cout << "Triangle already exists: " << std::endl;
+                    T[{i,j,k}][0].store(T[{i,j,k}][0] + w_ij); 
+                    T[{i,j,k}][1].store(T[{i,j,k}][1] + w_jk); 
+                    T[{i,j,k}][2].store(T[{i,j,k}][2] + w_ik);
+                } else {
+                    std::vector<CopyableAtomic<double>> weights = {w_ij, w_jk, w_ik};
+                    T[{i,j,k}] = weights;
+                }
             }
-            M[{i,j}].insert(k); 
-            M[{i,k}].insert(j); 
-            M[{j,k}].insert(i); 
+            {
+                std::lock_guard<std::mutex> guard(M_mutex);
+                M[{i,j}].insert(k); 
+                M[{i,k}].insert(j); 
+                M[{j,k}].insert(i); 
+            }
         }
     }
 
@@ -373,7 +381,7 @@ namespace LPMP {
         multicut_triangle_factor T;
         edge_to_triangle_map M;
 
-        const std::array<std::size_t,11> cycle_lengths = {1,2,3,4,5,6,7,8,9,10,std::numeric_limits<std::size_t>::max()};
+        const std::array<std::size_t,11> cycle_lengths = {1,2,3,4,5,6,7,8,9,10}; //std::numeric_limits<std::size_t>::max()
         for(const std::size_t cycle_length : cycle_lengths) {
 
             taskflow.clear();
