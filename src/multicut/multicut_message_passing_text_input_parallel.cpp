@@ -29,5 +29,6 @@ int main(int argc, char** argv)
         std::cout << "Parallel CP + GAEC energy = " << input.evaluate(sol) << "\n";
         std::cout << "CP + GAEC took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
     }
+    return 0;
 
 }

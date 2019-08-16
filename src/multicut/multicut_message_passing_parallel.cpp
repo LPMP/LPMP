@@ -32,12 +32,6 @@ namespace LPMP {
         std::size_t no_neighbors;
     };
 
-    auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost/e1.no_neighbors < e2.cost/e2.no_neighbors;  };
-    using pq_t = std::priority_queue<edge_type_q, std::vector<edge_type_q>, decltype(pq_cmp)>;
-
-    
-    using atomic_edge_container = std::map<std::array<std::size_t,2>, double>;
-
     template<class T>
     class CopyableAtomic : public std::atomic<T>
     {
@@ -61,6 +55,12 @@ namespace LPMP {
             return *this;
         }
     };
+
+    auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost/e1.no_neighbors < e2.cost/e2.no_neighbors;  };
+    using pq_t = std::priority_queue<edge_type_q, std::vector<edge_type_q>, decltype(pq_cmp)>;
+    using atomic_edge_container = std::map<std::array<std::size_t,2>, CopyableAtomic<double>>;
+    using multicut_triangle_factor = std::map<std::array<std::size_t,3>, std::vector<CopyableAtomic<double>>>;
+    using edge_to_triangle_map = std::unordered_map<std::array<std::size_t,2>, std::set<std::size_t>>;
 
     void compute_connectivity(union_find& uf, graph<CopyableAtomic<double>>& pos_edges_graph) {
         uf.reset();
@@ -121,9 +121,6 @@ namespace LPMP {
         return extract_end;
     }
 
-    using multicut_triangle_factor = std::map<std::array<std::size_t,3>, std::vector<double>>;
-    using edge_to_triangle_map = std::unordered_map<std::array<std::size_t,2>, std::set<std::size_t>>;
-
     void add_triangles(std::vector<std::size_t>& cycle, double cycle_cap, edge_to_triangle_map& M, multicut_triangle_factor& T){
         for(std::size_t c=1; c<cycle.size()-1; ++c) {
             std::vector<std::pair<size_t, int>> nodes = {{cycle[0],0}, {cycle[c],1}, {cycle[c+1],2}};
@@ -139,9 +136,11 @@ namespace LPMP {
             }
             if (T.find({i,j,k}) != T.end()){
      //           std::cout << "Triangle already exists: " << std::endl;
-                T[{i,j,k}][0] += w_ij; T[{i,j,k}][1] += w_jk; T[{i,j,k}][2] += w_ik;
+                T[{i,j,k}][0].store(T[{i,j,k}][0] + w_ij); 
+                T[{i,j,k}][1].store(T[{i,j,k}][1] + w_jk); 
+                T[{i,j,k}][2].store(T[{i,j,k}][2] + w_ik);
             } else {
-                std::vector<double> weights = {w_ij, w_jk, w_ik};
+                std::vector<CopyableAtomic<double>> weights = {w_ij, w_jk, w_ik};
                 T[{i,j,k}] = weights;
             }
             M[{i,j}].insert(k); 
@@ -226,7 +225,7 @@ namespace LPMP {
         }
     }
 
-    void send_weights_to_triplets(std::size_t node1, std::size_t node2, double cost, edge_to_triangle_map& M, multicut_triangle_factor& T){
+    void send_weights_to_triplets(std::size_t node1, std::size_t node2, CopyableAtomic<double> cost, edge_to_triangle_map& M, multicut_triangle_factor& T){
         assert(node1 < node2);
         if (M.find({node1,node2}) == M.end()){
    //         std::cout << "send_weights_to_triplets: no triangle for edge " << e.first[0] << " " << e.first[1] << std::endl;
@@ -240,11 +239,11 @@ namespace LPMP {
                     std::cout << "send_weights_to_triplets: triangle" << i << " "<< j << " " << k << " missing. \n";
                 } else {
                     if (nodes[0].second == 2){
-                        T[{i,j,k}][1] += cost/nr_triangles;
+                        T[{i,j,k}][1].store(T[{i,j,k}][1]+cost/nr_triangles);
                     } else if (nodes[1].second == 2){
-                        T[{i,j,k}][2] += cost/nr_triangles;
+                        T[{i,j,k}][2].store(T[{i,j,k}][2]+cost/nr_triangles);
                     } else {
-                        T[{i,j,k}][0] += cost/nr_triangles;
+                        T[{i,j,k}][0].store(T[{i,j,k}][0]+cost/nr_triangles);
                     }
                 }
             }
@@ -252,14 +251,14 @@ namespace LPMP {
         
     }
 
-    void marginalize(double& edge_cost, std::vector<double>& cost, int option, double omega){
+    void marginalize(CopyableAtomic<double>& edge_cost, std::vector<CopyableAtomic<double>>& cost, int option, double omega){
         auto marginal = std::min({cost[option]+cost[(option+1)%3], cost[option]+cost[(option+2)%3], cost[0]+cost[1]+cost[2]}) 
                       - std::min(0.0, cost[(option+1)%3]+cost[(option+2)%3]);
         edge_cost = edge_cost + omega*marginal;
-        cost[option] -= omega*marginal;
+        cost[option] = cost[option] - omega*marginal;
     }
 
-    void send_triplets_to_edge(atomic_edge_container& edges, std::size_t i, std::size_t j, std::size_t k, std::vector<double>& triangle_cost){
+    void send_triplets_to_edge(atomic_edge_container& edges, std::size_t i, std::size_t j, std::size_t k, std::vector<CopyableAtomic<double>>& triangle_cost){
         // ij: 0 jk: 1 ik:2
         marginalize(edges[{i, j}], triangle_cost, 0, 1/3);
         marginalize(edges[{i, k}], triangle_cost, 2, 1/2);
@@ -340,7 +339,7 @@ namespace LPMP {
         const auto begin_time = std::chrono::steady_clock::now();
         tf::Executor executor(nr_threads);
         tf::Taskflow taskflow;
-
+        std::cout << "Message Passing\n";
 
         // cycle packing initialization
         std::vector<double> lower(nr_threads, 0.0);
@@ -410,7 +409,7 @@ namespace LPMP {
                 all_edges[{e[0], e[1]}] = e.cost;
             }
         }
-        std::cout << "#Edges = " << all_edges.size() << "\n";
+    //    std::cout << "#Edges = " << all_edges.size() << "\n";
         std::cout << "Number of triangles:" << M.size() << std::endl;
         
         auto [send_weights_start, send_weights_end] = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
