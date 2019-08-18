@@ -1,8 +1,8 @@
 #include "multicut/multicut_instance.h"
 #include "multicut/multicut_greedy_additive_edge_contraction_parallel.h"
 #include "multicut/multicut_greedy_additive_edge_contraction.h"
+#include "multicut/multicut_cycle_packing_parallel.h"
 #include "multicut/multicut_text_input.h"
-#include "multicut/multicut_kernighan_lin.h"
 #include <iostream>
 #include <chrono>
 #include <tclap/CmdLine.h>
@@ -47,8 +47,9 @@ int main(int argc, char** argv)
 
 
         {
+            atomic_edge_container empty_edge_container = {};
             const auto begin_time = std::chrono::steady_clock::now();
-            const multicut_edge_labeling sol = greedy_additive_edge_contraction_parallel(input, nr_of_threads, option);
+            const multicut_edge_labeling sol = greedy_additive_edge_contraction_parallel(input, nr_of_threads, option, empty_edge_container);
             const auto end_time = std::chrono::steady_clock::now();
             std::cout << "Parallel gaec energy = " << input.evaluate(sol) << "\n";
             std::cout << "Parallel optimization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";

@@ -2,11 +2,10 @@
 #include <queue>
 #include <cassert>
 #include <functional>
-#include "multicut/multicut_greedy_additive_edge_contraction_parallel.h"
+#include <chrono>
 #include "union_find.hxx"
 #include "dynamic_graph_thread_safe.hxx"
-#include <thread>
-#include <chrono>
+#include "multicut/multicut_greedy_additive_edge_contraction_parallel.h"
 #define SHUFFLE 0
 
 namespace LPMP {
@@ -61,6 +60,34 @@ namespace LPMP {
             }
         });
         Q.first.gather(prev);
+    }
+
+    tf::Task distribute_atomic_edges(tf::Taskflow& taskflow, atomic_edge_container& instance, 
+    std::vector<pq_t>& queues, const int& nr_threads, const std::size_t no_nodes,
+    dynamic_graph_thread_safe<edge_type>& partial_graph, 
+    std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>>& remaining_edges) { 
+        std::vector<size_t> degree(no_nodes);
+        for (auto& edge: instance){
+            degree[edge.first[0]]++;
+            degree[edge.first[1]]++;
+        }
+        partial_graph.pre_allocate(degree.begin(), degree.end());
+        auto [extract_begin, extract_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+            const std::size_t nodes_batch_size = no_nodes/nr_threads + 1;
+            for (auto& edge: instance){
+                int nth = (int)(edge.first[0]/nodes_batch_size);
+                if (nth == thread_no){
+                    if (nth == (int)(edge.first[1]/nodes_batch_size)) {
+                        partial_graph.insert_edge(edge.first[0], edge.first[1], {edge.second,0});
+                        if (edge.second > 0.0)
+                            queues[thread_no].emplace(edge_type_q{edge.first[0], edge.first[1], edge.second, 0, 1});
+                    } else {
+                        remaining_edges[thread_no].push_back(std::make_tuple(edge.first[0], edge.first[1], edge.second));
+                    }
+                }
+            }
+        });
+        return extract_end;
     }
 
     tf::Task distribute_edges_no_conflicts(tf::Taskflow& taskflow, const multicut_instance& instance,  std::vector<pq_t>& queues, const int& nr_threads, dynamic_graph_thread_safe<edge_type>& partial_graph, std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>>& remaining_edges) {
@@ -264,7 +291,8 @@ namespace LPMP {
     }
 
 
-    multicut_edge_labeling greedy_additive_edge_contraction_parallel(const multicut_instance& instance, const int nr_threads, const std::string option)
+    multicut_edge_labeling greedy_additive_edge_contraction_parallel(const multicut_instance& instance, const int nr_threads, const std::string option,
+        atomic_edge_container& all_edges)
     {
         const auto begin_time = std::chrono::steady_clock::now();
 
@@ -312,7 +340,10 @@ namespace LPMP {
                 prev = Q.second;
             }
         } else { // non-blocking
-            E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, g, remaining_edges);
+            if (all_edges.size()>0)
+                E = distribute_atomic_edges(taskflow, all_edges, queues, nr_threads, instance.no_nodes(), g, remaining_edges);
+            else
+                E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, g, remaining_edges);
             prev = E;
         }
 
@@ -362,5 +393,10 @@ namespace LPMP {
 
         return multicut_edge_labeling(instance, partition);
     }
+
+    multicut_edge_labeling gaec_parallel_non_blocking(const multicut_instance& instance, const int nr_of_threads, atomic_edge_container& all_edges){
+        return greedy_additive_edge_contraction_parallel(instance, nr_of_threads, "non-blocking", all_edges);
+    }
+
 
 } // namespace LPMP
