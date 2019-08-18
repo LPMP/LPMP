@@ -27,7 +27,7 @@ namespace LPMP {
 
     bool connected(union_find& uf, const std::size_t i, const std::size_t j) { return uf.connected(i,j); };
     
-    std::mutex T_mutex, M_mutex;
+    std::mutex T_mutex, M_mutex, C_mutex;
     static multicut_triangle_factor T_empty = {};
     static edge_to_triangle_map M_empty = {};
     static atomic_edge_container empty_edge_container = {};
@@ -66,8 +66,9 @@ namespace LPMP {
         return Q.second;
     }
 
-    void add_triangles(const std::vector<std::size_t> cycle, double cycle_cap, edge_to_triangle_map& M, multicut_triangle_factor& T){
+    void add_triangles(graph<CopyableAtomic<double>>& pos_edges_graph, const std::vector<std::size_t> cycle, double cycle_cap, edge_to_triangle_map& M, multicut_triangle_factor& T){
         for(std::size_t c=1; c<cycle.size()-1; ++c) {
+          //  std::cout << "Processing triangle: " << cycle[0] << "," << cycle[c] << "," << cycle[c+1] << std::endl;
             std::array<std::pair<size_t, int>,3> nodes = {std::make_pair(cycle[0],0), std::make_pair(cycle[c],1), std::make_pair(cycle[c+1],2)};
             std::sort(nodes.begin(), nodes.end(), [](std::pair<size_t, double> n1, std::pair<size_t, double> n2) {return n1.first < n2.first;});
             std::size_t i=nodes[0].first, j=nodes[1].first, k=nodes[2].first;
@@ -82,14 +83,20 @@ namespace LPMP {
             {
                 std::lock_guard<std::mutex> guard(T_mutex);
                 if (T.find({i,j,k}) != T.end()){
-         //           std::cout << "Triangle already exists: " << std::endl;
                     T[{i,j,k}][0].store(T[{i,j,k}][0] + w_ij); 
                     T[{i,j,k}][1].store(T[{i,j,k}][1] + w_jk); 
                     T[{i,j,k}][2].store(T[{i,j,k}][2] + w_ik);
                 } else {
-                    std::array<CopyableAtomic<double>, 3> weights = {w_ij, w_jk, w_ik};
+                    double first_cost = pos_edges_graph.edge_present(i,j)? pos_edges_graph.edge(i,j).load():0.0;
+                    double second_cost = pos_edges_graph.edge_present(j,k)? pos_edges_graph.edge(j,k).load():0.0;
+                    double third_cost = pos_edges_graph.edge_present(i,k)? pos_edges_graph.edge(i,k).load():0.0;
+                    std::array<CopyableAtomic<double>, 3> weights = {w_ij+first_cost, 
+                                                                     w_jk+second_cost, 
+                                                                     w_ik+third_cost};
                     T[{i,j,k}] = weights;
                 }
+         //       std::cout << "Cycle Cap: " << cycle_cap << " Triangle: " << i << "," << j << "," << k << " has weights: ";
+         //       std::cout << T[{i,j,k}][0] << "," << T[{i,j,k}][1] << "," << T[{i,j,k}][2] << std::endl;
             }
             {
                 std::lock_guard<std::mutex> guard(M_mutex);
@@ -103,7 +110,7 @@ namespace LPMP {
     template<bool ADD_TRIANGLES=true>
     void cp_single(std::vector<weighted_edge>& repulsive_edges, graph<CopyableAtomic<double>>& pos_edges_graph,
         const std::size_t& cycle_length, const std::size_t& no_nodes, const bool& record_cycles, std::atomic<double>& lower_bound, 
-        cycle_packing& cp, edge_to_triangle_map& M=M_empty, multicut_triangle_factor& T=T_empty){
+        cycle_packing& cp, edge_to_triangle_map& M=M_empty, multicut_triangle_factor& T=T_empty, atomic_edge_container& edge_container=empty_edge_container){
 
         bfs_data<graph<CopyableAtomic<double>>> bfs(pos_edges_graph);
         std::size_t progress = 0;
@@ -120,7 +127,12 @@ namespace LPMP {
             }
 
             // check if conflicted cycle exists and repulsive edge has positive weight
-            if(-re.cost<= tolerance || !connected(uf, re[0], re[1]) || std::max(re[0], re[1]) >= pos_edges_graph.no_nodes()) {
+            if (!connected(uf, re[0], re[1])){
+                if(-re.cost<= tolerance || std::max(re[0], re[1]) >= pos_edges_graph.no_nodes()) {
+                } else {
+                    std::lock_guard<std::mutex> guard(C_mutex);
+                    edge_container[{re[0], re[1]}] = re.cost;
+                }
                 const std::size_t imax = repulsive_edges.size() - 1;
                 repulsive_edges[i] = repulsive_edges[imax];
                 repulsive_edges.resize(imax);
@@ -152,7 +164,7 @@ namespace LPMP {
                     assert(re.cost <= 0.0);
 
                     if constexpr(ADD_TRIANGLES)
-                        if (cycle_length>=3) add_triangles(cycle, cycle_cap, M, T);
+                        if (cycle_length>=3) add_triangles(pos_edges_graph, cycle, cycle_cap, M, T);
                     for(std::size_t c=1; c<cycle.size(); ++c) {
                         pos_edges_graph.edge(cycle[c-1], cycle[c]).store(pos_edges_graph.edge(cycle[c-1], cycle[c]).load() - cycle_cap);
                         pos_edges_graph.edge(cycle[c], cycle[c-1]).store(pos_edges_graph.edge(cycle[c], cycle[c-1]).load() - cycle_cap);
@@ -163,6 +175,8 @@ namespace LPMP {
 
                     // remove repulsive edge if weight is negligible
                     if (-re.cost<= tolerance) {
+                        std::lock_guard<std::mutex> guard(C_mutex);
+                        edge_container[{re[0], re[1]}] = re.cost;
                     //    std::cout << "weight is negligible:";atomic_weighted_edge
                         auto imax = repulsive_edges.size() - 1;
                         repulsive_edges[i] = repulsive_edges[imax];
@@ -232,7 +246,7 @@ namespace LPMP {
             //    std::cout << "#repulsive edges :" << repulsive_edge_vec[thread_no].size() << " remaining in thread " << thread_no << std::endl;
                 if (triangulization)
                     cp_single<true>(repulsive_edge_vec[thread_no], pos_edges_graph, cycle_length,  
-                        no_nodes, record_cycles, lower_bound, cp, M, T);
+                        no_nodes, record_cycles, lower_bound, cp, M, T, all_edges);
                 else 
                     cp_single<false>(repulsive_edge_vec[thread_no], pos_edges_graph, cycle_length,  
                         no_nodes, record_cycles, lower_bound, cp);

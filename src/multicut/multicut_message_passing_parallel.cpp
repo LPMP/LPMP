@@ -60,8 +60,8 @@ namespace LPMP {
         marginalize(edges[{i, k}], triangle_cost, 2, 1.0/1.0);
         marginalize(edges[{i, j}], triangle_cost, 0, 1.0/1.0);
         auto marginal = std::min({triangle_cost[0]+triangle_cost[1], triangle_cost[0]+triangle_cost[2], triangle_cost[0]+triangle_cost[1]+triangle_cost[2]}) 
-                      - std::min(0.0, triangle_cost[2]+triangle_cost[3]);
-        // assert(marginal <= tolerance);
+                      - std::min(0.0, triangle_cost[1]+triangle_cost[2]);
+        assert(marginal < 1e-8);       
     }
 
     double compute_lower_bound(atomic_edge_container& edges, multicut_triangle_factor& T){
@@ -93,7 +93,6 @@ namespace LPMP {
 
         // Message Passing
         const auto MP_begin_time = std::chrono::steady_clock::now();
-        
         auto [send_weights_start, send_weights_end] = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
             const std::size_t batch_size = all_edges.size()/nr_threads + 1;
             int first_edge= thread_no*batch_size;
@@ -119,7 +118,7 @@ namespace LPMP {
         });
 
         send_triplets_start.gather(send_weights_end);
-        
+
         executor.run(taskflow);
         executor.wait_for_all();
 
