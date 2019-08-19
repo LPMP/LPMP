@@ -71,6 +71,7 @@ namespace LPMP {
         for (auto&t:  T)
             lb += std::min({0.0, t.second[0]+t.second[1], t.second[0]+t.second[2], t.second[1]+t.second[1],
                             t.second[0]+t.second[1]+t.second[2]});
+        std::cout << "lower_bound:" << lb << std::endl;
         return lb;
     }
     
@@ -105,6 +106,12 @@ namespace LPMP {
             }
         });
 
+        executor.run(taskflow);
+        executor.wait_for_all();
+
+        taskflow.clear();
+        compute_lower_bound(all_edges, T);
+
         auto [send_triplets_start, send_triplets_end] = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
             const std::size_t batch_size = T.size()/nr_threads + 1;
             int first_triangle = thread_no*batch_size;
@@ -116,14 +123,11 @@ namespace LPMP {
                     std::ref(it->second));
             }
         });
-
-        send_triplets_start.gather(send_weights_end);
-
         executor.run(taskflow);
         executor.wait_for_all();
+        compute_lower_bound(all_edges, T);
 
         const auto MP_end_time = std::chrono::steady_clock::now();
-        std::cout << "lower_bound after MP: " << compute_lower_bound(all_edges, T) << std::endl;
         std::cout << "MP took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(MP_end_time - MP_begin_time).count() << " milliseconds\n";
   
         return gaec_parallel_non_blocking(input, nr_threads, all_edges);

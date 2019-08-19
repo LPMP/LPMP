@@ -168,7 +168,6 @@ namespace LPMP {
                     for(std::size_t c=1; c<cycle.size(); ++c) {
                         pos_edges_graph.edge(cycle[c-1], cycle[c]).store(pos_edges_graph.edge(cycle[c-1], cycle[c]).load() - cycle_cap);
                         pos_edges_graph.edge(cycle[c], cycle[c-1]).store(pos_edges_graph.edge(cycle[c], cycle[c-1]).load() - cycle_cap);
-                        assert(pos_edges_graph.edge(cycle[c-1], cycle[c]).load() == pos_edges_graph.edge(cycle[c], cycle[c-1]).load());
                     }
 
                     lower_bound.store(lower_bound.load() + cycle_cap);
