@@ -87,12 +87,7 @@ namespace LPMP {
                     T[{i,j,k}][1].store(T[{i,j,k}][1] + w_jk); 
                     T[{i,j,k}][2].store(T[{i,j,k}][2] + w_ik);
                 } else {
-                    double first_cost = pos_edges_graph.edge_present(i,j)? pos_edges_graph.edge(i,j).load():0.0;
-                    double second_cost = pos_edges_graph.edge_present(j,k)? pos_edges_graph.edge(j,k).load():0.0;
-                    double third_cost = pos_edges_graph.edge_present(i,k)? pos_edges_graph.edge(i,k).load():0.0;
-                    std::array<CopyableAtomic<double>, 3> weights = {w_ij+first_cost, 
-                                                                     w_jk+second_cost, 
-                                                                     w_ik+third_cost};
+                    std::array<CopyableAtomic<double>, 3> weights = {w_ij, w_jk, w_ik};
                     T[{i,j,k}] = weights;
                 }
          //       std::cout << "Cycle Cap: " << cycle_cap << " Triangle: " << i << "," << j << "," << k << " has weights: ";
@@ -163,20 +158,17 @@ namespace LPMP {
                     re.cost += cycle_cap;
                     assert(re.cost <= 0.0);
 
-                    if constexpr(ADD_TRIANGLES)
-                        if (cycle_length>=3) add_triangles(pos_edges_graph, cycle, cycle_cap, M, T);
                     for(std::size_t c=1; c<cycle.size(); ++c) {
                         pos_edges_graph.edge(cycle[c-1], cycle[c]).store(pos_edges_graph.edge(cycle[c-1], cycle[c]).load() - cycle_cap);
                         pos_edges_graph.edge(cycle[c], cycle[c-1]).store(pos_edges_graph.edge(cycle[c], cycle[c-1]).load() - cycle_cap);
                     }
 
+                    if constexpr(ADD_TRIANGLES)
+                        if (cycle_length>=3) add_triangles(pos_edges_graph, cycle, cycle_cap, M, T);
                     lower_bound.store(lower_bound.load() + cycle_cap);
 
                     // remove repulsive edge if weight is negligible
                     if (-re.cost<= tolerance) {
-                        std::lock_guard<std::mutex> guard(C_mutex);
-                        edge_container[{re[0], re[1]}] = re.cost;
-                    //    std::cout << "weight is negligible:";atomic_weighted_edge
                         auto imax = repulsive_edges.size() - 1;
                         repulsive_edges[i] = repulsive_edges[imax];
                         repulsive_edges.resize(imax);

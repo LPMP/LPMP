@@ -18,11 +18,13 @@
 
 namespace LPMP {
 
-    void send_weights_to_triplets(std::size_t node1, std::size_t node2, CopyableAtomic<double> cost, edge_to_triangle_map& M, multicut_triangle_factor& T){
+    void send_weights_to_triplets(std::size_t node1, std::size_t node2, CopyableAtomic<double>& cost, edge_to_triangle_map& M, multicut_triangle_factor& T){
         assert(node1 < node2);
         if (M.find({node1,node2}) == M.end()){
    //         std::cout << "send_weights_to_triplets: no triangle for edge " << e.first[0] << " " << e.first[1] << std::endl;
         } else {
+            auto tmp_cost = cost;
+            cost.store(0.0);
             auto nr_triangles = M[{node1,node2}].size();
             for (auto third: M[{node1,node2}]){
                 std::array<std::pair<size_t, int>,3> nodes = {std::make_pair(node1,0),std::make_pair(node2,1),std::make_pair(third,2)};
@@ -32,11 +34,11 @@ namespace LPMP {
                     std::cout << "send_weights_to_triplets: triangle" << i << " "<< j << " " << k << " missing. \n";
                 } else {
                     if (nodes[0].second == 2){
-                        T[{i,j,k}][1].store(T[{i,j,k}][1]+cost/nr_triangles);
+                        T[{i,j,k}][1].store(T[{i,j,k}][1]+tmp_cost/nr_triangles);
                     } else if (nodes[1].second == 2){
-                        T[{i,j,k}][2].store(T[{i,j,k}][2]+cost/nr_triangles);
+                        T[{i,j,k}][2].store(T[{i,j,k}][2]+tmp_cost/nr_triangles);
                     } else {
-                        T[{i,j,k}][0].store(T[{i,j,k}][0]+cost/nr_triangles);
+                        T[{i,j,k}][0].store(T[{i,j,k}][0]+tmp_cost/nr_triangles);
                     }
                 }
             }
@@ -69,7 +71,7 @@ namespace LPMP {
         for (auto& e: edges)
             lb += std::min(0.0, e.second.load());
         for (auto&t:  T)
-            lb += std::min({0.0, t.second[0]+t.second[1], t.second[0]+t.second[2], t.second[1]+t.second[1],
+            lb += std::min({0.0, t.second[0]+t.second[1], t.second[0]+t.second[2], t.second[1]+t.second[2],
                             t.second[0]+t.second[1]+t.second[2]});
         std::cout << "lower_bound:" << lb << std::endl;
         return lb;
