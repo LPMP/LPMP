@@ -164,7 +164,8 @@ namespace LPMP {
                     }
 
                     if constexpr(ADD_TRIANGLES)
-                        if (cycle_length>=3) add_triangles(pos_edges_graph, cycle, cycle_cap, M, T);
+                        //if (cycle_length>=3) 
+                            add_triangles(pos_edges_graph, cycle, cycle_cap, M, T);
                     lower_bound.store(lower_bound.load() + cycle_cap);
 
                     // remove repulsive edge if weight is negligible
