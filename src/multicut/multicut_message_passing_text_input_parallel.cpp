@@ -25,7 +25,10 @@ int main(int argc, char** argv)
 
     {
         const auto begin_time = std::chrono::steady_clock::now();
-        const multicut_edge_labeling sol = multicut_message_passing_parallel(input, false, nr_thread);
+        auto [final_instance, lower_bound] = multicut_message_passing_parallel(input, false, nr_thread);
+        const multicut_edge_labeling sol = greedy_additive_edge_contraction_parallel(final_instance, nr_thread, "non-blocking");
+        std::cout << "Parallel CP + GAEC energy = " << final_instance.evaluate(sol) << "\n";
+
         const auto end_time = std::chrono::steady_clock::now();
         std::cout << "CP + GAEC took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
     }

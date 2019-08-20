@@ -77,7 +77,7 @@ namespace LPMP {
     }
     
 
-    multicut_edge_labeling multicut_message_passing_parallel(const multicut_instance& input, const bool record_cycles, const int nr_threads)
+    std::pair<multicut_instance, double> multicut_message_passing_parallel(const multicut_instance& input, const bool record_cycles, const int nr_threads)
     {
         const auto begin_time = std::chrono::steady_clock::now();
         tf::Executor executor(nr_threads);
@@ -112,7 +112,7 @@ namespace LPMP {
 
         taskflow.clear();
         auto lb1 = compute_lower_bound(all_edges, T);
-        std::cout << "Lower bound after MP step 1: " << lb1<< std::endl;
+        std::cout << "Lower bound after MP step 1: " << lb1 << std::endl;
 
         auto [send_triplets_start, send_triplets_end] = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
             const std::size_t batch_size = T.size()/nr_threads + 1;
@@ -128,7 +128,7 @@ namespace LPMP {
         executor.run(taskflow);
         executor.wait_for_all();
         auto lb2 = compute_lower_bound(all_edges, T);
-        std::cout << "Lower bound after MP step 2:" << lb2<< std::endl;
+        std::cout << "Lower bound after MP step 2:" << lb2 << std::endl;
 
         const auto MP_end_time = std::chrono::steady_clock::now();
         std::cout << "MP took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(MP_end_time - MP_begin_time).count() << " milliseconds\n";
@@ -136,12 +136,8 @@ namespace LPMP {
         multicut_instance final_instance;
         for (auto& r: all_edges)
             final_instance.add_edge(r.first[0], r.first[1], r.second);
-        
-  
-        auto result = greedy_additive_edge_contraction_parallel(final_instance, nr_threads, "non-blocking");
-        std::cout << "Parallel CP + GAEC energy = " << final_instance.evaluate(result) << "\n";
 
-        return result;
+        return std::make_pair(final_instance, lb2);
     }
 
 }
