@@ -15,6 +15,7 @@
 #include "multicut/multicut_cycle_packing_parallel.h"
 #include "copyable_atomic.h"
 #include "dynamic_graph_thread_safe.hxx"
+#define ITERATION 5
 
 namespace LPMP {
 
@@ -75,6 +76,35 @@ namespace LPMP {
                             t.second[0]+t.second[1]+t.second[2]});
         return lb;
     }
+
+    void send_weights_to_triplets_parallel(tf::Taskflow& taskflow, atomic_edge_container& all_edges, multicut_triangle_factor& T, 
+        edge_to_triangle_map& M, const int nr_threads){
+        auto send_weights = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
+            const std::size_t batch_size = all_edges.size()/nr_threads + 1;
+            int first_edge= thread_no*batch_size;
+            int last_edge = std::min((thread_no+1)*batch_size, all_edges.size());
+            atomic_edge_container::iterator iter_begin = std::next(all_edges.begin(), first_edge);
+            atomic_edge_container::iterator iter_end = std::next(iter_begin, last_edge);
+            for(auto it = iter_begin; it != iter_end; ++it){
+                send_weights_to_triplets(std::ref(it->first[0]), std::ref(it->first[1]),
+                    std::ref(it->second), std::ref(M), std::ref(T));
+            }
+        });
+    }
+
+    void send_triplets_to_edge_parallel(tf::Taskflow& taskflow, atomic_edge_container& all_edges, multicut_triangle_factor& T, const int nr_threads){
+         auto [send_triplets_start, send_triplets_end] = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
+            const std::size_t batch_size = T.size()/nr_threads + 1;
+            int first_triangle = thread_no*batch_size;
+            int last_triangle = std::min((thread_no+1)*batch_size, T.size());
+            multicut_triangle_factor::iterator iter_begin = std::next(T.begin(), first_triangle);
+            multicut_triangle_factor::iterator iter_end = std::next(iter_begin, last_triangle);
+            for(auto it = iter_begin; it != iter_end; ++it){
+                send_triplets_to_edge(std::ref(all_edges), std::ref(it->first[0]), std::ref(it->first[1]), std::ref(it->first[2]), 
+                    std::ref(it->second));
+            }
+        });
+    }
     
 
     std::pair<multicut_instance, double> multicut_message_passing_parallel(const multicut_instance& input, const bool record_cycles, const int nr_threads)
@@ -92,43 +122,27 @@ namespace LPMP {
         atomic_edge_container all_edges;
 
         cp = cycle_packing_triangulation_parallel(input, nr_threads, T, M, all_edges);
+        const auto MP_begin_time = std::chrono::steady_clock::now();
+        double lower_bound;
 
         // Message Passing
-        const auto MP_begin_time = std::chrono::steady_clock::now();
-        auto [send_weights_start, send_weights_end] = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
-            const std::size_t batch_size = all_edges.size()/nr_threads + 1;
-            int first_edge= thread_no*batch_size;
-            int last_edge = std::min((thread_no+1)*batch_size, all_edges.size());
-            atomic_edge_container::iterator iter_begin = std::next(all_edges.begin(), first_edge);
-            atomic_edge_container::iterator iter_end = std::next(iter_begin, last_edge);
-            for(auto it = iter_begin; it != iter_end; ++it){
-                send_weights_to_triplets(std::ref(it->first[0]), std::ref(it->first[1]),
-                    std::ref(it->second), std::ref(M), std::ref(T));
-            }
-        });
+        for (int i=0; i < ITERATION; ++i){
+            taskflow.clear();
 
-        executor.run(taskflow);
-        executor.wait_for_all();
+            send_weights_to_triplets_parallel(taskflow, all_edges, T, M, nr_threads);
+            executor.run(taskflow);
+            executor.wait_for_all();
 
-        taskflow.clear();
-        auto lb1 = compute_lower_bound(all_edges, T);
-        std::cout << "Lower bound after MP step 1: " << lb1 << std::endl;
+            taskflow.clear();
+            lower_bound = compute_lower_bound(all_edges, T);
+            std::cout << "Lower bound after MP step 1: " << lower_bound << std::endl;
 
-        auto [send_triplets_start, send_triplets_end] = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
-            const std::size_t batch_size = T.size()/nr_threads + 1;
-            int first_triangle = thread_no*batch_size;
-            int last_triangle = std::min((thread_no+1)*batch_size, T.size());
-            multicut_triangle_factor::iterator iter_begin = std::next(T.begin(), first_triangle);
-            multicut_triangle_factor::iterator iter_end = std::next(iter_begin, last_triangle);
-            for(auto it = iter_begin; it != iter_end; ++it){
-                send_triplets_to_edge(std::ref(all_edges), std::ref(it->first[0]), std::ref(it->first[1]), std::ref(it->first[2]), 
-                    std::ref(it->second));
-            }
-        });
-        executor.run(taskflow);
-        executor.wait_for_all();
-        auto lb2 = compute_lower_bound(all_edges, T);
-        std::cout << "Lower bound after MP step 2:" << lb2 << std::endl;
+            send_triplets_to_edge_parallel(taskflow, all_edges, T, nr_threads);
+            executor.run(taskflow);
+            executor.wait_for_all();
+            lower_bound = compute_lower_bound(all_edges, T);
+            std::cout << "Lower bound after MP step 2:" << lower_bound << std::endl;
+        }
 
         const auto MP_end_time = std::chrono::steady_clock::now();
         std::cout << "MP took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(MP_end_time - MP_begin_time).count() << " milliseconds\n";
@@ -137,7 +151,7 @@ namespace LPMP {
         for (auto& r: all_edges)
             final_instance.add_edge(r.first[0], r.first[1], r.second);
 
-        return std::make_pair(final_instance, lb2);
+        return std::make_pair(final_instance, lower_bound);
     }
 
 }

@@ -1,8 +1,6 @@
 #include "multicut/multicut_instance.h"
 #include "multicut/multicut_greedy_additive_edge_contraction_parallel.h"
-#include "multicut/multicut_text_input.h"
-#include "multicut/multicut_message_passing_parallel.h"
-#include "multicut/multicut_cycle_packing_parallel.h"
+#include "../src/multicut/multicut_message_passing_parallel.cpp"
 #include "test.h"
 
 using namespace LPMP;
@@ -50,5 +48,77 @@ int main()
          test(final_instance.evaluate(sol) - (-1) < 1e-10);
          test(lower_bound - (-1) < 1e-10);
       }
+   }
+   {
+      tf::Taskflow taskflow;
+      tf::Executor executor(1);
+      atomic_edge_container edges = {
+         {{0,1},1},
+         {{1,2},-1.5},
+         {{0,2},1},
+         {{1,3},1},
+         {{2,3},1}
+      };
+      edge_to_triangle_map M = {
+         {{0,1},{2}},
+         {{0,2},{1}},
+         {{1,2},{0,3}},
+         {{1,3},{2}},
+         {{2,3},{1}},
+      };
+      multicut_triangle_factor T = {
+         {{0,1,2},{0,0,0}},
+         {{1,2,3},{0,0,0}}
+      };
+
+      LPMP::send_weights_to_triplets_parallel(taskflow, edges, T, M, 1);
+      executor.run(taskflow);
+      executor.wait_for_all();
+      auto lb1 = compute_lower_bound(edges, T);
+      std::cout << "Lower bound after MP step 1: " << lb1 << std::endl;
+      taskflow.clear();
+
+
+      LPMP::send_triplets_to_edge_parallel(taskflow, edges, T, 1);
+      executor.run(taskflow);
+      executor.wait_for_all();
+      auto lb2 = compute_lower_bound(edges, T);
+      std::cout << "Lower bound after MP step 2:" << lb2 << std::endl;
+   }
+   {
+      tf::Taskflow taskflow;
+      tf::Executor executor(1);
+      atomic_edge_container edges = {
+         {{0,1},1},
+         {{1,2},-3},
+         {{0,2},1},
+         {{1,3},1},
+         {{2,3},1}
+      };
+      edge_to_triangle_map M = {
+         {{0,1},{2}},
+         {{0,2},{1}},
+         {{1,2},{0,3}},
+         {{1,3},{2}},
+         {{2,3},{1}},
+      };
+      multicut_triangle_factor T = {
+         {{0,1,2},{0,0,0}},
+         {{1,2,3},{0,0,0}}
+      };
+
+      LPMP::send_weights_to_triplets_parallel(taskflow, edges, T, M, 1);
+      executor.run(taskflow);
+      executor.wait_for_all();
+      auto lb1 = compute_lower_bound(edges, T);
+      std::cout << "Lower bound after MP step 1: " << lb1 << std::endl;
+      taskflow.clear();
+
+
+      LPMP::send_triplets_to_edge_parallel(taskflow, edges, T, 1);
+      executor.run(taskflow);
+      executor.wait_for_all();
+      auto lb2 = compute_lower_bound(edges, T);
+      std::cout << "Lower bound after MP step 2:" << lb2 << std::endl;
    }
 } 

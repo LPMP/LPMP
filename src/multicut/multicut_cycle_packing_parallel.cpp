@@ -66,7 +66,7 @@ namespace LPMP {
         return Q.second;
     }
 
-    void add_triangles(graph<CopyableAtomic<double>>& pos_edges_graph, const std::vector<std::size_t> cycle, double cycle_cap, edge_to_triangle_map& M, multicut_triangle_factor& T){
+    void add_triangles(const std::vector<std::size_t> cycle, double cycle_cap, edge_to_triangle_map& M, multicut_triangle_factor& T){
         for(std::size_t c=1; c<cycle.size()-1; ++c) {
           //  std::cout << "Processing triangle: " << cycle[0] << "," << cycle[c] << "," << cycle[c+1] << std::endl;
             std::array<std::pair<size_t, int>,3> nodes = {std::make_pair(cycle[0],0), std::make_pair(cycle[c],1), std::make_pair(cycle[c+1],2)};
@@ -165,7 +165,7 @@ namespace LPMP {
 
                     if constexpr(ADD_TRIANGLES)
                         //if (cycle_length>=3) 
-                            add_triangles(pos_edges_graph, cycle, cycle_cap, M, T);
+                            add_triangles(cycle, cycle_cap, M, T);
                     lower_bound.store(lower_bound.load() + cycle_cap);
 
                     // remove repulsive edge if weight is negligible
