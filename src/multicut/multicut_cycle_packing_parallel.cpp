@@ -102,6 +102,17 @@ namespace LPMP {
         }
     }
 
+    double atomic_addf(std::atomic<double> &f, double d){
+          double old = f.load(std::memory_order_consume);
+          double desired = old + d;
+          while (!f.compare_exchange_weak(old, desired,
+               std::memory_order_release, std::memory_order_consume))
+          {
+               desired = old + d;
+          }
+          return desired;
+     }
+
     template<bool ADD_TRIANGLES=true>
     void cp_single(std::vector<weighted_edge>& repulsive_edges, graph<CopyableAtomic<double>>& pos_edges_graph,
         const std::size_t& cycle_length, const std::size_t& no_nodes, const bool& record_cycles, std::atomic<double>& lower_bound, 
@@ -159,8 +170,12 @@ namespace LPMP {
                     assert(re.cost <= 0.0);
 
                     for(std::size_t c=1; c<cycle.size(); ++c) {
-                        pos_edges_graph.edge(cycle[c-1], cycle[c]).store(pos_edges_graph.edge(cycle[c-1], cycle[c]).load() - cycle_cap);
-                        pos_edges_graph.edge(cycle[c], cycle[c-1]).store(pos_edges_graph.edge(cycle[c], cycle[c-1]).load() - cycle_cap);
+                        atomic_addf(pos_edges_graph.edge(cycle[c-1], cycle[c]), -cycle_cap);
+                        atomic_addf(pos_edges_graph.edge(cycle[c], cycle[c-1]), -cycle_cap);
+                        if (pos_edges_graph.edge(cycle[c-1], cycle[c]) < 0.0 ){
+                            //std::cout << "Abort.\n";
+                            return;
+                        } 
                     }
 
                     if constexpr(ADD_TRIANGLES)
