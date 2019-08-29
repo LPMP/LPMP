@@ -10,9 +10,9 @@
 namespace LPMP {
 
 	struct triangle_item {
-        std::array<std::size_t, 3> nodes;
-        std::array<CopyableAtomic<double>, 3> weights;
-        std::array<std::size_t, 3> edge_indices;
+        std::array<std::size_t, 3> nodes;               // stores i,j,k where i<j<k
+        std::array<CopyableAtomic<double>, 3> weights;  // stores the weights for edge(i,j), edge(j,k), edge(i,k) respectively
+        std::array<std::size_t, 3> edge_indices;        // stores the edge index for edge(i,j), edge(j,k), edge(i,k) respectively
         triangle_item(std::array<std::size_t, 3> n): nodes(n){ 
         	weights = {0.0, 0.0, 0.0};
         	edge_indices = {};
@@ -45,7 +45,7 @@ namespace LPMP {
         };
     };
 
-    struct edge_t : public std::array<std::size_t,2> { double cost; };
+    struct edge_t: public std::array<std::size_t,2> { double cost; };
 
 	// implementation of the ICP algorithm from Lange et al's ICML18 algorithm.
 	void multicut_cycle_packing_parallel(const multicut_instance& input, const int& nr_threads);

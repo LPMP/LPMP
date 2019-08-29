@@ -16,8 +16,8 @@ namespace LPMP {
 
     std::mutex T_mutex, M_mutex;
 
-    using triangle_dict = std::unordered_map<std::array<std::size_t,3>, std::size_t>;
-    using edge_dict = std::unordered_map<std::array<std::size_t,2>, std::size_t>;
+    using triangle_dict = std::unordered_map<std::array<std::size_t,3>, int>;
+    using edge_dict = std::unordered_map<std::array<std::size_t,2>, int>;
 
     static std::vector<edge_item> empty_e = {};
     static std::vector<triangle_item> empty_t = {};
@@ -34,7 +34,10 @@ namespace LPMP {
 
     bool connected(union_find& uf, const std::size_t i, const std::size_t j) { return uf.connected(i,j); };
     
-    tf::Task distribute_edges_round_robin(tf::Taskflow& taskflow, const multicut_instance& input, std::vector<std::vector<edge_t>>& positive_edge_vec, std::vector<std::vector<edge_t>>& repulsive_edge_vec, const int& nr_threads, std::vector<double>& lower) {
+    tf::Task distribute_edges_round_robin(tf::Taskflow& taskflow, const multicut_instance& input, 
+        std::vector<std::vector<edge_t>>& positive_edge_vec, std::vector<std::vector<edge_t>>& repulsive_edge_vec, 
+        const int& nr_threads, std::vector<double>& lower) 
+    {
         auto Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t e = thread_no;
             while(e < input.edges().size()) {
@@ -51,7 +54,10 @@ namespace LPMP {
     }
 
 
-    tf::Task distribute_edges_in_chunks(tf::Taskflow& taskflow, const multicut_instance& input, std::vector<std::vector<edge_t>>& positive_edge_vec, std::vector<std::vector<edge_t>>& repulsive_edge_vec, const int& nr_threads, std::vector<double>& lower) {
+    tf::Task distribute_edges_in_chunks(tf::Taskflow& taskflow, const multicut_instance& input, 
+        std::vector<std::vector<edge_t>>& positive_edge_vec, std::vector<std::vector<edge_t>>& repulsive_edge_vec, 
+        const int& nr_threads, std::vector<double>& lower) 
+    {
         auto Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t edges_batch_size = input.edges().size()/nr_threads + 1;
             const std::size_t first_edge = thread_no*edges_batch_size;
@@ -69,8 +75,9 @@ namespace LPMP {
     }
 
 
-    void add_edge(edge_dict& M, std::size_t i, std::size_t j, std::size_t k, std::vector<edge_item>& edge_to_triangle, std::size_t& edge_index,
-        const std::size_t triangle_index){
+    void add_edge(edge_dict& M, const std::size_t i, const std::size_t j, const std::size_t k, 
+        std::vector<edge_item>& edge_to_triangle, std::size_t& edge_index, const std::size_t triangle_index)
+    {
         auto search = M.find({i,j});
         if(search != M.end()){
             edge_index = search->second;
@@ -85,11 +92,14 @@ namespace LPMP {
     }
 
     void add_triangles(const std::vector<std::size_t> cycle, double cycle_cap, triangle_dict& T, edge_dict& M, 
-        std::vector<triangle_item>& triangle_to_edge, std::vector<edge_item>& edge_to_triangle){
+        std::vector<triangle_item>& triangle_to_edge, std::vector<edge_item>& edge_to_triangle)
+    {
         for(std::size_t c=1; c<cycle.size()-1; ++c) {
             // std::cout << "Processing triangle: " << cycle[0] << "," << cycle[c] << "," << cycle[c+1] << std::endl;
-            std::array<std::pair<size_t, int>,3> sorted_nodes = {std::make_pair(cycle[0],0), std::make_pair(cycle[c],1), std::make_pair(cycle[c+1],2)};
-            std::sort(sorted_nodes.begin(), sorted_nodes.end(), [](std::pair<size_t, double> n1, std::pair<size_t, double> n2) {return n1.first < n2.first;});
+            std::array<std::pair<size_t, int>,3> sorted_nodes = {std::make_pair(cycle[0],0), std::make_pair(cycle[c],1), 
+                                                                 std::make_pair(cycle[c+1],2)};
+            std::sort(sorted_nodes.begin(), sorted_nodes.end(), 
+                    [](std::pair<size_t, double> n1, std::pair<size_t, double> n2) {return n1.first < n2.first;});
             std::size_t i=sorted_nodes[0].first, j=sorted_nodes[1].first, k=sorted_nodes[2].first;
             double w_ij, w_jk, w_ik;
             if (sorted_nodes[0].second == 1){
@@ -137,13 +147,13 @@ namespace LPMP {
     void cp_single(std::vector<edge_t>& repulsive_edges, graph<CopyableAtomic<double>>& pos_edges_graph,
         const std::size_t& cycle_length, const std::size_t& no_nodes, const bool& record_cycles, std::atomic<double>& lower_bound, 
         cycle_packing& cp, triangle_dict& T=empty_t_dict, edge_dict& E=empty_e_dict, std::vector<triangle_item>& triangle_to_edge=empty_t, 
-        std::vector<edge_item>& edge_to_triangle=empty_e, std::vector<edge_t>& other_edges=empty_o){
-
+        std::vector<edge_item>& edge_to_triangle=empty_e, std::vector<edge_t>& other_edges=empty_o)
+    {
         bfs_data<graph<CopyableAtomic<double>>> bfs(pos_edges_graph);
         std::size_t progress = 0;
         union_find uf(no_nodes);
 
-outer:
+    outer:
         for(std::size_t i=0; i<repulsive_edges.size(); ++i) {
             auto& re = repulsive_edges[i];
 
@@ -194,12 +204,11 @@ outer:
                         atomic_addition(pos_edges_graph.edge(cycle[c-1], cycle[c]), -cycle_cap);
                         atomic_addition(pos_edges_graph.edge(cycle[c], cycle[c-1]), -cycle_cap);
                         if(pos_edges_graph.edge(cycle[c-1], cycle[c]) < 0.0 || pos_edges_graph.edge(cycle[c], cycle[c-1]) < 0.0){
-                            std::cout << "Edge is negative after subtracted by cycle_cap.\n";
-                            const std::size_t imax = repulsive_edges.size() - 1;
+                            // std::cout << "Edge is negative after subtracted by cycle_cap.\n";
                             for(std::size_t c_p=1; c_p <=c; ++c_p){
                                 atomic_addition(pos_edges_graph.edge(cycle[c_p-1], cycle[c_p]), cycle_cap);
                                 atomic_addition(pos_edges_graph.edge(cycle[c_p], cycle[c_p-1]), cycle_cap);
-                            }                        
+                            }
                             goto outer;
                         } 
                     }
@@ -223,33 +232,39 @@ outer:
         }
     }
 
-    void collect_edges(const triangle_dict& T, const edge_dict& M, std::vector<edge_item>& edge_to_triangle, std::vector<edge_t>& other_edges, 
-        const std::vector<std::vector<edge_t>>& other_edges_container, graph<CopyableAtomic<double>>& pos_edges_graph){
+    void collect_edges(const triangle_dict& T, edge_dict& M, std::vector<edge_item>& edge_to_triangle, std::vector<edge_t>& other_edges, 
+        const std::vector<std::vector<edge_t>>& other_edges_container, const graph<CopyableAtomic<double>>& pos_edges_graph){
         std::cout << "Number of triangles:" << T.size() << std::endl;
 
         for (auto edges: other_edges_container){
             for (auto& e: edges){
-                auto i = std::min(e[0], e[1]); auto j = std::max(e[0], e[1]);
+                auto i = std::min(e[0], e[1]); 
+                auto j = std::max(e[0], e[1]);
                 auto search = M.find({i,j});
-                if(search != M.end())
-                    edge_to_triangle[search->second].cost = e.cost;
-                else other_edges.push_back(edge_t{i, j, e.cost});
+                if(search != M.end()){
+                    if (search->second != -1)
+                       edge_to_triangle[search->second].cost = e.cost;
+                } else {
+                    M[{i,j}] = -1;
+                    other_edges.push_back(edge_t{i, j, e.cost});
+                }
             }
         }
         pos_edges_graph.for_each_edge([&](const std::size_t i, const std::size_t j, const double cost){
             if (i < j) {
                 auto search = M.find({i,j});
-                if(search != M.end())
-                    edge_to_triangle[search->second].cost = cost;
-                else
-                    other_edges.push_back(edge_t{i,j,cost});
+                if(search != M.end()){
+                    if (search->second != -1)
+                        edge_to_triangle[search->second].cost = cost;
+                }
+                else other_edges.push_back(edge_t{i,j,cost});
             }
         });
         std::cout << "Collecting edges not in the triangles = " << other_edges.size() << "\n";
     }
 
     cycle_packing multicut_cycle_packing_parallel_impl(const multicut_instance& input, const bool record_cycles, const int nr_threads, 
-        const int triangulization, std::vector<triangle_item>& triangle_to_edge=empty_t, std::vector<edge_item>& edge_to_triangle=empty_e, 
+        const int triangulation, std::vector<triangle_item>& triangle_to_edge=empty_t, std::vector<edge_item>& edge_to_triangle=empty_e, 
         std::vector<edge_t>& other_edges=empty_o)
     {
         const auto begin_time = std::chrono::steady_clock::now();
@@ -305,7 +320,7 @@ outer:
 
             auto CP = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
             //    std::cout << "#repulsive edges :" << repulsive_edge_vec[thread_no].size() << " remaining in thread " << thread_no << std::endl;
-                if (triangulization)
+                if (triangulation)
                     cp_single<true>(repulsive_edge_vec[thread_no], pos_edges_graph, cycle_length,  
                         no_nodes, record_cycles, lower_bound, cp, T, M, triangle_to_edge, edge_to_triangle, other_edges_container[thread_no]);
                 else 
@@ -330,7 +345,7 @@ outer:
         std::cout << "Cycle Packing final lower bound = " << lower_bound << "\n";
         std::cout << "#repulsive edges = " << remain_repulsive_edges << "\n";
 
-        if (triangulization) collect_edges(T, M, edge_to_triangle, other_edges, other_edges_container, pos_edges_graph);
+        if (triangulation) collect_edges(T, M, edge_to_triangle, other_edges, other_edges_container, pos_edges_graph);
 
         return cp;
     }

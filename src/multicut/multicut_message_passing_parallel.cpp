@@ -15,7 +15,7 @@
 #include "multicut/multicut_cycle_packing_parallel.h"
 #include "atomic_helper.h"
 #include "dynamic_graph_thread_safe.hxx"
-#define ITERATION 1
+#define ITERATION 5
 
 namespace LPMP {
 
@@ -40,7 +40,6 @@ namespace LPMP {
     }
 
     void marginalize(CopyableAtomic<double>& edge_cost, std::array<CopyableAtomic<double>,3>& cost, const int option, const double omega){
-
         auto marginal = std::min({cost[option]+cost[(option+1)%3], cost[option]+cost[(option+2)%3], cost[0]+cost[1]+cost[2]}) 
                       - std::min(0.0, cost[(option+1)%3]+cost[(option+2)%3]);
         atomic_addition(edge_cost, omega*marginal);
@@ -57,7 +56,7 @@ namespace LPMP {
         marginalize(edge_to_triangle[t.edge_indices[0]].cost, t.weights, 0, 1.0/1.0);
         auto marginal = std::min({t.weights[0]+t.weights[1], t.weights[0]+t.weights[2], t.weights[0]+t.weights[1]+t.weights[2]}) 
                       - std::min(0.0, t.weights[1]+t.weights[2]);
-        assert(marginal < 1e-8);       
+        if (marginal > 1e-8) std::cout << "Incorrect marginal.\n";       
     }
 
     double compute_lower_bound(std::vector<edge_t>& other_edges, std::vector<edge_item>& edge_to_triangle, 
