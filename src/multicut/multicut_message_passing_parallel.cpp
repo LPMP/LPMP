@@ -21,7 +21,7 @@ namespace LPMP {
 
     void send_weights_to_triplets(edge_item& e, std::vector<triangle_item>& triangle_to_edge) {
         assert(e.nodes[0] < e.nodes[1]);
-        auto tmp_cost = e.cost; //pos_graph cost
+        auto tmp_cost = e.cost; 
         e.cost.store(0.0);
         auto nr_triangles = e.triangle_indices.size();
         assert(nr_triangles > 0);
@@ -115,6 +115,8 @@ namespace LPMP {
         cp = cycle_packing_triangulation_parallel(input, nr_threads, triangle_to_edge, edge_to_triangle, other_edges);
         const auto MP_begin_time = std::chrono::steady_clock::now();
         double lower_bound;
+
+        std::cout << "#Edges in triangle: " << edge_to_triangle.size() << std::endl;
 
         // Message Passing
         for (int i=0; i < ITERATION; ++i){

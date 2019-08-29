@@ -35,6 +35,9 @@ int main()
       test_instance.add_edge(1,2,-3);
       test_instance.add_edge(1,3,1);
       test_instance.add_edge(2,3,1);
+      std::vector<triangle_item> triangle_to_edge;
+      std::vector<edge_item> edge_to_triangle;
+      std::vector<edge_t> other_edges;
 
       {
          auto [final_instance, lower_bound] = multicut_message_passing_parallel(test_instance, false, 1);
@@ -48,6 +51,7 @@ int main()
          test(final_instance.evaluate(sol) - (-1) < 1e-10);
          test(lower_bound - (-1) < 1e-10);
       }
+
    }
    {
       tf::Taskflow taskflow;
@@ -60,7 +64,7 @@ int main()
       edge_to_triangle.push_back(edge_item{{2,3},1,{{1,1}}});
       std::vector<triangle_item> triangle_to_edge;
       triangle_to_edge.push_back(triangle_item{{0,1,2},{0,0,0},{0,1,2}});
-      triangle_to_edge.push_back(triangle_item{{0,1,2},{0,0,0},{1,4,3}});
+      triangle_to_edge.push_back(triangle_item{{1,2,3},{0,0,0},{1,4,3}});
 
       LPMP::send_weights_to_triplets_parallel(taskflow, edge_to_triangle, triangle_to_edge, 1);
       executor.run(taskflow);
@@ -88,7 +92,7 @@ int main()
       edge_to_triangle.push_back(edge_item{{2,3},1,{{1,1}}});
       std::vector<triangle_item> triangle_to_edge;
       triangle_to_edge.push_back(triangle_item{{0,1,2},{0,0,0},{0,1,2}});
-      triangle_to_edge.push_back(triangle_item{{0,1,2},{0,0,0},{1,4,3}});
+      triangle_to_edge.push_back(triangle_item{{1,2,3},{0,0,0},{1,4,3}});
 
       LPMP::send_weights_to_triplets_parallel(taskflow, edge_to_triangle, triangle_to_edge, 1);
       executor.run(taskflow);
