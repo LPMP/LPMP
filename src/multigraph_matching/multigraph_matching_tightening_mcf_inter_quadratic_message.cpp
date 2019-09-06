@@ -1,5 +1,5 @@
 
-#include "graph_matching/multigraph_matching.hxx"
+#include "multigraph_matching/multigraph_matching.hxx"
 #include "visitors/standard_visitor.hxx"
 
 using namespace LPMP;

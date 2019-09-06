@@ -1,4 +1,4 @@
-#include "graph_matching/multigraph_matching_triplet_consistency_factor.h"
+#include "multigraph_matching/multigraph_matching_triplet_consistency_factor.h"
 #include "vector"
 #include <array>
 #include <limits>

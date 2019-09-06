@@ -1,9 +1,7 @@
-#include "graph_matching/multigraph_matching_synchronization.h"
+#include "multigraph_matching/multigraph_matching_synchronization.h"
 #include <eigen3/Eigen/Eigenvalues>
 #include <vector>
-// TODO: remove below includes
-#include "union_find.hxx" // ?
-#include <iostream>
+#include "union_find.hxx"
 
 namespace LPMP {
 

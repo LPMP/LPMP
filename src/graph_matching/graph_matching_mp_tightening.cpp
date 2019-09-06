@@ -4,7 +4,7 @@
 
 using namespace LPMP;
 int main(int argc, char** argv) {
-ProblemConstructorRoundingSolver<Solver<LP<FMC_MP<PairwiseConstruction::Right>>,StandardTighteningVisitor>>solver(argc,argv);
+ProblemConstructorRoundingSolver<Solver<LP<FMC_MP_T>,StandardTighteningVisitor>>solver(argc,argv);
 auto input = LPMP::TorresaniEtAlInput::parse_file(solver.get_input_file());
 solver.GetProblemConstructor().construct(input);
 return solver.Solve();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matching_problem_input.h"
+#include "graph_matching/matching_problem_input.h"
 #include <string>
 
 namespace LPMP {

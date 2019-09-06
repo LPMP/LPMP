@@ -1,5 +1,5 @@
 #include "multigraph_matching_universe_frank_wolfe.cpp"
-#include "graph_matching/multigraph_matching.hxx"
+#include "multigraph_matching/multigraph_matching.hxx"
 #include <iostream>
 
 using namespace LPMP;

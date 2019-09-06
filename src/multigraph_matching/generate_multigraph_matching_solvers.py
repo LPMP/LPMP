@@ -4,7 +4,7 @@ from collections import namedtuple
 solver = namedtuple("solver_info", "preamble FMC LP filename")
 
 preamble = """
-#include "graph_matching/multigraph_matching.hxx"
+#include "multigraph_matching/multigraph_matching.hxx"
 #include "visitors/standard_visitor.hxx"
 """
 

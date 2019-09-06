@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from collections import namedtuple
-solver = namedtuple("solver_info", "preamble FMC LP parse_fun filename")
+solver = namedtuple("solver_info", "preamble FMC LP filename")
 
 preamble_mp = """
 #include "graph_matching/graph_matching.h"
@@ -15,34 +15,16 @@ preamble_BCFW = """
 """
 
 solvers = [
-    solver(preamble_mp, 'FMC_MCF<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_mcf_left.cpp"),
-    solver(preamble_mp, 'FMC_MCF<PairwiseConstruction::Right>', 'LP', 'parse_problem',"graph_matching_mcf_right.cpp"),
-    solver(preamble_mp, 'FMC_MCF<PairwiseConstruction::BothSides>', 'LP', 'parse_problem',"graph_matching_mcf_both_sides.cpp"),
-    solver(preamble_mp, 'FMC_MP<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_mp_left.cpp"),
-    solver(preamble_mp, 'FMC_MP<PairwiseConstruction::Right>', 'LP', 'parse_problem', "graph_matching_mp_right.cpp"),
-    solver(preamble_mp, 'FMC_MP<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_mp_both_sides.cpp"),
-    solver(preamble_mp, 'FMC_GM<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_gm_left.cpp"),
-    solver(preamble_mp, 'FMC_GM<PairwiseConstruction::Right>', 'LP', 'parse_problem', "graph_matching_gm_right.cpp"),
-    solver(preamble_mp, 'FMC_HUNGARIAN_BP<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_hungarian_bp_left.cpp"),
-    solver(preamble_mp, 'FMC_HUNGARIAN_BP<PairwiseConstruction::Right>', 'LP', 'parse_problem', "graph_matching_hungarian_bp_right.cpp"),
-    solver(preamble_mp, 'FMC_HUNGARIAN_BP<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_hungarian_bp_both_sides.cpp"),
-    solver(preamble_mp, 'FMC_MCF_T<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_mcf_left_tightening.cpp.cpp"),
-    solver(preamble_mp, 'FMC_MCF_T<PairwiseConstruction::Right>', 'LP', 'parse_problem', "graph_matching_mcf_right_tightening.cpp.cpp"),
-    solver(preamble_mp, 'FMC_MCF_T<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_mcf_both_sides_tightening.cpp"),
-    solver(preamble_mp, 'FMC_MP_T<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_mp_left_tightening.cpp"),
-    solver(preamble_mp, 'FMC_MP_T<PairwiseConstruction::Right>', 'LP', 'parse_problem', "graph_matching_mp_right_tightening.cpp"),
-    solver(preamble_mp, 'FMC_MP_T<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_mp_both_sides_tightening.cpp"),
-    solver(preamble_mp, 'FMC_GM_T<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_gm_left_tightening.cpp"),
-    solver(preamble_mp, 'FMC_GM_T<PairwiseConstruction::Right>', 'LP', 'parse_problem', "graph_matching_gm_right_tightening.cpp"),
-    solver(preamble_mp, 'FMC_HUNGARIAN_BP_T<PairwiseConstruction::Left>', 'LP', 'parse_problem', "graph_matching_hungarian_bp_left_tightening.cpp"),
-    solver(preamble_mp, 'FMC_HUNGARIAN_BP_T<PairwiseConstruction::Right>', 'LP', 'parse_problem', "graph_matching_hungarian_bp_right_tightening.cpp"),
-    solver(preamble_mp, 'FMC_HUNGARIAN_BP_T<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_hungarian_bp_both_sides_tightening.cpp"),
-    solver(preamble_BCFW, 'FMC_MCF<PairwiseConstruction::Left>', 'LP_tree_FWMAP', 'ParseProblemMCF_trees', "graph_matching_mcf_proximal_bundle_left.cpp"),
-    solver(preamble_BCFW, 'FMC_GM<PairwiseConstruction::Left>', 'LP_tree_FWMAP', 'ParseProblemGM_trees', "graph_matching_gm_proximal_bundle_left.cpp"),
-    solver(preamble_BCFW, 'FMC_LOCAL_SUBPROBLEM<PairwiseConstruction::Left>', 'LP_tree_FWMAP', 'ParseProblemLocalSubproblems_trees', "graph_matching_local_subproblems_proximal_bundle_left.cpp"),
-
-    solver(preamble_mp, 'FMC_MP_Q<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_mp_both_sides_inter_quadratic_message.cpp"),
-    solver(preamble_mp, 'FMC_MP_Q_T<PairwiseConstruction::BothSides>', 'LP', 'parse_problem', "graph_matching_mp_both_sides_inter_quadratic_message_tightening.cpp")
+    solver(preamble_mp, 'FMC_MP', 'LP', "graph_matching_mp.cpp"),
+    solver(preamble_mp, 'FMC_GM', 'LP', "graph_matching_gm.cpp"),
+    solver(preamble_mp, 'FMC_HUNGARIAN_BP', 'LP', "graph_matching_hungarian_bp.cpp"),
+    solver(preamble_mp, 'FMC_MP_T', 'LP', "graph_matching_mp_tightening.cpp"),
+    solver(preamble_mp, 'FMC_GM_T', 'LP', "graph_matching_gm_tightening.cpp"),
+    solver(preamble_mp, 'FMC_HUNGARIAN_BP_T', 'LP', "graph_matching_hungarian_bp_tightening.cpp"),
+    solver(preamble_BCFW, 'FMC_GM', 'LP_tree_FWMAP', "graph_matching_gm_proximal_bundle.cpp"),
+    solver(preamble_BCFW, 'FMC_MCF', 'LP_tree_FWMAP', "graph_matching_mcf_proximal_bundle.cpp"),
+    solver(preamble_mp, 'FMC_MP_Q', 'LP', "graph_matching_mp_inter_quadratic_message.cpp"),
+    solver(preamble_mp, 'FMC_MP_Q_T', 'LP', "graph_matching_mp_inter_quadratic_message_tightening.cpp")
     ]
 
 for e in solvers:

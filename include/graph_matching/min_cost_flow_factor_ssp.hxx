@@ -1,11 +1,8 @@
-#ifndef LPMP_MIN_COST_FLOW_FACTOR_CS2_HXX
-#define LPMP_MIN_COST_FLOW_FACTOR_CS2_HXX
+#pragma once
 
 #include "mcf_ssp.hxx"
 #include "graph_matching/matching_problem_input.h"
 #include "config.hxx"
-
-// do zrobienia: rename
 
 namespace LPMP {
 
@@ -340,86 +337,14 @@ public:
    template<typename RIGHT_POT, typename MSG_ARRAY>
    void send_message_to_left(const RIGHT_POT& r, MSG_ARRAY& msg, const REAL omega) 
    {
-      assert(false);
+      throw std::runtime_error("message not implemented");
    }
-
-
-   // for hungarian BP
-   //template<typename LEFT_FACTOR, typename G1, typename G2>
-   //void
-   //ReceiveRestrictedMessageFromLeft(LEFT_FACTOR* l, const G1& leftPot, G2& msg, typename PrimalSolutionStorage::Element leftPrimal)
-   //{ 
-   //   for(INDEX i=0; i<edges_.size(); ++i) {
-   //      assert(leftPrimal[i] == unknownState);
-   //   }
-   //   MakeLeftFactorUniform(leftPot, msg);
-   //}
-
-   // for rounding based on unaries
-   //template<typename RIGHT_FACTOR, typename G1, typename G2>
-   //void
-   //ReceiveRestrictedMessageFromRight(RIGHT_FACTOR* r, const G1& rightPot, G2& msg, typename PrimalSolutionStorage::Element rightPrimal)
-   //{ 
-   //   auto* mcf = r->GetMinCostFlowSolver();
-   //   // if an arc is true, enforce it. If an arc is false, forbid it. Otherwise, get reduced costs
-   //   for(INDEX l=0; l<edges_.size(); ++l) {
-   //      const INDEX e = edges_[l];
-   //      if(rightPrimal[edges_[l]] == unknownState) {
-   //         msg[l] -= (mcf->GetReducedCost(e) );  // do zrobienia: this only works for left side models, not for right hand side ones!
-   //      } else if(rightPrimal[e] == true) {
-   //         msg[l] -= -std::numeric_limits<REAL>::max();
-   //      } else {
-   //         assert(rightPrimal[e] == false);
-   //         msg[l] -= std::numeric_limits<REAL>::max();
-   //      }
-   //   }
-   //}
 
    // to do: update this, remove RIGHT_REPAM
    template<typename RIGHT_FACTOR, typename MSG_ARRAY, typename ITERATOR>
    static void SendMessagesToLeft_deactivated(const RIGHT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, ITERATOR omega_begin)
    {
-      //auto* mcf = r.GetMinCostFlowSolver();
-
-      REAL omega_sum = 0.0; //std::accumulate(omegaIt, omegaIt+msgs.size(),0.0); 
-      for(auto it= msg_begin; it!=msg_end; ++it, ++omega_begin) {
-        omega_sum += *omega_begin;
-      }
-           
-      assert(0.0 <= omega_sum && omega_sum < 1.0 + eps);
-      //std::vector<bool> active_edges(rightFactor.size(),false);
-      //// iterate over all edges covered by arcs and set to true
-      //for(INDEX m=0; m<msgs.size(); ++m) {
-      //   auto& msg = msgs[m].GetMessageOp();
-      //   // note: start_arc_ must be ordered
-      //   for(INDEX i=0; i<msg.size(); ++i) {
-      //      active_edges[msg.start_arc_+i] = true;
-      //   }
-      //}
-      //std::vector<REAL> repam = rightFactor.MaximallyPerturbCosts(rightRepam, active_edges);
-
-      // the technique applied in Max-Weight Bipartite Matching ... CVPR16
-      //for(INDEX i=0; i<msgs.size(); ++i, ++omegaIt) {
-      //for(; msg_begin != msg_end; ++msg_begin) {
-
-         //INDEX start_arc = msgs[i].GetMessageOp().start_arc_;
-         //INDEX no_arcs = msgs[i].GetMessageOp().no_arcs_;
-         //INDEX node = mcf->GetTailNodeId(start_arc);
-         //INDEX l_tmp=0;
-         //for(auto it = mcf->begin(node); it != mcf->end(node); ++it) {
-         //        const REAL delta = omega_sum*1.0/REAL(COVERING_FACTOR)*((*it)->GetRCost());
-         //        auto a = mcf->N_arc(*it);
-         //        //std::cout << "a = " << a << "\n";
-         //        msgs[i][l_tmp] -= delta;
-         //        //mcf->UpdateCost( a, -delta);
-         //        ++l_tmp;
-         //}
-
-         //for(INDEX l=0; l<(*msg_begin).GetMessageOp().edges_.size(); ++l) {
-            //const INDEX e = (*msg_begin).GetMessageOp().edges_[l];
-            //(*msg_begin)[l] -= omega_sum*1.0/REAL(COVERING_FACTOR)*(mcf->GetReducedCost(e) );  
-         //}
-      //}
+       throw std::runtime_error("message not implemented");
    }
 
    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
@@ -432,12 +357,6 @@ public:
             l.primal() = e;
          }
       }
-   }
-
-   template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-   void ComputeRightFromLeftPrimal(const LEFT_FACTOR& l, RIGHT_FACTOR& r)
-   {
-      assert(false);
    }
 
    template<typename LEFT_FACTOR>
@@ -482,5 +401,3 @@ private:
 };
 
 } // end namespace LPMP
-
-#endif // LPMP_MIN_COST_FLOW_FACTOR_CS2_HXX

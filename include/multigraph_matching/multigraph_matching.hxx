@@ -1,7 +1,6 @@
-#ifndef LPMP_MULTIGRAPH_MATCHING_H
-#define LPMP_MULTIGRAPH_MATCHING_H
+#pragma once
 
-#include "graph_matching.h"
+#include "graph_matching/graph_matching.h"
 #include "multigraph_matching_triplet_consistency_factor.h"
 #include "multigraph_matching_simplex_triplet_consistency_messages.h"
 #include "multigraph_matching_constructor.hxx"
@@ -174,5 +173,3 @@ struct FMC_MGM_Q_T { // factor message connection with tightening triplets for u
 };
 
 } // namespace LPMP
-
-#endif // LPMP_MULTIGRAPH_MATCHING_H

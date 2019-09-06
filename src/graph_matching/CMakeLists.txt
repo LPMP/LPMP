@@ -8,22 +8,18 @@ add_library(graph_matching_koopmans_beckmann_input graph_matching_koopmans_beckm
 target_link_libraries(graph_matching_koopmans_beckmann_input LPMP)
 
 SET(SOURCE_FILES
-   graph_matching_mp_left.cpp graph_matching_mp_right.cpp graph_matching_mp_both_sides.cpp 
-   graph_matching_mcf_left.cpp graph_matching_mcf_right.cpp graph_matching_mcf_both_sides.cpp 
-   graph_matching_gm_left.cpp graph_matching_gm_right.cpp 
-   #graph_matching_mp_uai.cpp graph_matching_mcf_uai.cpp graph_matching_gm_uai.cpp
-   graph_matching_hungarian_bp_left.cpp graph_matching_hungarian_bp_right.cpp graph_matching_hungarian_bp_both_sides.cpp 
-   #hungarian_bp_uai.cpp
+   graph_matching_mp.cpp 
+   graph_matching_gm.cpp 
+   graph_matching_hungarian_bp.cpp 
 
    # with frustrated cycle tightening
-   graph_matching_mp_left_tightening.cpp graph_matching_mp_right_tightening.cpp graph_matching_mp_both_sides_tightening.cpp 
-   graph_matching_mcf_left_tightening.cpp graph_matching_mcf_right_tightening.cpp graph_matching_mcf_both_sides_tightening.cpp 
-   graph_matching_gm_left_tightening.cpp graph_matching_gm_right_tightening.cpp 
-   #graph_matching_mp_uai_tightening.cpp graph_matching_mcf_uai_tightening.cpp graph_matching_gm_uai_tightening.cpp
-   graph_matching_hungarian_bp_left_tightening.cpp graph_matching_hungarian_bp_right_tightening.cpp graph_matching_hungarian_bp_both_sides_tightening.cpp 
-   #hungarian_bp_uai_tightening.cpp
+   graph_matching_mp_tightening.cpp
+   graph_matching_gm_tightening.cpp
+   graph_matching_hungarian_bp_tightening.cpp 
 
-   graph_matching_mp_both_sides_inter_quadratic_message graph_matching_mp_both_sides_inter_quadratic_message_tightening
+   # with inter-quadratic messages
+   graph_matching_mp_inter_quadratic_message 
+   graph_matching_mp_inter_quadratic_message_tightening
    )
 
 foreach( source_file ${SOURCE_FILES} )
@@ -34,9 +30,8 @@ endforeach( source_file ${SOURCE_FILES} )
 
 # with proximal bundle
 SET(PROXIMAL_BUNDLE_SOLVERS
-  graph_matching_mcf_proximal_bundle_left.cpp
-  graph_matching_gm_proximal_bundle_left.cpp 
-  #graph_matching_local_subproblems_proximal_bundle_left.cpp
+  graph_matching_mcf_proximal_bundle.cpp
+  graph_matching_gm_proximal_bundle.cpp 
   )
 
 foreach( source_file ${PROXIMAL_BUNDLE_SOLVERS} )

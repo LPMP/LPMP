@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graph_matching_constructor.hxx"
+#include "graph_matching/graph_matching_constructor.hxx"
 #include "multigraph_matching_input.h"
 #include <unordered_map>
 #include <memory>
@@ -259,6 +259,7 @@ public:
         primal_checking_triplets_arg_("", "primalCheckingTriplets", "number of triplet consistency factors to include during primal feasibility check", false, 0, &positiveIntegerConstraint_, s.get_cmd()),
         mcf_reparametrization_arg_("", "mcfReparametrization", "enable reparametrization by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
         mcf_primal_rounding_arg_("", "mcfRounding", "enable runding by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
+        graph_matching_construction_arg_("", "graphMatchingConstruction", "mode of constructing pairwise potentials for graph matching", false, "both_sides", "{left|right|both_sides}", s.get_cmd()),
         output_format_arg_("", "multigraphMatchingOutputFormat", "output format for multigraph matching", false, "matching", "{matching|clustering}", s.get_cmd()),
         primal_rounding_algorithms_arg_("", "multigraphMatchingRoundingMethod", "correlation clustering algorithms that are used for rounding a solution", false, "gaec_KL", "{gaec_KL|KL|MCF_KL|MCF_PS}", s.get_cmd())
         
@@ -334,11 +335,10 @@ public:
        }
     }
 
-    template<typename SOLVER>
-    GRAPH_MATCHING_CONSTRUCTOR* add_graph_matching_problem(const std::size_t p, const std::size_t q, SOLVER& s)
+    GRAPH_MATCHING_CONSTRUCTOR* add_graph_matching_problem(const std::size_t p, const std::size_t q, LP<FMC>* lp)
     {
         assert(!has_graph_matching_problem(p,q));
-        auto ptr = std::make_unique<GRAPH_MATCHING_CONSTRUCTOR>(s);
+        auto ptr = std::make_unique<GRAPH_MATCHING_CONSTRUCTOR>(lp, graph_matching_construction_arg_.getValue());
         auto* c = ptr.get();
         graph_matching_constructors.push_back(std::make_pair(graph_matching({p,q}), std::move(ptr))); 
         graph_matching_constructors_map.insert(std::make_pair(graph_matching({p,q}), c)); 
@@ -999,6 +999,7 @@ private:
     TCLAP::ValueArg<std::size_t> primal_checking_triplets_arg_; // no triplets to include during primal checking 
     TCLAP::SwitchArg mcf_reparametrization_arg_; // TODO: this should be part of graph matching constructor
     TCLAP::SwitchArg mcf_primal_rounding_arg_; // TODO: this should be part of graph matching constructor as well
+    TCLAP::ValueArg<std::string> graph_matching_construction_arg_; // same as construction_arg_ in the graph matching constructor
     mutable TCLAP::ValueArg<std::string> output_format_arg_; // mutable should not be necessary, but TCLAP's getValue is not const.
     TCLAP::ValueArg<std::string> primal_rounding_algorithms_arg_; // which multicut algorithms to run on
 

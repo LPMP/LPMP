@@ -17,13 +17,15 @@ public:
     graph_matching_mrf_constructor(SOLVER& solver)
         : lp_(&solver.GetLP()),
         left_mrf(solver),
-        right_mrf(solver) 
+        right_mrf(solver),
+        construction_arg_("", "graphMatchingConstruction", "mode of constructing pairwise potentials for graph matching", false, "left", "{left|right|both_sides}", solver.get_cmd())
     {}
 
-    graph_matching_mrf_constructor(LP<FMC>* lp)
+    graph_matching_mrf_constructor(LP<FMC>* lp, const std::string& construction_method)
         : lp_(lp),
         left_mrf(lp),
-        right_mrf(lp)
+        right_mrf(lp),
+        construction_arg_("", "", "", false, construction_method, "")
     {}
 
     void order_factors()
@@ -341,17 +343,29 @@ protected:
        construct_empty_unary_factors(left_mrf, graph_);
        construct_empty_unary_factors(right_mrf, inverse_graph_);
 
+       const auto [left_weight, right_weight] = [&]() -> std::array<double,2> {
+           if(construction_arg_.getValue() == "left") {
+               return {1.0, 0.0};
+           } else if(construction_arg_.getValue() == "right") {
+               return {0.0, 1.0};
+           } else if(construction_arg_.getValue() == "both_sides") {
+               return {0.5, 0.5};
+           } else {
+               throw std::runtime_error("graphMatchingConstruction argument not recognized");
+           }
+       }();
+
        for(const auto& a : input.assignments) {
            const std::size_t left_index = get_left_index(a.left_node, a.right_node);
            const std::size_t right_index = get_right_index(a.right_node, a.left_node);
 
            auto* left_factor = left_mrf.get_unary_factor(a.left_node);
            assert((*left_factor->get_factor())[left_index] == 0.0);
-           (*left_factor->get_factor())[left_index] = 0.5*a.cost;
+           (*left_factor->get_factor())[left_index] = left_weight*a.cost;
 
            auto* right_factor = right_mrf.get_unary_factor(a.right_node);
            assert((*right_factor->get_factor())[right_index] == 0.0);
-           (*right_factor->get_factor())[right_index] = 0.5*a.cost;
+           (*right_factor->get_factor())[right_index] = right_weight*a.cost;
        }
    }
 
@@ -405,8 +419,16 @@ protected:
    }
    void construct_pairwise_factors(const graph_matching_input& input)
    {
-       construct_pairwise_factors<Chirality::left>(left_mrf, 0.5, graph_, input);
-       construct_pairwise_factors<Chirality::right>(right_mrf, 0.5, inverse_graph_, input);
+       if(construction_arg_.getValue() == "left") {
+           construct_pairwise_factors<Chirality::left>(left_mrf, 1.0, graph_, input);
+       } else if(construction_arg_.getValue() == "right") {
+           construct_pairwise_factors<Chirality::right>(right_mrf, 1.0, inverse_graph_, input);
+       } else if(construction_arg_.getValue() == "both_sides") {
+           construct_pairwise_factors<Chirality::left>(left_mrf, 0.5, graph_, input);
+           construct_pairwise_factors<Chirality::right>(right_mrf, 0.5, inverse_graph_, input);
+       } else {
+           throw std::runtime_error("graphMatchingConstruction argument not recognized");
+       }
    }
 
     void read_in_mcf_costs()
@@ -479,6 +501,9 @@ public:
 
    using mcf_solver_type = MCF::SSP<long,REAL>;
    std::unique_ptr<mcf_solver_type> mcf_;
+
+private:
+    TCLAP::ValueArg<std::string> construction_arg_;
 
 protected: 
    // TODO: remove and change mcf construction in mcf solver
@@ -600,7 +625,10 @@ public:
     using FMC = typename GRAPH_MATCHING_CONSTRUCTOR::FMC;
     using inter_quadratic_message_container = INTER_QUADRATIC_MESSAGE_CONTAINER;
 
-    using GRAPH_MATCHING_CONSTRUCTOR::GRAPH_MATCHING_CONSTRUCTOR;
+    template<typename SOLVER>
+        graph_matching_inter_quadratic_message_constructor(SOLVER& s)
+        : GRAPH_MATCHING_CONSTRUCTOR(&s.GetLP(), "both_sides")
+        {}
 
     template<typename PAIRWISE_FACTOR, typename INDICES_ITERATOR>
     inter_quadratic_message_container* add_inter_quadratic_message(PAIRWISE_FACTOR* l, PAIRWISE_FACTOR* r, 

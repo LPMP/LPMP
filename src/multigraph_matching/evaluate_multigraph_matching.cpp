@@ -1,5 +1,5 @@
 #include <iostream>
-#include "graph_matching/multigraph_matching_input.h"
+#include "multigraph_matching/multigraph_matching_input.h"
 
 using namespace LPMP;
 
