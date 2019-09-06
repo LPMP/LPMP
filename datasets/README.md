@@ -65,6 +65,8 @@ by Kainmueller et al, [corresponding publication](http://dx.doi.org/10.1007/978-
 
 * [cars and motor dataset](https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/car_motor_graph_matching.zip) by M. Leordeanu and M. Hebert, [corresponding publication](https://ieeexplore.ieee.org/document/5206533/).
 
+* [hotel and house dataset](https://datasets.d2.mpi-inf.mpg.de/discrete_cv_problems/graph_matching_hotel_house.zip) by     L. Torresani, V. Kolmogorov and C. Rother, [corresponding publication](https://ieeexplore.ieee.org/document/6197199).
+
 ---
 
 ## Multi-graph matching
