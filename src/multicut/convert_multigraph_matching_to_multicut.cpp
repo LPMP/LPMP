@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include "multicut/transform_multigraph_matching.h"
-#include "graph_matching/multigraph_matching_input.h"
+#include "multigraph_matching/multigraph_matching_input.h"
 #include "multicut/transform_multigraph_matching.h"
 #include "multicut/correlation_clustering_instance.h"
 

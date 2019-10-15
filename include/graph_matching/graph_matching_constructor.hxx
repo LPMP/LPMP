@@ -630,6 +630,10 @@ public:
         : GRAPH_MATCHING_CONSTRUCTOR(&s.GetLP(), "both_sides")
         {}
 
+        graph_matching_inter_quadratic_message_constructor(LP<FMC>* lp, const std::string& construction_method)
+        : GRAPH_MATCHING_CONSTRUCTOR(lp, construction_method)
+        {}
+
     template<typename PAIRWISE_FACTOR, typename INDICES_ITERATOR>
     inter_quadratic_message_container* add_inter_quadratic_message(PAIRWISE_FACTOR* l, PAIRWISE_FACTOR* r, 
           INDICES_ITERATOR left_indices_begin, INDICES_ITERATOR left_indices_end,
