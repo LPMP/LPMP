@@ -1,10 +1,10 @@
 #pragma once
 
-#include "graph_matching.h"
 #include "mrf/mrf_problem_construction.hxx"
 #include "min_cost_flow_factor_ssp.hxx"
 #include "tree_decomposition.hxx"
 #include "graph_matching_input.h"
+#include "graph_matching_frank_wolfe.h"
 
 namespace LPMP {
 
@@ -18,14 +18,16 @@ public:
         : lp_(&solver.GetLP()),
         left_mrf(solver),
         right_mrf(solver),
-        construction_arg_("", "graphMatchingConstruction", "mode of constructing pairwise potentials for graph matching", false, "left", "{left|right|both_sides}", solver.get_cmd())
+        construction_arg_("", "graphMatchingConstruction", "mode of constructing pairwise potentials for graph matching", false, "left", "{left|right|both_sides}", solver.get_cmd()),
+        rounding_arg_("", "graphMatchingRounding", "method for graph matching rounding", false, "mcf", "{mcf/fw}", solver.get_cmd())
     {}
 
-    graph_matching_mrf_constructor(LP<FMC>* lp, const std::string& construction_method)
+    graph_matching_mrf_constructor(LP<FMC>* lp, const std::string& construction_method, const std::string& rounding_method)
         : lp_(lp),
         left_mrf(lp),
         right_mrf(lp),
-        construction_arg_("", "", "", false, construction_method, "")
+        construction_arg_("", "", "", false, construction_method, ""),
+        rounding_arg_("", "", "", false, rounding_method, "")
     {}
 
     void order_factors()
@@ -72,7 +74,21 @@ public:
     void ComputePrimal()
     {
        send_messages_to_unaries();
-       auto l = compute_primal_mcf_solution();
+       const auto l = [&]() {
+       if(rounding_arg_.getValue() == "mcf") {
+           return compute_primal_mcf_solution();
+       } else if(rounding_arg_.getValue() == "fw") {
+           // check if pairwise potentials are sparse or not
+           const graph_matching_input input = export_graph_matching_input();
+           const graph_matching_input::labeling labeling = compute_primal_mcf_solution();
+           graph_matching_frank_wolfe gm_fw(input, labeling);
+           const auto& l = gm_fw.solve();
+           assert(input.evaluate(l) < std::numeric_limits<double>::infinity());
+           return l;
+       } else {
+           throw std::runtime_error("rounding method not recognized.");
+       }
+       }();
        read_in_labeling(l);
     }
 
@@ -80,11 +96,11 @@ public:
     {
         if(debug()) std::cout << "check graph matching assignment\n";
 
-        std::vector<bool> labels_taken(inverse_graph_.size(),false);
+        std::vector<char> labels_taken(inverse_graph_.size(),false);
         for(std::size_t i=0; i<left_mrf.get_number_of_variables(); ++i) {
             const auto state = left_mrf.get_unary_factor(i)->get_factor()->primal();
             if(state < graph_[i].size()) {
-                const auto label = graph_[i][state];
+                const std::size_t label = graph_[i][state];
                 if(labels_taken[label]) { 
                     if(debug())
                        std::cout << "var " << i << ", state " << state << ", label " << label << " conflict\n";
@@ -194,32 +210,121 @@ public:
        return labeling;
     }
 
-    graph_matching_input export_graph_matching_input(const bool include_quadratic = true) const
+    graph_matching_input export_graph_matching_input() const
     {
        if(debug())
           std::cout << "export linear assignment problem solution based on current reparametrization to graph matching problem\n";
-       assert(include_quadratic == false);
-       graph_matching_input output;
+       graph_matching_input instance;
 
        const std::size_t no_left_nodes = left_mrf.get_number_of_variables();
        const std::size_t no_right_nodes = right_mrf.get_number_of_variables();
 
+       instance.add_to_constant(left_mrf.get_lp()->get_constant());
+
+       // linear terms
        for(std::size_t i=0; i<no_left_nodes; ++i) {
           auto& u = *left_mrf.get_unary_factor(i)->get_factor();
           for(std::size_t l=0; l<u.size()-1; ++l) {
-             output.add_assignment(i, graph_[i][l], u[l] - u.back());
+             instance.add_assignment(i, graph_[i][l], u[l]); // - u.back());
           }
+          instance.add_assignment(i, graph_matching_input::no_assignment, u.back()); // non-assignment
        }
 
        for(std::size_t i=0; i<no_right_nodes; ++i) {
           auto& u = *right_mrf.get_unary_factor(i)->get_factor();
           for(std::size_t l=0; l<u.size()-1; ++l) {
-             output.add_assignment(inverse_graph_[i][l], i, u[l] - u.back());
+             instance.add_assignment(inverse_graph_[i][l], i, u[l]); // - u.back());
           }
+          instance.add_assignment(graph_matching_input::no_assignment, i, u.back()); // non-assignment
        }
 
-       output.normalize(); // merge parallel edges
-       return output;
+       instance.normalize(); // merge parallel edges
+
+       std::unordered_map<std::array<std::size_t,2>, std::size_t> assignment_nr;
+       for(std::size_t idx=0; idx<instance.assignments.size(); ++idx) {
+           const auto& a = instance.assignments[idx];
+           assignment_nr.insert({{a.left_node, a.right_node}, idx});
+       }
+       std::cout << "no assignments = " << assignment_nr.size() << "\n";
+
+       // quadratic terms
+       std::cout << "nr left pairwise factors = " << left_mrf.get_number_of_pairwise_factors() << "\n";
+       for(std::size_t pairwise_idx=0; pairwise_idx<left_mrf.get_number_of_pairwise_factors(); ++pairwise_idx) {
+           const auto [i,j] = left_mrf.get_pairwise_variables(pairwise_idx);
+           const auto& pot = *left_mrf.get_pairwise_factor(pairwise_idx)->get_factor();
+           assert(pot.dim1() == left_mrf.get_number_of_labels(i) && pot.dim1() == graph_[i].size()+1);
+           assert(pot.dim2() == left_mrf.get_number_of_labels(j) && pot.dim2() == graph_[j].size()+1);
+           for(std::size_t l_i=0; l_i+1<pot.dim1(); ++l_i) {
+               assert(assignment_nr.count({i, graph_[i][l_i]}) > 0);
+               const std::size_t a1 = assignment_nr.find({i, graph_[i][l_i]})->second;
+               for(std::size_t l_j=0; l_j+1<pot.dim2(); ++l_j) {
+                   if(graph_[i][l_i] != graph_[j][l_j]) {
+                       if(std::abs(pot(l_i,l_j)) >= 1e-8) {
+                           assert(assignment_nr.count({j, graph_[j][l_j]}) > 0);
+                           const std::size_t a2 = assignment_nr.find({j, graph_[j][l_j]})->second;
+                           instance.add_quadratic_term(a1, a2, pot(l_i,l_j)); 
+                       }
+                   } else {
+                       assert(pot(l_i,l_j) == std::numeric_limits<double>::infinity());
+                   }
+               }
+           }
+
+           const std::size_t i_non_assignment = assignment_nr.find({i, graph_matching_input::no_assignment})->second;
+           const std::size_t j_non_assignment = assignment_nr.find({j, graph_matching_input::no_assignment})->second;
+
+           for(std::size_t l_i=0; l_i+1<pot.dim1(); ++l_i) {
+               const std::size_t a1 = assignment_nr.find({i, graph_[i][l_i]})->second;
+               instance.add_quadratic_term(a1, j_non_assignment, pot(l_i, pot.dim2()-1)); 
+           }
+           for(std::size_t l_j=0; l_j+1<pot.dim2(); ++l_j) {
+               const std::size_t a2 = assignment_nr.find({j, graph_[j][l_j]})->second;
+               instance.add_quadratic_term(i_non_assignment, a2, pot(pot.dim1()-1, l_j)); 
+           }
+
+           instance.add_quadratic_term(i_non_assignment, j_non_assignment, pot(pot.dim1()-1, pot.dim2()-1));
+       }
+
+       std::cout << "nr right pairwise factors = " << right_mrf.get_number_of_pairwise_factors() << "\n";
+       for(std::size_t pairwise_idx=0; pairwise_idx<right_mrf.get_number_of_pairwise_factors(); ++pairwise_idx) {
+           const auto [i,j] = right_mrf.get_pairwise_variables(pairwise_idx);
+           const auto& pot = *right_mrf.get_pairwise_factor(pairwise_idx)->get_factor();
+           assert(pot.dim1() == right_mrf.get_number_of_labels(i) && pot.dim1() == inverse_graph_[i].size()+1);
+           assert(pot.dim2() == right_mrf.get_number_of_labels(j) && pot.dim2() == inverse_graph_[j].size()+1);
+           for(std::size_t l_i=0; l_i+1<pot.dim1(); ++l_i) {
+               assert(assignment_nr.count({inverse_graph_[i][l_i], i}) > 0);
+               const std::size_t a1 = assignment_nr.find({inverse_graph_[i][l_i], i})->second;
+               for(std::size_t l_j=0; l_j+1<pot.dim2(); ++l_j) {
+                   if(inverse_graph_[i][l_i] != inverse_graph_[j][l_j]) {
+                       if(std::abs(pot(l_i,l_j)) >= 1e-8) {
+                           assert(assignment_nr.count({inverse_graph_[j][l_j], j}) > 0);
+                           const std::size_t a2 = assignment_nr.find({inverse_graph_[j][l_j], j})->second;
+                           instance.add_quadratic_term(a1, a2, pot(l_i,l_j)); 
+                       }
+                   } else {
+                       assert(pot(l_i,l_j) == std::numeric_limits<double>::infinity());
+                   }
+               }
+           }
+
+           const std::size_t i_non_assignment = assignment_nr.find({graph_matching_input::no_assignment, i})->second;
+           const std::size_t j_non_assignment = assignment_nr.find({graph_matching_input::no_assignment, j})->second;
+
+           for(std::size_t l_i=0; l_i+1<pot.dim1(); ++l_i) {
+               const std::size_t a1 = assignment_nr.find({inverse_graph_[i][l_i], i})->second;
+               instance.add_quadratic_term(a1, j_non_assignment, pot(l_i, pot.dim2()-1)); 
+           }
+           for(std::size_t l_j=0; l_j+1<pot.dim2(); ++l_j) {
+               const std::size_t a2 = assignment_nr.find({inverse_graph_[j][l_j], j})->second;
+               instance.add_quadratic_term(i_non_assignment, a2, pot(pot.dim1()-1, l_j)); 
+           }
+
+           instance.add_quadratic_term(i_non_assignment, j_non_assignment, pot(pot.dim1()-1, pot.dim2()-1));
+       }
+
+       //instance.normalize_quadratic_terms();
+
+       return instance;
     }
 
     void read_in_labeling(const linear_assignment_problem_input::labeling& l)
@@ -227,6 +332,8 @@ public:
        assert(l.check_primal_consistency());
        if(l.size() != no_left_nodes())
           throw std::runtime_error("labeling has different number of entries than graph matching problem.");
+       if(l.highest_matched_node() > no_right_nodes())
+          throw std::runtime_error("labeling has more right nodes than model.");
 
        for(std::size_t i=0; i<no_left_nodes(); ++i) {
           auto* left_factor = left_mrf.get_unary_factor(i)->get_factor();
@@ -255,6 +362,7 @@ public:
        for(std::size_t i=0; i<no_right_nodes(); ++i)
           right_mrf.get_unary_factor(i)->propagate_primal_through_messages(); 
 
+       assert(l == write_out_labeling());
        assert(CheckPrimalConsistency());
     }
 
@@ -504,6 +612,7 @@ public:
 
 private:
     TCLAP::ValueArg<std::string> construction_arg_;
+    TCLAP::ValueArg<std::string> rounding_arg_;
 
 protected: 
    // TODO: remove and change mcf construction in mcf solver
@@ -625,14 +734,18 @@ public:
     using FMC = typename GRAPH_MATCHING_CONSTRUCTOR::FMC;
     using inter_quadratic_message_container = INTER_QUADRATIC_MESSAGE_CONTAINER;
 
+    using GRAPH_MATCHING_CONSTRUCTOR::GRAPH_MATCHING_CONSTRUCTOR;
+    /*
     template<typename SOLVER>
         graph_matching_inter_quadratic_message_constructor(SOLVER& s)
-        : GRAPH_MATCHING_CONSTRUCTOR(&s.GetLP(), "both_sides")
+        //: GRAPH_MATCHING_CONSTRUCTOR(&s.GetLP(), "both_sides", "mcf")
+        : GRAPH_MATCHING_CONSTRUCTOR(s)
         {}
 
         graph_matching_inter_quadratic_message_constructor(LP<FMC>* lp, const std::string& construction_method)
         : GRAPH_MATCHING_CONSTRUCTOR(lp, construction_method)
         {}
+        */
 
     template<typename PAIRWISE_FACTOR, typename INDICES_ITERATOR>
     inter_quadratic_message_container* add_inter_quadratic_message(PAIRWISE_FACTOR* l, PAIRWISE_FACTOR* r, 

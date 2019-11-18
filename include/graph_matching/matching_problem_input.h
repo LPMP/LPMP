@@ -11,17 +11,25 @@
 #include "union_find.hxx"
 #include <iostream>
 
-// TODO: split into header and cpp file
+// TODO: 
+//      - split into header and cpp file and rename to graph_matching_instance.{h|cpp}
+//      - rename input to instance
+//      - make inner labeling class to standalone class
 
 namespace LPMP {
 
 struct linear_assignment_problem_input {
 
+    constexpr static std::size_t no_assignment = std::numeric_limits<std::size_t>::max();
+
    void add_assignment(const std::size_t left_node, const std::size_t right_node, const double cost)
    {
-     assignments.push_back({left_node, right_node, cost}); 
-     no_left_nodes = std::max(no_left_nodes, left_node+1);
-     no_right_nodes = std::max(no_right_nodes, right_node+1);
+       assert(left_node != no_assignment || right_node != no_assignment);
+       assignments.push_back({left_node, right_node, cost}); 
+       if(left_node != no_assignment)
+           no_left_nodes = std::max(no_left_nodes, left_node+1);
+       if(right_node != no_assignment)
+           no_right_nodes = std::max(no_right_nodes, right_node+1);
    }
 
    struct assignment {
@@ -30,6 +38,7 @@ struct linear_assignment_problem_input {
       double cost;
    };
    std::vector<assignment> assignments;
+   double constant_ = 0.0;
 
    std::size_t no_left_nodes = 0;
    std::size_t no_right_nodes = 0; 
@@ -37,34 +46,46 @@ struct linear_assignment_problem_input {
    std::size_t no_mcf_nodes() const { return no_left_nodes + no_right_nodes + 2; } 
    std::size_t no_mcf_edges() const { return assignments.size() + no_left_nodes + no_right_nodes + 1; }
 
+   void add_to_constant(const double x) { constant_ += x; }
+   double get_constant() const { return constant_; }
+
    template<typename MCF>
    void initialize_mcf(MCF& mcf, const double scaling = 1.0) const
    {
-      const std::size_t no_nodes = no_left_nodes + no_right_nodes;
-      const std::size_t no_mcf_nodes = no_left_nodes + no_right_nodes + 2;
-      const std::size_t no_mcf_edges = assignments.size() + no_left_nodes + no_right_nodes + 1;
+       const std::size_t no_nodes = no_left_nodes + no_right_nodes;
+       const std::size_t no_mcf_nodes = no_left_nodes + no_right_nodes + 2;
+       const std::size_t no_mcf_edges = assignments.size() + no_left_nodes + no_right_nodes + 1;
 
        mcf = MCF(no_mcf_nodes, no_mcf_edges);
 
-      for(const auto a : assignments)
-         mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling*a.cost);
+       std::vector<std::size_t> non_assignment_left(no_left_nodes);
+       for(std::size_t i=0; i<no_left_nodes; ++i) {
+           non_assignment_left[i] = mcf.add_edge(i, no_nodes+1, 0, 1, 0.0); // for non-assignment
+           mcf.add_node_excess(i, 1);
+       }
 
-      for(std::size_t i=0; i<no_left_nodes; ++i) {
-         mcf.add_edge(i, no_nodes+1, 0, 1, 0.0); // for non-assignment
-         mcf.add_node_excess(i, 1);
-      }
+       std::vector<std::size_t> non_assignment_right(no_right_nodes);
+       for(std::size_t i=0; i<no_right_nodes; ++i) {
+           non_assignment_right[i] = mcf.add_edge(no_nodes, no_left_nodes + i, 0, 1, 0.0); // for non-assignment
+           mcf.add_node_excess(no_left_nodes + i, -1);
+       }
 
-      for(std::size_t i=0; i<no_right_nodes; ++i) {
-         mcf.add_edge(no_nodes, no_left_nodes + i, 0, 1, 0.0); // for non-assignment
-         mcf.add_node_excess(no_left_nodes + i, -1);
-      }
+       mcf.add_edge(no_nodes, no_nodes + 1, 0, no_nodes, 0.0);
+       mcf.add_node_excess(no_nodes, no_right_nodes);
+       mcf.add_node_excess(no_nodes+1, -no_left_nodes);
 
-      mcf.add_edge(no_nodes, no_nodes + 1, 0, no_nodes, 0.0);
-      mcf.add_node_excess(no_nodes, no_right_nodes);
-      mcf.add_node_excess(no_nodes+1, -no_left_nodes);
+       for(const auto a : assignments) {
+           if(a.left_node == no_assignment) {
+               mcf.update_cost(non_assignment_right[a.right_node], scaling*a.cost);
+           } else if(a.right_node == no_assignment) {
+               mcf.update_cost(non_assignment_left[a.left_node], scaling*a.cost);
+           } else {
+               mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling*a.cost);
+           }
+       } 
 
-      mcf.order();
-      mcf.solve();
+       mcf.order();
+       mcf.solve();
    }
 
    void normalize()
@@ -98,6 +119,7 @@ struct linear_assignment_problem_input {
       template<typename MATRIX>
       labeling(const MATRIX& m)
       {
+          assert(false); // shall last entry in each row/column denote non-assignment?
          // check that each row and columns has at most one 1 entry
          std::cout << m << "\n";
          for(std::size_t i=0; i<m.cols(); ++i) {
@@ -106,10 +128,10 @@ struct linear_assignment_problem_input {
             }
          }
          for(std::size_t i=0; i<m.cols(); ++i) {
-            assert(m.col(i).sum() <= 1);
+            assert(m.col(i).sum() == 1);
          }
          for(std::size_t j=0; j<m.rows(); ++j) {
-            assert(m.row(j).sum() <= 1);
+            assert(m.row(j).sum() == 1);
          }
          this->resize(m.cols(), std::numeric_limits<std::size_t>::max());
          for(std::size_t i=0; i<m.cols(); ++i) {
@@ -127,7 +149,7 @@ struct linear_assignment_problem_input {
       void WritePrimal(STREAM& s) const
       {
          for(std::size_t i=0; i<this->size(); ++i) {
-            if((*this)[i] != std::numeric_limits<std::size_t>::max())
+            if((*this)[i] != no_assignment)
                s << i << " -> " << (*this)[i] << "\n";
             else
                s << i << " not matched\n";
@@ -138,7 +160,7 @@ struct linear_assignment_problem_input {
       {
          std::vector<char> labels_taken(this->highest_matched_node()+1, 0);
          for(const std::size_t l : *this) {
-            if(l == std::numeric_limits<std::size_t>::max())
+            if(l == no_assignment)
                continue;
             if(labels_taken[l] > 0)
                return false;
@@ -153,7 +175,7 @@ struct linear_assignment_problem_input {
       {
          std::size_t max_label = 0;
          for(std::size_t i=0; i<this->size(); ++i)
-            if((*this)[i] != std::numeric_limits<std::size_t>::max())
+            if((*this)[i] != no_assignment)
                max_label = std::max(max_label, (*this)[i]);
          return max_label;
       }
@@ -166,19 +188,39 @@ struct linear_assignment_problem_input {
       if(l.no_left_nodes() != no_left_nodes)
          throw std::runtime_error("labeling must have equal number of left nodes as matching problem.");
 
-      double cost = 0.0;
+      double cost = constant_;
 
-      std::vector<std::size_t> nodes_taken(no_right_nodes,0);
-      for(const auto& a : assignments) {
-         if(l[a.left_node] == a.right_node) {
-            cost += a.cost;
-            assert(a.left_node < nodes_taken.size());
-            nodes_taken[a.left_node]++;
-         }
+      std::vector<char> left_node_assigned(no_left_nodes,0);
+      std::vector<char> right_node_assigned(no_right_nodes,0);
+      for(std::size_t i=0; i<l.size(); ++i) {
+          if(l[i] != no_assignment) {
+              assert(l[i] < no_right_nodes);
+              if(left_node_assigned[i] == 1)
+                  return std::numeric_limits<double>::infinity();
+              left_node_assigned[i] = 1;
+
+              if(right_node_assigned[l[i]] == 1)
+                  return std::numeric_limits<double>::infinity();
+              right_node_assigned[l[i]] = 1;
+          }
       }
 
-      if(*std::max_element(nodes_taken.begin(), nodes_taken.end()) > 1)
-         return std::numeric_limits<double>::infinity();
+      for(const auto& a : assignments) {
+          if(a.left_node != no_assignment && a.right_node != no_assignment) {
+              if(l[a.left_node] == a.right_node)
+                  cost += a.cost; 
+          } else if(a.left_node == no_assignment) {
+              assert(a.right_node != no_assignment);
+              if(right_node_assigned[a.right_node] == 0)
+                  cost += a.cost; 
+          } else if(a.right_node == no_assignment) {
+              assert(a.left_node != no_assignment);
+              if(left_node_assigned[a.left_node] == 0)
+                  cost += a.cost; 
+          } else {
+              assert(false);
+          }
+      }
 
       return cost;
    }
@@ -186,12 +228,33 @@ struct linear_assignment_problem_input {
 };
 
 struct graph_matching_input : public linear_assignment_problem_input {
-   using labeling = linear_assignment_problem_input::labeling;
+
+    graph_matching_input() {}
+
+    graph_matching_input(const linear_assignment_problem_input& instance)
+        : linear_assignment_problem_input(instance) {}
+
+    using labeling = linear_assignment_problem_input::labeling;
+
     struct quadratic {
         std::size_t assignment_1, assignment_2;
         double cost;
+        bool operator<(const quadratic& o) const 
+        {
+            if(assignment_1 != o.assignment_1) return assignment_1 < o.assignment_1;
+            else return assignment_2 < o.assignment_2;
+        } 
     };
     std::vector<quadratic> quadratic_terms;
+
+    void add_quadratic_term(const std::size_t assignment_1, const std::size_t assignment_2, const double cost)
+    {
+        assert(assignment_1 != assignment_2);
+        assert(std::max(assignment_1, assignment_2) < this->assignments.size());
+        const std::size_t a1 = std::min(assignment_1, assignment_2);
+        const std::size_t a2 = std::max(assignment_1, assignment_2);
+        quadratic_terms.push_back({a1, a2, cost});
+    }
 
     double evaluate(const labeling& l) const
     {
@@ -204,14 +267,32 @@ struct graph_matching_input : public linear_assignment_problem_input {
        }
        return cost;
     }
+
+    void normalize_quadratic_terms()
+    {
+        std::sort(quadratic_terms.begin(), quadratic_terms.end());
+
+        std::vector<quadratic> normalized_quadratic_terms; 
+
+        // merge matching copies and add them to normalized vector
+        for(std::size_t k=0; k<quadratic_terms.size();) {
+            normalized_quadratic_terms.push_back(quadratic_terms[k]);
+            ++k; 
+            while(k<quadratic_terms.size() && normalized_quadratic_terms.back().assignment_1 == quadratic_terms[k].assignment_1 && normalized_quadratic_terms.back().assignment_2 == quadratic_terms[k].assignment_2) {
+                normalized_quadratic_terms.back().cost += quadratic_terms[k].cost;
+                ++k; 
+            }
+        }
+
+        std::cout << "#terms before normalization = " << quadratic_terms.size() << ", after normalization = " << normalized_quadratic_terms.size() << "\n";
+        std::swap(normalized_quadratic_terms, quadratic_terms); 
+    }
 };
 
 struct multigraph_matching_input_entry {
     std::size_t left_graph_no, right_graph_no;
     graph_matching_input gm_input;
-
-};
-
+}; 
 
 struct multigraph_matching_input : public std::vector<multigraph_matching_input_entry> {
 
@@ -304,6 +385,7 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
       template<typename MATRIX>
       labeling(const MATRIX& m, const graph_size& mgm_size)
       {
+          assert(false); // add treatment of non-assignment. Which matrix format should we take?
          assert(m.cols() == m.rows());
          //for(std::size_t i=0; i<m.cols(); ++i) {
          //   assert(m(i,i) == 1);

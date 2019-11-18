@@ -11,29 +11,29 @@ namespace LPMP {
 class EqualityMessage 
 {
 public:
-   EqualityMessage(const INDEX lV, const INDEX rV)
+   EqualityMessage(const std::size_t lV, const std::size_t rV)
       : leftVar_(lV), rightVar_(rV)
    {}
 
    template<typename G1, typename G2>
-   void send_message_to_left(const G1& rightPot, G2& msg, const REAL omega)
+   void send_message_to_left(const G1& rightPot, G2& msg, const double omega)
    {
       MakeFactorUniform(rightPot, msg, rightVar_, omega);
    }
    template<typename G1, typename G2>
-   void send_message_to_right(const G1& leftPot, G2& msg, const REAL omega)
+   void send_message_to_right(const G1& leftPot, G2& msg, const double omega)
    {
       MakeFactorUniform(leftPot, msg, leftVar_, omega);
    }
 
    template<typename REPAM_ARRAY, typename MSG>
-   void MakeFactorUniform(const REPAM_ARRAY& repamPot, MSG& msg, const INDEX var_idx, const REAL omega = 1.0)
+   void MakeFactorUniform(const REPAM_ARRAY& repamPot, MSG& msg, const std::size_t var_idx, const double omega = 1.0)
    {
       assert(var_idx < repamPot.size());
 
       // possibly do it differently: search for two second smallest entries and then select first or second one depending upon whether it is rightVar_ or not. Faster?
-      REAL min_val = std::numeric_limits<REAL>::max();
-      for(INDEX i=0; i<repamPot.size(); ++i) {
+      double min_val = std::numeric_limits<double>::max();
+      for(std::size_t i=0; i<repamPot.size(); ++i) {
          if(i!=var_idx) {
             min_val = std::min(min_val, repamPot[i]);
          }
@@ -48,11 +48,11 @@ public:
       if(r.primal() == rightVar_) {
          for(std::size_t i=0; i<l.size(); ++i) {
             if(i != leftVar_) {
-               l[i] = std::numeric_limits<REAL>::infinity();
+               l[i] = std::numeric_limits<double>::infinity();
             }
          }
       } else if(r.primal() < r.size()) {
-         l[leftVar_] = std::numeric_limits<REAL>::infinity();
+         l[leftVar_] = std::numeric_limits<double>::infinity();
       } else {
          //MakeFactorUniform(r, msg, rightVar_);
       }
@@ -64,11 +64,11 @@ public:
       if(l.primal() == leftVar_) {
          for(std::size_t i=0; i<r.size(); ++i) {
             if(i != rightVar_) {
-               r[i] = std::numeric_limits<REAL>::infinity();
+               r[i] = std::numeric_limits<double>::infinity();
             }
          }
       } else if(l.primal() < l.size()) {
-         r[rightVar_] = std::numeric_limits<REAL>::infinity();
+         r[rightVar_] = std::numeric_limits<double>::infinity();
       } else {
          //MakeFactorUniform(l, msg, leftVar_);
       } 
@@ -86,30 +86,30 @@ public:
 
    // for sending multiple messages at once: makes factor uniform by sending all messages at once
    template<typename VAR_ACCESS_OP, typename MSG_ARRAY, typename RIGHT_REPAM>
-   static void MakeFactorUniformParallel(VAR_ACCESS_OP var_access_op, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const RIGHT_REPAM& repam, const REAL omega)
+   static void MakeFactorUniformParallel(VAR_ACCESS_OP var_access_op, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const RIGHT_REPAM& repam, const double omega)
    {
       //assert(msgs.size() >= 2); // otherwise calling this method makes no sense, but it can happen for some trivial problems.
       //assert(msgs.size() <= repam.size());
       //assert(msgs.size() == repam.size()-1); // special case of one edge is not assignment in QAP or cosegmentation. For now. Only for hotel and house
-      INDEX size = 0;
+      std::size_t size = 0;
       for(auto it= msg_begin; it!=msg_end; ++it) ++size;
 
       assert(omega <= 1.0 + eps);
 
       // find minimal value of potential over all indices accessed by messages
-      REAL min_val_covered = std::numeric_limits<REAL>::max();
-      //for(INDEX msg_idx=0; msg_idx<msgs.size(); ++msg_idx) {
+      double min_val_covered = std::numeric_limits<double>::max();
+      //for(std::size_t msg_idx=0; msg_idx<msgs.size(); ++msg_idx) {
       for(auto it= msg_begin; it!=msg_end; ++it) {
-         const INDEX var_idx = var_access_op((*it).GetMessageOp());
+         const std::size_t var_idx = var_access_op((*it).GetMessageOp());
          //assert(var_idx != repam.size()-1); // this is only valied for assignment problems from house and hotel
          //std::cout << "leftVar = " << leftVar << "\n";
          min_val_covered = std::min(min_val_covered, repam[var_idx]);
       }
 
-      REAL min_val = std::numeric_limits<REAL>::infinity();
-      REAL second_min_val = std::numeric_limits<REAL>::infinity();
-      for(INDEX i=0; i<repam.size(); ++i) {
-         const REAL cur_val = repam[i];
+      double min_val = std::numeric_limits<double>::infinity();
+      double second_min_val = std::numeric_limits<double>::infinity();
+      for(std::size_t i=0; i<repam.size(); ++i) {
+         const double cur_val = repam[i];
          //std::cout << "cur_val = " << cur_val << "\n";
          if(min_val >= cur_val) { // if two values are equally small, second_min_val should be the lowest value, too
             second_min_val = min_val;
@@ -118,54 +118,55 @@ public:
             second_min_val = cur_val;
          }
       }
-      //assert(std::make_pair(min_val, second_min_val) == SmallestValues<REAL>(repam));
+      //assert(std::make_pair(min_val, second_min_val) == SmallestValues<double>(repam));
 
-      REAL new_val;  // this value will be taken by the new reparametrized entries
+      double new_val;  // this value will be taken by the new reparametrized entries
       if(min_val < min_val_covered) { new_val = min_val; }
       else { new_val = second_min_val; }
 
       //std::cout << "omega_sum = " << omega_sum << ", no messages = " << msgs.size() << ", potential size = " << leftRepam.size() << "\n";
       //std::cout << "min_val_covered = " << min_val_covered << ", min_val = " << min_val << ", second_min_val = " << second_min_val << ", new_val = " << new_val << "\n";
-      //const INDEX last_idx = leftRepam.size() - 1;
+      //const std::size_t last_idx = leftRepam.size() - 1;
       //std::cout << "not covered = " << leftRepam[last_idx] << "\n";
 
-      //for(INDEX msg_idx=0; msg_idx<msgs.size(); ++msg_idx, omegaIt++) {
+      //for(std::size_t msg_idx=0; msg_idx<msgs.size(); ++msg_idx, omegaIt++) {
       for(auto it= msg_begin; it!=msg_end; ++it) {
-        const INDEX var_idx = var_access_op((*it).GetMessageOp());
+        const std::size_t var_idx = var_access_op((*it).GetMessageOp());
         (*it).operator[](0) -= omega*(repam[var_idx] - new_val);
       }
    }
 
    template<typename RIGHT_REPAM, typename MSG_ARRAY>
-   static void SendMessagesToLeft(const RIGHT_REPAM& rightRepam, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const REAL omega)
+   static void SendMessagesToLeft(const RIGHT_REPAM& rightRepam, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
    {
-      auto var_access_op = [](const EqualityMessage& msg) -> INDEX { return msg.rightVar_; };
+      auto var_access_op = [](const EqualityMessage& msg) -> std::size_t { return msg.rightVar_; };
       MakeFactorUniformParallel(var_access_op, msg_begin, msg_end, rightRepam, omega);
    }
 
    template<typename LEFT_REPAM, typename MSG_ARRAY>
-   static void SendMessagesToRight(const LEFT_REPAM& leftRepam, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const REAL omega)
+   static void SendMessagesToRight(const LEFT_REPAM& leftRepam, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
    {
-      auto var_access_op = [](const EqualityMessage& msg) -> INDEX { return msg.leftVar_; };
+      auto var_access_op = [](const EqualityMessage& msg) -> std::size_t { return msg.leftVar_; };
       MakeFactorUniformParallel(var_access_op, msg_begin, msg_end, leftRepam, omega);
    }
 
    template<typename G>
-   void RepamLeft(G& leftRepamPot, const REAL msg, const INDEX dim) { 
+   void RepamLeft(G& leftRepamPot, const double msg, const std::size_t dim) { 
       assert(dim == 0); 
       leftRepamPot[leftVar_] += msg; 
       assert(!std::isnan(leftRepamPot[leftVar_]));
    }
    template<typename G>
-   void RepamRight(G& rightRepamPot, const REAL msg, const INDEX dim) { 
+   void RepamRight(G& rightRepamPot, const double msg, const std::size_t dim) { 
       assert(dim == 0); 
       rightRepamPot[rightVar_] += msg; 
       assert(!std::isnan(rightRepamPot[rightVar_]));
    }
 
+   // Compute... is not needed in graph matching and leads to inconsistenct results.
    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
    bool
-   ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r)
+   tmp_ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r)
    {
       if(r.primal() == rightVar_) { 
          const bool ret = (l.primal() != leftVar_);
@@ -178,7 +179,7 @@ public:
 
    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
    bool
-   ComputeRightFromLeftPrimal(const LEFT_FACTOR& l, RIGHT_FACTOR& r)
+   tmp_ComputeRightFromLeftPrimal(const LEFT_FACTOR& l, RIGHT_FACTOR& r)
    {
       if(l.primal() == leftVar_) { 
          const bool ret = (r.primal() != rightVar_);
@@ -213,9 +214,9 @@ public:
 
 
 private:
-   //do zrobienia: possibly SHORT_INDEX or some 16 bit index (i.e. short unsigned int)
+   //do zrobienia: possibly SHORT_std::size_t or some 16 bit index (i.e. short unsigned int)
    // certainly 32 bits will be enough.
-   const INDEX leftVar_, rightVar_; // variables affected 
+   const std::size_t leftVar_, rightVar_; // variables affected
 };
 
 } // end namespace LPMP

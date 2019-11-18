@@ -1,5 +1,4 @@
-#ifndef LPMP_COMPUTE_RANDOM_LABEL_SET
-#define LPMP_COMPUTE_RANDOM_LABEL_SET
+#pragma once
 
 #include <vector>
 
@@ -15,6 +14,3 @@ std::vector<std::size_t> generate_random_label_set(const std::size_t no_labels, 
    std::sort(labels.begin(), labels.end());
    return labels;
 }
-
-#endif // LPMP_COMPUTE_RANDOM_LABEL_SET
-

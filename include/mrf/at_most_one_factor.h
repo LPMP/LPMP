@@ -1,5 +1,4 @@
-#ifndef LPMP_AT_MOST_ONE_FACTOR_H
-#define LPMP_AT_MOST_ONE_FACTOR_H
+#pragma once
 
 #include <cassert>
 #include "vector.hxx"
@@ -37,14 +36,14 @@ private:
    std::size_t primal_;
 };
 
-double at_most_one_factor::LowerBound() const 
+inline double at_most_one_factor::LowerBound() const 
 { 
    const double lb = this->min();
    assert(std::isfinite(lb));
    return std::min(lb,double(0.0));
 }
 
-double at_most_one_factor::EvaluatePrimal() const 
+inline double at_most_one_factor::EvaluatePrimal() const 
 { 
    if(primal_ > size()) {
       return std::numeric_limits<double>::infinity();
@@ -54,7 +53,8 @@ double at_most_one_factor::EvaluatePrimal() const
       return (*this)[primal_]; 
    }
 }
-void at_most_one_factor::MaximizePotentialAndComputePrimal() 
+
+inline void at_most_one_factor::MaximizePotentialAndComputePrimal() 
 {
    if(primal_ > size()) {
       auto min = std::min_element(this->begin(), this->end());
@@ -67,7 +67,7 @@ void at_most_one_factor::MaximizePotentialAndComputePrimal()
    }
 }
 
-double at_most_one_factor::sensitivity() const
+inline double at_most_one_factor::sensitivity() const
 {
    auto minima = two_smallest_elements<double>(this->begin(), this->end());
    return minima[1] - minima[0];
@@ -86,5 +86,3 @@ void at_most_one_factor::convert_primal(EXTERNAL_SOLVER& s, typename EXTERNAL_SO
 }
 
 } // namespace LPMP
-
-#endif // LPMP_AT_MOST_ONE_FACTOR_H

@@ -7,6 +7,15 @@ target_link_libraries(graph_matching_input LPMP)
 add_library(graph_matching_koopmans_beckmann_input graph_matching_koopmans_beckmann_input.cpp)
 target_link_libraries(graph_matching_koopmans_beckmann_input LPMP)
 
+add_library(graph_matching_frank_wolfe graph_matching_frank_wolfe.cpp)
+target_link_libraries(graph_matching_frank_wolfe LPMP)
+
+#add_library(graph_matching_FMC_mp graph_matching_FMC_mp.cpp)
+#target_link_libraries(graph_matching_FMC_mp LPMP MRF_factors)
+
+#add_executable(lpmp_graph_matching lpmp_graph_matching.cpp)
+#target_link_libraries(lpmp_graph_matching LPMP graph_matching_input MRF_factors)
+
 SET(SOURCE_FILES
    graph_matching_mp.cpp 
    graph_matching_gm.cpp 
@@ -25,7 +34,7 @@ SET(SOURCE_FILES
 foreach( source_file ${SOURCE_FILES} )
    string( REPLACE ".cpp" "" executable_file ${source_file} )
    add_executable( ${executable_file} ${source_file})
-   target_link_libraries( ${executable_file} MRF_factors graph_matching_input LPMP)
+   target_link_libraries( ${executable_file} MRF_factors graph_matching_input graph_matching_frank_wolfe LPMP)
 endforeach( source_file ${SOURCE_FILES} )
 
 # with proximal bundle
@@ -37,7 +46,7 @@ SET(PROXIMAL_BUNDLE_SOLVERS
 foreach( source_file ${PROXIMAL_BUNDLE_SOLVERS} )
     string( REPLACE ".cpp" "" executable_file ${source_file} )
     add_executable( ${executable_file} ${source_file} )
-    target_link_libraries( ${executable_file} LPMP MRF_factors graph_matching_input m stdc++ pthread FW-MAP arboricity)
+    target_link_libraries( ${executable_file} LPMP MRF_factors graph_matching_input graph_matching_frank_wolfe FW-MAP arboricity)
 endforeach( source_file ${SOURCE_FILES} )
 
 # with conic bundle
@@ -63,11 +72,13 @@ if(WITH_GUROBI)
    endforeach( source_file ${GUROBI_FILES} )
 endif()
 
-add_executable(graph_matching_fw graph_matching_fw.cpp)
-target_link_libraries(graph_matching_fw LPMP graph_matching_input) 
-
-add_executable(graph_matching_frank_wolfe_sparse_text_input graph_matching_frank_wolfe_sparse_text_input.cpp)
-target_link_libraries(graph_matching_frank_wolfe_sparse_text_input LPMP graph_matching_input) 
+add_executable(graph_matching_frank_wolfe_text_input graph_matching_frank_wolfe_text_input.cpp)
+target_link_libraries(graph_matching_frank_wolfe_text_input LPMP graph_matching_input graph_matching_frank_wolfe) 
 
 add_executable(graph_matching_frank_wolfe_koopmans_beckmann_text_input graph_matching_frank_wolfe_koopmans_beckmann_text_input.cpp)
 target_link_libraries(graph_matching_frank_wolfe_koopmans_beckmann_text_input LPMP graph_matching_koopmans_beckmann_input)
+
+pybind11_add_module(graph_matching_python_binding graph_matching_python_binding.cpp)
+target_link_libraries(graph_matching_python_binding PRIVATE LPMP graph_matching_input MRF_factors graph_matching_frank_wolfe)
+CONFIGURE_FILE(__init__.py ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
+CONFIGURE_FILE(setup.py ${CMAKE_CURRENT_BINARY_DIR}/setup.py)

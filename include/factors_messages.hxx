@@ -229,7 +229,7 @@ struct MessageDispatcher
    template<typename FACTOR, typename MSG_ITERATOR>
    static void SendMessages(const FACTOR& f, MSG_ITERATOR msgs_begin, MSG_ITERATOR msgs_end, const REAL omega)
    {
-       assert(omega >= 0.0 && omega <= 1.0);
+       assert(omega >= 0.0 && omega <= 1.0 + eps);
       auto staticMemberFunc = FuncGetter<MSG_CONTAINER>::template GetSendMessagesFunc<FACTOR, MSG_ITERATOR>();
       (*staticMemberFunc)(f, msgs_begin, msgs_end, omega);
    }

@@ -64,7 +64,7 @@ public:
 
    double LowerBound() const;
    void init_primal();
-   double EvaluatePrimal();
+   double EvaluatePrimal() const;
 
    bool CheckPrimalConsistency() const;
 
@@ -94,6 +94,8 @@ public:
    };
 
    message_passing_weight_storage& get_message_passing_weight(const lp_reparametrization repam);
+
+   double get_constant() const { return constant_; }
 
    void add_to_constant(const REAL x) { 
 #pragma omp critical
@@ -375,7 +377,7 @@ void LP<FMC>::init_primal()
 }
 
 template<typename FMC>
-double LP<FMC>::EvaluatePrimal() 
+double LP<FMC>::EvaluatePrimal() const
 {
     const bool consistent = CheckPrimalConsistency();
     if(consistent == false)
@@ -464,7 +466,7 @@ template<typename FMC>
 std::vector<bool> LP<FMC>::get_inconsistent_mask(const std::size_t no_fatten_rounds)
 {
   std::vector<bool> inconsistent_mask;
-  inconsistent_mask.reserve(this->get_number_of_factors());
+  inconsistent_mask.reserve(this->number_of_factors());
   
   // check for locally non-optimal factors and check for violated messages
   for(auto factor_it = factors_storage<FMC>::begin(); factor_it != factors_storage<FMC>::end(); ++factor_it) {
@@ -481,9 +483,9 @@ std::vector<bool> LP<FMC>::get_inconsistent_mask(const std::size_t no_fatten_rou
   auto fatten = [&]() {
      for(auto msg_it = messages_storage<FMC>::begin(); msg_it != messages_storage<FMC>::end(); ++msg_it) {
         auto* l = msg_it->left;
-        auto l_index = this->get_factor_address(l);
+        auto l_index = this->get_factor_index(l);
         auto* r = msg_it->right;
-        auto r_index = this->get_factor_address(r);
+        auto r_index = this->get_factor_index(r);
 
         if(inconsistent_mask[l_index] == true || inconsistent_mask[r_index] == true) {
            inconsistent_mask[l_index] = true;
@@ -497,7 +499,7 @@ std::vector<bool> LP<FMC>::get_inconsistent_mask(const std::size_t no_fatten_rou
   }
 
   if(debug()) {
-    std::cout << "\% inconsistent factors = " << std::count(inconsistent_mask.begin(), inconsistent_mask.end(), true)/REAL(this->get_number_of_factors()) << "\n";
+    std::cout << "\% inconsistent factors = " << std::count(inconsistent_mask.begin(), inconsistent_mask.end(), true)/REAL(this->number_of_factors()) << "\n";
   }
 
   return inconsistent_mask;
@@ -509,7 +511,7 @@ std::vector<FactorTypeAdapter*> LP<FMC>::get_masked_factors(
     FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end,
     FACTOR_MASK_ITERATOR factor_mask_begin, FACTOR_MASK_ITERATOR factor_mask_end)
 {
-  assert(std::distance(factor_mask_begin, factor_mask_end) == this->get_number_of_factors());
+  assert(std::distance(factor_mask_begin, factor_mask_end) == this->number_of_factors());
   
   std::vector<FactorTypeAdapter*> factors;
   for(auto f_it=factor_begin; f_it!=factor_end; ++f_it) {

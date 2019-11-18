@@ -49,19 +49,19 @@ UnarySimplexFactor::UnarySimplexFactor(const VECTOR& vec)
    for(std::size_t i=0; i<vec.size(); ++i) { (*this)[i] = vec[i]; }
 }
 
-void UnarySimplexFactor::print_potential()
+inline void UnarySimplexFactor::print_potential()
 {
    for(std::size_t i=0; i<size(); ++i) { std::cout << (*this)[i] << ", "; } 
    std::cout << "\n";
 }
 
-double UnarySimplexFactor::LowerBound() const { 
+inline double UnarySimplexFactor::LowerBound() const { 
    const double lb = this->min();
    assert(std::isfinite(lb));
    return lb;
 }
 
-double UnarySimplexFactor::EvaluatePrimal() const 
+inline double UnarySimplexFactor::EvaluatePrimal() const 
 { 
    if(primal_ >= size()) {
       return std::numeric_limits<double>::infinity();
@@ -69,7 +69,7 @@ double UnarySimplexFactor::EvaluatePrimal() const
    return (*this)[primal_]; 
 }
 
-void UnarySimplexFactor::MaximizePotentialAndComputePrimal() 
+inline void UnarySimplexFactor::MaximizePotentialAndComputePrimal() 
 {
    if(primal_ >= size()) {
       primal_ = std::min_element(this->begin(), this->end()) - this->begin();

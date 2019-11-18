@@ -9,6 +9,7 @@ set(CMAKE_CXX_FLAGS "-std=c++17")
 
 # compiler options
 add_definitions(-march=native)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 #linker options
 #set(CMAKE_SHARED_LINKER_FLAGS "--compress-debug-sections=zlib")
@@ -39,6 +40,7 @@ target_include_directories(LPMP INTERFACE external/MCF-SSP)
 target_include_directories(LPMP INTERFACE external/andres-graph/include)
 target_include_directories(LPMP INTERFACE external/tsl-robin-map/include)
 target_include_directories(LPMP INTERFACE external/cpp-taskflow) 
+target_include_directories(LPMP INTERFACE external/pybind11)
 target_link_libraries(LPMP INTERFACE pthread)
 
 # for opengm #
@@ -69,6 +71,8 @@ add_subdirectory(external/BCFW-Bundle)
 add_subdirectory(external/DD_ILP)
 add_subdirectory(external/ConicBundle)
 add_subdirectory(external/arboricity)
+set(PYBIND11_CPP_STANDARD -std=c++17)
+add_subdirectory(external/pybind11)
 
 target_link_libraries(LPMP INTERFACE DD_ILP)
 

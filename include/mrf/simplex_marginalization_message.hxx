@@ -133,8 +133,9 @@ public:
       }
    }
 
+   // TODO: below funtion is problematic in graph matching
    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
-   bool ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r)
+   bool tmp_ComputeLeftFromRightPrimal(LEFT_FACTOR& l, const RIGHT_FACTOR& r)
    {
       //assert(r.primal()[pairwise_index_] < l.size());
       if(r.primal()[pairwise_index_] < l.size()) {

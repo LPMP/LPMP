@@ -3,6 +3,7 @@
 #include "LP.h"
 #include "serialization.hxx"
 #include "union_find.hxx"
+#include <variant>
 
 namespace LPMP {
 

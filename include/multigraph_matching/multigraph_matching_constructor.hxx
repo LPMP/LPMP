@@ -338,7 +338,7 @@ public:
     GRAPH_MATCHING_CONSTRUCTOR* add_graph_matching_problem(const std::size_t p, const std::size_t q, LP<FMC>* lp)
     {
         assert(!has_graph_matching_problem(p,q));
-        auto ptr = std::make_unique<GRAPH_MATCHING_CONSTRUCTOR>(lp, graph_matching_construction_arg_.getValue());
+        auto ptr = std::make_unique<GRAPH_MATCHING_CONSTRUCTOR>(lp, graph_matching_construction_arg_.getValue(), "mcf");
         auto* c = ptr.get();
         graph_matching_constructors.push_back(std::make_pair(graph_matching({p,q}), std::move(ptr))); 
         graph_matching_constructors_map.insert(std::make_pair(graph_matching({p,q}), c)); 
@@ -654,7 +654,7 @@ public:
         }
     }
 
-    bool CheckPrimalConsistency()
+    bool CheckPrimalConsistency() const
     {
        if(debug())
           std::cout << "check primal consistency in multigraph matching constructor\n";
@@ -901,7 +901,7 @@ private:
     {
        multigraph_matching_input mgm;
        for(const auto& gm : graph_matching_constructors)
-          mgm.push_back({gm.first.p, gm.first.q, gm.second->export_graph_matching_input(false)});
+          mgm.push_back({gm.first.p, gm.first.q, gm.second->export_graph_matching_input()});
        return mgm;
     }
 

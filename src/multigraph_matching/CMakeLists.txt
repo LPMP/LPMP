@@ -37,5 +37,5 @@ SET(MGM_SOURCE_FILES
 foreach( source_file ${MGM_SOURCE_FILES} )
    string( REPLACE ".cpp" "" executable_file ${source_file} )
    add_executable( ${executable_file} ${source_file})
-   target_link_libraries( ${executable_file} multigraph_matching_input LPMP multigraph_matching_factors)
+   target_link_libraries( ${executable_file} multigraph_matching_input LPMP multigraph_matching_factors graph_matching_frank_wolfe)
 endforeach( source_file ${MGM_SOURCE_FILES} )

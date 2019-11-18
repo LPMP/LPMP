@@ -47,3 +47,6 @@
 [submodule "external/cpp-taskflow"]
 	path = external/cpp-taskflow
 	url = https://github.com/cpp-taskflow/cpp-taskflow.git
+[submodule "external/pybind11"]
+	path = external/pybind11
+	url = https://github.com/pybind/pybind11.git
