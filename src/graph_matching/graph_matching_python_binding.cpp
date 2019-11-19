@@ -4,6 +4,7 @@
 #include "visitors/standard_visitor.hxx"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/operators.h>
 
 namespace py = pybind11;
 
@@ -11,11 +12,24 @@ PYBIND11_MODULE(graph_matching_python_binding, m) {
     m.doc() = "python binding for LPMP graph matching";
 
     py::class_<LPMP::graph_matching_input::labeling>(m, "graph_matching_labeling")
-        .def(py::init<>());
+        .def(py::init<>())
+        .def("size", &LPMP::graph_matching_input::labeling::size)
+        .def("__getitem__", [](const LPMP::graph_matching_input::labeling &l, size_t i) { 
+                if (i >= l.size()) throw py::index_error();
+                return l[i];
+                });
 
-    py::class_<LPMP::graph_matching_input>(m, "graph_matching_input")
+    py::class_<LPMP::linear_assignment_problem_input>(m, "linear_assignment_problem_input")
+        .def(py::init<>())
+        .def("add_assignment", &LPMP::linear_assignment_problem_input::add_assignment)
+        .def("evaluate", &LPMP::linear_assignment_problem_input::evaluate);
+
+    m.def("graph_matching_no_assignment", []() { return LPMP::linear_assignment_problem_input::no_assignment; });
+
+    py::class_<LPMP::graph_matching_input, LPMP::linear_assignment_problem_input>(m, "graph_matching_input")
         .def(py::init<>())
         .def("add_assignment", &LPMP::graph_matching_input::add_assignment)
+        //.def("add_assignment", &LPMP::linear_assignment_problem_input::add_assignment)
         .def("add_quadratic_term", &LPMP::graph_matching_input::add_quadratic_term)
         .def("evaluate", &LPMP::graph_matching_input::evaluate);
 
