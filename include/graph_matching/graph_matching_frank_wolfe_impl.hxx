@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graph_matching/matching_problem_input.h"
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <array>
 #include "MCF-SSP/mcf_ssp.hxx"
 

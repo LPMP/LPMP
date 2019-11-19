@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <limits>
-#include <eigen3/Eigen/Eigen>
-#include <eigen3/unsupported/Eigen/KroneckerProduct>
+#include <Eigen/Eigen>
+#include <unsupported/Eigen/KroneckerProduct>
 #include "MCF-SSP/mcf_ssp.hxx"
 #include "commutation_matrix.h"
 #include "polynomial_functions.h"

@@ -1,5 +1,5 @@
 #include "commutation_matrix.h"
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include "test.h"
 
 using namespace LPMP;

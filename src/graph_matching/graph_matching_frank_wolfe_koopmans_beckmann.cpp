@@ -1,7 +1,7 @@
 #include "graph_matching/matching_problem_input.h"
 #include "graph_matching/graph_matching_instance_koopmans_beckmann.h"
 #include "polynomial_functions.h"
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <array>
 #include "MCF-SSP/mcf_ssp.hxx"
 

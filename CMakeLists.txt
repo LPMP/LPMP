@@ -71,9 +71,9 @@ add_subdirectory(external/BCFW-Bundle)
 add_subdirectory(external/DD_ILP)
 add_subdirectory(external/ConicBundle)
 add_subdirectory(external/arboricity)
-add_subdirectory(external/Eigen)
 set(PYBIND11_CPP_STANDARD -std=c++17)
 add_subdirectory(external/pybind11)
+target_include_directories(LPMP INTERFACE external/Eigen)
 
 target_link_libraries(LPMP INTERFACE DD_ILP)
 

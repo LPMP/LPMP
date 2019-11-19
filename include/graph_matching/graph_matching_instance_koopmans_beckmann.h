@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graph_matching_instance.h"
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 
 namespace LPMP {
 

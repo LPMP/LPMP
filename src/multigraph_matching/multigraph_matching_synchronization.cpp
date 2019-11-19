@@ -1,5 +1,5 @@
 #include "multigraph_matching/multigraph_matching_synchronization.h"
-#include <eigen3/Eigen/Eigenvalues>
+#include <Eigen/Eigenvalues>
 #include <vector>
 #include "union_find.hxx"
 

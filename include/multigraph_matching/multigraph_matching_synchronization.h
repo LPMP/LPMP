@@ -1,7 +1,6 @@
 #pragma once
 
 #include "graph_matching/matching_problem_input.h"
-#include <eigen3/Eigen/Eigenvalues>
 #include <vector>
 #include "vector.hxx"
 

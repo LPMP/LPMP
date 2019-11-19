@@ -1,4 +1,4 @@
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 
 namespace LPMP {
 
