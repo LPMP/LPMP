@@ -24,7 +24,6 @@
 #define MEMORY_BLOCK_TCC
 
 
-
 template <typename T, size_t BlockSize>
 inline typename MemoryPool<T, BlockSize>::size_type
 MemoryPool<T, BlockSize>::padPointer(data_pointer_ p, size_type align)
@@ -109,8 +108,10 @@ noexcept
     no_objects += NO_ELEMENTS_IN_MEMORY_POOL;
   }
   int status;
-  std::cout << "peak pool size for " << abi::__cxa_demangle(typeid(T).name(),0,0,&status) << " = " << pool_size/(1024*1024) << " Mb\n";
-  std::cout << "~ " << pool_size/sizeof(T) << " objects of size " << sizeof(T) << " bytes\n";
+  if(LPMP::debug()) {
+      std::cout << "peak pool size for " << abi::__cxa_demangle(typeid(T).name(),0,0,&status) << " = " << pool_size/(1024*1024) << " Mb\n";
+      std::cout << "~ " << pool_size/sizeof(T) << " objects of size " << sizeof(T) << " bytes\n";
+  }
 }
 
 

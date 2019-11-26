@@ -121,7 +121,6 @@ struct linear_assignment_problem_input {
       {
           assert(false); // shall last entry in each row/column denote non-assignment?
          // check that each row and columns has at most one 1 entry
-         std::cout << m << "\n";
          for(std::size_t i=0; i<m.cols(); ++i) {
             for(std::size_t j=0; j<m.rows(); ++j) {
                assert(m(i,j) == 0 || m(i,j) == 1);
@@ -284,9 +283,26 @@ struct graph_matching_input : public linear_assignment_problem_input {
             }
         }
 
-        std::cout << "#terms before normalization = " << quadratic_terms.size() << ", after normalization = " << normalized_quadratic_terms.size() << "\n";
         std::swap(normalized_quadratic_terms, quadratic_terms); 
     }
+
+   template<typename STREAM>
+       void write(STREAM& s) const
+       {
+           // init line
+           s << "p " << no_left_nodes << " " << no_right_nodes << " " << this->assignments.size() << " " << quadratic_terms.size() << "\n";
+ 
+           // linear assignment costs
+           for(std::size_t i=0; i<this->assignments.size(); ++i) {
+               const auto& a = this->assignments[i];
+               s << "a " << i << " " << a.left_node << " " << a.right_node << " " << a.cost << "\n";
+           }
+
+           // quadratic terms
+           for(const auto& q : quadratic_terms) {
+               s << "e " << q.assignment_1 << " " << q.assignment_2 << " " << q.cost << "\n";
+           }
+       }
 };
 
 struct multigraph_matching_input_entry {

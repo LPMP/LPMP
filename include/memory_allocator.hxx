@@ -1,6 +1,3 @@
-#ifndef LPMP_MEMORY_arena_HXX
-#define LPMP_MEMORY_arena_HXX
-
 #pragma once
 
 #include <iostream>
@@ -710,6 +707,3 @@ static std::array<block_allocator<REAL>, no_stack_allocators> global_real_block_
 static thread_local INDEX stack_allocator_index = 0;
 // do zrobienia: both above allocators do not destroy their arenas
 } // end namespace LPMP
-
-#endif // LPMP_MEMORY_arena_HXX
-

@@ -25,6 +25,7 @@
 
 #include <climits>
 #include <cstddef>
+#include "config.hxx"
 
 constexpr static size_t NO_ELEMENTS_IN_MEMORY_POOL = 1024;
 template <typename T, size_t BlockSize = NO_ELEMENTS_IN_MEMORY_POOL*(sizeof(T)+sizeof(void*))>

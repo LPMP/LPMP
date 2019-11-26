@@ -1,6 +1,7 @@
 #include "graph_matching/graph_matching_input.h"
 #include "pegtl_parse_rules.h"
 #include <cassert>
+#include "config.hxx"
 
 namespace LPMP {
 
@@ -135,7 +136,8 @@ namespace TorresaniEtAlInput {
    {
       graph_matching_input gmInput;
       pegtl::file_parser problem(filename);
-      std::cout << "parsing " << filename << "\n";
+      if(debug())
+          std::cout << "parsing " << filename << "\n";
 
       const bool ret = problem.parse< grammar, action >( gmInput );
       //std::sort(gmInput.assignments.begin(), gmInput.assignments.end());
