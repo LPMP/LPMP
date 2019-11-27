@@ -26,7 +26,9 @@ Optimization techniques include
 Type `git clone https://github.com/LPMP/LPMP.git` for downloading, then `cd LPMP` and `git submodule update --init --remote --recursive` for downloading dependencies and finally `cmake .` for building.
 
 Prerequisites:
-* Clang 5.0 or GCC 8.0 upwards for C++17 compatibility.
+* Clang 5.0 or GCC 8.0 upwards for C++17 compatibility (TODO link to instructions).
+* HDF5 (install with `apt install libhdf5-serial-dev`)
+* cmake (install with `apt install cmake`)
 
 ## Documentation
 

@@ -8,8 +8,7 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from distutils.version import LooseVersion
 
-os.environ["CC"] = "/usr/local/gcc-8.1/bin/gcc-8.1"
-os.environ["CXX"] = "/usr/local/gcc-8.1/bin/g++-8.1"
+
 
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
@@ -33,6 +32,20 @@ class CMakeBuild(build_ext):
         for ext in self.extensions:
             self.build_extension(ext)
 
+    def _prepare_environment(self):
+        try:
+            gcc_path = subprocess.check_output("which gcc-9.1", shell=True).decode("utf-8").rstrip()
+        except subprocess.CalledProcessError:
+            raise RuntimeError("gcc 9.1 not found on the system")
+
+        try:
+            gpp_path = subprocess.check_output("which g++-9.1", shell=True).decode("utf-8").rstrip()
+        except subprocess.CalledProcessError:
+            raise RuntimeError("g++ 9.1 not found on the system")
+
+        os.environ["CC"] = gcc_path
+        os.environ["CXX"] = gpp_path
+
     def build_extension(self, ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
@@ -50,22 +63,24 @@ class CMakeBuild(build_ext):
             cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
             build_args += ['--', '-j2']
 
+        self._prepare_environment()
         env = os.environ.copy()
         env['CXXFLAGS'] = '{} -DVERSION_INFO=\\"{}\\"'.format(env.get('CXXFLAGS', ''),
                                                               self.distribution.get_version())
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
+
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
-        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
+        subprocess.check_call(['cmake', '--build', '.', '--target', 'graph_matching_py'] + build_args, cwd=self.build_temp)
 
 setup(
-    name='graph_matching_python_binding',
+    name='graph_matching_py',
     version='0.0.1',
     author='Paul Swoboda',
     author_email='pswoboda@mpi-inf.mpg.de',
     description='LPMP graph matching binding for python',
     long_description='',
-    ext_modules=[CMakeExtension('srs/graph_matching/graph_matching_python_binding')],
+    ext_modules=[CMakeExtension(name='graph_matching_py')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
