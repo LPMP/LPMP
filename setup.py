@@ -32,16 +32,34 @@ class CMakeBuild(build_ext):
         for ext in self.extensions:
             self.build_extension(ext)
 
-    def _prepare_environment(self):
-        try:
-            gcc_path = subprocess.check_output("which gcc-9.1", shell=True).decode("utf-8").rstrip()
-        except subprocess.CalledProcessError:
-            raise RuntimeError("gcc 9.1 not found on the system")
+    def _validate_gcc_version(self, gcc_command):
+        print(f'Testing {gcc_command}...')
+        out = subprocess.check_output([gcc_command, '--version']).decode()
+        last_word_first_line = out.split('\n')[0].split(' ')[-1]
 
-        try:
-            gpp_path = subprocess.check_output("which g++-9.1", shell=True).decode("utf-8").rstrip()
-        except subprocess.CalledProcessError:
-            raise RuntimeError("g++ 9.1 not found on the system")
+        gcc_version = LooseVersion(last_word_first_line)
+        return (gcc_version >= '8.0')
+
+    def _find_suitable_gcc_gpp(self):
+        # lists all gcc version in PATH
+        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find {} -maxdepth 1 -executable -type"
+                            " f -printf '%P\n' | grep \'^gcc-.\\..\'")
+        all_gccs = subprocess.check_output(cmd_for_all_gccs, shell=True).decode("utf-8").rstrip().split("\n")
+
+        for gcc in ['gcc'] + all_gccs:
+            if self._validate_gcc_version(gcc):
+                matching_gpp = gcc.replace('cc', '++')
+                print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
+                return gcc, matching_gpp
+
+        raise RuntimeError("gcc >= 8.0 not found on the system")
+
+
+    def _prepare_environment(self):
+        gcc, gpp = self._find_suitable_gcc_gpp()
+
+        gcc_path = subprocess.check_output(f"which {gcc}", shell=True).decode("utf-8").rstrip()
+        gpp_path = subprocess.check_output(f"which {gpp}", shell=True).decode("utf-8").rstrip()
 
         os.environ["CC"] = gcc_path
         os.environ["CXX"] = gpp_path
