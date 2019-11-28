@@ -9,7 +9,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(graph_matching_python_binding, m) {
+PYBIND11_MODULE(graph_matching_py, m) {
     m.doc() = "python binding for LPMP graph matching";
 
     py::class_<LPMP::graph_matching_input::labeling>(m, "graph_matching_labeling")
