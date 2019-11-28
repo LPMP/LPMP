@@ -80,3 +80,6 @@ target_link_libraries(graph_matching_frank_wolfe_koopmans_beckmann_text_input LP
 
 pybind11_add_module(graph_matching_py graph_matching_python_binding.cpp)
 target_link_libraries(graph_matching_py PRIVATE LPMP graph_matching_input MRF_factors graph_matching_frank_wolfe)
+CONFIGURE_FILE(__init__.py ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
+CONFIGURE_FILE(setup.py ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
+
