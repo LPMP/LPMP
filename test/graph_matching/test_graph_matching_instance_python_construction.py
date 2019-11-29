@@ -31,6 +31,23 @@ def build_graph(edges_left, edges_right, costs_unary, costs_binary):
 
     return instance
 
+def test_graph_construction(edges_left, edges_right, costs_unary, costs_binary):
+
+    nr_left_nodes = costs_unary.shape[0]
+    nr_right_nodes = costs_unary.shape[1]
+    instance = gm.graph_matching_input(costs_unary, costs_binary, edges_left, edges_right)
+    instance_check = build_graph(edges_left, edges_right, assignments, quadratic_terms)
+
+    labeling = gm.graph_matching_labeling(list(range(nr_left_nodes)))
+    [assignment_mask, quadratic_terms_mask] = labeling.result_masks(costs_unary, costs_binary, edges_left, edges_right)
+
+    labeling_cost = instance.evaluate(labeling)
+    if(instance_check.evaluate(labeling) != labeling_cost):
+        raise AssertionError("instance from batch construction gives wrong value")
+    if(sum(sum(np.multiply(assignment_mask, assignments))) + sum(sum(np.multiply(quadratic_terms_mask, quadratic_terms))) != labeling_cost):
+        raise AssertionError("mask solution not correct")
+
+
 
 assignments = np.array([[0,1,2,3],
                         [4,5,6,7],
@@ -44,21 +61,12 @@ quadratic_terms = np.array([[-10,-11,-12],
                             [-13,-14,-15],
                             [-16,-17,-18]], dtype=np.double)
 
-instance = gm.graph_matching_input(assignments, quadratic_terms, edges_left, edges_right)
-instance_check = build_graph(edges_left, edges_right, assignments, quadratic_terms)
-
-labeling = gm.graph_matching_labeling([0,1,2,3])
-[assignment_mask, quadratic_terms_mask] = labeling.result_masks(assignments, quadratic_terms, edges_left, edges_right)
-
-if(instance.evaluate(labeling) != -12):
-    raise AssertionError("instance evaluation gives wrong value")
-    
-if(instance_check.evaluate(labeling) != -12):
-    raise AssertionError("instance from batch construction gives wrong value")
-if(sum(sum(np.multiply(assignment_mask, assignments))) + sum(sum(np.multiply(quadratic_terms_mask, quadratic_terms))) != -12):
-    raise AssertionError("mask solution not correct")
+#test_graph_construction(edges_left, edges_right, assignments, quadratic_terms)
 
 
 
-
-
+edges_left = np.array([[0, 1], [1, 0]], dtype=np.intc)
+edges_right = np.array([[0, 2]], dtype=np.intc)
+assignments = np.array([[ -5.0, -13.0, -17.0], [ -9.0, -13.0, -15.0]], dtype=np.double)
+quadratic_terms = np.array([[-31.0], [-17.0]], dtype=np.double)
+test_graph_construction(edges_left, edges_right, assignments, quadratic_terms)
