@@ -50,3 +50,6 @@
 [submodule "external/pybind11"]
 	path = external/pybind11
 	url = https://github.com/pybind/pybind11.git
+[submodule "external/cudd"]
+	path = external/cudd
+	url = https://github.com/ivmai/cudd.git

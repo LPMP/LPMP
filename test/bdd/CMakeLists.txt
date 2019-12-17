@@ -1,0 +1,27 @@
+add_executable(test_ILP_parser test_ILP_parser.cpp)
+target_link_libraries(test_ILP_parser ILP_parser LPMP)
+add_test(test_ILP_parser test_ILP_parser)
+
+add_executable(test_ILP_input_to_bdd test_ILP_input_to_bdd.cpp)
+target_link_libraries(test_ILP_input_to_bdd ILP_parser LPMP Cudd)
+add_test(test_ILP_input_to_bdd test_ILP_input_to_bdd)
+
+add_executable(test_single_bdd_inference test_single_bdd_inference.cpp)
+target_link_libraries(test_single_bdd_inference ILP_parser LPMP Cudd)
+add_test(test_single_bdd_inference test_single_bdd_inference)
+
+add_executable(test_two_bdd_inference test_two_bdd_inference.cpp)
+target_link_libraries(test_two_bdd_inference ILP_parser LPMP Cudd)
+add_test(test_two_bdd_inference test_two_bdd_inference)
+
+add_executable(test_bdd_bipartite_matching_problem test_bdd_bipartite_matching_problem.cpp)
+target_link_libraries(test_bdd_bipartite_matching_problem LPMP Cudd ILP_parser)
+add_test(test_bdd_bipartite_matching_problem test_bdd_bipartite_matching_problem)
+
+add_executable(test_ILP_input_export test_ILP_input_export.cpp)
+target_link_libraries(test_ILP_input_export LPMP Cudd ILP_parser)
+add_test(test_ILP_input_export test_ILP_input_export)
+
+add_executable(test_random_inequality_to_bdd test_random_inequality_to_bdd.cpp)
+target_link_libraries(test_random_inequality_to_bdd LPMP Cudd)
+add_test(test_random_inequality_to_bdd test_random_inequality_to_bdd)

@@ -1,5 +1,4 @@
-#ifndef LPMP_CONFIG_HXX
-#define LPMP_CONFIG_HXX
+#pragma once
 
 #include <stdexcept>
 #include <string>
@@ -36,6 +35,8 @@ namespace LPMP {
    using LONG_INDEX = long unsigned int;
 
    enum class Chirality {left,right};
+   enum class inequality_type { smaller_equal, greater_equal, equal };
+
    enum class MessageSendingType {SRMP,MPLP}; // TODO: remove
    enum class Direction {forward, backward};
 
@@ -104,6 +105,3 @@ namespace LPMP {
    static PositiveIntegerConstraint positiveIntegerConstraint;
 
 } // namespace LPMP
-
-#endif // LPMP_CONFIG_HXX
-
