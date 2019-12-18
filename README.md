@@ -1,7 +1,7 @@
 LPMP
 ========
 
-[![Build Status](https://travis-ci.org/LPMP/LPMP.svg?branch=master)](https://travis-ci.org/LPMP/LPMP)
+<!--- [![Build Status](https://travis-ci.org/LPMP/LPMP.svg?branch=master)](https://travis-ci.org/LPMP/LPMP) --->
 
 LPMP is a C++ framework for developing scalable dual (Lagrangean) decomposition based solvers for a wide range of LP-relaxations to discrete optimization problems.
 For a theoretical introduction to the techniques used and the class of problems that can be optimized see [1,2].
