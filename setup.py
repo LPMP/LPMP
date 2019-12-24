@@ -42,8 +42,8 @@ class CMakeBuild(build_ext):
 
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
-        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find -L {} -maxdepth 1 -executable -type"
-                            " f -printf '%P\n' | grep \'^gcc-.\\..\'")
+        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find -H {} -maxdepth 1 -perm -o=x -type"
+                            " l,f -printf '%P\n' | grep \'^gcc-[0-9].\\?.\\?.\\?'")
         all_gccs = subprocess.check_output(cmd_for_all_gccs, shell=True).decode("utf-8").rstrip().split("\n")
 
         for gcc in ['gcc'] + all_gccs:
