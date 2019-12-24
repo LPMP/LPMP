@@ -1,0 +1,5 @@
+add_library(ILP_parser ILP_parser.cpp)
+target_link_libraries(ILP_parser LPMP)
+
+add_executable(bdd_min_marginal_averaging_text_input bdd_min_marginal_averaging_text_input.cpp)
+target_link_libraries(bdd_min_marginal_averaging_text_input ILP_parser Cudd LPMP)

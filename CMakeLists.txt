@@ -41,6 +41,30 @@ target_include_directories(LPMP INTERFACE external/andres-graph/include)
 target_include_directories(LPMP INTERFACE external/tsl-robin-map/include)
 target_include_directories(LPMP INTERFACE external/cpp-taskflow) 
 target_include_directories(LPMP INTERFACE external/pybind11)
+add_custom_target(
+    Cudd_lib
+    COMMAND ""#"autoreconf -f -i && ./configure --enable-obj --enable-shared && make"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/"
+    )
+add_library(Cudd INTERFACE)
+add_dependencies(Cudd Cudd_lib)
+target_link_libraries(Cudd INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/cudd/.libs/libcudd.a")
+#ExternalProject_Add(Cudd_project
+#    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/"
+#    PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/
+#    CONFIGURE_COMMAND "./configure --enable-obj"
+#    BUILD_COMMAND "make"
+#    )
+#    -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/cudd
+#    -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+#    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+#    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+#    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+#add_library(Cudd STATIC IMPORTED)
+#set_property(TARGET Cudd PROPERTY IMPORTED_LOCATION ${install_dir}/lib/libluajit-5.1.a)
+#add_dependencies(Cudd Cudd_project)
+target_include_directories(LPMP INTERFACE external/cudd/cudd)
+target_include_directories(LPMP INTERFACE external/cudd/cplusplus) 
 target_link_libraries(LPMP INTERFACE pthread)
 
 # for opengm #
@@ -72,6 +96,7 @@ add_subdirectory(external/DD_ILP)
 add_subdirectory(external/ConicBundle)
 add_subdirectory(external/arboricity)
 set(PYBIND11_CPP_STANDARD -std=c++17)
+set(PYBIND11_INSTALL ON CACHE BOOL "enable pybind11 bindings.")
 add_subdirectory(external/pybind11)
 target_include_directories(LPMP INTERFACE external/Eigen)
 

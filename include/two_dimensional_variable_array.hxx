@@ -14,6 +14,8 @@ template<typename T>
 class two_dim_variable_array
 {
 public:
+    template<class I> friend class two_dim_variable_array;
+
    two_dim_variable_array() 
        : two_dim_variable_array(std::vector<std::size_t>{})
    {}
@@ -21,6 +23,12 @@ public:
    ~two_dim_variable_array() {
       static_assert(!std::is_same_v<T,bool>, "value type cannot be bool");
    }
+
+   template<typename I>
+       two_dim_variable_array(const two_dim_variable_array<I>& o)
+       : offsets_(o.offsets_),
+       data_(offsets_.back())
+       {}
 
    // iterator holds size of each dimension of the two dimensional array
    template<typename I>
@@ -104,11 +112,13 @@ public:
       const T* end() { return end_; }
       auto rbegin() { return std::make_reverse_iterator(end()); }
       auto rend() { return std::make_reverse_iterator(begin()); }
+      const T& back() { return *(end()-1); }
 
       const T* begin() const { return begin_; }
       const T* end() const { return end_; }
       auto rbegin() const { return std::make_reverse_iterator(end()); }
       auto rend() const { return std::make_reverse_iterator(begin()); }
+      const T& back() const { return *(end()-1); }
 
       private:
          const T* begin_;
@@ -134,11 +144,13 @@ public:
       T* end() { return end_; }
       auto rbegin() { return std::make_reverse_iterator(end()); }
       auto rend() { return std::make_reverse_iterator(begin()); }
+      T& back() { return *(end()-1); }
 
       T const* begin() const { return begin_; }
       T const* end() const { return end_; }
       auto rbegin() const { return std::make_reverse_iterator(end()); }
       auto rend() const { return std::make_reverse_iterator(begin()); }
+      const T& back() const { return *(end()-1); }
 
       private:
          T* begin_;
@@ -165,6 +177,18 @@ public:
 
    std::size_t no_elements() const { return data_.size(); }
    std::size_t size() const { assert(offsets_.size() > 0); return offsets_.size()-1; }
+
+   ConstArrayAccessObject back() const 
+   {
+       const std::size_t i = size()-1;
+       return (*this)[i];
+   }
+
+   ArrayAccessObject back()
+   {
+       const std::size_t i = size()-1;
+       return (*this)[i];
+   }
 
    struct iterator : public std::iterator< std::random_access_iterator_tag, T* > {
      iterator(T* _data, std::size_t* _offset) : data(_data), offset(_offset) {}
@@ -228,6 +252,8 @@ public:
 		   }
 	   }
    }
+
+   auto& data() { return data_; }
 
 private:
    template<typename ITERATOR>

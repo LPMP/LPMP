@@ -10,6 +10,7 @@
 #include <numeric>
 #include "union_find.hxx"
 #include <iostream>
+#include <Eigen/Eigen>
 
 // TODO: 
 //      - split into header and cpp file and rename to graph_matching_instance.{h|cpp}
@@ -116,8 +117,9 @@ struct linear_assignment_problem_input {
       public:
       using std::vector<std::size_t>::vector;
 
-      template<typename MATRIX>
-      labeling(const MATRIX& m)
+
+      template<typename T>
+      labeling(const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& m)
       {
           assert(false); // shall last entry in each row/column denote non-assignment?
          // check that each row and columns has at most one 1 entry

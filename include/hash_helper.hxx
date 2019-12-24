@@ -18,6 +18,18 @@ namespace LPMP {
          }
          return hash; 
       }
+
+      template<typename T>
+      size_t hash_vector(const std::vector<T>& x)
+      {
+          assert(x.size() > 0);
+          size_t hash = std::hash<T>()(x[0]);
+          for(std::size_t i=1; i<x.size(); ++i) {
+              hash = hash_combine(hash, std::hash<T>()(x[i]));
+          }
+          return hash; 
+      }
+
    }
 } // namespace LPMP
 
@@ -31,6 +43,16 @@ namespace std
         result_type operator()(argument_type const& s) const
         {
             return LPMP::hash::hash_array(s);
+        }
+    };
+
+    template<typename T> struct hash<std::vector<T>>
+    {
+        typedef std::vector<T> argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(const argument_type& s) const
+        {
+            return LPMP::hash::hash_vector(s);
         }
     };
 }
