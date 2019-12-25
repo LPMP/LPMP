@@ -38,7 +38,7 @@ class CMakeBuild(build_ext):
         last_word_first_line = out.split('\n')[0].split(' ')[-1]
 
         gcc_version = LooseVersion(last_word_first_line)
-        return (gcc_version >= '8.0')
+        return (gcc_version >= '9.0')
 
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
@@ -52,7 +52,7 @@ class CMakeBuild(build_ext):
                 print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
                 return gcc, matching_gpp
 
-        raise RuntimeError("gcc >= 8.0 not found on the system")
+        raise RuntimeError("gcc >= 9.0 not found on the system")
 
 
     def _prepare_environment(self):
