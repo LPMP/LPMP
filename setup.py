@@ -48,7 +48,7 @@ class CMakeBuild(build_ext):
 
         for gcc in ['gcc'] + all_gccs:
             if self._validate_gcc_version(gcc):
-                matching_gpp = "g++"
+                matching_gpp = gcc.replace("cc", "++")
                 print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
                 return gcc, matching_gpp
 
