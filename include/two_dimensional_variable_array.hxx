@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <cassert>
 
 namespace LPMP {
@@ -255,9 +256,53 @@ public:
 
    auto& data() { return data_; }
 
+   std::array<std::size_t,2> indices(const T* p) const
+   {
+       assert(p >= &data_[0]);
+       assert(p < &data_[0] + data_.size());
+
+       // binary search to locate first index
+       const std::size_t first_index = [&]() {
+           std::size_t lower = 0;
+           std::size_t upper = size()-1;
+           while(lower <= upper) {
+               const std::size_t middle = (lower+upper)/2;
+               if( &(*this)(middle,0) <= p && p <= &(*this)[middle].back()) {
+                   return middle; 
+               } else if( &(*this)(middle,0) < p ) {
+                   lower = middle+1;
+               } else {
+                   upper = middle-1; 
+               }
+           }
+           assert(false);
+           return std::numeric_limits<std::size_t>::max();
+       }();
+
+       // binary search for second index
+       const std::size_t second_index = [&]() {
+           std::size_t lower = 0;
+           std::size_t upper = (*this)[first_index].size()-1;
+           while(lower <= upper) {
+               const std::size_t middle = (lower+upper)/2;
+               if(&(*this)(first_index,middle) < p)
+                   lower = middle+1; 
+               else if(&(*this)(first_index,middle) > p)
+                   upper = middle-1;
+               else
+                   return middle;
+           }
+           assert(false);
+           return std::numeric_limits<std::size_t>::max();
+       }();
+
+       assert(p == &(*this)(first_index, second_index));
+       return {first_index, second_index};
+   }
+
 private:
    template<typename ITERATOR>
-   std::size_t set_dimensions(ITERATOR begin, ITERATOR end)
+       std::size_t set_dimensions(ITERATOR begin, ITERATOR end)
    {
       // first calculate amount of memory needed in bytes
       const auto s = std::distance(begin, end);

@@ -15,9 +15,8 @@ namespace LPMP {
             bdd_branch_instruction* next_low_incoming = nullptr;
             bdd_branch_instruction* next_high_incoming = nullptr; 
 
-            double* cumulative_sum = nullptr;
             double* variable_cost = nullptr;
-            double m = 0.0;
+            double m = 0.0; // intermediate value of shortest path from either terminal or first node (depending on algorithm state)
 
             // From C++20
             //friend bool operator==(const bdd_branch_instruction&, const bdd_branch_instruction&) = default;
@@ -26,6 +25,7 @@ namespace LPMP {
             void backward_step();
             void forward_step();
 
+            // Debug functions for checking correctness of forward and backward step
             double cost_from_first() const;
             double cost_from_terminal() const;
 
@@ -50,7 +50,6 @@ namespace LPMP {
             x.first_high_incoming == y.first_high_incoming &&
             x.next_low_incoming == y.next_low_incoming &&
             x.next_high_incoming == y.next_high_incoming &&
-            x.cumulative_sum == y.cumulative_sum &&
             x.variable_cost == y.variable_cost &&
             x.m == y.m);
         return equal;
@@ -233,7 +232,7 @@ namespace LPMP {
         assert(bdd.low_outgoing == bdd_branch_instruction_terminal_0 || bdd.low_outgoing == bdd_branch_instruction_terminal_1 || bdd.low_outgoing > &bdd);
         assert(bdd.high_outgoing != nullptr);
         assert(bdd.high_outgoing == bdd_branch_instruction_terminal_0 || bdd.high_outgoing == bdd_branch_instruction_terminal_1 || bdd.high_outgoing > &bdd);
-        assert(bdd.cumulative_sum != nullptr);
+        //assert(bdd.cumulative_sum != nullptr); // TODO: remove.
         assert(bdd.variable_cost != nullptr);
         //assert(bdd.low_outgoing != bdd.high_outgoing); // this need not hold true for our BDDs.
         assert(std::isfinite(bdd.m));

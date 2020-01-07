@@ -1,4 +1,5 @@
-#include "bdd/bdd.h"
+#include "bdd/bdd_min_marginal_averaging.h"
+#include "bdd/bdd_anisotropic_diffusion.h"
 #include "bdd/convert_pb_to_bdd.h"
 #include <vector>
 #include <random>
@@ -83,7 +84,8 @@ std::tuple<double, std::vector<char>> min_cost(LHS_ITERATOR lhs_begin, LHS_ITERA
     return {opt_val, sol};
 }
 
-int main(int argc, char** arv)
+template<typename BDD_SOLVER>
+void test_random_inequality()
 {
     Cudd bdd_mgr;
     bdd_converter converter(bdd_mgr);
@@ -104,10 +106,10 @@ int main(int argc, char** arv)
         auto bdd = converter.convert_to_bdd(coefficients.begin(), coefficients.end(), ineq, rhs);
         if(bdd.nodeCount() < 2) 
             continue;
-        bdd_base bdds(bdd_mgr);
+        BDD_SOLVER bdds;
         std::vector<std::size_t> vars(nr_vars);
         std::iota (std::begin(vars), std::end(vars), 0);
-        bdds.add_bdd(bdd, vars.begin(), vars.end());
+        bdds.add_bdd(bdd, vars.begin(), vars.end(), bdd_mgr);
         //bdds.export_dot(std::cout);
         bdds.init(); 
         const std::vector<double> costs = generate_random_costs(nr_vars);
@@ -116,8 +118,7 @@ int main(int argc, char** arv)
             std::cout << x << " ";
         std::cout << "\n"; 
         bdds.set_costs(costs.begin(), costs.end());
-        bdds.forward_run();
-        const double backward_lb = bdds.lower_bound_backward_run();
+        const double backward_lb = bdds.lower_bound();
         const auto [enumeration_lb, sol] = min_cost(coefficients.begin(), coefficients.end(), ineq, rhs, costs.begin(), costs.end());
         std::cout << "enumeration lb = " << enumeration_lb << ", backward lb = " << backward_lb << "\n";
         test(std::abs(backward_lb - enumeration_lb) <= 1e-8);
@@ -128,4 +129,10 @@ int main(int argc, char** arv)
         std::cout << "\n";
         test(std::abs(enumeration_lb - bdds.evaluate(sol.begin(), sol.end())) <= 1e-8);
     } 
+}
+
+int main(int argc, char** arv)
+{
+    test_random_inequality<bdd_min_marginal_averaging>();
+    test_random_inequality<bdd_anisotropic_diffusion>();
 }

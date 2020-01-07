@@ -88,7 +88,7 @@ namespace LPMP {
             visited[i] = 2;
             std::vector<std::size_t> a;
             for(const std::size_t x : adjacency[i]) {
-                if(visited[x] == 0 && x != i) {
+                if(visited[x] == 0 && x != i) { // TODO: second check not needed!
                     a.push_back(x); 
                 }
                 if(visited[x] != 2) {
@@ -105,7 +105,7 @@ namespace LPMP {
                 visited[x] = 1;
             }
             assert(remaining_degree[i] == 0);
-        } 
+        }
 
         if(result.size() != adjacency.size())
             throw std::runtime_error("Graph not connected.");

@@ -1,3 +1,6 @@
+#pragma once
+
+#include "bdd_solver_interface.h"
 #include "two_dimensional_variable_array.hxx"
 #include "cuddObj.hh"
 #include "ILP_input.h"
@@ -12,54 +15,11 @@
 
 namespace LPMP {
 
-    //class bdd_branch_instruction;
-    //void check_bdd_branch_instruction(const bdd_branch_instruction& bdd, const bool last_variable = false, const bool first_variable = false);
-
-    /*
-    class bdd_branch_instruction {
-        public:
-            bdd_branch_instruction* low_outgoing = nullptr;
-            bdd_branch_instruction* high_outgoing = nullptr;
-            bdd_branch_instruction* first_low_incoming = nullptr;
-            bdd_branch_instruction* first_high_incoming = nullptr;
-            bdd_branch_instruction* next_low_incoming = nullptr;
-            bdd_branch_instruction* next_high_incoming = nullptr; 
-
-            double* cumulative_sum = nullptr;
-            double* variable_cost = nullptr;
-            double m = 0.0;
-
-            // From C++20
-            //friend bool operator==(const bdd_branch_instruction&, const bdd_branch_instruction&) = default;
-            friend bool operator==(const bdd_branch_instruction& x, const bdd_branch_instruction& y);
-
-            void backward_step();
-            void forward_step();
-
-            double cost_from_first() const;
-            double cost_from_terminal() const;
-
-            bool is_terminal() const;
-            bool is_first() const { return first_low_incoming == nullptr && first_high_incoming == nullptr; }
-
-            bool is_initial_state() const { return *this == bdd_branch_instruction{}; }
-
-            std::array<double,2> min_marginal() const;
-    };
-
-    static bdd_branch_instruction* const bdd_branch_instruction_terminal_0 = static_cast<bdd_branch_instruction*>(nullptr)+1;;
-    static bdd_branch_instruction* const bdd_branch_instruction_terminal_1 = static_cast<bdd_branch_instruction*>(nullptr)+2;
-
-    bool bdd_branch_instruction::is_terminal() const { return this == bdd_branch_instruction_terminal_0 || this == bdd_branch_instruction_terminal_1; }
-    */
-
-    class bdd_base {
+    class bdd_min_marginal_averaging : public bdd_solver_interface {
         public:
             struct bdd_branch_instruction_level {
                 std::size_t first_branch_instruction = std::numeric_limits<std::size_t>::max();
                 std::size_t last_branch_instruction = std::numeric_limits<std::size_t>::max();
-                // TODO: remove cumulative sum
-                double cumulative_sum = std::numeric_limits<double>::infinity();
                 double variable_cost = std::numeric_limits<double>::infinity(); 
                 // TODO: prev and next pointers possibly not needed
                 bdd_branch_instruction_level* prev = nullptr;
@@ -71,16 +31,17 @@ namespace LPMP {
                 friend bool operator==(const bdd_branch_instruction_level&, const bdd_branch_instruction_level&);
             };
 
-            bdd_base(Cudd& bdd_mgr) : bdd_mgr_(bdd_mgr) {}
 
-            bdd_base(const bdd_base&) = delete; // no copy constructor because of pointers in bdd_branch_instruction
+            bdd_min_marginal_averaging() {}
+            bdd_min_marginal_averaging(const bdd_min_marginal_averaging&) = delete; // no copy constructor because of pointers in bdd_branch_instruction
 
             template<typename BDD_VARIABLES_ITERATOR>
-                void add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end);
+                void add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end, Cudd& bdd_mgr);
 
             void init(const ILP_input& input);
 
             std::size_t nr_variables() const { return bdd_branch_instruction_levels.size(); }
+            std::size_t nr_bdds() const { return bdd_branch_instruction_levels.size()-1; }
             std::size_t nr_bdds(const std::size_t var) const { assert(var<nr_variables()); return bdd_branch_instruction_levels[var].size(); }
 
             // after all BDDs are added, initialize them so that optimization can start
@@ -102,6 +63,8 @@ namespace LPMP {
             void backward_run(); // also used to initialize
             void forward_run();
 
+            double lower_bound() { return lower_bound_backward_run(); }
+
             double lower_bound_backward_run();
             double lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
 
@@ -109,9 +72,7 @@ namespace LPMP {
             void min_marginal_averaging_forward();
             double min_marginal_averaging_backward();
 
-            double min_marginal_anisotropic_diffusion();
-            void min_marginal_anisotropic_diffusion_forward();
-            double min_marginal_anisotropic_diffusion_backward();
+            void iteration() { min_marginal_averaging_iteration(); }
 
             const bdd_branch_instruction& get_bdd_branch_instruction(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const;
 
@@ -138,226 +99,26 @@ namespace LPMP {
 
             std::vector<bdd_branch_instruction> bdd_branch_instructions;
             two_dim_variable_array<bdd_branch_instruction_level> bdd_branch_instruction_levels;
-            Cudd& bdd_mgr_;
             bdd_storage bdd_storage_;
             std::vector<double> costs_; 
     };
 
-    /*
-    bool operator==(const bdd_branch_instruction& x, const bdd_branch_instruction& y)
-    {
-        const bool equal = (x.low_outgoing == y.low_outgoing &&
-            x.high_outgoing == y.high_outgoing &&
-            x.first_low_incoming == y.first_low_incoming &&
-            x.first_high_incoming == y.first_high_incoming &&
-            x.next_low_incoming == y.next_low_incoming &&
-            x.next_high_incoming == y.next_high_incoming &&
-            x.cumulative_sum == y.cumulative_sum &&
-            x.variable_cost == y.variable_cost &&
-            x.m == y.m);
-        return equal;
-    }
-    */
-
-    bool operator==(const bdd_base::bdd_branch_instruction_level& x, const bdd_base::bdd_branch_instruction_level& y)
+    bool operator==(const bdd_min_marginal_averaging::bdd_branch_instruction_level& x, const bdd_min_marginal_averaging::bdd_branch_instruction_level& y)
     {
         return (x.first_branch_instruction == y.first_branch_instruction &&
             x.last_branch_instruction == y.last_branch_instruction &&
-            x.cumulative_sum == y.cumulative_sum &&
             x.variable_cost == y.variable_cost &&
             x.prev == y.prev &&
             x.next == y.next); 
     }
 
-    /*
-    void bdd_branch_instruction::forward_step()
-    {
-        check_bdd_branch_instruction(*this);
-
-        if(is_first()) {
-            m = 0.0;
-            //std::cout << "forward step m for " << this << " = " << m << "\n";
-            return;
-        }
-
-        m = std::numeric_limits<double>::infinity();
-
-        // iterate over all incoming low edges 
-        {
-            bdd_branch_instruction* cur = first_low_incoming;
-            while(cur != nullptr) {
-                //m = std::min(m, cur->m + *cumulative_sum - *(cur->cumulative_sum));
-                m = std::min(m, cur->m);
-                cur = cur->next_low_incoming;
-            }
-        }
-
-        // iterate over all incoming high edges 
-        {
-            bdd_branch_instruction* cur = first_high_incoming;
-            while(cur != nullptr) {
-                //m = std::min(m, cur->m + *variable_cost + *cumulative_sum - *(cur->cumulative_sum));
-                m = std::min(m, cur->m + *(cur->variable_cost));
-                cur = cur->next_high_incoming;
-            }
-        }
-
-        //std::cout << "forward step m for " << this << " = " << m << "\n";
-        assert(std::isfinite(m));
-        assert(std::abs(m - cost_from_first()) <= 1e-8);
-
-        check_bdd_branch_instruction(*this);
-    }
-
-    void bdd_branch_instruction::backward_step()
-    {
-        check_bdd_branch_instruction(*this);
-
-        // low edge
-        const double low_cost = [&]() {
-            if(low_outgoing == bdd_branch_instruction_terminal_0) {
-                return std::numeric_limits<double>::infinity();
-            } else if(low_outgoing == bdd_branch_instruction_terminal_1) {
-                //return *cumulative_sum;
-                return 0.0;
-            } else {
-                //return low_outgoing->m + *cumulative_sum - *(low_outgoing->cumulative_sum) - std::min(*low_outgoing->variable_cost,0.0);
-                return low_outgoing->m;
-            }
-        }();
-
-        // high edge
-        const double high_cost = [&]() {
-            if(high_outgoing == bdd_branch_instruction_terminal_0) {
-                return std::numeric_limits<double>::infinity(); 
-            } else if(high_outgoing == bdd_branch_instruction_terminal_1) {
-                //return *cumulative_sum + *variable_cost; 
-                return *variable_cost; 
-            } else {
-                //return high_outgoing->m + *variable_cost + *cumulative_sum - *(high_outgoing->cumulative_sum) - std::min(*high_outgoing->variable_cost,0.0);
-                return high_outgoing->m + *variable_cost;
-            }
-        }();
-
-        //std::cout << "variable cost = " << *variable_cost << ", low cost = " << low_cost << ", high cost = " << high_cost << ", cumulative sum = " << *cumulative_sum << "\n"; 
-
-        assert(!std::isnan(low_cost));
-        assert(!std::isnan(high_cost));
-        assert(std::isfinite(std::min(low_cost,high_cost)));
-        m = std::min(low_cost, high_cost);
-        //std::cout << "backward step m for " << this << ", low outgoing = " << low_outgoing << ", high outgoing = " << high_outgoing << " = " << m << "\n";
-
-        check_bdd_branch_instruction(*this);
-        assert(std::abs(m - cost_from_terminal()) <= 1e-8);
-    }
-
-    double bdd_branch_instruction::cost_from_first() const
-    {
-        // TODO: only works if no bdd nodes skips variables
-        double c = std::numeric_limits<double>::infinity();
-        if(is_first())
-            return 0.0;
-        
-        // iterate over all incoming low edges 
-        {
-            bdd_branch_instruction* cur = first_low_incoming;
-            while(cur != nullptr) {
-                c = std::min(c, cur->cost_from_first());
-                cur = cur->next_low_incoming;
-            }
-        }
-
-        // iterate over all incoming high edges 
-        {
-            bdd_branch_instruction* cur = first_high_incoming;
-            while(cur != nullptr) {
-                c = std::min(c, cur->cost_from_first() + *cur->variable_cost);
-                cur = cur->next_high_incoming;
-            }
-        }
-
-        return c;
-    }
-
-    double bdd_branch_instruction::cost_from_terminal() const
-    {
-        // TODO: only works if no bdd nodes skips variables
-        // low edge
-        const double low_cost = [&]() {
-            if(low_outgoing == bdd_branch_instruction_terminal_0) {
-                return std::numeric_limits<double>::infinity();
-            } else if(low_outgoing == bdd_branch_instruction_terminal_1) {
-                return 0.0;
-            } else {
-                return low_outgoing->cost_from_terminal();;
-            }
-        }();
-
-        // high edge
-        const double high_cost = [&]() {
-            if(high_outgoing == bdd_branch_instruction_terminal_0) {
-                return std::numeric_limits<double>::infinity(); 
-            } else if(high_outgoing == bdd_branch_instruction_terminal_1) {
-                return *variable_cost; 
-            } else {
-                return high_outgoing->cost_from_terminal() + *variable_cost;
-            }
-        }();
-
-        return std::min(low_cost, high_cost); 
-    }
-
-    std::array<double,2> bdd_branch_instruction::min_marginal() const
-    {
-        check_bdd_branch_instruction(*this);
-
-        //std::cout << "in min_marginal() for " << this << ", m = " << m << "\n";
-        assert(std::abs(m - cost_from_first()) <= 1e-8);
-        if(!low_outgoing->is_terminal()) {
-            assert(std::abs(low_outgoing->m - low_outgoing->cost_from_terminal()) <= 1e-8);
-        }
-        if(!high_outgoing->is_terminal()) {
-            assert(std::abs(high_outgoing->m - high_outgoing->cost_from_terminal()) <= 1e-8);
-        }
-
-        const double m0 = [&]() {
-            if(low_outgoing == bdd_branch_instruction_terminal_0)
-                return std::numeric_limits<double>::infinity();
-            if(low_outgoing == bdd_branch_instruction_terminal_1)
-                return this->m;
-            return this->m + this->low_outgoing->m;
-        }();
-
-        const double m1 = [&]() {
-            if(high_outgoing == bdd_branch_instruction_terminal_0)
-                return std::numeric_limits<double>::infinity();
-            if(high_outgoing == bdd_branch_instruction_terminal_1)
-                return this->m + *this->variable_cost;
-            return this->m + *this->variable_cost + this->high_outgoing->m;
-        }();
-
-        assert(std::isfinite(std::min(m0,m1)));
-
-        return {m0,m1};
-    }
-    */
-
-    void bdd_base::forward_step(const std::size_t var, const std::size_t bdd_index)
+    void bdd_min_marginal_averaging::forward_step(const std::size_t var, const std::size_t bdd_index)
     {
         assert(var < bdd_branch_instruction_levels.size());
         assert(bdd_index < bdd_branch_instruction_levels[var].size());
 
         auto& bdd_level = bdd_branch_instruction_levels(var,bdd_index);
         assert(var != 0 || bdd_level.prev == nullptr);
-
-        // update cumulative sum
-        if(bdd_level.prev != nullptr) {
-            bdd_level.cumulative_sum = bdd_level.prev->cumulative_sum + std::min(0.0, bdd_level.prev->variable_cost);
-        } else {
-            bdd_level.cumulative_sum = 0.0;
-        }
-        bdd_level.cumulative_sum = 0.0; // TODO: for now
-        //std::cout << "forward cumulative sum for var " << var << " = " << bdd_level.cumulative_sum << "\n";
 
         // iterate over all bdd nodes and make forward step
         const std::size_t first_branch_instruction = bdd_level.first_branch_instruction;
@@ -368,30 +129,20 @@ namespace LPMP {
         }
     }
 
-    void bdd_base::forward_step(const std::size_t var)
+    void bdd_min_marginal_averaging::forward_step(const std::size_t var)
     {
         assert(var < bdd_branch_instruction_levels.size());
         for(std::size_t bdd_index = 0; bdd_index<bdd_branch_instruction_levels[var].size(); ++bdd_index)
             forward_step(var, bdd_index);
     }
 
-    void bdd_base::backward_step(const std::size_t var, const std::size_t bdd_index)
+    void bdd_min_marginal_averaging::backward_step(const std::size_t var, const std::size_t bdd_index)
     {
         assert(var < bdd_branch_instruction_levels.size());
         assert(bdd_index < bdd_branch_instruction_levels[var].size());
 
         auto& bdd_level = bdd_branch_instruction_levels(var,bdd_index);
         assert(var+1 != nr_variables() || bdd_level.next == nullptr);
-
-        // TODO: can be removed
-        // update cumulative sum
-        //if(bdd_level.next != nullptr) {
-        //    bdd_level.cumulative_sum = bdd_level.next->cumulative_sum + std::min(0.0, bdd_level.next->variable_cost);
-        //} else {
-        //    bdd_level.cumulative_sum = 0.0;
-        //}
-        //bdd_level.cumulative_sum = 0.0; // TODO: for now
-        //std::cout << "backward cumulative sum for var " << var << " = " << bdd_level.cumulative_sum << "\n";
 
         // iterate over all bdd nodes and make forward step
         const std::size_t first_branch_instruction = bdd_level.first_branch_instruction;
@@ -404,7 +155,7 @@ namespace LPMP {
         }
     }
 
-    void bdd_base::backward_step(const std::size_t var)
+    void bdd_min_marginal_averaging::backward_step(const std::size_t var)
     {
         assert(var < bdd_branch_instruction_levels.size());
         for(std::size_t bdd_index = 0; bdd_index<bdd_branch_instruction_levels[var].size(); ++bdd_index)
@@ -412,26 +163,27 @@ namespace LPMP {
     }
 
     template<typename BDD_VARIABLES_ITERATOR>
-        void bdd_base::add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end)
+        void bdd_min_marginal_averaging::add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end, Cudd& bdd_mgr)
         {
-            bdd_storage_.add_bdd(bdd_mgr_, bdd, bdd_vars_begin, bdd_vars_end); 
+            bdd_storage_.add_bdd(bdd_mgr, bdd, bdd_vars_begin, bdd_vars_end); 
         }
 
-    void bdd_base::init()
+    void bdd_min_marginal_averaging::init()
     {
         init_branch_instructions();
         costs_.resize(nr_variables(), std::numeric_limits<double>::infinity());
         std::cout << "nr bdds = " << bdd_storage_.nr_bdds() << "\n";
     }
 
-    void bdd_base::init(const ILP_input& input)
+    void bdd_min_marginal_averaging::init(const ILP_input& input)
     {
-        bdd_storage_ = bdd_storage(input, bdd_mgr_);
+        Cudd bdd_mgr;
+        bdd_storage_ = bdd_storage(input, bdd_mgr);
         init();
         set_costs(input.objective().begin(), input.objective().end());
     }
 
-    void bdd_base::init_branch_instructions()
+    void bdd_min_marginal_averaging::init_branch_instructions()
     {
         // allocate datastructures holding bdd instructions
         
@@ -551,7 +303,6 @@ namespace LPMP {
                 assert(bdd.is_initial_state());
                 //std::cout << "address = " << &bdd << "\n";
                 bdd.variable_cost = &bdd_level.variable_cost;
-                bdd.cumulative_sum = &bdd_level.cumulative_sum;
 
                 stored_bdd_node_index_to_bdd_address.insert({stored_bdd_node_index, &bdd});
 
@@ -596,7 +347,7 @@ namespace LPMP {
         // TODO: clear bdd_storage
     }
 
-    std::array<double,2> bdd_base::min_marginal(const std::size_t var, const std::size_t bdd_index) const
+    std::array<double,2> bdd_min_marginal_averaging::min_marginal(const std::size_t var, const std::size_t bdd_index) const
     {
         assert(var < nr_variables());
         assert(bdd_index < nr_bdds(var));
@@ -614,7 +365,7 @@ namespace LPMP {
         return m;
     }
 
-    void bdd_base::set_marginal(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals)
+    void bdd_min_marginal_averaging::set_marginal(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals)
     {
         assert(var < nr_variables());
         assert(bdd_index < nr_bdds(var));
@@ -628,14 +379,14 @@ namespace LPMP {
         bdd_level.variable_cost += -marginal_diff + marginal_diff_target; 
     }
 
-    void bdd_base::backward_run()
+    void bdd_min_marginal_averaging::backward_run()
     {
         for(long int var=nr_variables()-1; var>=0; --var) {
             backward_step(var); 
         } 
     }
 
-    double bdd_base::lower_bound_backward_run()
+    double bdd_min_marginal_averaging::lower_bound_backward_run()
     {
         backward_run();
         double lb = 0.0;
@@ -645,7 +396,7 @@ namespace LPMP {
         return lb;
     }
 
-    double bdd_base::lower_bound_backward(const std::size_t var, const std::size_t bdd_index)
+    double bdd_min_marginal_averaging::lower_bound_backward(const std::size_t var, const std::size_t bdd_index)
     {
         const auto& bdd_level = bdd_branch_instruction_levels(var,bdd_index);
         if(bdd_level.prev == nullptr) {
@@ -657,14 +408,14 @@ namespace LPMP {
         }
     }
 
-    void bdd_base::forward_run()
+    void bdd_min_marginal_averaging::forward_run()
     {
         for(std::size_t var=0; var<nr_variables(); ++var) {
             forward_step(var); 
         }
     }
 
-    double bdd_base::min_marginal_averaging_iteration()
+    double bdd_min_marginal_averaging::min_marginal_averaging_iteration()
     {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward();
@@ -678,7 +429,7 @@ namespace LPMP {
     }
 
     template<typename ITERATOR>
-        std::array<double,2> bdd_base::average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end)
+        std::array<double,2> bdd_min_marginal_averaging::average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end)
         {
             std::array<double,2> average_marginal = {0.0, 0.0};
             for(auto m_iter=marginals_begin; m_iter!=marginals_end; ++m_iter) {
@@ -695,7 +446,7 @@ namespace LPMP {
         }
 
     // min marginal averaging
-    void bdd_base::min_marginal_averaging_forward()
+    void bdd_min_marginal_averaging::min_marginal_averaging_forward()
     {
         std::vector<std::array<double,2>> min_marginals;
         for(std::size_t var=0; var<nr_variables(); ++var) {
@@ -725,12 +476,11 @@ namespace LPMP {
             // set marginals in each bdd so min marginals match each other
             for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
                 set_marginal(var,bdd_index,average_marginal,min_marginals[bdd_index]);
-            }
-
+            } 
         }
     }
 
-    double bdd_base::min_marginal_averaging_backward()
+    double bdd_min_marginal_averaging::min_marginal_averaging_backward()
     {
         double lb = 0.0;
         std::vector<std::array<double,2>> min_marginals;
@@ -763,67 +513,7 @@ namespace LPMP {
         return lb;
     }
 
-    double bdd_base::min_marginal_anisotropic_diffusion()
-    {
-        two_dim_variable_array<std::size_t> first_bdd_var(bdd_branch_instruction_levels);
-        for(std::size_t v=0; v<nr_variables(); ++v) {
-            for(std::size_t bdd_index=0; bdd_index<bdd_branch_instruction_levels[v].size(); ++bdd_index) {
-                const auto& bdd_level = bdd_branch_instruction_levels(v,bdd_index);
-                if(bdd_level.prev == nullptr)
-                    first_bdd_var(v,bdd_index) = v;
-                else {
-                    const auto& prev_bdd_level = *bdd_level.prev;
-
-                }
-            }
-        }   
-
-        two_dim_variable_array<std::size_t> last_bdd_var(bdd_branch_instruction_levels);
-
-        min_marginal_anisotropic_diffusion_forward();
-        return min_marginal_anisotropic_diffusion_backward();
-    }
-
-    void bdd_base::min_marginal_anisotropic_diffusion_forward()
-    {
-        /*
-        std::vector<std::array<double,2>> min_marginals;
-        std::vector<char> last_variable;
-        for(std::size_t var=0; var<nr_variables(); ++var) {
-
-            // collect min marginals
-            min_marginals.clear();
-            last_variable.clear();
-            for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
-                forward_step(var,bdd_index);
-                min_marginals.push_back(min_marginal(var,bdd_index)); 
-                last_variable.push_back(last_bdd_variable(bdd_index,var));
-            }
-
-            // set min-marginals of bdds where current var is last one to zero, for other average it
-            for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
-                const std::array<double,2> average_marginal = average_marginals(min_marginals.begin(), min_marginals.end());
-            }
-
-            for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
-                if(last_variable[bdd_index]) {
-                    const double min_val = std::min(min_marginals[bdd_index][0], min_marginals[bdd_index][1]);
-                    set_marginal(var,bdd_index,{min_val, min_val}, min_marginals[bdd_index]);
-                } else {
-                    set_marginal(var,bdd_index,average_marginal,min_marginals[bdd_index]); 
-                }
-            }
-
-        }
-        */
-    }
-
-    double bdd_base::min_marginal_anisotropic_diffusion_backward()
-    {
-        return 0.0;
-    }
-
-    const bdd_branch_instruction& bdd_base::get_bdd_branch_instruction(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const
+    const bdd_branch_instruction& bdd_min_marginal_averaging::get_bdd_branch_instruction(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const
     {
         assert(var < nr_variables());
         assert(bdd_index < bdd_branch_instruction_levels[var].size());
@@ -832,7 +522,7 @@ namespace LPMP {
     }
 
     template<typename ITERATOR>
-        void bdd_base::set_costs(ITERATOR begin, ITERATOR end)
+        void bdd_min_marginal_averaging::set_costs(ITERATOR begin, ITERATOR end)
         {
             assert(std::distance(begin,end) <= nr_variables());
             std::copy(begin, end, costs_.begin());
@@ -849,7 +539,7 @@ namespace LPMP {
         }
 
     template<typename ITERATOR>
-        bool bdd_base::check_feasibility(ITERATOR var_begin, ITERATOR var_end) const
+        bool bdd_min_marginal_averaging::check_feasibility(ITERATOR var_begin, ITERATOR var_end) const
         {
             assert(std::distance(var_begin, var_end) == nr_variables());
 
@@ -888,7 +578,7 @@ namespace LPMP {
         }
 
     template<typename ITERATOR>
-        double bdd_base::evaluate(ITERATOR var_begin, ITERATOR var_end) const
+        double bdd_min_marginal_averaging::evaluate(ITERATOR var_begin, ITERATOR var_end) const
         {
             assert(std::distance(var_begin, var_end) == nr_variables());
 
@@ -902,50 +592,11 @@ namespace LPMP {
             return cost;
         }
 
-    /*
-    void check_bdd_branch_instruction(const bdd_branch_instruction& bdd, const bool last_variable, const bool first_variable)
+    void bdd_min_marginal_averaging::check_bdd_branch_instruction_level(const bdd_branch_instruction_level& bdd_level, const bool last_variable, const bool first_variable) const
     {
-        assert(bdd.low_outgoing != nullptr);
-        assert(bdd.low_outgoing == bdd_branch_instruction_terminal_0 || bdd.low_outgoing == bdd_branch_instruction_terminal_1 || bdd.low_outgoing > &bdd);
-        assert(bdd.high_outgoing != nullptr);
-        assert(bdd.high_outgoing == bdd_branch_instruction_terminal_0 || bdd.high_outgoing == bdd_branch_instruction_terminal_1 || bdd.high_outgoing > &bdd);
-        assert(bdd.cumulative_sum != nullptr);
-        assert(bdd.variable_cost != nullptr);
-        //assert(bdd.low_outgoing != bdd.high_outgoing); // this need not hold true for our BDDs.
-        assert(std::isfinite(bdd.m));
-        if(last_variable) {
-            assert(bdd.low_outgoing == bdd_branch_instruction_terminal_0 || bdd.low_outgoing == bdd_branch_instruction_terminal_1);
-            assert(bdd.high_outgoing == bdd_branch_instruction_terminal_0 || bdd.high_outgoing == bdd_branch_instruction_terminal_1);
-        }
-        if(first_variable) {
-            assert(bdd.first_low_incoming == nullptr);
-            assert(bdd.first_high_incoming == nullptr);
-        } 
-        if(bdd.first_low_incoming != nullptr) {
-            bdd_branch_instruction* cur = bdd.first_low_incoming;
-            while(cur != nullptr) {
-                assert(cur < &bdd);
-                assert(cur->low_outgoing == &bdd);
-                cur = cur->next_low_incoming;
-            }
-        }
-        if(bdd.first_high_incoming != nullptr) {
-            bdd_branch_instruction* cur = bdd.first_high_incoming;
-            while(cur != nullptr) {
-                assert(cur < &bdd);
-                assert(cur->high_outgoing == &bdd);
-                cur = cur->next_high_incoming;
-            }
-        }
-    }
-    */
-
-    void bdd_base::check_bdd_branch_instruction_level(const bdd_branch_instruction_level& bdd_level, const bool last_variable, const bool first_variable) const
-    {
-        // go over all branch instructions and check whether they point to all the same variable cost and cumulative sum
+        // go over all branch instructions and check whether they point to all the same variable cost
         for(std::size_t bdd_node_index = bdd_level.first_branch_instruction; bdd_node_index < bdd_level.last_branch_instruction; ++bdd_node_index) {
             assert(&bdd_level.variable_cost == bdd_branch_instructions[bdd_node_index].variable_cost);
-            assert(&bdd_level.cumulative_sum == bdd_branch_instructions[bdd_node_index].cumulative_sum);
         }
 
         if(last_variable) {
@@ -956,7 +607,7 @@ namespace LPMP {
         }
     }
 
-    std::size_t bdd_base::bdd_branch_instruction_index(const bdd_branch_instruction* bdd) const
+    std::size_t bdd_min_marginal_averaging::bdd_branch_instruction_index(const bdd_branch_instruction* bdd) const
     {
         assert(bdd >= &bdd_branch_instructions[0]);
         const std::size_t i = bdd - &bdd_branch_instructions[0];
@@ -964,7 +615,7 @@ namespace LPMP {
         return i; 
     }
 
-    std::size_t bdd_base::bdd_variable(const bdd_branch_instruction& bdd) const
+    std::size_t bdd_min_marginal_averaging::bdd_variable(const bdd_branch_instruction& bdd) const
     {
         // TODO: recursive search
         const std::size_t i = bdd_branch_instruction_index(&bdd);
@@ -977,7 +628,7 @@ namespace LPMP {
         throw std::runtime_error("Could not obtain bdd variable");
     }
 
-    std::size_t bdd_base::bdd_level_variable(const bdd_branch_instruction_level& bdd_level) const
+    std::size_t bdd_min_marginal_averaging::bdd_level_variable(const bdd_branch_instruction_level& bdd_level) const
     {
         assert(&bdd_level >= &bdd_branch_instruction_levels(0,0));
         assert(&bdd_level <= &bdd_branch_instruction_levels.back().back());
@@ -996,7 +647,7 @@ namespace LPMP {
         return v; 
     }
 
-    std::size_t bdd_base::first_variable_of_bdd(const bdd_branch_instruction_level& bdd_level) const
+    std::size_t bdd_min_marginal_averaging::first_variable_of_bdd(const bdd_branch_instruction_level& bdd_level) const
     {
         bdd_branch_instruction_level const* p = &bdd_level;
         while(p->prev != nullptr)
@@ -1004,7 +655,7 @@ namespace LPMP {
         return bdd_level_variable(*p);
     }
 
-    std::size_t bdd_base::last_variable_of_bdd(const bdd_branch_instruction_level& bdd_level) const
+    std::size_t bdd_min_marginal_averaging::last_variable_of_bdd(const bdd_branch_instruction_level& bdd_level) const
     {
         bdd_branch_instruction_level const* p = &bdd_level;
         while(p->next != nullptr)
@@ -1013,10 +664,10 @@ namespace LPMP {
     }
 
     template<typename STREAM>
-        void bdd_base::export_dot(STREAM& s) const
+        void bdd_min_marginal_averaging::export_dot(STREAM& s) const
         {
             return bdd_storage_.export_dot(s);
-            s << "digraph bdd_base {\n";
+            s << "digraph bdd_min_marginal_averaging {\n";
 
             std::vector<char> bdd_node_visited(bdd_branch_instructions.size(), false);
             std::size_t cur_bdd_index = 0;
