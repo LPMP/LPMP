@@ -13,9 +13,6 @@ int main(int argc, char** argv)
 
     const ILP_input input = ILP_parser::parse_file(std::string(argv[1]));
     std::cout << "parsed input\n";
-    std::ofstream test_out(std::string(argv[1]) + ".lp");
-    input.write(test_out);
-    test_out.close();
 
     Cudd bdd_mgr;
     bdd_anisotropic_diffusion bdds;

@@ -166,8 +166,8 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("add_assignment", &LPMP::graph_matching_input::add_assignment)
         //.def("add_assignment", &LPMP::linear_assignment_problem_input::add_assignment)
         .def("add_quadratic_term", &LPMP::graph_matching_input::add_quadratic_term)
-        .def("write", [](const LPMP::graph_matching_input& i){ return i.write(std::cout); })
-        .def("write", [](const LPMP::graph_matching_input& i, const std::string& filename) { std::fstream f(filename); return i.write(f); })
+        .def("write", [](const LPMP::graph_matching_input& i){ return i.write_torresani_et_al(std::cout); })
+        .def("write", [](const LPMP::graph_matching_input& i, const std::string& filename) { std::fstream f(filename); return i.write_torresani_et_al(f); })
         .def("evaluate", &LPMP::graph_matching_input::evaluate)
         .def("add_assignments", add_assignments)
         .def("add_quadratic_terms", add_quadratic_terms);

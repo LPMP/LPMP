@@ -12,9 +12,6 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const ILP_input input = ILP_parser::parse_file(std::string(argv[1]));
-    std::ofstream test_out(std::string(argv[1]) + ".lp");
-    input.write(test_out);
-    test_out.close();
 
     bdd_min_marginal_averaging bdds;
     bdds.init(input);
