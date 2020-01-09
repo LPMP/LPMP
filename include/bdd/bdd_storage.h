@@ -26,6 +26,7 @@ namespace LPMP {
 
         bdd_storage() {};
         bdd_storage(const ILP_input& input, Cudd& bdd_mgr);
+        bdd_storage(const ILP_input& input); 
 
         void check_node_valid(const bdd_node bdd) const
         {
@@ -58,7 +59,9 @@ namespace LPMP {
         std::size_t last_bdd_node(const std::size_t bdd_nr) const;
 
         private:
+        void init(const ILP_input& input, Cudd& bdd_mgr);
         void check_bdd_node(const bdd_node bdd) const;
+
         std::vector<bdd_node> bdd_nodes_;
         std::vector<std::size_t> bdd_delimiters_ = {0};
         std::vector<std::size_t> nr_bdd_nodes_per_variable;
@@ -199,8 +202,8 @@ namespace LPMP {
             bdd_delimiters_.push_back(bdd_delimiters_.back() + nr_bdd_nodes_end - nr_bdd_nodes_begin);
         }
 
-    bdd_storage::bdd_storage(const ILP_input& input, Cudd& bdd_mgr)
-    { 
+    void bdd_storage::init(const ILP_input& input, Cudd& bdd_mgr)
+    {
         std::vector<int> coefficients;
         std::vector<std::size_t> variables;
         bdd_converter converter(bdd_mgr);
@@ -217,6 +220,17 @@ namespace LPMP {
             BDD bdd = converter.convert_to_bdd(coefficients, constraint.ineq, constraint.right_hand_side);
             add_bdd(bdd_mgr, bdd, variables.begin(), variables.end());
         }
+    }
+
+    bdd_storage::bdd_storage(const ILP_input& input, Cudd& bdd_mgr)
+    {
+        init(input, bdd_mgr);
+    }
+
+    bdd_storage::bdd_storage(const ILP_input& instance)
+    {
+        Cudd bdd_mgr;
+        init(instance, bdd_mgr);
     }
 
     std::size_t bdd_storage::first_bdd_node(const std::size_t bdd_nr) const
@@ -237,7 +251,7 @@ namespace LPMP {
     template<typename STREAM>
         void bdd_storage::export_dot(STREAM& s) const
         {
-            s << "digraph bdd_base {\n";
+            s << "digraph bdd_min_marginal_averaging {\n";
 
             auto get_node_string = [&](const std::size_t i) -> std::string {
                 if(i == bdd_node::terminal_0)

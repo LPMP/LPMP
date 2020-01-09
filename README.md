@@ -13,8 +13,9 @@ We provide a range of solvers for various discrete optimization problems, includ
 * **[Max-cut](/include/max_cut)**, 
 * **[Graph matching](include/graph_matching)**, [4]
 * **[Multi-graph matching](/include/multigraph_matching)**, [5]
+* **[Discrete graphical models with bottleneck terms](/include/horizon_tracking)** [6]
 
-Benchmark problems for various solvers above can be found in [Multi-graph matching](/datasets).
+Benchmark problems for various solvers above can be found in [datasets](/datasets).
 
 ## Optimization techniques
 Optimization techniques include
@@ -40,3 +41,4 @@ A tutorial on writing a new solver from scratch can be found [here](/doc/Getting
 * [3]: [`P. Swoboda and B. Andres. A Message Passing Algorithm for the Minimum Cost Multicut Problem. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Message_Passing_CVPR_2017_paper.html)
 * [4]: [`P. Swoboda, C. Rother, H. A. Alhaija, D. Kainmuller, B. Savchynskyy. A Study of Lagrangean Decompositions and Dual Ascent Solvers for Graph Matching. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Study_of_CVPR_2017_paper.html)
 * [5]: [`P. Swoboda, D. Kainmueller, A. Mokarian, C. Theobalt and F. Bernard. A convex approach to multi-graph matching. In CVPR 2019.`](http://openaccess.thecvf.com/content_CVPR_2019/html/Swoboda_A_Convex_Relaxation_for_Multi-Graph_Matching_CVPR_2019_paper.html)
+* [6]: [`A. Abbas, P. Swoboda. MRFs with bottleneck terms. In ICCV 2019.`](http://openaccess.thecvf.com/content_ICCV_2019/html/...html)

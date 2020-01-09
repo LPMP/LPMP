@@ -1,18 +1,40 @@
 #include "bdd/ILP_parser.h"
-#include "bdd/bdd.h"
+#include "bdd/bdd_min_marginal_averaging.h"
+#include "bdd/bdd_anisotropic_diffusion.h"
 #include "bdd/convert_pb_to_bdd.h"
 #include <vector>
 #include <string>
+#include <iostream>
 #include "test.h"
 
 using namespace LPMP;
+
+void test_problem_anisotropic(const std::string input_string, const double expected_lb)
+{
+    const ILP_input input = ILP_parser::parse_string(input_string);
+    Cudd bdd_mgr;
+    bdd_anisotropic_diffusion bdds;
+    bdds.init(input); 
+
+    //bdds.export_dot(std::cout);
+
+    const double initial_lb = bdds.lower_bound();
+    test(initial_lb <= expected_lb + 1e-8);
+
+    for(std::size_t iter=0; iter<100; ++iter) {
+        bdds.iteration();
+    }
+
+    const double lb = bdds.lower_bound();
+
+    test(std::abs(lb - expected_lb) <= 1e-8);
+}
 
 template<typename BDD_SOLVER>
 void test_problem(const std::string input_string, const double expected_lb)
 {
     const ILP_input input = ILP_parser::parse_string(input_string);
-    Cudd bdd_mgr;
-    BDD_SOLVER bdds(bdd_mgr);
+    BDD_SOLVER bdds;
     bdds.init(input); 
 
     const double initial_lb = bdds.lower_bound_backward_run();
@@ -58,6 +80,9 @@ End)";
 
 int main(int argc, char** arv)
 {
-    test_problem<bdd_base>(matching_3x3_diag, -6.0);
-    test_problem<bdd_base>(matching_3x3_first_row, -4.0);
+    test_problem<bdd_min_marginal_averaging>(matching_3x3_diag, -6.0);
+    test_problem<bdd_min_marginal_averaging>(matching_3x3_first_row, -4.0);
+
+    test_problem_anisotropic(matching_3x3_diag, -6.0);
+    test_problem_anisotropic(matching_3x3_first_row, -4.0);
 }

@@ -1,5 +1,4 @@
-#ifndef LPMP_GENERATE_RANDOM_GRAPH_HXX
-#define LPMP_GENERATE_RANDOM_GRAPH_HXX
+#pragma once
 
 #include <vector>
 #include <array>
@@ -9,7 +8,6 @@
 #include "mrf/max_flow_instance.hxx"
 #include "mrf/binary_MRF_instance.hxx"
 #include "max_cut/max_cut_instance.hxx"
-#include "hash_functions.hxx"
 
 namespace LPMP {
 
@@ -176,5 +174,3 @@ max_flow_instance generate_random_graph_cut_instance(const std::size_t no_nodes,
 }
 
 } // namespace LPMP
-
-#endif // LPMP_GENERATE_RANDOM_GRAPH_HXX

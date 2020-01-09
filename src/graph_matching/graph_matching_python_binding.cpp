@@ -83,14 +83,18 @@ void construct_from_arrays(LPMP::graph_matching_input& instance, const py::array
     add_quadratic_terms(instance, quadratic_terms, left_edges, right_edges);
 }
 
+
 py::array_t<char> get_assignment_mask(LPMP::graph_matching_input::labeling labeling, const py::array_t<double> assignments)
 {
+
     char* assignment_mask = new char[assignments.size()];
+    assert(assignments.size() == assignments.shape(0)*assignments.shape(1));
     std::fill(assignment_mask, assignment_mask + assignments.size(), 0);
     assert(labeling.size() == assignments.shape(0));
     for(std::size_t i=0; i<labeling.size(); ++i) {
         if(labeling[i] != LPMP::linear_assignment_problem_input::no_assignment) {
             assert(labeling[i] < assignments.shape(1));
+            assert(i*assignments.shape(1) + labeling[i] < assignments.size());
             assignment_mask[i*assignments.shape(1) + labeling[i]] = 1;
         }
     }
@@ -102,6 +106,7 @@ py::array_t<char> get_quadratic_terms_mask(LPMP::graph_matching_input::labeling 
     const auto l = left_edges.unchecked<2>();
     const auto r = right_edges.unchecked<2>();
     char* quadratic_mask = new char[quadratic_terms.size()];
+    assert(quadratic_terms.size() == quadratic_terms.shape(0)*quadratic_terms.shape(1));
     std::fill(quadratic_mask, quadratic_mask + quadratic_terms.size(), 0);
     for(std::size_t i=0; i<quadratic_terms.shape(0); ++i) {
         for(std::size_t j=0; j<quadratic_terms.shape(1); ++j) {
@@ -110,8 +115,10 @@ py::array_t<char> get_quadratic_terms_mask(LPMP::graph_matching_input::labeling 
             const std::size_t left_node_2 = l(i,1);
             const std::size_t right_node_2 = r(j,1);
 
-            if(labeling[left_node_1] == right_node_1 && labeling[left_node_2] == right_node_2)
-                quadratic_mask[i*quadratic_terms.shape(0) + j] = 1;
+            if(labeling[left_node_1] == right_node_1 && labeling[left_node_2] == right_node_2) {
+                assert(i*quadratic_terms.shape(1) + j < quadratic_terms.size());
+                quadratic_mask[i*quadratic_terms.shape(1) + j] = 1;
+            }
         }
     } 
 
@@ -159,7 +166,8 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("add_assignment", &LPMP::graph_matching_input::add_assignment)
         //.def("add_assignment", &LPMP::linear_assignment_problem_input::add_assignment)
         .def("add_quadratic_term", &LPMP::graph_matching_input::add_quadratic_term)
-        .def("write", [](const LPMP::graph_matching_input& i){ return i.write(std::cout); })
+        .def("write", [](const LPMP::graph_matching_input& i){ return i.write_torresani_et_al(std::cout); })
+        .def("write", [](const LPMP::graph_matching_input& i, const std::string& filename) { std::fstream f(filename); return i.write_torresani_et_al(f); })
         .def("evaluate", &LPMP::graph_matching_input::evaluate)
         .def("add_assignments", add_assignments)
         .def("add_quadratic_terms", add_quadratic_terms);
