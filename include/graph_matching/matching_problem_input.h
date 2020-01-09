@@ -213,16 +213,20 @@ struct linear_assignment_problem_input {
                right[a.right_node].push_back(a.left_node);
            }
            for(std::size_t i=0; i<no_left_nodes; ++i) {
-               for(const std::size_t j : left[i]) {
-                   s << "+ " << linear_identifier(i,j) << " ";
+               if(left[i].size() > 0) {
+                   for(const std::size_t j : left[i]) {
+                       s << "+ " << linear_identifier(i,j) << " ";
+                   }
+                   s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
                }
-               s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
            }
            for(std::size_t j=0; j<no_right_nodes; ++j) {
-               for(const std::size_t i : right[j]) {
-                   s << "+ " << linear_identifier(i,j) << " ";
+               if(right[j].size() > 0) {
+                   for(const std::size_t i : right[j]) {
+                       s << "+ " << linear_identifier(i,j) << " ";
+                   }
+                   s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
                }
-               s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
            }
        }
    template<typename STREAM>
