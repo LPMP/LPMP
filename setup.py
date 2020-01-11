@@ -36,6 +36,8 @@ class CMakeBuild(build_ext):
         print(f'Testing {gcc_command}...')
         out = subprocess.check_output([gcc_command, '--version']).decode()
         last_word_first_line = out.split('\n')[0].split(' ')[-1]
+        if '.' not in last_word_first_line:
+            return False
 
         gcc_version = LooseVersion(last_word_first_line)
         return (gcc_version >= '9.0')
