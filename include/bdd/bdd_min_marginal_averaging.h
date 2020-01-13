@@ -524,16 +524,24 @@ namespace LPMP {
     template<typename ITERATOR>
         void bdd_min_marginal_averaging::set_costs(ITERATOR begin, ITERATOR end)
         {
+            std::cout << "set costs\n";
+            std::fill(costs_.begin(), costs_.end(), 0.0);
             assert(std::distance(begin,end) <= nr_variables());
-            std::copy(begin, end, costs_.begin());
-            std::fill(costs_.begin() + std::distance(begin, end), costs_.end(), 0.0);
+            //std::copy(begin, end, costs_.begin());
+            //std::fill(costs_.begin() + std::distance(begin, end), costs_.end(), 0.0);
 
             // distribute costs to bdds uniformly
             for(std::size_t v=0; v<nr_variables(); ++v) {
                 assert(bdd_branch_instruction_levels[v].size() > 0);
                 for(std::size_t bdd_index=0; bdd_index<nr_bdds(v); ++bdd_index) {
-                    bdd_branch_instruction_levels(v,bdd_index).variable_cost = *(begin+v)/nr_bdds(v);
+                    assert(nr_bdds(v) > 0);
+                    const double cost = v < std::distance(begin,end) ? *(begin+v)/nr_bdds(v) : 0.0; 
+                    bdd_branch_instruction_levels(v,bdd_index).variable_cost = cost;
+                    assert(!std::isnan(bdd_branch_instruction_levels(v,bdd_index).variable_cost));
                 }
+            }
+            for(const auto& bdd : bdd_branch_instructions) {
+                assert(!std::isnan(*bdd.variable_cost));
             }
             backward_run();
         }

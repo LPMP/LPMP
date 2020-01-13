@@ -9,7 +9,8 @@
 #include <algorithm>
 #include <numeric>
 #include "union_find.hxx"
-#include <iostream>
+#include "hash_helper.hxx"
+#include <iostream> // TODO: remove
 
 // TODO: split into header and cpp file
 
@@ -189,11 +190,18 @@ struct linear_assignment_problem_input {
       return cost;
    }
 
+   std::string linear_identifier(const std::size_t l, const std::size_t r) const
+   {
+       assert(l < no_left_nodes);
+       assert(r < no_right_nodes);
+       return std::string("x_") + std::to_string(l) + "_" + std::to_string(r);
+   }
+
    template<typename STREAM>
        void write_linear_objective(STREAM& s) const
        {
            for(const auto& a : assignments)
-               s << (a.cost < 0.0 ? "-" : "+") << std::abs(a.cost) << " x_" << a.left_node << "_" << a.right_node << "\n";
+               s << (a.cost < 0.0 ? "-" : "+") << std::abs(a.cost) << " " << linear_identifier(a.left_node, a.right_node) << "\n";
        }
    template<typename STREAM>
        void write_linear_constraints(STREAM& s) const
@@ -205,17 +213,27 @@ struct linear_assignment_problem_input {
                right[a.right_node].push_back(a.left_node);
            }
            for(std::size_t i=0; i<no_left_nodes; ++i) {
-               for(const std::size_t j : left[i]) {
-                   s << "+ x_" << i << "_" << j << " ";
+               if(left[i].size() > 0) {
+                   for(const std::size_t j : left[i]) {
+                       s << "+ " << linear_identifier(i,j) << " ";
+                   }
+                   s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
                }
-               s << " <= 1\n"; 
            }
            for(std::size_t j=0; j<no_right_nodes; ++j) {
-               for(const std::size_t i : right[j]) {
-                   s << "+ x_" << i << "_" << j << " ";
+               if(right[j].size() > 0) {
+                   for(const std::size_t i : right[j]) {
+                       s << "+ " << linear_identifier(i,j) << " ";
+                   }
+                   s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
                }
-               s << " <= 1\n"; 
            }
+       }
+   template<typename STREAM>
+       void write_linear_variables(STREAM& s) const
+       {
+           for(const auto& a : assignments)
+               s << linear_identifier(a.left_node, a.right_node) << "\n";
        }
 
    template<typename STREAM>
@@ -226,6 +244,10 @@ struct linear_assignment_problem_input {
 
            s << "Subject To\n";
            write_linear_constraints(s);
+
+           s << "Bounds\n";
+           s << "Binaries\n";
+           write_linear_variables(s);
 
            s << "End\n";
        } 
@@ -266,43 +288,72 @@ struct graph_matching_input : public linear_assignment_problem_input {
        return cost;
     }
 
+    std::string quadratic_identifier(const std::array<std::size_t,2> left_nodes, const std::array<std::size_t,2> right_nodes) const
+    {
+        return std::string("q_") + std::to_string(left_nodes[0]) + "_" + std::to_string(left_nodes[1]) + "_" + std::to_string(right_nodes[0]) + "_" + std::to_string(right_nodes[1]);
+    }
+
+    std::string quadratic_identifier(const std::size_t assignment_1, const std::size_t assignment_2) const
+    {
+        const std::size_t l1 = this->assignments[assignment_1].left_node;
+        const std::size_t l2 = this->assignments[assignment_2].left_node;
+        const std::size_t r1 = this->assignments[assignment_1].right_node;
+        const std::size_t r2 = this->assignments[assignment_2].right_node;
+        return quadratic_identifier({l1,l2}, {r1,r2});
+    }
+
     template<typename STREAM>
         void write_quadratic_objective(STREAM& s) const
         {
             for(const auto& q : quadratic_terms)
-                s << (q.cost < 0.0 ? "-" : "+") << std::abs(q.cost) << " q_" << q.assignment_1 << "_" << q.assignment_2 << "\n";
+                s << (q.cost < 0.0 ? "-" : "+") << std::abs(q.cost) << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
         }
 
     template<typename STREAM>
         void write_quadratic_constraints(STREAM& s) const
         {
-            std::vector<std::vector<std::size_t>> marginals_left(this->assignments.size());
-            std::vector<std::vector<std::size_t>> marginals_right(this->assignments.size());
+           std::unordered_set<std::array<std::size_t,2>> left_pairwise_potentials;
+           std::unordered_set<std::array<std::size_t,2>> right_pairwise_potentials;
 
-            for(size_t q = 0; q<quadratic_terms.size(); ++q) {
-                const std::size_t a_1 = quadratic_terms[q].assignment_1;
-                const std::size_t a_2 = quadratic_terms[q].assignment_2;
-                marginals_left[a_1].push_back(q);
-                marginals_right[a_2].push_back(q);
-            } 
+           for(const auto& q : quadratic_terms) {
+                const std::size_t a_1 = q.assignment_1;
+                const std::size_t a_2 = q.assignment_2;
+                const std::size_t left_node_1 = this->assignments[a_1].left_node;
+                const std::size_t left_node_2 = this->assignments[a_2].left_node;
+                const std::size_t right_node_1 = this->assignments[a_1].left_node;
+                const std::size_t right_node_2 = this->assignments[a_2].left_node;
+                left_pairwise_potentials.insert({left_node_1, left_node_2});
+                right_pairwise_potentials.insert({left_node_1, left_node_2});
+           }
 
-            for(std::size_t a = 0; a<this->assignments.size(); ++a) {
-                for(const std::size_t q : marginals_left[a]) {
-                    const std::size_t a_1 = quadratic_terms[q].assignment_1;
-                    const std::size_t a_2 = quadratic_terms[q].assignment_2; 
-                    s << "+ q_" << a_1 << "_" << a_2 << " ";
-                }
-                s << " - a_" << a << " = 0\n";
-            }
+           std::vector<std::vector<std::size_t>> left_labels(this->no_left_nodes);
+           std::vector<std::vector<std::size_t>> right_labels(this->no_right_nodes);
+           for(const auto& a : this->assignments) {
+               left_labels[a.left_node].push_back(a.right_node);
+               right_labels[a.right_node].push_back(a.left_node);
+           }
 
-            for(std::size_t a = 0; a<this->assignments.size(); ++a) {
-                for(const std::size_t q : marginals_right[a]) {
-                    const std::size_t a_1 = quadratic_terms[q].assignment_1;
-                    const std::size_t a_2 = quadratic_terms[q].assignment_2; 
-                    s << "+ q_" << a_1 << "_" << a_2 << " ";
-                }
-                s << " - a_" << a << " = 0\n";
-            }
+           for(const auto [l_1,l_2] : left_pairwise_potentials) {
+               for(const auto r_1 : left_labels[l_1]) {
+                   for(const auto r_2 : left_labels[l_2]) {
+                       s << " - " << quadratic_identifier({l_1,l_2}, {r_1,r_2});
+                   }
+                   s << " + " << this->linear_identifier(l_1,r_1) << " = 0\n";
+               }
+
+               for(const auto r_2 : left_labels[l_2]) {
+                   for(const auto r_1 : left_labels[l_1]) {
+                       s << " - " << quadratic_identifier({l_1,l_2}, {r_1,r_2});
+                   }
+                   s << " + " << this->linear_identifier(l_2,r_2) << " = 0\n";
+               }
+           }
+        }
+    template<typename STREAM>
+        void write_quadratic_variables(STREAM& s) const
+        {
+            for(const auto& q : quadratic_terms)
+                s << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
         }
 
     template<typename STREAM>
@@ -310,10 +361,16 @@ struct graph_matching_input : public linear_assignment_problem_input {
         {
             s << "Minimize\n";
             this->write_linear_objective(s);
+            write_quadratic_objective(s);
 
             s << "Subject To\n";
             this->write_linear_constraints(s);
             write_quadratic_constraints(s);
+
+            s << "Bounds\n";
+            s << "Binaries\n";
+            this->write_linear_variables(s);
+            this->write_quadratic_variables(s);
 
             s << "End\n";
         }
