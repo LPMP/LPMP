@@ -64,6 +64,7 @@ namespace LPMP {
             std::vector<std::size_t> given_bdd_order() const;
             std::vector<std::size_t> find_cathill_mkkee_order() const;
             std::vector<std::size_t> find_minimum_degree_bdd_ordering() const;
+            std::vector<std::size_t> find_bfs_bdd_ordering() const;
 
             bdd_storage bdd_storage_;
 
@@ -183,6 +184,86 @@ namespace LPMP {
         return bdd_ordering; 
     }
 
+    std::vector<std::size_t> bdd_anisotropic_diffusion::find_bfs_bdd_ordering() const
+    {
+        const two_dim_variable_array<std::size_t> bdd_adj = bdd_adjacency();
+        std::vector<std::size_t> bdd_ordering(bdd_adj.size());
+
+        auto s = find_pseudo_peripheral_node(bdd_adj);
+
+        std::queue<std::size_t> Q;
+        std::vector<char> seen(bdd_adj.size());
+        std::vector<std::size_t> dist(bdd_adj.size(), std::numeric_limits<std::size_t>::max());
+        Q.push(s);
+        seen[s] = 1;
+        dist[s] = 0;
+        std::vector<std::size_t> terminals;
+
+        // forward run of BFS from source to determine distances and terminals of search tree
+        while (!Q.empty())
+        {
+            auto i = Q.front();
+            Q.pop();
+
+            bool terminal = true;
+            for (std::size_t j : bdd_adj[i])
+            {
+                if (dist[j] >= dist[i])
+                    terminal = false;
+                if (seen[j])
+                    continue;
+                seen[j] = 1;
+                dist[j] = dist[i] + 1;
+                Q.push(j);
+            }
+
+            if (terminal)
+                terminals.push_back(i);
+        }
+
+        struct bdd_node
+        {
+            bdd_node(std::size_t index, std::size_t dist) : index_(index), dist_(dist)
+            {}
+
+            bool operator <(bdd_node const & other) const { return dist_ < other.dist_; }
+
+            std::size_t index_;
+            std::size_t dist_;
+        };
+
+        std::fill(seen.begin(), seen.end(), 0);
+        std::priority_queue<bdd_node> dist_queue;
+        for (auto t : terminals)
+        {
+            dist_queue.emplace(t, dist[t]);
+            seen[t] = 1;
+        }
+
+        // backward run of BFS from all terminals, ordering vertices in decreasing distance from source
+        std::size_t pos = bdd_adj.size()-1;
+        while (!dist_queue.empty())
+        {
+            auto node = dist_queue.top();
+            dist_queue.pop();
+            auto i = node.index_;
+            // bdd_ordering.push_back(i);
+            bdd_ordering[pos--] = i;
+
+            for (std::size_t j : bdd_adj[i])
+            {
+                if (seen[j])
+                    continue;
+                dist_queue.emplace(j, dist[j]);
+                seen[j] = 1;
+            }
+        }
+
+        // std::reverse(bdd_ordering.begin(), bdd_ordering.end());
+
+        return bdd_ordering; 
+    }
+
     void bdd_anisotropic_diffusion::init(const ILP_input& instance)
     {
         bdd_storage_ = bdd_storage(instance);
@@ -229,7 +310,8 @@ namespace LPMP {
 
         //const auto bdd_order = given_bdd_order();
         //const auto bdd_order = find_cathill_mkkee_order();
-        const auto bdd_order = find_minimum_degree_bdd_ordering();
+        // const auto bdd_order = find_minimum_degree_bdd_ordering();
+        const auto bdd_order = find_bfs_bdd_ordering();
 
         std::vector<std::size_t> bdd_variable_delimiter_size(bdd_storage_.nr_bdds(), 0);
         std::vector<std::size_t> Lagrange_multipliers_size(bdd_storage_.nr_variables(), 0);
