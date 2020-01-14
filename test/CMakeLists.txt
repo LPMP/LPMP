@@ -64,3 +64,7 @@ add_test(test_polynomial_function test_polynomial_functions)
 add_executable(test_cuthill_mckee test_cuthill_mckee.cpp)
 target_link_libraries(test_cuthill_mckee LPMP)
 add_test(test_cuthill_mckee test_cuthill_mckee)
+
+add_executable(test_bfs_ordering test_bfs_ordering.cpp)
+target_link_libraries(test_bfs_ordering LPMP)
+add_test(test_bfs_ordering test_bfs_ordering)
