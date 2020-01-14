@@ -54,9 +54,24 @@ mu_2_0 - mu_00 - mu_10 = 0
 mu_2_1 - mu_01 - mu_11 = 0
 End)";
 
+const char * small_chain_reversed = 
+R"(Minimize
+-1 mu_1_0 + 0 mu_1_1 + 2 mu_2_0 + 1 mu_2_1
++ 1 mu_00 + 1 mu_10 + 2 mu_01 + 0 mu_11
+Subject To
+mu_1_0 + mu_1_1 = 1
+mu_2_0 + mu_2_1 = 1
+mu_00 + mu_10 + mu_01 + mu_11 = 1
+mu_1_0 - mu_00 - mu_01 = 0
+mu_1_1 - mu_10 - mu_11 = 0
+mu_2_0 - mu_00 - mu_10 = 0
+mu_2_1 - mu_01 - mu_11 = 0
+End)";
+
 
 
 int main(int argc, char** arv)
 {
     test_problem_anisotropic(small_chain, 1.0);
+    test_problem_anisotropic(small_chain_reversed, 1.0);
 }
