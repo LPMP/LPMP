@@ -172,7 +172,6 @@ namespace LPMP {
     {
         init_branch_instructions();
         costs_.resize(nr_variables(), std::numeric_limits<double>::infinity());
-        std::cout << "nr bdds = " << bdd_storage_.nr_bdds() << "\n";
     }
 
     void bdd_min_marginal_averaging::init(const ILP_input& input)
@@ -524,10 +523,10 @@ namespace LPMP {
     template<typename ITERATOR>
         void bdd_min_marginal_averaging::set_costs(ITERATOR begin, ITERATOR end)
         {
-            std::cout << "set costs\n";
+            // TODO: remove costs_ array
             std::fill(costs_.begin(), costs_.end(), 0.0);
             assert(std::distance(begin,end) <= nr_variables());
-            //std::copy(begin, end, costs_.begin());
+            std::copy(begin, end, costs_.begin());
             //std::fill(costs_.begin() + std::distance(begin, end), costs_.end(), 0.0);
 
             // distribute costs to bdds uniformly
