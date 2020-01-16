@@ -25,7 +25,7 @@ void test_problem_anisotropic(const std::string input_string, const double expec
     double old_lb = initial_lb;
     double new_lb = old_lb;
 
-    for(std::size_t iter=0; iter<100; ++iter) {
+    for(std::size_t iter=0; iter<1; ++iter) {
         bdds.iteration();
         new_lb = bdds.lower_bound();
         std::cout << "lower bound = " << new_lb << std::endl;

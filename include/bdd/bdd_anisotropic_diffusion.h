@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <vector>
 #include <limits>
+#include <fstream>
 
 namespace LPMP {
 
@@ -47,6 +48,9 @@ namespace LPMP {
 
             template<typename STREAM>
                 void export_dot(STREAM& s) const;
+
+            template<typename STREAM>
+                void export_state_dot(STREAM& s) const;
 
         private:
             void init_bdd_branch_instructions();
@@ -242,10 +246,14 @@ namespace LPMP {
         const auto bdd_order = find_bfs_bdd_ordering();
 
         std::vector<std::size_t> bdd_variable_delimiter_size(bdd_storage_.nr_bdds(), 0);
+        std::vector<std::vector<bdd_variable_delimiter>> bdd_variable_delimiters_tmp;
+        struct Lagrange_multiplier_tmp { std::size_t bdd_nr; std::size_t bdd_branch_instruction_offset; };
+        std::vector<std::vector<Lagrange_multiplier_tmp>> Lagrange_multipliers_tmp(bdd_storage_.nr_variables());
         std::vector<std::size_t> Lagrange_multipliers_size(bdd_storage_.nr_variables(), 0);
         std::vector<std::size_t> bdd_branch_instruction_variable(bdd_storage_.bdd_nodes().size(), std::numeric_limits<std::size_t>::max());
 
         // distribute bdd nodes according to (i) bdd nr in order and (ii) variable the bdd node corresponds to
+        std::size_t cur_bdd_branch_instructions_offset = 0;
         for(std::size_t i=0; i<bdd_order.size(); ++i) {
             const std::size_t bdd_nr = bdd_order[i];
             const std::size_t first_bdd_node = bdd_storage_.bdd_delimiters()[bdd_nr];
@@ -264,13 +272,18 @@ namespace LPMP {
                 bdd_variable_nr_sorted.push_back({std::get<0>(nr_nodes_of_var), std::get<1>(nr_nodes_of_var)});
             bdd_node_counter_per_var.clear();
             std::sort(bdd_variable_nr_sorted.begin(), bdd_variable_nr_sorted.end(), [](const bdd_node_counter& a, const bdd_node_counter& b) { return a.variable < b.variable; });
-            std::size_t offset = first_bdd_node;
+            std::size_t offset = cur_bdd_branch_instructions_offset;
+            //std::cout << "bdd offset = " << offset << "\n";
+            bdd_variable_delimiters_tmp.push_back({});
             for(auto& c : bdd_variable_nr_sorted) {
                 bdd_node_counter_per_var.insert({c.variable, offset});
+                bdd_variable_delimiters_tmp.back().push_back({c.variable, offset, Lagrange_multipliers_tmp[c.variable].size()});
+                Lagrange_multipliers_tmp[c.variable].push_back({i,bdd_variable_delimiters_tmp.back().size()-1});
                 offset += c.nr_bdd_nodes;
-            } 
+            }
+            cur_bdd_branch_instructions_offset += offset - cur_bdd_branch_instructions_offset;
 
-            bdd_variable_delimiter_size[bdd_nr] = bdd_node_counter_per_var.size();
+            bdd_variable_delimiter_size[i] = bdd_node_counter_per_var.size();
 
             for(const auto [v, nr_bdd_nodes] : bdd_variable_nr_sorted)
                 Lagrange_multipliers_size[v]++;
@@ -328,7 +341,20 @@ namespace LPMP {
         Lagrange_multipliers.resize(Lagrange_multipliers_size.begin(), Lagrange_multipliers_size.end());
         std::fill(Lagrange_multipliers_size.begin(), Lagrange_multipliers_size.end(), 0);
 
+        for(std::size_t i=0; i<bdd_variable_delimiters_tmp.size(); ++i) {
+            for(std::size_t j=0; j<bdd_variable_delimiters_tmp[i].size(); ++j) {
+                bdd_variable_delimiters(i,j) = bdd_variable_delimiters_tmp[i][j];
+            } 
+        }
+        for(std::size_t i=0; i<Lagrange_multipliers_tmp.size(); ++i) {
+            for(std::size_t j=0; j<Lagrange_multipliers_tmp[i].size(); ++j) {
+                Lagrange_multipliers(i,j).bdd_nr = Lagrange_multipliers_tmp[i][j].bdd_nr;
+                Lagrange_multipliers(i,j).bdd_branch_instruction_offset = Lagrange_multipliers_tmp[i][j].bdd_branch_instruction_offset;
+            }
+        }
+        /*
         for(std::size_t i=0; i<bdd_storage_.nr_bdds(); ++i) {
+            assert(bdd_variable_delimiters[i].size() == bdd_variable_delimiters_tmp[i].size());
             const std::size_t bdd_nr = bdd_order[i];
             const std::size_t first_bdd_node = bdd_storage_.bdd_delimiters()[bdd_nr];
             const std::size_t last_bdd_node = bdd_storage_.bdd_delimiters()[bdd_nr+1];
@@ -340,22 +366,24 @@ namespace LPMP {
                 assert(variable != std::numeric_limits<std::size_t>::max());
                 if(variable != prev_variable) {
                     prev_variable = variable;
-                    auto& current_bdd_var_delimiter = bdd_variable_delimiters(bdd_nr,c);
+                    auto& current_bdd_var_delimiter = bdd_variable_delimiters(i,c);
                     auto& current_Lagrange_multiplier = Lagrange_multipliers(variable, Lagrange_multipliers_size[variable]);
 
-                    current_bdd_var_delimiter.bdd_branch_instruction_offset = bdd_node_idx;
+                    // TODO: not correct. Store contiguous in bdd_branch_instructions
+                    current_bdd_var_delimiter.bdd_branch_instruction_offset = bdd_variable_delimiters_tmp[i][c];//bdd_node_idx;
                     current_bdd_var_delimiter.Lagrange_multipliers_index = Lagrange_multipliers_size[variable];
                     current_bdd_var_delimiter.variable = variable;
 
-                    current_Lagrange_multiplier.bdd_nr = bdd_nr;
+                    current_Lagrange_multiplier.bdd_nr = i;
                     current_Lagrange_multiplier.bdd_branch_instruction_offset = bdd_node_idx;
 
                     c++;
                     Lagrange_multipliers_size[variable]++;
                 }
             }
-            assert(c == bdd_variable_delimiters[bdd_nr].size());
+            assert(c == bdd_variable_delimiters[i].size());
         }
+        */
 
         // set bdd branch instruction costs
         for(std::size_t i=0; i<nr_bdds(); ++i) {
@@ -448,6 +476,9 @@ namespace LPMP {
 
     void bdd_anisotropic_diffusion::forward_step(const std::size_t bdd_nr, const std::size_t variable_index)
     {
+        std::ofstream state_file;
+        state_file.open(std::string("bdd_anisotropic_diffusion_state_") + std::to_string(bdd_nr) + "_" + std::to_string(variable_index) + ".dot");
+        export_state_dot(state_file);
         const auto [first_bdd_node_index, last_bdd_node_index] = bdd_branch_instruction_range(bdd_nr, variable_index);
 
         // compute min-marginal
@@ -463,13 +494,15 @@ namespace LPMP {
         // distribute min-marginals
         const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
+        assert(Lagrange_multipliers_index < Lagrange_multipliers[variable].size());
+        //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        //const double delta = (marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+        const double delta = (marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
         //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
-        const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
-        assert(std::isfinite(delta));
-        //std::cout << "forward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << "\n";
+        //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+        //std::cout << "forward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
         for(std::size_t l=Lagrange_multipliers_index+1; l<Lagrange_multipliers[variable].size(); ++l) {
+            //std::cout << "l = " << l << "\n";
             assert(std::isfinite(delta));
             Lagrange_multipliers(variable, l).Lagrange_multiplier += delta;
             Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
@@ -494,13 +527,15 @@ namespace LPMP {
         // distribute min-marginals
         const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
+        //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        //const double delta = (marginal[1] - marginal[0]) / Lagrange_multipliers_index;
+        const double delta = (marginal[1] - marginal[0]) / Lagrange_multipliers_index;
         //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
-        const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+        //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
         //assert(std::isfinite(delta));
-        //std::cout << "backward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << "\n";
+        //std::cout << "backward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
         for(std::size_t l=0; l<Lagrange_multipliers_index; ++l) {
+            assert(std::isfinite(delta));
             Lagrange_multipliers(variable, l).Lagrange_multiplier += delta; 
             Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
         }
@@ -630,7 +665,7 @@ double bdd_anisotropic_diffusion::evaluate(SOL_ITERATOR sol_begin, SOL_ITERATOR 
     template<typename STREAM>
         void bdd_anisotropic_diffusion::export_dot(STREAM& s) const
         {
-            s << "digraph bdd_min_marginal_averaging {\n";
+            s << "digraph bdd_anisotropic_diffusion {\n";
             std::vector<char> bdd_node_visited(bdd_branch_instructions.size(), false);
             std::size_t cur_bdd_index = 0;
             for(const auto& bdd : bdd_branch_instructions) {
@@ -655,5 +690,32 @@ double bdd_anisotropic_diffusion::evaluate(SOL_ITERATOR sol_begin, SOL_ITERATOR 
 
             s << "}\n"; 
         }
+
+template<typename STREAM>
+void bdd_anisotropic_diffusion::export_state_dot(STREAM& s) const
+{
+    auto node_nr = [&](const std::size_t bdd_nr, const std::size_t variable_index) {
+        return variable_index*nr_bdds() + bdd_nr;
+    };
+    s << "digraph bdd_anisotropic_diffusion_state {\n";
+    for(std::size_t bdd_nr=0; bdd_nr<nr_bdds(); ++bdd_nr) {
+        //s << "subgraph cluster_" << bdd_nr << " {\n";
+        for(std::size_t variable_index=0; variable_index<nr_variables(bdd_nr); ++variable_index) {
+            const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
+            const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
+            const auto [first_bdd_node_index, last_bdd_node_index] = bdd_branch_instruction_range(bdd_nr, variable_index);
+            const bdd_branch_instruction& bdd = bdd_branch_instructions[first_bdd_node_index];
+            const auto [m0, m1] = bdd.min_marginal_debug();
+            s << node_nr(bdd_nr, variable) << " [label=\"m0=" << m0 << ", m1=" << m1 << ", L=" << *bdd.variable_cost << "\" pos=\"" << bdd_nr << "," << variable << "!\"];\n"; 
+            if(Lagrange_multipliers_index > 0) {
+                const std::size_t prev_bdd_nr = Lagrange_multipliers(variable,Lagrange_multipliers_index-1).bdd_nr;
+                s << node_nr(prev_bdd_nr, variable) << " -> " << node_nr(bdd_nr, variable) << ";\n";
+            }
+        }
+        //s << "graph[style=dotted];\n}\n";
+    } 
+    s << "}\n";
+
+}
 
 }
