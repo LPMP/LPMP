@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <vector>
 #include <limits>
-#include <fstream>
 
 namespace LPMP {
 
@@ -476,9 +475,6 @@ namespace LPMP {
 
     void bdd_anisotropic_diffusion::forward_step(const std::size_t bdd_nr, const std::size_t variable_index)
     {
-        std::ofstream state_file;
-        state_file.open(std::string("bdd_anisotropic_diffusion_state_") + std::to_string(bdd_nr) + "_" + std::to_string(variable_index) + ".dot");
-        export_state_dot(state_file);
         const auto [first_bdd_node_index, last_bdd_node_index] = bdd_branch_instruction_range(bdd_nr, variable_index);
 
         // compute min-marginal
@@ -497,7 +493,8 @@ namespace LPMP {
         assert(Lagrange_multipliers_index < Lagrange_multipliers[variable].size());
         //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        const double delta = (marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+        //const double delta = (marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+        const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
         //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
         //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
         //std::cout << "forward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
@@ -529,7 +526,8 @@ namespace LPMP {
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
         //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        const double delta = (marginal[1] - marginal[0]) / Lagrange_multipliers_index;
+        //const double delta = (marginal[1] - marginal[0]) / Lagrange_multipliers_index;
+        const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
         //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
         //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
         //assert(std::isfinite(delta));
