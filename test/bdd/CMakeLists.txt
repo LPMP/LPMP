@@ -22,6 +22,10 @@ add_executable(test_bdd_chain_graph test_bdd_chain_graph.cpp)
 target_link_libraries(test_bdd_chain_graph LPMP Cudd ILP_parser)
 add_test(test_bdd_chain_graph test_bdd_chain_graph)
 
+add_executable(test_bdd_grid_graph test_bdd_grid_graph.cpp)
+target_link_libraries(test_bdd_grid_graph LPMP Cudd ILP_parser)
+add_test(test_bdd_grid_graph test_bdd_grid_graph)
+
 add_executable(test_ILP_input_export test_ILP_input_export.cpp)
 target_link_libraries(test_ILP_input_export LPMP Cudd ILP_parser)
 add_test(test_ILP_input_export test_ILP_input_export)
