@@ -16,7 +16,7 @@ namespace LPMP {
         const std::size_t s = find_pseudo_peripheral_node(adj);
 
         std::queue<std::size_t> Q;
-        std::vector<char> seen(adj.size());
+        std::vector<char> seen(adj.size(), 0);
         std::vector<std::size_t> dist(adj.size(), std::numeric_limits<std::size_t>::max());
         Q.push(s);
         seen[s] = 1;
@@ -31,6 +31,7 @@ namespace LPMP {
 
             bool terminal = true;
             for(const std::size_t j : adj[i]) {
+                assert(j < dist.size() && i < dist.size());
                 if (dist[j] >= dist[i])
                     terminal = false;
                 if (seen[j])
@@ -65,17 +66,28 @@ namespace LPMP {
         // backward run of BFS from all terminals, ordering vertices in decreasing distance from source
         std::size_t pos = adj.size()-1;
         while(!dist_queue.empty()) {
-            const auto node = dist_queue.top();
-            dist_queue.pop();
-            const auto i = node.index_;
-            // ordering.push_back(i);
-            ordering[pos--] = i;
 
-            for(const std::size_t j : adj[i]) {
-                if (seen[j])
-                    continue;
-                dist_queue.emplace(j, dist[j]);
-                seen[j] = 1;
+            // get next batch of nodes
+            std::vector<node> batch;
+            while (!dist_queue.empty())
+            {
+                const auto n = dist_queue.top();
+                dist_queue.pop();
+                batch.push_back(n);
+
+            }
+            for (const auto n : batch)
+            {
+                const auto i = n.index_;
+                // ordering.push_back(i);
+                ordering[pos--] = i;
+
+                for(const std::size_t j : adj[i]) {
+                    if (seen[j])
+                        continue;
+                    dist_queue.emplace(j, dist[j]);
+                    seen[j] = 1;
+                }
             }
         }
 
