@@ -15,8 +15,19 @@
 
 namespace LPMP {
 
+    struct bdd_anisotropic_diffusion_options {
+        bdd_anisotropic_diffusion_options(int argc, char** argv);
+        bdd_anisotropic_diffusion_options() {}
+        enum class order{ Cuthill_McKee, BFS, minimum_degree, given_order } order = order::minimum_degree;
+        enum class direction { isotropic, anisotropic } direction = direction::anisotropic;
+        double residual = 0.0;
+    };
+
+
     class bdd_anisotropic_diffusion : public bdd_solver_interface {
         public:
+
+            void set_options(const bdd_anisotropic_diffusion_options& o) { options = o; }
 
             void init(const ILP_input& instance);
             void init();
@@ -81,7 +92,42 @@ namespace LPMP {
             constexpr static std::size_t no_Lagrange_multipler = std::numeric_limits<std::size_t>::max();
             struct bdd_variable_delimiter { std::size_t variable; std::size_t bdd_branch_instruction_offset; std::size_t Lagrange_multipliers_index; };
             two_dim_variable_array<bdd_variable_delimiter> bdd_variable_delimiters;
+
+            bdd_anisotropic_diffusion_options options;
     };
+
+    bdd_anisotropic_diffusion_options::bdd_anisotropic_diffusion_options(int argc, char** argv)
+        {
+            TCLAP::CmdLine cmd("Command line parser for bdd anisotropic diffusion options", ' ', " ");
+            TCLAP::ValueArg<std::string> direction_arg("d","direction","propagation direction",false,"anisotropic","{isotropic|anisotropic}");
+            cmd.add(direction_arg);
+            TCLAP::ValueArg<std::string> order_arg("o","order","order of bdd subproblems",false,"bfs","{bfs|minimum-degree|cuthill-mckee|given}");
+            cmd.add(order_arg);
+            TCLAP::ValueArg<double> residual_arg("r","residual","residual weight in message passing",false,0.0,"[0,1]");
+            cmd.add(residual_arg); 
+
+            cmd.parse(argc, argv);
+
+            if(direction_arg.getValue() == "anisotropic")
+                direction = direction::anisotropic;
+            else if(direction_arg.getValue() == "isotropic")
+                direction = direction::isotropic;
+            else
+                throw std::runtime_error("direction not recognized");
+
+            if(order_arg.getValue() == "bfs")
+                order = order::BFS;
+            else if(order_arg.getValue() == "minimum-degree")
+                order = order::minimum_degree;
+            else if(order_arg.getValue() == "cuthill-mckee")
+                order = order::Cuthill_McKee;
+            else if(order_arg.getValue() == "given")
+                order = order::given_order;
+            else
+                throw std::runtime_error("order argument not recognized");
+
+            residual = residual_arg.getValue(); 
+        }
 
 
     two_dim_variable_array<std::size_t> bdd_anisotropic_diffusion::bdd_adjacency() const
@@ -176,6 +222,7 @@ namespace LPMP {
         std::vector< Eigen::Triplet<double> > adjacency_list;
         for(std::size_t i=0; i<bdd_adj.size(); ++i) {
             for(const std::size_t j : bdd_adj[i]) {
+                assert(j <= std::numeric_limits<int>::max());
                 adjacency_list.push_back({i,j,1.0});
             }
         }
@@ -239,10 +286,17 @@ namespace LPMP {
         bdd_delimiters.reserve(bdd_storage_.nr_bdds()+1);
         bdd_delimiters.push_back(0);
 
-        //const auto bdd_order = given_bdd_order();
-        //const auto bdd_order = find_cuthill_mkkee_order();
-        //const auto bdd_order = find_minimum_degree_bdd_ordering();
-        const auto bdd_order = find_bfs_bdd_ordering();
+        const auto bdd_order = [&]() {
+            if(options.order == bdd_anisotropic_diffusion_options::order::given_order)
+                return given_bdd_order();
+            if(options.order == bdd_anisotropic_diffusion_options::order::Cuthill_McKee)
+                return find_cuthill_mkkee_order();
+            if(options.order == bdd_anisotropic_diffusion_options::order::minimum_degree)
+                return find_minimum_degree_bdd_ordering();
+            if(options.order == bdd_anisotropic_diffusion_options::order::BFS)
+                return find_bfs_bdd_ordering();
+            throw std::runtime_error("order not known");
+        }();
         //for(const auto x : bdd_order)
         //    std::cout << x << ",";
         //std::cout << "\n";
@@ -496,19 +550,29 @@ namespace LPMP {
         assert(Lagrange_multipliers_index < Lagrange_multipliers[variable].size());
         //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        const double delta = (marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
-        //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
-        //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
-        //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
-        //std::cout << "forward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
-        for(std::size_t l=Lagrange_multipliers_index+1; l<Lagrange_multipliers[variable].size(); ++l) {
-            //std::cout << "l = " << l << "\n";
-            assert(std::isfinite(delta));
-            Lagrange_multipliers(variable, l).Lagrange_multiplier += delta;
-            Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+        if(options.direction == bdd_anisotropic_diffusion_options::direction::anisotropic) {
+            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+            //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //std::cout << "forward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
+            const double subgradient_stepsize = 0.0*std::max( 0.5*std::abs(delta), 0.1);
+            for(std::size_t l=Lagrange_multipliers_index+1; l<Lagrange_multipliers[variable].size(); ++l) {
+                //std::cout << "l = " << l << "\n";
+                assert(std::isfinite(delta));
+                Lagrange_multipliers(variable, l).Lagrange_multiplier += delta - subgradient_stepsize*subgradient;
+                Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta - subgradient_stepsize*subgradient;;
+            }
+        } else if(options.direction == bdd_anisotropic_diffusion_options::direction::isotropic) {
+            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size()-1);
+            for(std::size_t l=0; l<Lagrange_multipliers[variable].size(); ++l) {
+                if(l != Lagrange_multipliers_index) {
+                    assert(std::isfinite(delta));
+                    Lagrange_multipliers(variable, l).Lagrange_multiplier += delta;
+                    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+                }
+            }
         }
-        //if(Lagrange_multipliers_index < Lagrange_multipliers[variable].size()-1)
-        //    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= (marginal[1] - marginal[0]); 
     }
 
     void bdd_anisotropic_diffusion::backward_step(const std::size_t bdd_nr, const std::size_t variable_index)
@@ -528,20 +592,30 @@ namespace LPMP {
         const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
         //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
-        const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        const double delta = (marginal[1] - marginal[0]) / Lagrange_multipliers_index;
-        //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
-        //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
-        //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
-        //assert(std::isfinite(delta));
-        //std::cout << "backward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
-        for(std::size_t l=0; l<Lagrange_multipliers_index; ++l) {
-            assert(std::isfinite(delta));
-            Lagrange_multipliers(variable, l).Lagrange_multiplier += delta; 
-            Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+        if(options.direction == bdd_anisotropic_diffusion_options::direction::anisotropic) {
+            const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
+            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / Lagrange_multipliers_index;
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+            //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //assert(std::isfinite(delta));
+            //std::cout << "backward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
+            const double subgradient_stepsize = 0.0*std::max( 0.5*std::abs(delta), 0.1);
+            for(std::size_t l=0; l<Lagrange_multipliers_index; ++l) {
+                assert(std::isfinite(delta));
+                Lagrange_multipliers(variable, l).Lagrange_multiplier += delta - subgradient_stepsize*subgradient; 
+                Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta - subgradient_stepsize*subgradient;
+            }
+        } else if(options.direction == bdd_anisotropic_diffusion_options::direction::isotropic) {
+            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1);
+            for(std::size_t l=0; l<Lagrange_multipliers[variable].size(); ++l) {
+                if(l != Lagrange_multipliers_index) {
+                    assert(std::isfinite(delta));
+                    Lagrange_multipliers(variable, l).Lagrange_multiplier += delta;
+                    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+                }
+            } 
         }
-        //if(Lagrange_multipliers_index > 0)
-        //    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= (marginal[1] - marginal[0]); 
 
         for(std::size_t i=first_bdd_node_index; i<last_bdd_node_index; ++i) {
             auto& branch_instr = bdd_branch_instructions[i];

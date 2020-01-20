@@ -55,15 +55,36 @@ void test_randon_chains_problem(const std::size_t n, const std::size_t l, const 
     instance.write(ss);
     //instance.write(std::cout);
     ILP_input input = ILP_parser::parse_string(ss.str());
-    bdd_anisotropic_diffusion bdd_solver;
-    bdd_solver.init(input);
-    const double initial_lb = bdd_solver.lower_bound();
-    bdd_solver.iteration();
-    const double end_lb = bdd_solver.lower_bound();
-    bdd_solver.iteration();
-    const double end_lb_2 = bdd_solver.lower_bound();
-    test(initial_lb <= end_lb);
-    test(std::abs(end_lb - end_lb_2) <= 1e-8);
+
+    bdd_anisotropic_diffusion bdd_solver_bfs;
+    bdd_anisotropic_diffusion_options bfs_options;
+    bfs_options.order = bdd_anisotropic_diffusion_options::order::BFS;
+    bdd_solver_bfs.set_options(bfs_options);
+    bdd_solver_bfs.init(input);
+    const double initial_lb_bfs = bdd_solver_bfs.lower_bound();
+    bdd_solver_bfs.iteration();
+    const double end_lb_bfs = bdd_solver_bfs.lower_bound();
+    bdd_solver_bfs.iteration();
+    const double end_lb_2_bfs = bdd_solver_bfs.lower_bound();
+
+    bdd_anisotropic_diffusion bdd_solver_min_deg;
+    bdd_anisotropic_diffusion_options min_deg_options;
+    min_deg_options.order = bdd_anisotropic_diffusion_options::order::minimum_degree;
+    bdd_solver_min_deg.set_options(min_deg_options);
+    bdd_solver_min_deg.init(input);
+    const double initial_lb_min_deg = bdd_solver_min_deg.lower_bound();
+    bdd_solver_min_deg.iteration();
+    const double end_lb_min_deg = bdd_solver_min_deg.lower_bound();
+    bdd_solver_min_deg.iteration();
+    const double end_lb_2_min_deg = bdd_solver_min_deg.lower_bound();
+
+    test(initial_lb_bfs <= end_lb_bfs);
+    test(std::abs(end_lb_bfs - end_lb_2_bfs) <= 1e-8);
+
+    test(initial_lb_min_deg <= end_lb_min_deg);
+    test(std::abs(end_lb_min_deg - end_lb_2_min_deg) <= 1e-8);
+
+    test(std::abs(end_lb_min_deg - end_lb_bfs) <= 1e-8);
 }
 
 int main(int argc, char** argv)
@@ -72,6 +93,7 @@ int main(int argc, char** argv)
     unsigned long int seed = 123;
     for(std::size_t n=2; n<20; ++n) {
         for(std::size_t l=2; l<20; ++l) {
+            std::cout << "n = " << n << ", l = " << l << "\n";
             test_randon_chains_problem(n,l,seed++);
         }
     }
