@@ -19,10 +19,10 @@ namespace LPMP {
         bdd_anisotropic_diffusion_options(int argc, char** argv);
         bdd_anisotropic_diffusion_options() {}
         enum class order{ Cuthill_McKee, BFS, minimum_degree, given_order } order = order::minimum_degree;
-        enum class direction { isotropic, anisotropic } direction = direction::anisotropic;
-        double residual = 0.0;
+        enum class direction { isotropic, anisotropic };
+        std::vector<direction> directions = {direction::anisotropic};
+        std::vector<double> residuals = {0.0}; // round robin for residual
     };
-
 
     class bdd_anisotropic_diffusion : public bdd_solver_interface {
         public:
@@ -81,6 +81,9 @@ namespace LPMP {
             std::vector<std::size_t> find_minimum_degree_bdd_ordering() const;
             std::vector<std::size_t> find_bfs_bdd_ordering() const;
 
+            bdd_anisotropic_diffusion_options::direction current_direction() const;
+            double current_residual() const;
+
             bdd_storage bdd_storage_;
 
             std::vector<bdd_branch_instruction> bdd_branch_instructions;
@@ -94,26 +97,31 @@ namespace LPMP {
             two_dim_variable_array<bdd_variable_delimiter> bdd_variable_delimiters;
 
             bdd_anisotropic_diffusion_options options;
+            std::size_t iteration_nr = 0;
     };
 
     bdd_anisotropic_diffusion_options::bdd_anisotropic_diffusion_options(int argc, char** argv)
         {
             TCLAP::CmdLine cmd("Command line parser for bdd anisotropic diffusion options", ' ', " ");
-            TCLAP::ValueArg<std::string> direction_arg("d","direction","propagation direction",false,"anisotropic","{isotropic|anisotropic}");
-            cmd.add(direction_arg);
+            TCLAP::MultiArg<std::string> directions_arg("d","direction","propagation direction",false,"{isotropic|anisotropic}");
+            cmd.add(directions_arg);
             TCLAP::ValueArg<std::string> order_arg("o","order","order of bdd subproblems",false,"bfs","{bfs|minimum-degree|cuthill-mckee|given}");
             cmd.add(order_arg);
-            TCLAP::ValueArg<double> residual_arg("r","residual","residual weight in message passing",false,0.0,"[0,1]");
+            TCLAP::MultiArg<double> residual_arg("r","residual","residual weight in message passing",false,"[0,1]");
             cmd.add(residual_arg); 
 
             cmd.parse(argc, argv);
 
-            if(direction_arg.getValue() == "anisotropic")
-                direction = direction::anisotropic;
-            else if(direction_arg.getValue() == "isotropic")
-                direction = direction::isotropic;
-            else
-                throw std::runtime_error("direction not recognized");
+            if(directions_arg.getValue().size() > 0) {
+                for(const auto d : directions_arg.getValue()) {
+                    if(d == "anisotropic")
+                        directions.push_back(direction::anisotropic);
+                    else if(d == "isotropic")
+                        directions.push_back(direction::isotropic);
+                    else
+                        throw std::runtime_error("direction not recognized");
+                }
+            }
 
             if(order_arg.getValue() == "bfs")
                 order = order::BFS;
@@ -126,7 +134,10 @@ namespace LPMP {
             else
                 throw std::runtime_error("order argument not recognized");
 
-            residual = residual_arg.getValue(); 
+            if(residual_arg.getValue().size() == 0)
+                residuals = {0.0};
+            else 
+                residuals = residual_arg.getValue(); 
         }
 
 
@@ -530,6 +541,16 @@ namespace LPMP {
         return {first_bdd_node_index, last_bdd_node_index}; 
     }
 
+    bdd_anisotropic_diffusion_options::direction bdd_anisotropic_diffusion::current_direction() const
+    {
+        return options.directions[iteration_nr%options.directions.size()];
+    }
+
+    double bdd_anisotropic_diffusion::current_residual() const
+    {
+        return options.residuals[iteration_nr%options.residuals.size()]; 
+    }
+
     void bdd_anisotropic_diffusion::forward_step(const std::size_t bdd_nr, const std::size_t variable_index)
     {
         const auto [first_bdd_node_index, last_bdd_node_index] = bdd_branch_instruction_range(bdd_nr, variable_index);
@@ -550,8 +571,9 @@ namespace LPMP {
         assert(Lagrange_multipliers_index < Lagrange_multipliers[variable].size());
         //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        if(options.direction == bdd_anisotropic_diffusion_options::direction::anisotropic) {
-            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+        const double r = current_residual();
+        if(current_direction() == bdd_anisotropic_diffusion_options::direction::anisotropic) {
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
             //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
             //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
             //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
@@ -563,8 +585,8 @@ namespace LPMP {
                 Lagrange_multipliers(variable, l).Lagrange_multiplier += delta - subgradient_stepsize*subgradient;
                 Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta - subgradient_stepsize*subgradient;;
             }
-        } else if(options.direction == bdd_anisotropic_diffusion_options::direction::isotropic) {
-            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size()-1);
+        } else if(current_direction() == bdd_anisotropic_diffusion_options::direction::isotropic) {
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size()-1);
             for(std::size_t l=0; l<Lagrange_multipliers[variable].size(); ++l) {
                 if(l != Lagrange_multipliers_index) {
                     assert(std::isfinite(delta));
@@ -592,9 +614,10 @@ namespace LPMP {
         const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
         //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
-        if(options.direction == bdd_anisotropic_diffusion_options::direction::anisotropic) {
+        const double r = current_residual();
+        if(current_direction() == bdd_anisotropic_diffusion_options::direction::anisotropic) {
             const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / Lagrange_multipliers_index;
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / Lagrange_multipliers_index;
             //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
             //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
             //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
@@ -606,8 +629,8 @@ namespace LPMP {
                 Lagrange_multipliers(variable, l).Lagrange_multiplier += delta - subgradient_stepsize*subgradient; 
                 Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta - subgradient_stepsize*subgradient;
             }
-        } else if(options.direction == bdd_anisotropic_diffusion_options::direction::isotropic) {
-            const double delta = (1.0-options.residual)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1);
+        } else if(current_direction() == bdd_anisotropic_diffusion_options::direction::isotropic) {
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1);
             for(std::size_t l=0; l<Lagrange_multipliers[variable].size(); ++l) {
                 if(l != Lagrange_multipliers_index) {
                     assert(std::isfinite(delta));
@@ -626,7 +649,9 @@ namespace LPMP {
     double bdd_anisotropic_diffusion::anisotropic_diffusion_iteration()
     {
         anisotropic_diffusion_forward();
-        return anisotropic_diffusion_backward();
+        const double lb = anisotropic_diffusion_backward();
+        ++iteration_nr;
+        return lb;
     }
 
     void bdd_anisotropic_diffusion::anisotropic_diffusion_forward()
