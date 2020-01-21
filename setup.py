@@ -35,12 +35,14 @@ class CMakeBuild(build_ext):
     def _validate_gcc_version(self, gcc_command):
         print(f'Testing {gcc_command}...')
         out = subprocess.check_output([gcc_command, '--version']).decode()
-        last_word_first_line = out.split('\n')[0].split(' ')[-1]
-        if '.' not in last_word_first_line:
-            return False
+        words = out.split('\n')[0].split(' ')
+        for word in reversed(words):
+            if '.' in word:
+                gcc_version = LooseVersion(word)
+                if gcc_version >= '9.0':
+                    return True
 
-        gcc_version = LooseVersion(last_word_first_line)
-        return (gcc_version >= '9.0')
+        return False
 
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
