@@ -6,7 +6,8 @@ import subprocess
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from distutils.version import LooseVersion
+from pkg_resources import parse_version
+
 
 
 
@@ -25,8 +26,8 @@ class CMakeBuild(build_ext):
                                ", ".join(e.name for e in self.extensions))
 
         if platform.system() == "Windows":
-            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
-            if cmake_version < '3.1.0':
+            cmake_version = parse_version(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            if cmake_version < parse_version('3.1.0'):
                 raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
         for ext in self.extensions:
@@ -37,9 +38,9 @@ class CMakeBuild(build_ext):
         out = subprocess.check_output([gcc_command, '--version']).decode()
         words = out.split('\n')[0].split(' ')
         for word in reversed(words):
-            if '.' in word:
-                gcc_version = LooseVersion(word)
-                if gcc_version >= '9.0':
+            if "." in word:
+                gcc_version = parse_version(word)
+                if gcc_version >= parse_version('9.0'):
                     return True
 
         return False
