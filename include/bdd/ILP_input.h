@@ -3,8 +3,12 @@
 #include "config.hxx"
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <cassert>
+#include "two_dimensional_variable_array.hxx"
+#include "cuthill-mckee.h"
+#include "bfs_ordering.hxx"
 
 namespace LPMP {
 
@@ -169,5 +173,93 @@ namespace LPMP {
             std::vector<double> objective_;
             std::vector<std::string> var_index_to_name_;
             std::unordered_map<std::string, std::size_t> var_name_to_index_;
+        public:
+            void reorder_bfs();
+            void reorder_Cuthill_McKee(); 
+
+        private:
+            two_dim_variable_array<std::size_t> variable_adjacency_matrix() const;
+            void reorder(const std::vector<std::size_t>& new_order);
     };
+
+    inline two_dim_variable_array<std::size_t> ILP_input::variable_adjacency_matrix() const
+    {
+        std::unordered_set<std::array<std::size_t,2>> adjacent_vars;
+        for(const auto& l : this->linear_constraints_) {
+            for(std::size_t i=0; i<l.variables.size(); ++i) {
+                for(std::size_t j=i+1; j<l.variables.size(); ++j) {
+                    const std::size_t var1 = l.variables[i].var;
+                    const std::size_t var2 = l.variables[j].var;
+                    adjacent_vars.insert({std::min(var1,var2), std::max(var1, var2)});
+                }
+            }
+        }
+
+        std::vector<std::size_t> adjacency_size(this->nr_variables(),0);
+        for(const auto [i,j] : adjacent_vars) {
+            ++adjacency_size[i];
+            ++adjacency_size[j];
+        }
+
+        two_dim_variable_array<std::size_t> adjacency(adjacency_size.begin(), adjacency_size.end());
+        std::fill(adjacency_size.begin(), adjacency_size.end(), 0);
+        for(const auto e : adjacent_vars) {
+            const auto [i,j] = e;
+            assert(i<j);
+            assert(adjacency_size[i] < adjacency[i].size());
+            assert(adjacency_size[j] < adjacency[j].size());
+            adjacency(i, adjacency_size[i]++) = j;
+            adjacency(j, adjacency_size[j]++) = i;
+        }
+
+        return adjacency;
+    }
+
+    inline void ILP_input::reorder(const std::vector<std::size_t>& order)
+    {
+        assert(order.size() == this->nr_variables());
+        std::vector<double> new_objective(this->nr_variables());
+        for(std::size_t i=0; i<this->objective_.size(); ++i)
+            if(order[i] < this->objective_.size())
+                new_objective[i] = this->objective_[order[i]];
+            else
+                new_objective[i] = 0.0;
+        std::swap(this->objective_, new_objective);
+
+        std::vector<std::size_t> inverse_order(this->nr_variables());
+        for(std::size_t i=0; i<order.size(); ++i)
+            inverse_order[order[i]] = i;
+
+        for(auto& [name, idx] : this->var_name_to_index_) {
+            idx = inverse_order[idx];
+        }
+
+        std::vector<std::string> new_var_index_to_name(this->nr_variables());
+        for(std::size_t i=0; i<this->var_index_to_name_.size(); ++i) {
+            new_var_index_to_name[i] = this->var_index_to_name_[order[i]]; // TODO: use move operator
+        }
+        std::swap(new_var_index_to_name, this->var_index_to_name_);
+
+        for(auto& l : this->linear_constraints_) {
+            for(auto& x : l.variables) {
+                x.var = inverse_order[x.var];
+            }
+            l.normalize(); 
+        }
+    }
+
+    inline void ILP_input::reorder_bfs()
+    {
+        const auto adj = variable_adjacency_matrix();
+        const auto order = bfs_ordering(adj);
+        reorder(order);
+    }
+
+    inline void ILP_input::reorder_Cuthill_McKee()
+    {
+        const auto adj = variable_adjacency_matrix();
+        const auto order = Cuthill_McKee(adj);
+        reorder(order);
+    }
+
 }

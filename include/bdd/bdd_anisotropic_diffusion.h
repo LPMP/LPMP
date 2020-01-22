@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <vector>
 #include <limits>
+#include <chrono> // for now
+#include <iostream>
 
 namespace LPMP {
 
@@ -40,9 +42,9 @@ namespace LPMP {
             void forward_run();
             double backward_run();
 
-            double anisotropic_diffusion_iteration();
+            void anisotropic_diffusion_iteration();
             void anisotropic_diffusion_forward();
-            double anisotropic_diffusion_backward();
+            void anisotropic_diffusion_backward();
             void iteration() { anisotropic_diffusion_iteration(); }
 
             double lower_bound() { return backward_run(); }
@@ -569,7 +571,6 @@ namespace LPMP {
         const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
         assert(Lagrange_multipliers_index < Lagrange_multipliers[variable].size());
-        //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
         const double r = current_residual();
         if(current_direction() == bdd_anisotropic_diffusion_options::direction::anisotropic) {
@@ -646,12 +647,16 @@ namespace LPMP {
         }
     }
 
-    double bdd_anisotropic_diffusion::anisotropic_diffusion_iteration()
+    void bdd_anisotropic_diffusion::anisotropic_diffusion_iteration()
     {
+        const auto begin_time = std::chrono::steady_clock::now();
         anisotropic_diffusion_forward();
-        const double lb = anisotropic_diffusion_backward();
+        const auto after_forward = std::chrono::steady_clock::now(); 
+        std::cout << "forward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " milliseconds\n";
+        anisotropic_diffusion_backward();
+        const auto end_time = std::chrono::steady_clock::now();
+        std::cout << "backward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - after_forward).count() << " milliseconds\n";
         ++iteration_nr;
-        return lb;
     }
 
     void bdd_anisotropic_diffusion::anisotropic_diffusion_forward()
@@ -668,7 +673,7 @@ namespace LPMP {
         }
     }
 
-    double bdd_anisotropic_diffusion::anisotropic_diffusion_backward()
+    void bdd_anisotropic_diffusion::anisotropic_diffusion_backward()
     {
         for(std::ptrdiff_t bdd_nr=nr_bdds()-1; bdd_nr>=0; --bdd_nr) {
             const auto [first_bdd_index,last_bdd_index] = bdd_branch_instruction_range(bdd_nr);
@@ -680,16 +685,6 @@ namespace LPMP {
                 backward_step(bdd_nr, variable_index);
             }
         }
-
-        double lb = 0.0;
-        backward_run();
-        for(std::size_t bdd_nr=0; bdd_nr<nr_bdds(); ++bdd_nr) {
-            const auto& first_bdd_instr = bdd_branch_instructions[bdd_variable_delimiters(bdd_nr,0).bdd_branch_instruction_offset];
-            assert(first_bdd_instr.m == first_bdd_instr.cost_from_terminal());
-            lb += first_bdd_instr.m;
-        }
-
-        return lb;
     }
 
     std::size_t bdd_anisotropic_diffusion::bdd_branch_instruction_index(const bdd_branch_instruction* bdd) const
