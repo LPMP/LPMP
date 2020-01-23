@@ -9,11 +9,16 @@
 #include <cassert>
 #include <vector>
 #include <unordered_map>
+#include <tsl/robin_map.h>
 #include <numeric>
 #include <chrono> // for now
 #include "bdd_storage.h"
 
 namespace LPMP {
+
+    struct bdd_min_marginal_averaging_options {
+        enum class averaging_type {classic, SRMP} averaging_type = averaging_type::classic;
+    };
 
     class bdd_min_marginal_averaging : public bdd_solver_interface {
         public:
@@ -30,7 +35,6 @@ namespace LPMP {
                 bool is_initial_state() const { return *this == bdd_branch_instruction_level{}; }
                 friend bool operator==(const bdd_branch_instruction_level&, const bdd_branch_instruction_level&);
             };
-
 
             bdd_min_marginal_averaging() {}
             bdd_min_marginal_averaging(const bdd_min_marginal_averaging&) = delete; // no copy constructor because of pointers in bdd_branch_instruction
@@ -63,14 +67,13 @@ namespace LPMP {
             void backward_run(); // also used to initialize
             void forward_run();
 
-            double lower_bound() { return lower_bound_backward_run(); }
-
-            double lower_bound_backward_run();
+            double lower_bound() { return lower_bound_; }
+            double compute_lower_bound();
             double lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
 
-            double min_marginal_averaging_iteration();
+            void min_marginal_averaging_iteration();
             void min_marginal_averaging_forward();
-            double min_marginal_averaging_backward();
+            void min_marginal_averaging_backward();
 
             void iteration() { min_marginal_averaging_iteration(); }
 
@@ -79,11 +82,17 @@ namespace LPMP {
             template<typename STREAM>
                 void export_dot(STREAM& s) const;
 
+            void set_options(const bdd_min_marginal_averaging_options o) { options = o; }
+
         private:
             void init_branch_instructions();
             std::array<double,2> min_marginal(const std::size_t var, const std::size_t bdd_index) const;
             template<typename ITERATOR>
                 static std::array<double,2> average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end);
+            template<typename ITERATOR>
+                std::array<double,2> average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
+            template<typename ITERATOR>
+                std::array<double,2> average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
             void set_marginal(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals);
 
             //void check_bdd_branch_instruction(const bdd_branch_instruction& bdd, const bool last_variable = false, const bool first_variable = false) const;
@@ -96,11 +105,16 @@ namespace LPMP {
 
             std::size_t first_variable_of_bdd(const bdd_branch_instruction_level& bdd_level) const;
             std::size_t last_variable_of_bdd(const bdd_branch_instruction_level& bdd_level) const;
+            bool first_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const;
+            bool last_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const;
 
             std::vector<bdd_branch_instruction> bdd_branch_instructions;
             two_dim_variable_array<bdd_branch_instruction_level> bdd_branch_instruction_levels;
             bdd_storage bdd_storage_;
             std::vector<double> costs_; 
+
+            double lower_bound_ = -std::numeric_limits<double>::infinity();
+            bdd_min_marginal_averaging_options options;
     };
 
     bool operator==(const bdd_min_marginal_averaging::bdd_branch_instruction_level& x, const bdd_min_marginal_averaging::bdd_branch_instruction_level& y)
@@ -145,11 +159,11 @@ namespace LPMP {
         assert(var+1 != nr_variables() || bdd_level.next == nullptr);
 
         // iterate over all bdd nodes and make forward step
-        const std::size_t first_branch_instruction = bdd_level.first_branch_instruction;
-        const std::size_t last_branch_instruction = bdd_level.last_branch_instruction;
+        const std::ptrdiff_t first_branch_instruction = bdd_level.first_branch_instruction;
+        const std::ptrdiff_t last_branch_instruction = bdd_level.last_branch_instruction;
         //std::cout << "no bdd nodes for var " << var << " = " << last_branch_instruction - first_branch_instruction << "\n";
         //std::cout << "bdd branch instruction offset = " << first_branch_instruction << "\n";
-        for(std::size_t i=first_branch_instruction; i<last_branch_instruction; ++i) {
+        for(std::ptrdiff_t i=last_branch_instruction-1; i>=first_branch_instruction; --i) {
             check_bdd_branch_instruction(bdd_branch_instructions[i], var+1 == nr_variables(), var == 0);
             bdd_branch_instructions[i].backward_step();
         }
@@ -251,8 +265,8 @@ namespace LPMP {
         std::fill(nr_bdd_nodes_per_variable.begin(), nr_bdd_nodes_per_variable.end(), 0); // counter for bdd instruction per variable
         std::fill(nr_bdds_per_variable.begin(), nr_bdds_per_variable.end(), 0); // counter for bdd per variable
 
-        // TODO: use tsl::unordered_map
-        std::unordered_map<std::size_t, bdd_branch_instruction*> stored_bdd_node_index_to_bdd_address;
+        //std::unordered_map<std::size_t, bdd_branch_instruction*> stored_bdd_node_index_to_bdd_address;
+        tsl::robin_map<std::size_t, bdd_branch_instruction*> stored_bdd_node_index_to_bdd_address;
         //stored_bdd_node_index_to_bdd_address.insert(std::pair<std::size_t, bdd_branch_instruction*>(bdd_storage::bdd_node::terminal_0, bdd_branch_instruction_terminal_0));
         //stored_bdd_node_index_to_bdd_address.insert(std::pair<std::size_t, bdd_branch_instruction*>(bdd_storage::bdd_node::terminal_1, bdd_branch_instruction_terminal_1)); 
 
@@ -385,9 +399,8 @@ namespace LPMP {
         } 
     }
 
-    double bdd_min_marginal_averaging::lower_bound_backward_run()
+    double bdd_min_marginal_averaging::compute_lower_bound()
     {
-        backward_run();
         double lb = 0.0;
         for(long int var=nr_variables()-1; var>=0; --var)
             for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index)
@@ -398,7 +411,7 @@ namespace LPMP {
     double bdd_min_marginal_averaging::lower_bound_backward(const std::size_t var, const std::size_t bdd_index)
     {
         const auto& bdd_level = bdd_branch_instruction_levels(var,bdd_index);
-        if(bdd_level.prev == nullptr) {
+        if(first_variable_of_bdd(var, bdd_index)) {
             assert(bdd_level.no_bdd_nodes() == 1);
             const auto& bdd = get_bdd_branch_instruction(var, bdd_index, 0);
             return bdd.m;
@@ -414,17 +427,16 @@ namespace LPMP {
         }
     }
 
-    double bdd_min_marginal_averaging::min_marginal_averaging_iteration()
+    void bdd_min_marginal_averaging::min_marginal_averaging_iteration()
     {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward();
         const auto after_forward = std::chrono::steady_clock::now();
         std::cout << "forward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " milliseconds\n";
         const auto before_backward = std::chrono::steady_clock::now();
-        const double lb = min_marginal_averaging_backward();
+        min_marginal_averaging_backward();
         const auto end_time = std::chrono::steady_clock::now();
         std::cout << "backward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " milliseconds\n";
-        return lb;
     }
 
     template<typename ITERATOR>
@@ -438,6 +450,48 @@ namespace LPMP {
             const double no_marginals = std::distance(marginals_begin, marginals_end);
             average_marginal[0] /= no_marginals;
             average_marginal[1] /= no_marginals;
+
+            assert(std::isfinite(average_marginal[0]));
+            assert(std::isfinite(average_marginal[1]));
+            return average_marginal;
+        }
+
+    template<typename ITERATOR>
+        std::array<double,2> bdd_min_marginal_averaging::average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const
+        {
+            assert(nr_bdds(var) == std::distance(marginals_begin, marginals_end));
+            std::array<double,2> average_marginal = {0.0, 0.0};
+            std::size_t nr_averaged_marginals = 0;
+            for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
+                if(!last_variable_of_bdd(var, bdd_index)) {
+                    average_marginal[0] += (*marginals_begin+bdd_index)[0];
+                    average_marginal[1] += (*marginals_begin+bdd_index)[1];
+                    ++nr_averaged_marginals;
+                }
+            }
+            average_marginal[0] /= nr_averaged_marginals;
+            average_marginal[1] /= nr_averaged_marginals;
+
+            assert(std::isfinite(average_marginal[0]));
+            assert(std::isfinite(average_marginal[1]));
+            return average_marginal;
+        }
+
+    template<typename ITERATOR>
+        std::array<double,2> bdd_min_marginal_averaging::average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const
+        {
+            assert(nr_bdds(var) == std::distance(marginals_begin, marginals_end));
+            std::array<double,2> average_marginal = {0.0, 0.0};
+            std::size_t nr_averaged_marginals = 0;
+            for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
+                if(!first_variable_of_bdd(var, bdd_index)) {
+                    average_marginal[0] += (*marginals_begin+bdd_index)[0];
+                    average_marginal[1] += (*marginals_begin+bdd_index)[1];
+                    ++nr_averaged_marginals;
+                }
+            }
+            average_marginal[0] /= nr_averaged_marginals;
+            average_marginal[1] /= nr_averaged_marginals;
 
             assert(std::isfinite(average_marginal[0]));
             assert(std::isfinite(average_marginal[1]));
@@ -479,7 +533,7 @@ namespace LPMP {
         }
     }
 
-    double bdd_min_marginal_averaging::min_marginal_averaging_backward()
+    void bdd_min_marginal_averaging::min_marginal_averaging_backward()
     {
         double lb = 0.0;
         std::vector<std::array<double,2>> min_marginals;
@@ -509,7 +563,7 @@ namespace LPMP {
             }
         }
 
-        return lb;
+        lower_bound_ = lb; 
     }
 
     const bdd_branch_instruction& bdd_min_marginal_averaging::get_bdd_branch_instruction(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const
@@ -668,6 +722,18 @@ namespace LPMP {
         while(p->next != nullptr)
             p = p->next;
         return bdd_level_variable(*p); 
+    }
+
+    bool bdd_min_marginal_averaging::last_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const
+    {
+        const bdd_branch_instruction_level& bdd_level = bdd_branch_instruction_levels(var, bdd_index);
+        return bdd_level.next == nullptr; 
+    }
+
+    bool bdd_min_marginal_averaging::first_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const
+    {
+        const bdd_branch_instruction_level& bdd_level = bdd_branch_instruction_levels(var, bdd_index);
+        return bdd_level.prev == nullptr; 
     }
 
     template<typename STREAM>

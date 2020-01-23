@@ -18,11 +18,12 @@ int main(int argc, char** argv)
     bdds.init(input);
 
     std::cout << std::setprecision(10);
-    const double initial_lb = bdds.lower_bound_backward_run();
+    const double initial_lb = bdds.compute_lower_bound();
     std::cout << "initial lower bound = " << initial_lb << "\n";
 
     for(std::size_t iter=0; iter<1000; ++iter) {
-        const double lb = bdds.min_marginal_averaging_iteration();
+        bdds.iteration();
+        const double lb = bdds.lower_bound();
         std::cout << "iteration " << iter << ": lower bound = " << lb << "\n";
     } 
 }

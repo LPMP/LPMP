@@ -9,6 +9,9 @@
 #include "two_dimensional_variable_array.hxx"
 #include "cuthill-mckee.h"
 #include "bfs_ordering.hxx"
+#include <chrono>
+#include <tsl/robin_map.h>
+#include <tsl/robin_set.h>
 
 namespace LPMP {
 
@@ -172,7 +175,9 @@ namespace LPMP {
             std::vector<linear_constraint> linear_constraints_;
             std::vector<double> objective_;
             std::vector<std::string> var_index_to_name_;
-            std::unordered_map<std::string, std::size_t> var_name_to_index_;
+            //std::unordered_map<std::string, std::size_t> var_name_to_index_;
+            tsl::robin_map<std::string, std::size_t> var_name_to_index_;
+
         public:
             void reorder_bfs();
             void reorder_Cuthill_McKee(); 
@@ -184,7 +189,8 @@ namespace LPMP {
 
     inline two_dim_variable_array<std::size_t> ILP_input::variable_adjacency_matrix() const
     {
-        std::unordered_set<std::array<std::size_t,2>> adjacent_vars;
+        //std::unordered_set<std::array<std::size_t,2>> adjacent_vars;
+        tsl::robin_set<std::array<std::size_t,2>> adjacent_vars;
         for(const auto& l : this->linear_constraints_) {
             for(std::size_t i=0; i<l.variables.size(); ++i) {
                 for(std::size_t j=i+1; j<l.variables.size(); ++j) {
@@ -230,9 +236,8 @@ namespace LPMP {
         for(std::size_t i=0; i<order.size(); ++i)
             inverse_order[order[i]] = i;
 
-        for(auto& [name, idx] : this->var_name_to_index_) {
-            idx = inverse_order[idx];
-        }
+        for(auto it=this->var_name_to_index_.begin(); it!=this->var_name_to_index_.end(); ++it)
+            it.value() = inverse_order[it.value()];
 
         std::vector<std::string> new_var_index_to_name(this->nr_variables());
         for(std::size_t i=0; i<this->var_index_to_name_.size(); ++i) {
@@ -250,9 +255,16 @@ namespace LPMP {
 
     inline void ILP_input::reorder_bfs()
     {
+        const auto begin_time = std::chrono::steady_clock::now();
         const auto adj = variable_adjacency_matrix();
+        const auto after_adjacency_matrix = std::chrono::steady_clock::now();
         const auto order = bfs_ordering(adj);
+        const auto after_bfs = std::chrono::steady_clock::now();
         reorder(order);
+        const auto end_time = std::chrono::steady_clock::now();
+        std::cout << "adjacency matrix construction took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_adjacency_matrix - begin_time).count() << " milliseconds\n";
+        std::cout << "bfs ordering took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_bfs - after_adjacency_matrix).count() << " milliseconds\n";
+        std::cout << "reordering variables took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - after_bfs).count() << " milliseconds\n"; 
     }
 
     inline void ILP_input::reorder_Cuthill_McKee()

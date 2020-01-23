@@ -256,6 +256,9 @@ namespace LPMP {
 
     void check_bdd_branch_instruction(const bdd_branch_instruction& bdd, const bool last_variable, const bool first_variable)
     {
+#ifdef NDEBUG
+        return;
+#endif
         assert(bdd.low_outgoing != nullptr);
         assert(bdd.low_outgoing == bdd_branch_instruction_terminal_0 || bdd.low_outgoing == bdd_branch_instruction_terminal_1 || bdd.low_outgoing > &bdd);
         assert(bdd.high_outgoing != nullptr);
