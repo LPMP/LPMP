@@ -96,12 +96,12 @@ namespace LPMP {
             template<typename ITERATOR>
                 static std::array<double,2> average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end);
             template<typename ITERATOR>
-                std::array<double,2> average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
+                std::pair<std::array<double,2>, bool> average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
             template<typename ITERATOR>
-                std::array<double,2> average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
+                std::pair<std::array<double,2>, bool> average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
             void set_marginal(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals);
-            void set_marginal_forward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals);
-            void set_marginal_backward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals);
+            void set_marginal_forward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals, const bool default_avg);
+            void set_marginal_backward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals, const bool default_avg);
 
             //void check_bdd_branch_instruction(const bdd_branch_instruction& bdd, const bool last_variable = false, const bool first_variable = false) const;
             void check_bdd_branch_instruction_level(const bdd_branch_instruction_level& bdd, const bool last_variable = false, const bool first_variable = false) const;
@@ -421,28 +421,36 @@ namespace LPMP {
         bdd_level.variable_cost += -marginal_diff + marginal_diff_target; 
     }
 
-    void bdd_min_marginal_averaging::set_marginal_forward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals)
+    void bdd_min_marginal_averaging::set_marginal_forward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals, const bool default_avg)
     {
         auto& bdd_level = bdd_branch_instruction_levels(var,bdd_index);
         const double marginal_diff = min_marginals[1] - min_marginals[0];
         const double marginal_diff_target = marginals[1] - marginals[0];
         assert(std::isfinite(marginal_diff));
         assert(std::isfinite(marginal_diff_target));
-        if(last_variable_of_bdd(var, bdd_index)) {
+        if (default_avg)
+        {
+            bdd_level.variable_cost += -marginal_diff + marginal_diff_target;
+        }
+        else if(last_variable_of_bdd(var, bdd_index)) {
             bdd_level.variable_cost -= marginal_diff;
         } else {
             bdd_level.variable_cost += -marginal_diff + marginal_diff_target; 
         }
 
     }
-    void bdd_min_marginal_averaging::set_marginal_backward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals)
+    void bdd_min_marginal_averaging::set_marginal_backward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals, const bool default_avg)
     {
         auto& bdd_level = bdd_branch_instruction_levels(var,bdd_index);
         const double marginal_diff = min_marginals[1] - min_marginals[0];
         const double marginal_diff_target = marginals[1] - marginals[0];
         assert(std::isfinite(marginal_diff));
         assert(std::isfinite(marginal_diff_target));
-        if(first_variable_of_bdd(var, bdd_index)) {
+        if (default_avg)
+        {
+            bdd_level.variable_cost += -marginal_diff + marginal_diff_target;
+        }
+        else if(first_variable_of_bdd(var, bdd_index)) {
             bdd_level.variable_cost -= marginal_diff;
         } else {
             bdd_level.variable_cost += -marginal_diff + marginal_diff_target; 
@@ -489,11 +497,11 @@ namespace LPMP {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward();
         const auto after_forward = std::chrono::steady_clock::now();
-        std::cout << "forward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " milliseconds\n";
+        std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
         const auto before_backward = std::chrono::steady_clock::now();
         min_marginal_averaging_backward();
         const auto end_time = std::chrono::steady_clock::now();
-        std::cout << "backward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " milliseconds\n";
+        std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
 
     template<typename ITERATOR>
@@ -514,7 +522,7 @@ namespace LPMP {
         }
 
     template<typename ITERATOR>
-        std::array<double,2> bdd_min_marginal_averaging::average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const
+        std::pair<std::array<double,2>, bool> bdd_min_marginal_averaging::average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const
         {
             assert(nr_bdds(var) == std::distance(marginals_begin, marginals_end));
             std::array<double,2> average_marginal = {0.0, 0.0};
@@ -525,14 +533,22 @@ namespace LPMP {
                 if(!last_variable_of_bdd(var, bdd_index))
                     ++nr_averaged_marginals;
             }
+            // if no BDD satisfies forward condition, resort to averaging over all BDDs
+            bool default_avg = false;
+            if (nr_averaged_marginals == 0)
+            {
+                nr_averaged_marginals = nr_bdds(var);
+                default_avg = true;
+            }
+
             average_marginal[0] /= double(nr_averaged_marginals);
             average_marginal[1] /= double(nr_averaged_marginals);
 
-            return average_marginal;
+            return std::make_pair(average_marginal, default_avg);
         }
 
     template<typename ITERATOR>
-        std::array<double,2> bdd_min_marginal_averaging::average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const
+        std::pair<std::array<double,2>, bool> bdd_min_marginal_averaging::average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const
         {
             assert(nr_bdds(var) == std::distance(marginals_begin, marginals_end));
             std::array<double,2> average_marginal = {0.0, 0.0};
@@ -543,12 +559,20 @@ namespace LPMP {
                 if(!first_variable_of_bdd(var, bdd_index))
                     ++nr_averaged_marginals;
             }
+            // if no BDD satisfies forward condition, resort to averaging over all BDDs
+            bool default_avg = false;
+            if (nr_averaged_marginals == 0)
+            {
+                nr_averaged_marginals = nr_bdds(var);
+                default_avg = true;
+            }
+
             average_marginal[0] /= double(nr_averaged_marginals);
             average_marginal[1] /= double(nr_averaged_marginals);
 
             assert(std::isfinite(average_marginal[0]));
             assert(std::isfinite(average_marginal[1]));
-            return average_marginal;
+            return std::make_pair(average_marginal, default_avg);
         }
 
     // min marginal averaging
@@ -598,11 +622,13 @@ namespace LPMP {
                 min_marginals.push_back(min_marginal(var,bdd_index)); 
             }
 
-            const std::array<double,2> average_marginal = average_marginals_forward_SRMP(min_marginals.begin(), min_marginals.end(), var);
+            const auto average_marginal = average_marginals_forward_SRMP(min_marginals.begin(), min_marginals.end(), var);
+            const std::array<double,2> avg_marg = average_marginal.first;
+            const bool default_averaging = average_marginal.second;
 
             // set marginals in each bdd so min marginals match each other
             for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
-                set_marginal_forward_SRMP(var,bdd_index,average_marginal,min_marginals[bdd_index]);
+                set_marginal_forward_SRMP(var,bdd_index,avg_marg,min_marginals[bdd_index], default_averaging);
             } 
         }
     }
@@ -644,7 +670,6 @@ namespace LPMP {
     {
         double lb = 0.0;
         std::vector<std::array<double,2>> min_marginals;
-
         for(long int var=nr_variables()-1; var>=0; --var) {
 
             // collect min marginals
@@ -653,11 +678,13 @@ namespace LPMP {
                 min_marginals.push_back(min_marginal(var,bdd_index)); 
             }
 
-            const std::array<double,2> average_marginal = average_marginals_backward_SRMP(min_marginals.begin(), min_marginals.end(), var);
+            const auto average_marginal = average_marginals_backward_SRMP(min_marginals.begin(), min_marginals.end(), var);
+            const std::array<double,2> avg_marg = average_marginal.first;
+            const bool default_averaging = average_marginal.second;
 
             // set marginals in each bdd so min marginals match each other
             for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
-                set_marginal_backward_SRMP(var,bdd_index,average_marginal,min_marginals[bdd_index]);
+                set_marginal_backward_SRMP(var,bdd_index,avg_marg,min_marginals[bdd_index], default_averaging);
                 backward_step(var, bdd_index);
                 lb += lower_bound_backward(var,bdd_index);
             }
@@ -671,11 +698,11 @@ namespace LPMP {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward_SRMP();
         const auto after_forward = std::chrono::steady_clock::now();
-        std::cout << "SRMP forward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " milliseconds\n";
+        std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
         const auto before_backward = std::chrono::steady_clock::now();
         min_marginal_averaging_backward_SRMP();
         const auto end_time = std::chrono::steady_clock::now();
-        std::cout << "SRMP backward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " milliseconds\n";
+        std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
 
     const bdd_branch_instruction& bdd_min_marginal_averaging::get_bdd_branch_instruction(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const
