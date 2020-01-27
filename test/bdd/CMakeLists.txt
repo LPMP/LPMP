@@ -37,3 +37,7 @@ add_test(test_random_inequality_to_bdd test_random_inequality_to_bdd)
 add_executable(test_random_chains_bdd test_random_chains_bdd.cpp)
 target_link_libraries(test_random_chains_bdd ILP_parser LPMP Cudd)
 add_test(test_random_chains_bdd test_random_chains_bdd)
+
+add_executable(test_ILP_input_reordering test_ILP_input_reordering.cpp)
+target_link_libraries(test_ILP_input_reordering ILP_parser LPMP)
+add_test(test_ILP_input_reordering test_random_chains_bdd)

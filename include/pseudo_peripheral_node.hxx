@@ -61,4 +61,44 @@ namespace LPMP {
         return y; 
     }
 
+    template<typename ADJACENCY_GRAPH, typename NODE_ITERATOR>
+    std::size_t find_pseudo_peripheral_node(const ADJACENCY_GRAPH& adjacency, NODE_ITERATOR node_begin, NODE_ITERATOR node_end)
+    {
+        //assert(std::distance(node_begin, node_end) > 0);
+        std::size_t min_degree = adjacency[*node_begin].size();
+        std::size_t x = 0;
+        for(auto node_it=node_begin; node_it!=node_end; ++node_it) {
+            if(adjacency[*node_it].size() < min_degree) {
+                min_degree = adjacency[*node_it].size();
+                x = *node_it;
+            }
+        }
+
+        assert(x < adjacency.size());
+        auto [y, d_y] = farthest_node(adjacency, x);
+        auto [z, d_z] = farthest_node(adjacency, y);
+        while(d_z > d_y) {
+            std::swap(y,z);
+            std::swap(d_z, d_y);
+            std::tie(z, d_z) = farthest_node(adjacency,y);
+        }
+        return y; 
+    }
+
+    /*
+    struct iterator {
+        std::size_t i;
+        std::size_t operator*() const { return i; }
+        void operator++() { ++i; }
+        bool operator!=(const iterator o) { return o.i != this->i; }
+        std::size_t operator-(const iterator o) const { return o.i - this->i; }
+    }; 
+
+    template<typename ADJACENCY_GRAPH>
+    std::size_t find_pseudo_peripheral_node(const ADJACENCY_GRAPH& adjacency)
+    {
+        return find_pseudo_peripheral_node(adjacency, iterator({0}), iterator({adjacency.size()}));
+    }
+    */
+
 } 

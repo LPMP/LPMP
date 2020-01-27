@@ -197,7 +197,7 @@ namespace LPMP {
                     }
                 }
             }
-        };
+        }
 
     // possibly use sparse matrix here
     Eigen::SparseMatrix<double> multigraph_matching_frank_wolfe_universe::read_solution() const
@@ -221,7 +221,7 @@ namespace LPMP {
             }
         }
         return sol; 
-    };
+    }
 
     bool multigraph_matching_frank_wolfe_universe::perform_fw_step(const std::size_t iter)
     {

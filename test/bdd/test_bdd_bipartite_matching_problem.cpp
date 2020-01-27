@@ -37,14 +37,14 @@ void test_problem(const std::string input_string, const double expected_lb)
     BDD_SOLVER bdds;
     bdds.init(input); 
 
-    const double initial_lb = bdds.lower_bound_backward_run();
+    const double initial_lb = bdds.lower_bound();
     test(initial_lb <= expected_lb + 1e-8);
 
     for(std::size_t iter=0; iter<100; ++iter) {
-        bdds.min_marginal_averaging_iteration();
+        bdds.iteration();
     }
 
-    const double lb = bdds.min_marginal_averaging_iteration();
+    const double lb = bdds.lower_bound();
 
     test(std::abs(lb - expected_lb) <= 1e-8);
 }

@@ -14,6 +14,7 @@
 #include <limits>
 #include <chrono> // for now
 #include <iostream>
+#include "tclap/CmdLine.h"
 
 namespace LPMP {
 

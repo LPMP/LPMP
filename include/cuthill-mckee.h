@@ -2,6 +2,7 @@
 
 #include "two_dimensional_variable_array.hxx"
 #include "pseudo_peripheral_node.hxx"
+#include "permutation.hxx"
 #include <vector>
 #include <queue>
 #include <tuple>
@@ -10,10 +11,10 @@
 namespace LPMP {
 
     template<typename T>
-    std::vector<std::size_t> Cuthill_McKee(const two_dim_variable_array<T>& adjacency)
+    permutation Cuthill_McKee(const two_dim_variable_array<T>& adjacency)
     {
         std::queue<std::size_t> Q;
-        std::vector<std::size_t> result;
+        permutation result;
         result.reserve(adjacency.size());
         std::vector<std::size_t> remaining_degree;
         remaining_degree.reserve(adjacency.size());
@@ -57,6 +58,7 @@ namespace LPMP {
         if(result.size() != adjacency.size())
             throw std::runtime_error("Graph not connected.");
 
+        assert(is_permutation(result.begin(), result.end()));
         return result;
     }
 

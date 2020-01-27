@@ -1,5 +1,4 @@
-#ifndef LPMP_TEMPLATE_UTILITIES
-#define LPMP_TEMPLATE_UTILITIES
+#pragma once
 
 #include <type_traits>
 #include <utility>
@@ -45,5 +44,3 @@ namespace LPMP {
 
    template<class LIST> using tuple_from_list = meta::apply<meta::quote<std::tuple>, LIST>;
 }
-
-#endif // LPMP_TEMPLATE_UTILITIES

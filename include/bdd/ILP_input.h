@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <string>
 #include <cassert>
+#include <Eigen/Eigen>
 #include "two_dimensional_variable_array.hxx"
 #include "cuthill-mckee.h"
 #include "bfs_ordering.hxx"
@@ -134,6 +135,12 @@ namespace LPMP {
             return linear_constraints_;
         }
 
+        template<typename ITERATOR>
+            bool check_feasibility(ITERATOR begin, ITERATOR end) const;
+
+        template<typename ITERATOR>
+            double evaluate(ITERATOR begin, ITERATOR end) const; 
+
         template<typename STREAM>
             void write(STREAM& s) const
             {
@@ -179,14 +186,104 @@ namespace LPMP {
             tsl::robin_map<std::string, std::size_t> var_name_to_index_;
 
         public:
-            void reorder_bfs();
-            void reorder_Cuthill_McKee(); 
+            permutation reorder_bfs();
+            permutation reorder_Cuthill_McKee(); 
 
         private:
             two_dim_variable_array<std::size_t> variable_adjacency_matrix() const;
-            void reorder(const std::vector<std::size_t>& new_order);
+            void reorder(const permutation& new_order);
     };
 
+    template<typename ITERATOR>
+        bool ILP_input::check_feasibility(ITERATOR begin, ITERATOR end) const
+        {
+            if(std::distance(begin, end) != nr_variables())
+                return false;
+
+            for(const auto& l : linear_constraints_) {
+                int s = 0;
+                for(const auto v : l.variables) {
+                    assert(*(begin + v.var) == 0 || *(begin + v.var) == 1);
+                    s += v.coefficient * *(begin + v.var);
+                }
+                switch(l.ineq) {
+                    case inequality_type::smaller_equal:
+                        if(s > l.right_hand_side)
+                            return false;
+                        break;
+                    case inequality_type::greater_equal:
+                        if(s < l.right_hand_side)
+                            return false;
+                        break;
+                    case inequality_type::equal:
+                        if(s != l.right_hand_side)
+                            return false;
+                        break;
+                    default:
+                        throw std::runtime_error("inequality type not supported");
+                }
+            }
+            return true;
+        }
+
+    template<typename ITERATOR>
+        double ILP_input::evaluate(ITERATOR begin, ITERATOR end) const
+        {
+            if(!check_feasibility(begin,end))
+                return std::numeric_limits<double>::infinity();
+            assert(std::distance(begin,end) >= objective_.size());
+            double cost = 0.0;
+            for(std::size_t i=0; i<objective_.size(); ++i) {
+                assert(*(begin+i) == 0 || *(begin+i) == 1);
+                cost += objective_[i] * *(begin+i);
+            }
+            return cost;
+        }
+
+    inline two_dim_variable_array<std::size_t> ILP_input::variable_adjacency_matrix() const
+    {
+        std::vector<Eigen::Triplet<int>> var_constraint_adjacency_list;
+
+        for(std::size_t i=0; i<this->linear_constraints_.size(); ++i) {
+            const auto& l = this->linear_constraints_[i];
+            for(const auto& v : l.variables) {
+                var_constraint_adjacency_list.push_back({v.var, i, 1});
+            }
+        }
+
+        Eigen::SparseMatrix<int> A(this->nr_variables(), this->linear_constraints_.size());
+        A.setFromTriplets(var_constraint_adjacency_list.begin(), var_constraint_adjacency_list.end());
+        const auto begin_time = std::chrono::steady_clock::now();
+        const Eigen::SparseMatrix<int> adj_matrix = A*A.transpose();
+        const auto end_time = std::chrono::steady_clock::now();
+        std::cout << "matrix multiplication for adjacency matrix construction took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
+        assert(adj_matrix.cols() == nr_variables() && adj_matrix.rows() == nr_variables());
+
+        std::vector<std::size_t> adjacency_size(nr_variables(), 0);
+
+        for(std::size_t i=0; i<adj_matrix.outerSize(); ++i) {
+            for(typename Eigen::SparseMatrix<int>::InnerIterator it(adj_matrix,i); it; ++it) {
+                if(it.value() > 0 && i != it.index()) {
+                    adjacency_size[i]++;
+                }
+            }
+        }
+
+        two_dim_variable_array<std::size_t> adjacency(adjacency_size.begin(), adjacency_size.end());
+        std::fill(adjacency_size.begin(), adjacency_size.end(), 0);
+
+        for(std::size_t i=0; i<adj_matrix.outerSize(); ++i) {
+            for(typename Eigen::SparseMatrix<int>::InnerIterator it(adj_matrix,i); it; ++it) {
+                if(it.value() > 0 && i != it.index()) {
+                    adjacency(i,adjacency_size[i]++) = it.index();
+                }
+            }
+        }
+
+        return adjacency;
+    }
+
+    /*
     inline two_dim_variable_array<std::size_t> ILP_input::variable_adjacency_matrix() const
     {
         //std::unordered_set<std::array<std::size_t,2>> adjacent_vars;
@@ -220,8 +317,9 @@ namespace LPMP {
 
         return adjacency;
     }
+    */
 
-    inline void ILP_input::reorder(const std::vector<std::size_t>& order)
+    inline void ILP_input::reorder(const permutation& order)
     {
         assert(order.size() == this->nr_variables());
         std::vector<double> new_objective(this->nr_variables());
@@ -241,7 +339,7 @@ namespace LPMP {
 
         std::vector<std::string> new_var_index_to_name(this->nr_variables());
         for(std::size_t i=0; i<this->var_index_to_name_.size(); ++i) {
-            new_var_index_to_name[i] = this->var_index_to_name_[order[i]]; // TODO: use move operator
+            new_var_index_to_name[i] = std::move(this->var_index_to_name_[order[i]]);
         }
         std::swap(new_var_index_to_name, this->var_index_to_name_);
 
@@ -253,7 +351,7 @@ namespace LPMP {
         }
     }
 
-    inline void ILP_input::reorder_bfs()
+    inline permutation ILP_input::reorder_bfs()
     {
         const auto begin_time = std::chrono::steady_clock::now();
         const auto adj = variable_adjacency_matrix();
@@ -265,13 +363,15 @@ namespace LPMP {
         std::cout << "adjacency matrix construction took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_adjacency_matrix - begin_time).count() << " milliseconds\n";
         std::cout << "bfs ordering took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_bfs - after_adjacency_matrix).count() << " milliseconds\n";
         std::cout << "reordering variables took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - after_bfs).count() << " milliseconds\n"; 
+        return order;
     }
 
-    inline void ILP_input::reorder_Cuthill_McKee()
+    inline permutation ILP_input::reorder_Cuthill_McKee()
     {
         const auto adj = variable_adjacency_matrix();
         const auto order = Cuthill_McKee(adj);
         reorder(order);
+        return order;
     }
 
 }

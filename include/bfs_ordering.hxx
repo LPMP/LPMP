@@ -2,6 +2,7 @@
 
 #include "two_dimensional_variable_array.hxx"
 #include "pseudo_peripheral_node.hxx"
+#include "permutation.hxx"
 #include <limits>
 #include <vector>
 #include <queue>
@@ -9,9 +10,9 @@
 namespace LPMP {
 
     template<typename ADJACENCY_GRAPH>
-    std::vector<std::size_t> bfs_ordering(const ADJACENCY_GRAPH& adj)
+    permutation bfs_ordering(const ADJACENCY_GRAPH& adj)
     {
-        std::vector<std::size_t> ordering(adj.size());
+        permutation ordering(adj.size());
 
         const std::size_t s = find_pseudo_peripheral_node(adj);
 
@@ -93,6 +94,8 @@ namespace LPMP {
 
         // std::reverse(ordering.begin(), ordering.end());
 
+        assert(ordering.size() == adj.size());
+        assert(is_permutation(ordering.begin(), ordering.end()));
         return ordering; 
-    } 
+    }
 }
