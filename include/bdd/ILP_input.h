@@ -323,7 +323,7 @@ namespace LPMP {
     {
         assert(order.size() == this->nr_variables());
         std::vector<double> new_objective(this->nr_variables());
-        for(std::size_t i=0; i<this->objective_.size(); ++i)
+        for(std::size_t i=0; i<this->nr_variables(); ++i)
             if(order[i] < this->objective_.size())
                 new_objective[i] = this->objective_[order[i]];
             else
