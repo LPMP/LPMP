@@ -33,7 +33,7 @@ namespace LPMP {
             bool terminal = true;
             for(const std::size_t j : adj[i]) {
                 assert(j < dist.size() && i < dist.size());
-                if (dist[j] >= dist[i])
+                if (dist[j] > dist[i])
                     terminal = false;
                 if (seen[j])
                     continue;
@@ -68,15 +68,19 @@ namespace LPMP {
         std::size_t pos = adj.size()-1;
         while(!dist_queue.empty()) {
 
-            // get next batch of nodes
+            // get next batch of nodes with greatest distance to source
+            const auto next = dist_queue.top();
+            const size_t next_dist = next.dist_;
             std::vector<node> batch;
             while (!dist_queue.empty())
             {
                 const auto n = dist_queue.top();
+                if (n.dist_ < next_dist)
+                    break;
                 dist_queue.pop();
                 batch.push_back(n);
-
             }
+            // process batch
             for (const auto n : batch)
             {
                 const auto i = n.index_;
