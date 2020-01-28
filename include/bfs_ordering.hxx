@@ -23,6 +23,7 @@ namespace LPMP {
         seen[s] = 1;
         dist[s] = 0;
         std::vector<std::size_t> terminals;
+        std::vector<char> is_terminal(adj.size(), 0);
 
         // forward run of BFS from source to determine distances and terminals of search tree
         while (!Q.empty())
@@ -33,7 +34,7 @@ namespace LPMP {
             bool terminal = true;
             for(const std::size_t j : adj[i]) {
                 assert(j < dist.size() && i < dist.size());
-                if (dist[j] > dist[i])
+                if (dist[j] > dist[i] || is_terminal[j])
                     terminal = false;
                 if (seen[j])
                     continue;
@@ -43,7 +44,10 @@ namespace LPMP {
             }
 
             if(terminal)
+            {
                 terminals.push_back(i);
+                is_terminal[i] = 1;
+            }
         }
 
         struct node
