@@ -6,6 +6,7 @@
 #include "ILP_input.h"
 #include "convert_pb_to_bdd.h"
 #include "bdd_branch_instruction.h"
+#include "bdd_branch_node.h"
 #include <cassert>
 #include <vector>
 #include <unordered_map>
@@ -32,6 +33,9 @@ namespace LPMP {
                 // TODO: prev and next pointers possibly not needed
                 bdd_branch_instruction_level* prev = nullptr;
                 bdd_branch_instruction_level* next = nullptr;
+
+                std::size_t nr_feasible_low_arcs;
+                std::size_t nr_feasible_high_arcs;
 
                 std::size_t no_bdd_nodes() const { return last_branch_instruction - first_branch_instruction; }
                 bool first_bdd_variable() const { return prev == nullptr; }
@@ -76,6 +80,12 @@ namespace LPMP {
             std::vector<char> primal_solution() { return primal_solution_; }
             double compute_upper_bound();
 
+            bool fix_variable(std::size_t var, char value);
+            bool remove_all_incoming_arcs(bdd_branch_node & bdd_node);
+            void remove_all_outgoing_arcs(bdd_branch_node & bdd_node);
+
+            bool rounding();
+
             void min_marginal_averaging_iteration();
             void min_marginal_averaging_forward();
             void min_marginal_averaging_backward();
@@ -117,6 +127,8 @@ namespace LPMP {
             std::size_t last_variable_of_bdd(const bdd_branch_instruction_level& bdd_level) const;
             bool first_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const;
             bool last_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const;
+
+            std::vector<bdd_branch_node> bdd_branch_nodes;
 
             std::vector<bdd_branch_instruction> bdd_branch_instructions;
             two_dim_variable_array<bdd_branch_instruction_level> bdd_branch_instruction_levels;
@@ -503,6 +515,203 @@ namespace LPMP {
             return std::numeric_limits<double>::infinity();
         else
             return evaluate(primal_solution_.begin(), primal_solution_.end());
+    }
+
+    bool bdd_min_marginal_averaging::fix_variable(std::size_t var, char value)
+    {
+        assert(0 <= value && value <= 1);
+        assert(primal_solution_.size() == nr_variables());
+
+        // check if variable is already fixed
+        if (primal_solution_[var] == value)
+            return true;
+        else if (primal_solution_[var] < 2)
+            return false;
+
+        // mark variable as fixed
+        primal_solution_[var] = value;
+
+        for (size_t bdd_index = 0; bdd_index < nr_bdds(var); bdd_index++)
+        {
+            auto & bdd_level = bdd_branch_instruction_levels(var, bdd_index);
+            for (size_t node_index = bdd_level.first_branch_instruction; node_index < bdd_level.last_branch_instruction; node_index++)
+            {
+                auto & bdd_node = bdd_branch_nodes[node_index];
+
+                if (value)
+                {
+                    // remove incoming arc from child node
+                    if (!bdd_node.low_outgoing->is_terminal())
+                    {
+                        if (bdd_node.prev_low_incoming != nullptr)
+                            bdd_node.prev_low_incoming->next_low_incoming = bdd_node.next_low_incoming;
+                        else
+                            bdd_node.low_outgoing->first_low_incoming = bdd_node.next_low_incoming;
+                        // restructure child if it is unreachable
+                        if (bdd_node.low_outgoing->first_low_incoming == nullptr && bdd_node.low_outgoing->first_high_incoming == nullptr)
+                            remove_all_outgoing_arcs(*bdd_node.low_outgoing);
+                    }
+                    // turn outgoing arc towards 0-terminal
+                    bdd_node.low_outgoing = bdd_branch_node_terminal_0;
+                    *(bdd_node.nr_feasible_low_arcs)--;
+                }
+                else
+                {
+                    if (!bdd_node.high_outgoing->is_terminal())
+                    {
+                        if (bdd_node.prev_high_incoming != nullptr)
+                            bdd_node.prev_high_incoming->next_high_incoming = bdd_node.next_high_incoming;
+                        else
+                            bdd_node.high_outgoing->first_high_incoming = bdd_node.next_high_incoming;
+                        if (bdd_node.high_outgoing->first_low_incoming == nullptr && bdd_node.high_outgoing->first_high_incoming == nullptr)
+                            remove_all_outgoing_arcs(*bdd_node.high_outgoing);
+                    }
+                    bdd_node.high_outgoing = bdd_branch_node_terminal_0;
+                    *(bdd_node.nr_feasible_high_arcs)--;
+                }
+
+                // restructure parents if node is dead-end
+                if (bdd_node.low_outgoing == bdd_branch_node_terminal_0 && bdd_node.high_outgoing == bdd_branch_node_terminal_0)
+                {
+                    if (!remove_all_incoming_arcs(bdd_node))
+                        return false;
+                }
+            }
+
+            // check if other variables in BDD are now restricted
+            auto * cur = bdd_level.prev;
+            while (cur != nullptr)
+            {
+                if (primal_solution_[bdd_level_variable(*cur)] < 2)
+                {
+                    cur = cur->prev;
+                    continue;
+                }
+                if (cur->nr_feasible_low_arcs == 0)
+                {
+                    if (!fix_variable(bdd_level_variable(*cur), 1))
+                        return false;
+                }
+                if (cur->nr_feasible_high_arcs == 0)
+                {
+                    if (!fix_variable(bdd_level_variable(*cur), 0))
+                        return false;
+                }
+                cur = cur->prev;
+            }
+            cur = bdd_level.next;
+            while (cur != nullptr)
+            {
+                if (primal_solution_[bdd_level_variable(*cur)] < 2)
+                {
+                    cur = cur->next;
+                    continue;
+                }
+                if (cur->nr_feasible_low_arcs == 0)
+                {
+                    if (!fix_variable(bdd_level_variable(*cur), 1))
+                        return false;
+                }
+                if (cur->nr_feasible_high_arcs == 0)
+                {
+                    if (!fix_variable(bdd_level_variable(*cur), 0))
+                        return false;
+                }
+                cur = cur->next;
+            }
+        }
+        return true;
+    }
+
+    bool bdd_min_marginal_averaging::remove_all_incoming_arcs(bdd_branch_node & bdd_node)
+    {
+        if (bdd_node.is_initial_state())
+            return false;
+        // low arcs
+        {
+            auto * cur = bdd_node.first_low_incoming;
+            while (cur != nullptr)
+            {
+                cur->low_outgoing = bdd_branch_node_terminal_0;
+                *(cur->nr_feasible_low_arcs)--;
+                // recursive call if parent is dead-end
+                if (cur->high_outgoing == bdd_branch_node_terminal_0)
+                {
+                    if (!remove_all_incoming_arcs(*cur))
+                        return false;
+                }
+                cur = cur->next_low_incoming;
+            }
+            bdd_node.first_low_incoming = nullptr;
+        }
+        // high arcs
+        {
+            auto * cur = bdd_node.first_high_incoming;
+            while (cur != nullptr)
+            {
+                cur->high_outgoing = bdd_branch_node_terminal_0;
+                *(cur->nr_feasible_high_arcs)--;
+                if (cur->low_outgoing == bdd_branch_node_terminal_0)
+                {
+                    if (!remove_all_incoming_arcs(*cur))
+                        return false;
+                }
+                cur = cur->next_high_incoming;
+            }
+            bdd_node.first_high_incoming = nullptr;        
+        }
+        return true;
+    }
+
+    void bdd_min_marginal_averaging::remove_all_outgoing_arcs(bdd_branch_node & bdd_node)
+    {
+        // low arc
+        if (!bdd_node.low_outgoing->is_terminal())
+        {
+            if (bdd_node.prev_low_incoming != nullptr)
+                bdd_node.prev_low_incoming->next_low_incoming = bdd_node.next_low_incoming;
+            else
+                bdd_node.low_outgoing->first_low_incoming = bdd_node.next_low_incoming;
+            // recursive call if child node is unreachable
+            if (bdd_node.low_outgoing->first_low_incoming == nullptr && bdd_node.low_outgoing->first_high_incoming == nullptr)
+                remove_all_outgoing_arcs(*bdd_node.low_outgoing);
+        }
+        bdd_node.low_outgoing = bdd_branch_node_terminal_0;
+        *(bdd_node.nr_feasible_low_arcs)--;
+        // high arc
+        if (!bdd_node.high_outgoing->is_terminal())
+        {
+            if (bdd_node.prev_high_incoming != nullptr)
+                bdd_node.prev_high_incoming->next_high_incoming = bdd_node.next_high_incoming;
+            else
+                bdd_node.high_outgoing->first_high_incoming = bdd_node.next_high_incoming;
+            if (bdd_node.high_outgoing->first_low_incoming == nullptr && bdd_node.high_outgoing->first_high_incoming == nullptr)
+                remove_all_outgoing_arcs(*bdd_node.high_outgoing);
+        }
+        bdd_node.high_outgoing = bdd_branch_node_terminal_0;
+        *(bdd_node.nr_feasible_high_arcs)--;
+    }
+
+    bool bdd_min_marginal_averaging::rounding()
+    {
+        assert(primal_solution_.size() == nr_variables());
+
+        std::fill(primal_solution_.begin(), primal_solution_.end(), 2);
+
+        // determine variable order
+        std::vector<size_t> variables;
+        for (size_t i = 0; i < nr_variables(); i++)
+            variables.push_back(i);
+
+        for (size_t var : variables)
+        {
+            // determine fixing value
+            char value = 0;
+
+            if (!fix_variable(var, value))
+                return false;
+        }
+        return true;
     }
 
     void bdd_min_marginal_averaging::min_marginal_averaging_iteration()
