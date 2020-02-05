@@ -6,6 +6,30 @@ namespace LPMP {
     class bdd_branch_node;
     void check_bdd_branch_node(const bdd_branch_node& bdd, const bool last_variable = false, const bool first_variable = false);
 
+    struct bdd_variable {
+        std::size_t first_branch_instruction = std::numeric_limits<std::size_t>::max();
+        std::size_t last_branch_instruction = std::numeric_limits<std::size_t>::max();
+
+        bdd_variable* prev = nullptr;
+        bdd_variable* next = nullptr;
+
+        std::size_t nr_feasible_low_arcs;
+        std::size_t nr_feasible_high_arcs;
+
+        std::size_t nr_bdd_nodes() const { return last_branch_instruction - first_branch_instruction; }
+        bool is_first_bdd_variable() const { return prev == nullptr; }
+        bool is_initial_state() const { return *this == bdd_variable{}; }
+        friend bool operator==(const bdd_variable&, const bdd_variable&);
+    };
+
+    bool operator==(const bdd_variable& x, const bdd_variable& y)
+    {
+        return (x.first_branch_instruction == y.first_branch_instruction &&
+            x.last_branch_instruction == y.last_branch_instruction &&
+            x.prev == y.prev &&
+            x.next == y.next); 
+    }
+
     class bdd_branch_node {
         public:
             bdd_branch_node* low_outgoing = nullptr;
@@ -17,8 +41,7 @@ namespace LPMP {
             bdd_branch_node* next_low_incoming = nullptr;
             bdd_branch_node* next_high_incoming = nullptr;
 
-            std::size_t* nr_feasible_low_arcs;
-            std::size_t* nr_feasible_high_arcs;
+            bdd_variable* bdd_var;
 
             // From C++20
             friend bool operator==(const bdd_branch_node& x, const bdd_branch_node& y);
@@ -43,7 +66,8 @@ namespace LPMP {
             x.prev_low_incoming == y.prev_low_incoming &&
             x.prev_high_incoming == y.prev_high_incoming &&
             x.next_low_incoming == y.next_low_incoming &&
-            x.next_high_incoming == y.next_high_incoming);
+            x.next_high_incoming == y.next_high_incoming &&
+            x.bdd_var == y.bdd_var);
         return equal;
     }
 
