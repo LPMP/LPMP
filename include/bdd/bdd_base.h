@@ -43,6 +43,7 @@ namespace LPMP {
             bool first_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const;
             bool last_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const;
 
+            void check_bdd_variable(const bdd_variable& bdd_var, const bool last_variable = false, const bool first_variable = false) const;
 
             std::vector<BDD_BRANCH_NODE> bdd_branch_nodes;
             two_dim_variable_array<BDD_VARIABLE> bdd_variables;
@@ -215,7 +216,7 @@ namespace LPMP {
                 //if(!bdd.low_outgoing->is_terminal()) { assert(variable_index(bdd) < variable_index(*bdd.low_outgoing)); }
                 //if(!bdd.high_outgoing->is_terminal()) { assert(variable_index(bdd) < variable_index(*bdd.high_outgoing)); }
                 check_bdd_branch_node(bdd, v+1 == nr_variables(), v == 0);
-                check_BDD_VARIABLE(bdd_var, v+1 == nr_variables(), v == 0);
+                check_bdd_variable(bdd_var, v+1 == nr_variables(), v == 0);
                 ++nr_bdd_nodes_per_variable[v]; 
                 ++bdd_offset_per_variable[v];
             }
@@ -307,5 +308,20 @@ namespace LPMP {
     {
         const BDD_VARIABLE& bdd_var = bdd_variables(var, bdd_index);
         return bdd_var.prev == nullptr; 
+    }
+
+    void bdd_base::check_bdd_variable(const bdd_variable& bdd_var, const bool last_variable, const bool first_variable) const
+    {
+        // go over all branch instructions and check whether they point to all the same variable cost
+        for(std::size_t bdd_node_index = bdd_var.first_branch_instruction; bdd_node_index < bdd_var.last_branch_instruction; ++bdd_node_index) {
+            assert(&bdd_var.variable_cost == bdd_branch_instructions[bdd_node_index].variable_cost);
+        }
+
+        if(last_variable) {
+            assert(bdd_var.next == nullptr);
+        }
+        if(first_variable) {
+            assert(bdd_var.prev == nullptr);
+        }
     }
 }
