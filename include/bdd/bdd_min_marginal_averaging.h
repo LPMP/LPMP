@@ -553,7 +553,7 @@ namespace LPMP {
                     }
                     // turn outgoing arc towards 0-terminal
                     bdd_node.low_outgoing = bdd_branch_node_terminal_0;
-                    *(bdd_node.nr_feasible_low_arcs)--;
+                    bdd_node.bdd_var->nr_feasible_low_arcs--;
                 }
                 else
                 {
@@ -567,7 +567,7 @@ namespace LPMP {
                             remove_all_outgoing_arcs(*bdd_node.high_outgoing);
                     }
                     bdd_node.high_outgoing = bdd_branch_node_terminal_0;
-                    *(bdd_node.nr_feasible_high_arcs)--;
+                    bdd_node.bdd_var->nr_feasible_high_arcs--;
                 }
 
                 // restructure parents if node is dead-end
@@ -587,12 +587,12 @@ namespace LPMP {
                     cur = cur->prev;
                     continue;
                 }
-                if (cur->nr_feasible_low_arcs == 0)
+                if (cur->bdd_var->nr_feasible_low_arcs == 0)
                 {
                     if (!fix_variable(bdd_level_variable(*cur), 1))
                         return false;
                 }
-                if (cur->nr_feasible_high_arcs == 0)
+                if (cur->bdd_var->nr_feasible_high_arcs == 0)
                 {
                     if (!fix_variable(bdd_level_variable(*cur), 0))
                         return false;
@@ -607,12 +607,12 @@ namespace LPMP {
                     cur = cur->next;
                     continue;
                 }
-                if (cur->nr_feasible_low_arcs == 0)
+                if (cur->bdd_var->nr_feasible_low_arcs == 0)
                 {
                     if (!fix_variable(bdd_level_variable(*cur), 1))
                         return false;
                 }
-                if (cur->nr_feasible_high_arcs == 0)
+                if (cur->bdd_var->nr_feasible_high_arcs == 0)
                 {
                     if (!fix_variable(bdd_level_variable(*cur), 0))
                         return false;
@@ -633,7 +633,7 @@ namespace LPMP {
             while (cur != nullptr)
             {
                 cur->low_outgoing = bdd_branch_node_terminal_0;
-                *(cur->nr_feasible_low_arcs)--;
+                cur->bdd_var->nr_feasible_low_arcs--;
                 // recursive call if parent is dead-end
                 if (cur->high_outgoing == bdd_branch_node_terminal_0)
                 {
@@ -650,7 +650,7 @@ namespace LPMP {
             while (cur != nullptr)
             {
                 cur->high_outgoing = bdd_branch_node_terminal_0;
-                *(cur->nr_feasible_high_arcs)--;
+                cur->bdd_var->nr_feasible_high_arcs--;
                 if (cur->low_outgoing == bdd_branch_node_terminal_0)
                 {
                     if (!remove_all_incoming_arcs(*cur))
@@ -677,7 +677,7 @@ namespace LPMP {
                 remove_all_outgoing_arcs(*bdd_node.low_outgoing);
         }
         bdd_node.low_outgoing = bdd_branch_node_terminal_0;
-        *(bdd_node.nr_feasible_low_arcs)--;
+        bdd_node.bdd_var->nr_feasible_low_arcs--;
         // high arc
         if (!bdd_node.high_outgoing->is_terminal())
         {
@@ -689,7 +689,7 @@ namespace LPMP {
                 remove_all_outgoing_arcs(*bdd_node.high_outgoing);
         }
         bdd_node.high_outgoing = bdd_branch_node_terminal_0;
-        *(bdd_node.nr_feasible_high_arcs)--;
+        bdd_node.bdd_var->nr_feasible_high_arcs--;
     }
 
     bool bdd_min_marginal_averaging::rounding()
