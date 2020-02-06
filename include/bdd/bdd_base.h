@@ -26,9 +26,9 @@ namespace LPMP {
 
             void init(const ILP_input& input);
 
-            std::size_t nr_variables() const { return bdd_variables.size(); }
-            std::size_t nr_bdds() const { return bdd_variables.size()-1; }
-            std::size_t nr_bdds(const std::size_t var) const { assert(var<nr_variables()); return bdd_variables[var].size(); }
+            std::size_t nr_variables() const { return bdd_variables_.size(); }
+            std::size_t nr_bdds() const { return bdd_variables_.size()-1; }
+            std::size_t nr_bdds(const std::size_t var) const { assert(var<nr_variables()); return bdd_variables_[var].size(); }
 
         private:
             void init_branch_nodes();
@@ -45,8 +45,8 @@ namespace LPMP {
 
             void check_bdd_variable(const bdd_variable& bdd_var, const bool last_variable = false, const bool first_variable = false) const;
 
-            std::vector<BDD_BRANCH_NODE> bdd_branch_nodes;
-            two_dim_variable_array<BDD_VARIABLE> bdd_variables;
+            std::vector<BDD_BRANCH_NODE> bdd_branch_nodes_;
+            two_dim_variable_array<BDD_VARIABLE> bdd_variables_;
             bdd_storage bdd_storage_;
     };
 
@@ -57,18 +57,11 @@ namespace LPMP {
             bdd_storage_.add_bdd(bdd_mgr, bdd, bdd_vars_begin, bdd_vars_end); 
         }
 
-    void bdd_base::init()
-    {
-        init_branch_nodes();
-        costs_.resize(nr_variables(), std::numeric_limits<double>::infinity());
-    }
-
     void bdd_base::init(const ILP_input& input)
     {
         Cudd bdd_mgr;
         bdd_storage_ = bdd_storage(input, bdd_mgr);
         init();
-        set_costs(input.objective().begin(), input.objective().end());
     }
 
     void bdd_base::init_branch_nodes()
@@ -131,8 +124,8 @@ namespace LPMP {
         assert(bdd_offset_per_variable.size() == bdd_storage_.nr_variables());
         assert(bdd_offset_per_variable.back() + nr_bdd_nodes_per_variable.back() == bdd_storage_.bdd_nodes().size());
 
-        bdd_branch_nodes.resize(bdd_storage_.bdd_nodes().size());
-        bdd_variables.resize(nr_bdds_per_variable.begin(), nr_bdds_per_variable.end());
+        bdd_branch_nodes_.resize(bdd_storage_.bdd_nodes().size());
+        bdd_variables_.resize(nr_bdds_per_variable.begin(), nr_bdds_per_variable.end());
 
         for(std::size_t v=0; v<nr_bdds_per_variable.size(); ++v) {
             //std::cout << "v = " << v << ", nr bdd nodes per var = " << nr_bdd_nodes_per_variable[v] << ", offset = " << bdd_offset_per_variable[v] << "\n";
@@ -166,7 +159,7 @@ namespace LPMP {
                 const std::size_t v = stored_bdd.variable;
                 //std::cout << "bdd variable = " << v << ", bdd variable offset = " << bdd_offset_per_variable[v] << "\n";
 
-                auto& bdd_var = bdd_variables(v, nr_bdds_per_variable[v]);
+                auto& bdd_var = bdd_variables_(v, nr_bdds_per_variable[v]);
                 if(!variable_covered(v)) {
                     assert(bdd_var.is_initial_state());
                     cover_variable(v);
@@ -186,10 +179,10 @@ namespace LPMP {
                     assert(!bdd_var.is_initial_state());
                 }
 
-                const std::size_t bdd_branch_nodes_index = bdd_var.last_branch_instruction; 
+                const std::size_t bdd_branch_nodes__index = bdd_var.last_branch_instruction; 
                 bdd_var.last_branch_instruction++;
 
-                BDD_BRANCH_NODE& bdd = bdd_branch_nodes[bdd_branch_nodes_index];
+                BDD_BRANCH_NODE& bdd = bdd_branch_nodes_[bdd_branch_nodes__index];
                 assert(bdd.is_initial_state());
                 //std::cout << "address = " << &bdd << "\n";
                 bdd.variable_cost = &bdd_var.variable_cost;
@@ -227,10 +220,10 @@ namespace LPMP {
         }
 
         for(std::size_t v=0; v<nr_bdds_per_variable.size(); ++v) {
-            assert(nr_bdds_per_variable[v] == bdd_variables[v].size());
+            assert(nr_bdds_per_variable[v] == bdd_variables_[v].size());
         }
 
-        for(const auto& bdd : bdd_branch_nodes) {
+        for(const auto& bdd : bdd_branch_nodes_) {
             check_bdd_branch_node(bdd);
         }
 
@@ -239,9 +232,9 @@ namespace LPMP {
 
     std::size_t bdd_base::bdd_branch_node_index(const BDD_BRANCH_NODE* bdd) const
     {
-        assert(bdd >= &bdd_branch_nodes[0]);
-        const std::size_t i = bdd - &bdd_branch_nodes[0];
-        assert(i < bdd_branch_nodes.size());
+        assert(bdd >= &bdd_branch_nodes_[0]);
+        const std::size_t i = bdd - &bdd_branch_nodes_[0];
+        assert(i < bdd_branch_nodes_.size());
         return i; 
     }
 
@@ -252,9 +245,9 @@ namespace LPMP {
         std::size_t lb = 0;
         std::size_t ub = nr_variables()-1;
         std::size_t v = nr_variables()/2;
-        while (! (i >= bdd_variables(v, 0).first_branch_instruction && i < bdd_variables[v].back().last_branch_instruction))
+        while (! (i >= bdd_variables_(v, 0).first_branch_instruction && i < bdd_variables_[v].back().last_branch_instruction))
         {
-            if (i > bdd_variables(v, 0).first_branch_instruction)
+            if (i > bdd_variables_(v, 0).first_branch_instruction)
                 lb = v+1;
             else
                 ub = v-1;
@@ -265,20 +258,20 @@ namespace LPMP {
 
     std::size_t bdd_base::variable_index(const BDD_VARIABLE& bdd_var) const
     {
-        assert(&bdd_var >= &bdd_variables(0,0));
-        assert(&bdd_var <= &bdd_variables.back().back());
+        assert(&bdd_var >= &bdd_variables_(0,0));
+        assert(&bdd_var <= &bdd_variables_.back().back());
         std::size_t lb = 0;
         std::size_t ub = nr_variables()-1;
         std::size_t v = nr_variables()/2;
-        while(! (&bdd_var >= &bdd_variables(v,0) && &bdd_var <= &bdd_variables[v].back()) ) {
-            if( &bdd_var > &bdd_variables(v,0) ) {
+        while(! (&bdd_var >= &bdd_variables_(v,0) && &bdd_var <= &bdd_variables_[v].back()) ) {
+            if( &bdd_var > &bdd_variables_(v,0) ) {
                 lb = v+1;
             } else {
                 ub = v-1;
             }
             v = (ub+lb)/2; 
         }
-        assert(&bdd_var >= &bdd_variables(v,0) && &bdd_var <= &bdd_variables[v].back());
+        assert(&bdd_var >= &bdd_variables_(v,0) && &bdd_var <= &bdd_variables_[v].back());
         return v; 
     }
 
@@ -300,13 +293,13 @@ namespace LPMP {
 
     bool bdd_base::last_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const
     {
-        const BDD_VARIABLE& bdd_var = bdd_variables(var, bdd_index);
+        const BDD_VARIABLE& bdd_var = bdd_variables_(var, bdd_index);
         return bdd_var.next == nullptr; 
     }
 
     bool bdd_base::first_variable_of_bdd(const std::size_t var, const std::size_t bdd_index) const
     {
-        const BDD_VARIABLE& bdd_var = bdd_variables(var, bdd_index);
+        const BDD_VARIABLE& bdd_var = bdd_variables_(var, bdd_index);
         return bdd_var.prev == nullptr; 
     }
 
