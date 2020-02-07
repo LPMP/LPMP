@@ -4,6 +4,10 @@
 
 namespace LPMP {
 
+    /////////////////////////////////
+    // Base Template Branch Node
+    /////////////////////////////////
+
     template<typename DERIVED>
     class bdd_branch_node {
         public:
@@ -23,7 +27,8 @@ namespace LPMP {
             bool is_initial_state() const { return *this == bdd_branch_node<DERIVED>{}; }
     };
 
-    bool operator==(const bdd_branch_node<BDD_VARIABLE, DERIVED>& x, const bdd_branch_node<BDD_VARIABLE, DERIVED>& y)
+    template<typename DERIVED>
+    bool operator==(const bdd_branch_node<DERIVED>& x, const bdd_branch_node<DERIVED>& y)
     {
         const bool equal = (x.low_outgoing == y.low_outgoing &&
             x.high_outgoing == y.high_outgoing &&
@@ -35,7 +40,7 @@ namespace LPMP {
     }
 
     template<typename DERIVED>
-    void check_bdd_branch_node(const bdd_branch_node<DERIVED>& bdd, const bool last_variable, const bool first_variable)
+    void check_bdd_branch_node(const bdd_branch_node<DERIVED>& bdd, const bool last_variable = false, const bool first_variable = false)
     {
 #ifdef NDEBUG
         return;
@@ -55,7 +60,7 @@ namespace LPMP {
             assert(bdd.first_high_incoming == nullptr);
         } 
         if(bdd.first_low_incoming != nullptr) {
-            bdd_branch_node* cur = bdd.first_low_incoming;
+            bdd_branch_node<DERIVED>* cur = bdd.first_low_incoming;
             while(cur != nullptr) {
                 assert(cur < &bdd);
                 assert(cur->low_outgoing == &bdd);
@@ -63,7 +68,7 @@ namespace LPMP {
             }
         }
         if(bdd.first_high_incoming != nullptr) {
-            bdd_branch_node* cur = bdd.first_high_incoming;
+            bdd_branch_node<DERIVED>* cur = bdd.first_high_incoming;
             while(cur != nullptr) {
                 assert(cur < &bdd);
                 assert(cur->high_outgoing == &bdd);
@@ -73,6 +78,10 @@ namespace LPMP {
     }
 
 
+    /////////////////////////////////
+    // Optimization Branch Node
+    /////////////////////////////////
+
     class bdd_branch_node_opt : public bdd_branch_node<bdd_branch_node_opt> {
         public:
             double* variable_cost = nullptr;
@@ -80,6 +89,8 @@ namespace LPMP {
 
             // From C++20
             friend bool operator==(const bdd_branch_node_opt& x, const bdd_branch_node_opt& y);
+
+            bool is_terminal() const;
 
             void backward_step();
             void forward_step();
@@ -309,6 +320,10 @@ namespace LPMP {
     }
 
 
+    /////////////////////////////////
+    // Variable Fixing Branch Node
+    /////////////////////////////////
+
     class bdd_branch_node_fix : public bdd_branch_node<bdd_branch_node_fix> {
         public:
             bdd_branch_node_fix* prev_low_incoming = nullptr;
@@ -318,6 +333,8 @@ namespace LPMP {
 
             // From C++20
             friend bool operator==(const bdd_branch_node_fix& x, const bdd_branch_node_fix& y);
+
+            bool is_terminal() const;
     };
 
     static bdd_branch_node_fix* const bdd_branch_node_fix_terminal_0 = static_cast<bdd_branch_node_fix*>(nullptr)+1;
