@@ -32,6 +32,7 @@ namespace LPMP {
                 void add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end, Cudd& bdd_mgr);
 
             void init(const ILP_input& input);
+            void init();
 
             std::size_t nr_variables() const { return bdd_variables_.size(); }
             std::size_t nr_bdds() const { return bdd_variables_.size()-1; }
@@ -70,6 +71,12 @@ namespace LPMP {
     {
         Cudd bdd_mgr;
         bdd_storage_ = bdd_storage(input, bdd_mgr);
+        init_branch_nodes();
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init()
+    {
         init_branch_nodes();
     }
 
@@ -154,8 +161,8 @@ namespace LPMP {
         for(std::size_t bdd_index=0; bdd_index<bdd_storage_.nr_bdds(); ++bdd_index) {
             uncover_variables(); 
             stored_bdd_node_index_to_bdd_address.clear();
-            stored_bdd_node_index_to_bdd_address.insert(std::pair<std::size_t, BDD_BRANCH_NODE*>(bdd_storage::bdd_node::terminal_0, bdd_branch_node_terminal_0));
-            stored_bdd_node_index_to_bdd_address.insert(std::pair<std::size_t, BDD_BRANCH_NODE*>(bdd_storage::bdd_node::terminal_1, bdd_branch_node_terminal_1)); 
+            stored_bdd_node_index_to_bdd_address.insert(std::pair<std::size_t, BDD_BRANCH_NODE*>(bdd_storage::bdd_node::terminal_0, static_cast<BDD_BRANCH_NODE*>(nullptr)+1));
+            stored_bdd_node_index_to_bdd_address.insert(std::pair<std::size_t, BDD_BRANCH_NODE*>(bdd_storage::bdd_node::terminal_1, static_cast<BDD_BRANCH_NODE*>(nullptr)+2));
             BDD_VARIABLE* next_bdd_var = nullptr;
 
             //std::cout << "bdd index = " << bdd_index << "\n";
@@ -171,7 +178,7 @@ namespace LPMP {
 
                 auto& bdd_var = bdd_variables_(v, nr_bdds_per_variable[v]);
                 if(!variable_covered(v)) {
-                    assert(bdd_var.is_initial_state());
+                    // assert(bdd_var.is_initial_state());
                     cover_variable(v);
 
                     bdd_var.first_node_index = bdd_offset_per_variable[v];
@@ -186,14 +193,14 @@ namespace LPMP {
 
                     next_bdd_var = &bdd_var;
                 } else {
-                    assert(!bdd_var.is_initial_state());
+                    // assert(!bdd_var.is_initial_state());
                 }
 
                 const std::size_t bdd_branch_nodes__index = bdd_var.last_node_index; 
                 bdd_var.last_node_index++;
 
                 BDD_BRANCH_NODE& bdd = bdd_branch_nodes_[bdd_branch_nodes__index];
-                assert(bdd.is_initial_state());
+                // assert(bdd.is_initial_state());
                 //std::cout << "address = " << &bdd << "\n";
 
                 stored_bdd_node_index_to_bdd_address.insert({stored_bdd_node_index, &bdd});
@@ -336,6 +343,7 @@ namespace LPMP {
             bdd_min_marginal_averaging(const bdd_min_marginal_averaging&) = delete; // no copy constructor because of pointers in bdd_branch_instruction
 
             void init(const ILP_input& input);
+            void init();
 
             template<typename ITERATOR>
                 void set_costs(ITERATOR begin, ITERATOR end);
@@ -376,6 +384,8 @@ namespace LPMP {
             void set_options(const bdd_min_marginal_averaging_options o) { options = o; }
 
         private:
+            void init_costs();
+
             std::array<double,2> min_marginal(const std::size_t var, const std::size_t bdd_index) const;
             template<typename ITERATOR>
                 static std::array<double,2> average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end);
@@ -409,11 +419,8 @@ namespace LPMP {
                 throw std::runtime_error("direction not recognized");
         }
 
-    void bdd_min_marginal_averaging::init(const ILP_input& input)
+    void bdd_min_marginal_averaging::init_costs()
     {
-        bdd_base<bdd_variable_mma, bdd_branch_node_opt>::init(input);
-
-        // set pointers to variable costs
         for (size_t var = 0; var < nr_variables(); var++)
         for (size_t bdd_index = 0; bdd_index < nr_bdds(var); bdd_index++)
         {
@@ -421,9 +428,20 @@ namespace LPMP {
             for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
                 bdd_branch_nodes_[node_index].variable_cost = & bdd_var.cost;
         }
-
         costs_.resize(nr_variables(), std::numeric_limits<double>::infinity());
+    }
+
+    void bdd_min_marginal_averaging::init(const ILP_input& input)
+    {
+        bdd_base<bdd_variable_mma, bdd_branch_node_opt>::init(input);
+        init_costs();
         set_costs(input.objective().begin(), input.objective().end());
+    }
+
+    void bdd_min_marginal_averaging::init()
+    {
+        bdd_base<bdd_variable_mma, bdd_branch_node_opt>::init();
+        init_costs();
     }
 
     void bdd_min_marginal_averaging::forward_step(const std::size_t var, const std::size_t bdd_index)

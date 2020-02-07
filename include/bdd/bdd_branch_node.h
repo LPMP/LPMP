@@ -24,7 +24,7 @@ namespace LPMP {
             virtual bool is_terminal() const = 0;
             bool is_first() const { return first_low_incoming == nullptr && first_high_incoming == nullptr; }
 
-            bool is_initial_state() const { return *this == bdd_branch_node<DERIVED>{}; }
+            // bool is_initial_state() const { return *this == bdd_branch_node<DERIVED>{}; }
     };
 
     template<typename DERIVED>
