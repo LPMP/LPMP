@@ -26,6 +26,7 @@ namespace LPMP {
 
             static bool is_terminal(DERIVED* p) { return p == terminal_0() || p == terminal_1(); }
             bool is_first() const { return first_low_incoming == nullptr && first_high_incoming == nullptr; }
+            bool is_dead_end() const { return low_outgoing == terminal_0() && high_outgoing == terminal_0(); }
             bool is_initial_state() const { return *this == DERIVED{}; }
     };
 
