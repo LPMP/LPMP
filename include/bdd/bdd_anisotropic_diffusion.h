@@ -362,9 +362,9 @@ namespace LPMP {
 
             auto bdd_branch_node_index_from_bdd_storage_index = [&](const std::size_t idx) -> bdd_branch_node_opt* {
                 if(idx == bdd_storage::bdd_node::terminal_0)
-                    return bdd_branch_node_opt_terminal_0;
+                    return bdd_branch_node_opt::terminal_0();
                 else if(idx == bdd_storage::bdd_node::terminal_1)
-                    return bdd_branch_node_opt_terminal_1;
+                    return bdd_branch_node_opt::terminal_1();
                 assert(bdd_storage_index_to_branch_node_index.count(idx) > 0);
                 return bdd_storage_index_to_branch_node_index.find(idx)->second; 
             };
@@ -390,14 +390,14 @@ namespace LPMP {
 
                 auto* bdd_low_outgoing = bdd_branch_node_index_from_bdd_storage_index(bdd_storage_node.low);
                 bdd_node.low_outgoing = bdd_low_outgoing;
-                if(!bdd_low_outgoing->is_terminal()) {
+                if(!bdd_branch_node_opt::is_terminal(bdd_low_outgoing)) {
                     bdd_node.next_low_incoming = bdd_low_outgoing->first_low_incoming;
                     bdd_low_outgoing->first_low_incoming = &bdd_node;
                 }
 
                 auto* bdd_high_outgoing = bdd_branch_node_index_from_bdd_storage_index(bdd_storage_node.high);
                 bdd_node.high_outgoing = bdd_high_outgoing;
-                if(!bdd_high_outgoing->is_terminal()) {
+                if(!bdd_branch_node_opt::is_terminal(bdd_high_outgoing)) {
                     bdd_node.next_high_incoming = bdd_high_outgoing->first_high_incoming;
                     bdd_high_outgoing->first_high_incoming = &bdd_node;
                 }
@@ -722,9 +722,9 @@ namespace LPMP {
                                         return bdd.high_outgoing;
                                 }();
 
-                                if(bdd_next_index == bdd_branch_node_opt_terminal_0)
+                                if(bdd_next_index == bdd_branch_node_opt::terminal_0())
                                     return false;
-                                if(bdd_next_index == bdd_branch_node_opt_terminal_1) {
+                                if(bdd_next_index == bdd_branch_node_opt::terminal_1()) {
                                 } else { 
                                     bdd_branch_node_marks[ bdd_branch_node_index(bdd_next_index) ] = 1;
                                 }
@@ -770,9 +770,9 @@ double bdd_anisotropic_diffusion::evaluate(SOL_ITERATOR sol_begin, SOL_ITERATOR 
                     continue;
                 bdd_node_visited[i] = true;
                 auto get_node_string = [&](const bdd_branch_node_opt* bdd) -> std::string {
-                    if(bdd == bdd_branch_node_opt_terminal_0)
+                    if(bdd == bdd_branch_node_opt::terminal_0())
                         return "false";
-                    if(bdd == bdd_branch_node_opt_terminal_1)
+                    if(bdd == bdd_branch_node_opt::terminal_1())
                         return "true";
                     return std::to_string(bdd_branch_node_index(bdd));
                 };

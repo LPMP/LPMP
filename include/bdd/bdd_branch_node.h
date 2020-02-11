@@ -18,13 +18,15 @@ namespace LPMP {
             DERIVED* next_low_incoming = nullptr;
             DERIVED* next_high_incoming = nullptr;
 
+            constexpr static DERIVED* terminal_0() { return static_cast<DERIVED*>(nullptr)+1; }
+            constexpr static DERIVED* terminal_1() { return static_cast<DERIVED*>(nullptr)+2; }
+
             // From C++20
             friend bool operator==(const bdd_branch_node<DERIVED>& x, const bdd_branch_node<DERIVED>& y);
 
-            virtual bool is_terminal() const = 0;
+            static bool is_terminal(DERIVED* p) { return p == terminal_0() || p == terminal_1(); }
             bool is_first() const { return first_low_incoming == nullptr && first_high_incoming == nullptr; }
-
-            // bool is_initial_state() const { return *this == bdd_branch_node<DERIVED>{}; }
+            bool is_initial_state() const { return *this == DERIVED{}; }
     };
 
     template<typename DERIVED>
@@ -46,14 +48,13 @@ namespace LPMP {
         return;
 #endif
         assert(bdd.low_outgoing != nullptr);
-        assert(bdd.low_outgoing == bdd_branch_node_terminal_0 || bdd.low_outgoing == bdd_branch_node_terminal_1 || bdd.low_outgoing > &bdd);
+        assert(bdd.low_outgoing == DERIVED::terminal_0() || bdd.low_outgoing == DERIVED::terminal_1() || bdd.low_outgoing > &bdd);
         assert(bdd.high_outgoing != nullptr);
-        assert(bdd.high_outgoing == bdd_branch_node_terminal_0 || bdd.high_outgoing == bdd_branch_node_terminal_1 || bdd.high_outgoing > &bdd);
+        assert(bdd.high_outgoing == DERIVED::terminal_0() || bdd.high_outgoing == DERIVED::terminal_1() || bdd.high_outgoing > &bdd);
 
-        assert(std::isfinite(bdd.m));
         if(last_variable) {
-            assert(bdd.low_outgoing == bdd_branch_node_terminal_0 || bdd.low_outgoing == bdd_branch_node_terminal_1);
-            assert(bdd.high_outgoing == bdd_branch_node_terminal_0 || bdd.high_outgoing == bdd_branch_node_terminal_1);
+            assert(bdd.low_outgoing == DERIVED::terminal_0() || bdd.low_outgoing == DERIVED::terminal_1());
+            assert(bdd.high_outgoing == DERIVED::terminal_0() || bdd.high_outgoing == DERIVED::terminal_1());
         }
         if(first_variable) {
             assert(bdd.first_low_incoming == nullptr);
@@ -90,8 +91,6 @@ namespace LPMP {
             // From C++20
             friend bool operator==(const bdd_branch_node_opt& x, const bdd_branch_node_opt& y);
 
-            bool is_terminal() const;
-
             void backward_step();
             void forward_step();
 
@@ -102,11 +101,6 @@ namespace LPMP {
             std::array<double,2> min_marginal() const;
             std::array<double,2> min_marginal_debug() const;
     };
-
-    static bdd_branch_node_opt* const bdd_branch_node_opt_terminal_0 = static_cast<bdd_branch_node_opt*>(nullptr)+1;;
-    static bdd_branch_node_opt* const bdd_branch_node_opt_terminal_1 = static_cast<bdd_branch_node_opt*>(nullptr)+2;
-
-    bool bdd_branch_node_opt::is_terminal() const { return this == bdd_branch_node_opt_terminal_0 || this == bdd_branch_node_opt_terminal_1; }
 
     bool operator==(const bdd_branch_node_opt& x, const bdd_branch_node_opt& y)
     {
@@ -166,9 +160,9 @@ namespace LPMP {
 
         // low edge
         const double low_cost = [&]() {
-            if(low_outgoing == bdd_branch_node_opt_terminal_0) {
+            if(low_outgoing == bdd_branch_node_opt::terminal_0()) {
                 return std::numeric_limits<double>::infinity();
-            } else if(low_outgoing == bdd_branch_node_opt_terminal_1) {
+            } else if(low_outgoing == bdd_branch_node_opt::terminal_1()) {
                 //return *cumulative_sum;
                 return 0.0;
             } else {
@@ -179,9 +173,9 @@ namespace LPMP {
 
         // high edge
         const double high_cost = [&]() {
-            if(high_outgoing == bdd_branch_node_opt_terminal_0) {
+            if(high_outgoing == bdd_branch_node_opt::terminal_0()) {
                 return std::numeric_limits<double>::infinity(); 
-            } else if(high_outgoing == bdd_branch_node_opt_terminal_1) {
+            } else if(high_outgoing == bdd_branch_node_opt::terminal_1()) {
                 //return *cumulative_sum + *variable_cost; 
                 return *variable_cost; 
             } else {
@@ -235,9 +229,9 @@ namespace LPMP {
         // TODO: only works if no bdd nodes skips variables
         // low edge
         const double low_cost = [&]() {
-            if(low_outgoing == bdd_branch_node_opt_terminal_0) {
+            if(low_outgoing == bdd_branch_node_opt::terminal_0()) {
                 return std::numeric_limits<double>::infinity();
-            } else if(low_outgoing == bdd_branch_node_opt_terminal_1) {
+            } else if(low_outgoing == bdd_branch_node_opt::terminal_1()) {
                 return 0.0;
             } else {
                 return low_outgoing->cost_from_terminal();;
@@ -246,9 +240,9 @@ namespace LPMP {
 
         // high edge
         const double high_cost = [&]() {
-            if(high_outgoing == bdd_branch_node_opt_terminal_0) {
+            if(high_outgoing == bdd_branch_node_opt::terminal_0()) {
                 return std::numeric_limits<double>::infinity(); 
-            } else if(high_outgoing == bdd_branch_node_opt_terminal_1) {
+            } else if(high_outgoing == bdd_branch_node_opt::terminal_1()) {
                 return *variable_cost; 
             } else {
                 return high_outgoing->cost_from_terminal() + *variable_cost;
@@ -264,25 +258,25 @@ namespace LPMP {
 
         //std::cout << "in min_marginal() for " << this << ", m = " << m << "\n";
         assert(std::abs(m - cost_from_first()) <= 1e-8);
-        if(!low_outgoing->is_terminal()) {
+        if(!bdd_branch_node_opt::is_terminal(low_outgoing)) {
             assert(std::abs(low_outgoing->m - low_outgoing->cost_from_terminal()) <= 1e-8);
         }
-        if(!high_outgoing->is_terminal()) {
+        if(!bdd_branch_node_opt::is_terminal(high_outgoing)) {
             assert(std::abs(high_outgoing->m - high_outgoing->cost_from_terminal()) <= 1e-8);
         }
 
         const double m0 = [&]() {
-            if(low_outgoing == bdd_branch_node_opt_terminal_0)
+            if(low_outgoing == bdd_branch_node_opt::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(low_outgoing == bdd_branch_node_opt_terminal_1)
+            if(low_outgoing == bdd_branch_node_opt::terminal_1())
                 return this->m;
             return this->m + this->low_outgoing->m;
         }();
 
         const double m1 = [&]() {
-            if(high_outgoing == bdd_branch_node_opt_terminal_0)
+            if(high_outgoing == bdd_branch_node_opt::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(high_outgoing == bdd_branch_node_opt_terminal_1)
+            if(high_outgoing == bdd_branch_node_opt::terminal_1())
                 return this->m + *this->variable_cost;
             return this->m + *this->variable_cost + this->high_outgoing->m;
         }();
@@ -299,17 +293,17 @@ namespace LPMP {
         const double m_debug = cost_from_first();
 
         const double m0 = [&]() {
-            if(low_outgoing == bdd_branch_node_opt_terminal_0)
+            if(low_outgoing == bdd_branch_node_opt::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(low_outgoing == bdd_branch_node_opt_terminal_1)
+            if(low_outgoing == bdd_branch_node_opt::terminal_1())
                 return m_debug;
             return m_debug + this->low_outgoing->cost_from_terminal();
         }();
 
         const double m1 = [&]() {
-            if(high_outgoing == bdd_branch_node_opt_terminal_0)
+            if(high_outgoing == bdd_branch_node_opt::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(high_outgoing == bdd_branch_node_opt_terminal_1)
+            if(high_outgoing == bdd_branch_node_opt::terminal_1())
                 return m_debug + *this->variable_cost;
             return m_debug + *this->variable_cost + this->high_outgoing->cost_from_terminal();
         }();
@@ -334,13 +328,7 @@ namespace LPMP {
             // From C++20
             friend bool operator==(const bdd_branch_node_fix& x, const bdd_branch_node_fix& y);
 
-            bool is_terminal() const;
     };
-
-    static bdd_branch_node_fix* const bdd_branch_node_fix_terminal_0 = static_cast<bdd_branch_node_fix*>(nullptr)+1;
-    static bdd_branch_node_fix* const bdd_branch_node_fix_terminal_1 = static_cast<bdd_branch_node_fix*>(nullptr)+2;
-
-    bool bdd_branch_node_fix::is_terminal() const { return this == bdd_branch_node_fix_terminal_0 || this == bdd_branch_node_fix_terminal_1; }
 
     bool operator==(const bdd_branch_node_fix& x, const bdd_branch_node_fix& y)
     {
