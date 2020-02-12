@@ -341,7 +341,7 @@ namespace LPMP {
         public:
 
             bdd_min_marginal_averaging() {}
-            bdd_min_marginal_averaging(const bdd_min_marginal_averaging&) = delete; // no copy constructor because of pointers in bdd_branch_instruction
+            bdd_min_marginal_averaging(const bdd_min_marginal_averaging&) = delete; // no copy constructor because of pointers in bdd_branch_node
 
             void init(const ILP_input& input);
             void init();
@@ -366,7 +366,8 @@ namespace LPMP {
             double compute_lower_bound();
             double lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
 
-            double compute_upper_bound(std::vector<char> & primal_solution);
+            double compute_upper_bound(const std::vector<char> & primal_solution) const;
+            std::vector<double> total_min_marginals();
 
             void min_marginal_averaging_iteration();
             void min_marginal_averaging_forward();
@@ -600,7 +601,7 @@ namespace LPMP {
         }
     }
 
-    double bdd_min_marginal_averaging::compute_upper_bound(std::vector<char> & primal_solution)
+    double bdd_min_marginal_averaging::compute_upper_bound(const std::vector<char> & primal_solution) const
     {
         if (primal_solution.size() != nr_variables())
             return std::numeric_limits<double>::infinity();
@@ -608,6 +609,24 @@ namespace LPMP {
             return std::numeric_limits<double>::infinity();
         else
             return evaluate(primal_solution.begin(), primal_solution.end());
+    }
+
+    std::vector<double> bdd_min_marginal_averaging::total_min_marginals()
+    {
+        std::vector<double> total_min_marginals;
+        for(std::size_t var=0; var<nr_variables(); ++var)
+        {
+            double total_min_marg = 0;
+            for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index)
+            {
+                forward_step(var,bdd_index);
+                std::array<double,2> min_marg = min_marginal(var,bdd_index);
+                total_min_marg += min_marg[1] - min_marg[0];
+            }
+            total_min_marginals.push_back(total_min_marg);
+        }
+        backward_run();
+        return total_min_marginals;
     }
 
     void bdd_min_marginal_averaging::min_marginal_averaging_iteration()
@@ -955,14 +974,18 @@ namespace LPMP {
 
     class bdd_fixing : public bdd_base<bdd_variable_fix, bdd_branch_node_fix> {
         public:
-            bool fix_variable(size_t var, char value);
-            bool fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values);
+            bool fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values, const bool soft = false);
 
             void init(const ILP_input& input);
             void init();
 
+            const std::vector<char> & primal_solution() const { return primal_solution_; }
+
         private:
             void init_pointers();
+
+            bool fix_variable(const size_t var, const char value);
+            bool is_fixed(const size_t var) const;
 
             bool remove_all_incoming_arcs(bdd_branch_node_fix & bdd_node);
             void remove_all_outgoing_arcs(bdd_branch_node_fix & bdd_node);
@@ -1019,7 +1042,7 @@ namespace LPMP {
         init_pointers();
     }
 
-    bool bdd_fixing::fix_variable(std::size_t var, char value)
+    bool bdd_fixing::fix_variable(const std::size_t var, const char value)
     {
         assert(0 <= value && value <= 1);
         assert(primal_solution_.size() == nr_variables());
@@ -1027,7 +1050,7 @@ namespace LPMP {
         // check if variable is already fixed
         if (primal_solution_[var] == value)
             return true;
-        else if (primal_solution_[var] < 2)
+        else if (is_fixed(var))
             return false;
 
         // mark variable as fixed
@@ -1094,7 +1117,7 @@ namespace LPMP {
             auto * cur = bdd_var.prev;
             while (cur != nullptr)
             {
-                if (primal_solution_[variable_index(*cur)] < 2)
+                if (is_fixed(variable_index(*cur)))
                 {
                     cur = cur->prev;
                     continue;
@@ -1114,7 +1137,7 @@ namespace LPMP {
             cur = bdd_var.next;
             while (cur != nullptr)
             {
-                if (primal_solution_[variable_index(*cur)] < 2)
+                if (is_fixed(variable_index(*cur)))
                 {
                     cur = cur->next;
                     continue;
@@ -1210,7 +1233,7 @@ namespace LPMP {
         }
     }
 
-    bool bdd_fixing::fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values)
+    bool bdd_fixing::fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values, const bool soft)
     {
         assert(primal_solution_.size() == nr_variables());
         assert(indices.size() == values.size());
@@ -1219,9 +1242,78 @@ namespace LPMP {
 
         for (size_t var : indices)
         {
+            if (is_fixed(var) && soft)
+                continue;
             if (!fix_variable(var, values[var]))
                 return false;
         }
         return true;
     }
+
+    bool bdd_fixing::is_fixed(const size_t var) const
+    {
+        assert(primal_solution_.size() == nr_variables());
+        return primal_solution_[var] < 2;
+    }
+
+
+    ////////////////////////////////////////////////////
+    // Solver with Final Rounding
+    ////////////////////////////////////////////////////
+
+    class bdd_opt : public bdd_solver_interface {
+        public:
+
+            bdd_opt() {}
+            bdd_opt(const bdd_opt&) = delete; // no copy constructor because of pointers in bdd_branch_node
+
+            void init(const ILP_input& input);
+            double lower_bound() { return bdd_mma_.lower_bound(); }
+            void iteration() { bdd_mma_.iteration(); }
+            void mma_iteration() { bdd_mma_.min_marginal_averaging_iteration(); }
+            void srmp_iteration() { bdd_mma_.min_marginal_averaging_iteration_SRMP(); }
+
+            bool fix_variables();
+            double compute_upper_bound();
+
+            void set_options(const bdd_min_marginal_averaging_options o) { bdd_mma_.set_options(o); }
+
+        private:
+            
+            bdd_min_marginal_averaging bdd_mma_;
+            bdd_fixing bdd_fix_;
+    };
+
+    void bdd_opt::init(const ILP_input& input)
+    {
+        bdd_mma_.init(input);
+        bdd_mma_.compute_lower_bound();
+        bdd_fix_.init(input);
+    }
+
+
+    bool bdd_opt::fix_variables()
+    {
+        std::vector<double> total_min_marginals = bdd_mma_.total_min_marginals();
+        std::vector<size_t> variables;
+        for (size_t i = 0; i < bdd_mma_.nr_variables(); i++)
+            variables.push_back(i);
+
+        std::sort(variables.begin(), variables.end(), [&](size_t a, size_t b){ return std::abs(total_min_marginals[a]) > std::abs(total_min_marginals[b]); });
+
+        std::vector<char> values;
+        for (size_t i = 0; i < variables.size(); i++)
+        {
+            const char val = (total_min_marginals[variables[i]] < 0) ? 1 : 0;
+            values.push_back(val);
+        }
+
+        return bdd_fix_.fix_variables(variables, values, true);
+    }
+
+    double bdd_opt::compute_upper_bound()
+    {
+        return bdd_mma_.compute_upper_bound(bdd_fix_.primal_solution());
+    }
+
 }
