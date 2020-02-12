@@ -1233,18 +1233,18 @@ namespace LPMP {
         }
     }
 
-    bool bdd_fixing::fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values, const bool soft)
+    bool bdd_fixing::fix_variables(const std::vector<size_t> & variables, const std::vector<char> & values, const bool soft)
     {
         assert(primal_solution_.size() == nr_variables());
-        assert(indices.size() == values.size());
+        assert(variables.size() == values.size());
 
         std::fill(primal_solution_.begin(), primal_solution_.end(), 2);
 
-        for (size_t var : indices)
+        for (size_t i = 0; i < variables.size(); i++)
         {
-            if (is_fixed(var) && soft)
+            if (is_fixed(variables[i]) && soft)
                 continue;
-            if (!fix_variable(var, values[var]))
+            if (!fix_variable(variables[i], values[i]))
                 return false;
         }
         return true;
@@ -1274,7 +1274,8 @@ namespace LPMP {
             void srmp_iteration() { bdd_mma_.min_marginal_averaging_iteration_SRMP(); }
 
             bool fix_variables();
-            double compute_upper_bound();
+            double compute_upper_bound() { return bdd_mma_.compute_upper_bound(bdd_fix_.primal_solution()); }
+            std::vector<char> primal_solution() const { return bdd_fix_.primal_solution(); }
 
             void set_options(const bdd_min_marginal_averaging_options o) { bdd_mma_.set_options(o); }
 
@@ -1310,10 +1311,4 @@ namespace LPMP {
 
         return bdd_fix_.fix_variables(variables, values, true);
     }
-
-    double bdd_opt::compute_upper_bound()
-    {
-        return bdd_mma_.compute_upper_bound(bdd_fix_.primal_solution());
-    }
-
 }
