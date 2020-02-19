@@ -45,6 +45,7 @@ namespace LPMP {
         public:
             std::size_t nr_feasible_low_arcs;
             std::size_t nr_feasible_high_arcs;
+            std::size_t variable_index;
     };
 
     bool operator==(const bdd_variable_fix& x, const bdd_variable_fix& y)
@@ -54,7 +55,8 @@ namespace LPMP {
             x.prev == y.prev &&
             x.next == y.next &&
             x.nr_feasible_low_arcs == y.nr_feasible_low_arcs &&
-            x.nr_feasible_high_arcs == y.nr_feasible_high_arcs); 
+            x.nr_feasible_high_arcs == y.nr_feasible_high_arcs &&
+            x.variable_index == y.variable_index); 
     }
 }
 
