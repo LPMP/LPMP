@@ -1,5 +1,4 @@
-#ifndef LPMP_EQUALITY_MESSAGE
-#define LPMP_EQUALITY_MESSAGE
+#pragma once
 
 #include "config.hxx"
 #include <type_traits>
@@ -195,11 +194,9 @@ public:
    bool CheckPrimalConsistency(const LEFT_FACTOR& l, const RIGHT_FACTOR& r) const
    {
       if(l.primal() == leftVar_) {
-         if(r.primal() != rightVar_) std::cout << "kwaskwaskwas1\n";
          return r.primal() == rightVar_;
       }
       if(r.primal() == rightVar_) {
-         if(l.primal() != leftVar_) std::cout << "kwaskwaskwas2\n";
          return l.primal() == leftVar_;
       }
       return true;
@@ -220,5 +217,3 @@ private:
 };
 
 } // end namespace LPMP
-
-#endif // LPMP_EQUALITY_MESSAGE

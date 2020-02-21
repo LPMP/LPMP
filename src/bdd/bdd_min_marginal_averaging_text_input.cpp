@@ -12,11 +12,12 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const double min_progress = 1e-01;
-    const int max_iter = 1000;
+    const int max_iter = 5;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
-    //input.reorder_bfs();
+    input.reorder_bfs();
     //input.reorder_Cuthill_McKee();
+    //input.reorder_minimum_degree_averaging();
 
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
     bdd_min_marginal_averaging bdds;
@@ -39,4 +40,14 @@ int main(int argc, char** argv)
             break;
         old_lb = new_lb;
     } 
+
+    for(std::size_t iter=0; iter<50; ++iter) {
+        std::cout << "restricted iteration " << iter << ": " << std::flush;
+        bdds.min_marginal_averaging_iteration_restricted();
+        const double new_lb = bdds.lower_bound();
+        //if (new_lb - old_lb < min_progress)
+        //    break;
+        old_lb = new_lb;
+    } 
+
 }

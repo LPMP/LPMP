@@ -901,7 +901,7 @@ private:
     {
        multigraph_matching_input mgm;
        for(const auto& gm : graph_matching_constructors)
-          mgm.push_back({gm.first.p, gm.first.q, gm.second->export_graph_matching_input()});
+          mgm.push_back({gm.first.p, gm.first.q, gm.second->export_linear_graph_matching_input()});
        return mgm;
     }
 

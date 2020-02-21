@@ -41,6 +41,7 @@ namespace LPMP {
     {
         assert(graph_node_offsets_.size() == no_graphs());
         assert(graph_no < graph_node_offsets_.size());
+        assert(node_no < no_nodes(graph_no));
         return graph_node_offsets_[graph_no] + node_no; 
     }
 
@@ -91,37 +92,55 @@ namespace LPMP {
     void multigraph_matching_correlation_clustering_transform::transform_multigraph_matching_to_correlation_clustering()
     {
         std::vector<std::vector<char>> edge_present_;
+        std::vector<double> not_assigned_offset_left;
+        std::vector<double> not_assigned_offset_right;
+
         auto edge_present = [&](const std::size_t matching_no, const std::size_t i, const std::size_t j) -> bool {
             assert(matching_no < mgm->size());
             const auto& gm = (*mgm)[matching_no];
             return edge_present_[matching_no][i * no_nodes(gm.right_graph_no) + j] == 1;
         };
 
-        auto add_edge = [&](const std::size_t matching_no, const std::size_t i, const std::size_t j) {
+        auto add_edge = [&](const std::size_t matching_no, const std::size_t i, const std::size_t j) -> void {
             assert(matching_no < mgm->size());
             const auto& gm = (*mgm)[matching_no];
-            return edge_present_[matching_no][i * no_nodes(gm.right_graph_no) + j] = 1;
+            edge_present_[matching_no][i * no_nodes(gm.right_graph_no) + j] = 1;
         };
 
-        auto add_matching = [&](const std::size_t matching_no) {
+        auto add_matching = [&](const std::size_t matching_no) -> void {
             assert(matching_no < mgm->size());
             const auto& gm = (*mgm)[matching_no];
             assert(matching_no == edge_present_.size());
-            return edge_present_.push_back(std::vector<char>(no_nodes(gm.right_graph_no) * no_nodes(gm.left_graph_no),0));;
+            edge_present_.push_back(std::vector<char>(no_nodes(gm.right_graph_no) * no_nodes(gm.left_graph_no),0));;
         };
 
         // first contruct matching edges
         for(std::size_t matching_no=0; matching_no<mgm->size(); ++matching_no) {
             const auto& gm = (*mgm)[matching_no];
             if(gm.gm_input.quadratic_terms.size() > 0)
-                throw std::runtime_error("can only transform linear multigraph matching problems");
+                throw std::runtime_error("multigraph matching to multicut transform: can only transform linear multigraph matching problems");
 
+            not_assigned_offset_left.clear();
+            not_assigned_offset_left.resize(no_nodes(gm.left_graph_no),0);
+            not_assigned_offset_right.clear();
+            not_assigned_offset_right.resize(no_nodes(gm.right_graph_no),0);
+
+            assert(gm.left_graph_no < gm.right_graph_no);
             add_matching(matching_no);
             for(const auto& a : gm.gm_input.assignments) {
-                const std::size_t i = multigraph_matching_to_correlation_clustering_node(gm.left_graph_no, a.left_node);
-                const std::size_t j = multigraph_matching_to_correlation_clustering_node(gm.right_graph_no, a.right_node);
-                cc->add_edge(i, j, a.cost); 
-                add_edge(matching_no, a.left_node, a.right_node);
+                if(a.left_node == graph_matching_input::no_assignment) {
+                    not_assigned_offset_right[a.right_node] += a.cost;
+                } else if(a.right_node == graph_matching_input::no_assignment) {
+                    not_assigned_offset_left[a.left_node] += a.cost;
+                }
+            }
+            for(const auto& a : gm.gm_input.assignments) {
+                if(a.left_node != graph_matching_input::no_assignment && a.right_node != graph_matching_input::no_assignment) {
+                    const std::size_t i = multigraph_matching_to_correlation_clustering_node(gm.left_graph_no, a.left_node);
+                    const std::size_t j = multigraph_matching_to_correlation_clustering_node(gm.right_graph_no, a.right_node);
+                    cc->add_edge(i, j, a.cost - not_assigned_offset_left[a.left_node] - not_assigned_offset_right[a.right_node]); 
+                    add_edge(matching_no, a.left_node, a.right_node);
+                }
             }
         }
 
@@ -167,11 +186,13 @@ namespace LPMP {
             linear_assignment_problem_input::labeling l(no_nodes(gm.left_graph_no), std::numeric_limits<std::size_t>::max());
             l_output.push_back( {gm.left_graph_no, gm.right_graph_no, l} );
             for(const auto& a : gm.gm_input.assignments) {
-                const std::size_t i = multigraph_matching_to_correlation_clustering_node(gm.left_graph_no, a.left_node);
-                const std::size_t j = multigraph_matching_to_correlation_clustering_node(gm.right_graph_no, a.right_node);
-                if(l_input[e] == 1)
-                    l_output.back().labeling[a.left_node] = a.right_node;
-                ++e;
+                if(a.left_node != graph_matching_input::no_assignment && a.right_node != graph_matching_input::no_assignment){ 
+                    const std::size_t i = multigraph_matching_to_correlation_clustering_node(gm.left_graph_no, a.left_node);
+                    const std::size_t j = multigraph_matching_to_correlation_clustering_node(gm.right_graph_no, a.right_node);
+                    if(l_input[e] == 1)
+                        l_output.back().labeling[a.left_node] = a.right_node;
+                    ++e;
+                }
             }
         }
 

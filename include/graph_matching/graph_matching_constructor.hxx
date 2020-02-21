@@ -210,10 +210,8 @@ public:
        return labeling;
     }
 
-    graph_matching_input export_graph_matching_input() const
+    graph_matching_input export_linear_graph_matching_input() const
     {
-       if(debug())
-          std::cout << "export linear assignment problem solution based on current reparametrization to graph matching problem\n";
        graph_matching_input instance;
 
        const std::size_t no_left_nodes = left_mrf.get_number_of_variables();
@@ -239,13 +237,21 @@ public:
        }
 
        instance.normalize(); // merge parallel edges
+       return instance;
+    }
+
+    graph_matching_input export_graph_matching_input() const
+    {
+       if(debug())
+          std::cout << "export linear assignment problem solution based on current reparametrization to graph matching problem\n";
+       graph_matching_input instance = export_linear_graph_matching_input();
 
        std::unordered_map<std::array<std::size_t,2>, std::size_t> assignment_nr;
        for(std::size_t idx=0; idx<instance.assignments.size(); ++idx) {
            const auto& a = instance.assignments[idx];
            assignment_nr.insert({{a.left_node, a.right_node}, idx});
        }
-       std::cout << "no assignments = " << assignment_nr.size() << "\n";
+       std::cout << "nr assignments = " << assignment_nr.size() << "\n";
 
        // quadratic terms
        std::cout << "nr left pairwise factors = " << left_mrf.get_number_of_pairwise_factors() << "\n";

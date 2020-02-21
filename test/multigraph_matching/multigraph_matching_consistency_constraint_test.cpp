@@ -1,8 +1,8 @@
 #include <random>
-#include "graph_matching/multigraph_matching_triplet_consistency_factor.h"
-#include "graph_matching/multigraph_matching_simplex_triplet_consistency_messages.h"
+#include "multigraph_matching/multigraph_matching_triplet_consistency_factor.h"
+#include "multigraph_matching/multigraph_matching_simplex_triplet_consistency_messages.h"
 #include "mrf/simplex_factor.hxx"
-#include "generate_random_label_set.hxx"
+#include "../graph_matching/generate_random_label_set.hxx"
 #include "../test_message.hxx"
 
 using namespace LPMP; 

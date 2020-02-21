@@ -1,5 +1,6 @@
 #include "graph_matching/matching_problem_input.h"
 #include "graph_matching/graph_matching.h"
+#include "graph_matching/graph_matching_python_binding_helper.h"
 #include "solver.hxx"
 #include "visitors/standard_visitor.hxx"
 #include <vector>
@@ -12,6 +13,7 @@
 
 namespace py = pybind11;
 
+/*
 void add_assignments(LPMP::graph_matching_input& instance, const py::array_t<double> assignments)
 {
     const auto _assignments = assignments.unchecked<2>();
@@ -124,6 +126,7 @@ py::array_t<char> get_quadratic_terms_mask(LPMP::graph_matching_input::labeling 
 
     return py::array({quadratic_terms.shape(0), quadratic_terms.shape(1)}, quadratic_mask);
 }
+*/
 
 
 
@@ -143,8 +146,8 @@ PYBIND11_MODULE(graph_matching_py, m) {
                 return l[i];
                 })
         .def("result_masks", [](const LPMP::graph_matching_input::labeling& l, const py::array_t<double> assignments, const py::array_t<double> quadratic_terms, const py::array_t<std::size_t> left_edges, const py::array_t<std::size_t> right_edges) {
-                auto assignment_mask = get_assignment_mask(l, assignments);
-                auto quadratic_mask = get_quadratic_terms_mask(l, quadratic_terms, left_edges, right_edges);
+                auto assignment_mask = LPMP::py_helper::get_assignment_mask(l, assignments);
+                auto quadratic_mask = LPMP::py_helper::get_quadratic_terms_mask(l, quadratic_terms, left_edges, right_edges);
                 return std::make_pair(assignment_mask, quadratic_mask);
                 });
 
@@ -160,7 +163,7 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def(py::init<>())
         .def(py::init([](const py::array_t<double> assignments, const py::array_t<double> quadratic_terms, const py::array_t<std::size_t> left_edges, const py::array_t<std::size_t> right_edges) {
                 LPMP::graph_matching_input instance;
-                construct_from_arrays(instance, assignments, quadratic_terms, left_edges, right_edges); 
+                LPMP::py_helper::construct_from_arrays(instance, assignments, quadratic_terms, left_edges, right_edges); 
                 return instance;
                 }))
         .def("add_assignment", &LPMP::graph_matching_input::add_assignment)
@@ -169,8 +172,8 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("write", [](const LPMP::graph_matching_input& i){ return i.write_torresani_et_al(std::cout); })
         .def("write", [](const LPMP::graph_matching_input& i, const std::string& filename) { std::fstream f(filename); return i.write_torresani_et_al(f); })
         .def("evaluate", &LPMP::graph_matching_input::evaluate)
-        .def("add_assignments", add_assignments)
-        .def("add_quadratic_terms", add_quadratic_terms);
+        .def("add_assignments", LPMP::py_helper::add_assignments)
+        .def("add_quadratic_terms", LPMP::py_helper::add_quadratic_terms);
 
 
     using gm_mp_solver = LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::FMC_MP>,LPMP::StandardVisitor>>; 

@@ -6,10 +6,12 @@
 #include <unordered_set>
 #include <string>
 #include <cassert>
+#include <algorithm>
 #include <Eigen/Eigen>
 #include "two_dimensional_variable_array.hxx"
 #include "cuthill-mckee.h"
 #include "bfs_ordering.hxx"
+#include "minimum_degree_ordering.hxx"
 #include <chrono>
 #include <tsl/robin_map.h>
 #include <tsl/robin_set.h>
@@ -142,41 +144,11 @@ namespace LPMP {
             double evaluate(ITERATOR begin, ITERATOR end) const; 
 
         template<typename STREAM>
-            void write(STREAM& s) const
-            {
-                s << "Minimize\n";
-                for(const auto o : var_name_to_index_) {
-                    s << (objective(o.second) < 0.0 ? "- " : "+ ") <<  std::abs(objective(o.second)) << " " << o.first << "\n"; 
-                }
-                s << "Subject To\n";
-                for(const auto& ineq : constraints()) {
-                    for(const auto term : ineq.variables) {
-                        s << (term.coefficient < 0.0 ? "- " : "+ ") <<  std::abs(term.coefficient) << " " << var_index_to_name_[term.var] << " "; 
-                    }
+            void write(STREAM& s) const;
 
-                    switch(ineq.ineq) {
-                        case inequality_type::smaller_equal:
-                            s << " <= ";
-                            break;
-                        case inequality_type::greater_equal:
-                            s << " >= ";
-                            break;
-                        case inequality_type::equal:
-                            s << " = ";
-                            break;
-                        default:
-                            throw std::runtime_error("inequality type not supported");
-                            break;
-                    }
-                    s << ineq.right_hand_side << "\n";
-                }
-                s << "Bounds\n";
-                s << "Binaries\n";
-                for(const auto& v : var_index_to_name_)
-                    s << v << "\n";
-                s << "End\n";
-
-            }
+        permutation reorder_bfs();
+        permutation reorder_Cuthill_McKee(); 
+        permutation reorder_minimum_degree_averaging();
 
         private:
             std::vector<linear_constraint> linear_constraints_;
@@ -184,10 +156,6 @@ namespace LPMP {
             std::vector<std::string> var_index_to_name_;
             //std::unordered_map<std::string, std::size_t> var_name_to_index_;
             tsl::robin_map<std::string, std::size_t> var_name_to_index_;
-
-        public:
-            permutation reorder_bfs();
-            permutation reorder_Cuthill_McKee(); 
 
         private:
             two_dim_variable_array<std::size_t> variable_adjacency_matrix() const;
@@ -240,6 +208,42 @@ namespace LPMP {
             return cost;
         }
 
+    template<typename STREAM>
+        void ILP_input::write(STREAM& s) const
+        {
+            s << "Minimize\n";
+            for(const auto o : var_name_to_index_) {
+                s << (objective(o.second) < 0.0 ? "- " : "+ ") <<  std::abs(objective(o.second)) << " " << o.first << "\n"; 
+            }
+            s << "Subject To\n";
+            for(const auto& ineq : constraints()) {
+                for(const auto term : ineq.variables) {
+                    s << (term.coefficient < 0.0 ? "- " : "+ ") <<  std::abs(term.coefficient) << " " << var_index_to_name_[term.var] << " "; 
+                }
+
+                switch(ineq.ineq) {
+                    case inequality_type::smaller_equal:
+                        s << " <= ";
+                        break;
+                    case inequality_type::greater_equal:
+                        s << " >= ";
+                        break;
+                    case inequality_type::equal:
+                        s << " = ";
+                        break;
+                    default:
+                        throw std::runtime_error("inequality type not supported");
+                        break;
+                }
+                s << ineq.right_hand_side << "\n";
+            }
+            s << "Bounds\n";
+            s << "Binaries\n";
+            for(const auto& v : var_index_to_name_)
+                s << v << "\n";
+            s << "End\n";
+        }
+
     inline two_dim_variable_array<std::size_t> ILP_input::variable_adjacency_matrix() const
     {
         std::vector<Eigen::Triplet<int>> var_constraint_adjacency_list;
@@ -280,6 +284,10 @@ namespace LPMP {
             }
         }
 
+        for(std::size_t i=0; i<adjacency.size(); ++i) {
+            assert(std::is_sorted(adjacency[i].begin(), adjacency[i].end()));
+        }
+
         return adjacency;
     }
 
@@ -315,9 +323,12 @@ namespace LPMP {
             adjacency(j, adjacency_size[j]++) = i;
         }
 
+        for(std::size_t i=0; i<adjacency.size(); ++i)
+            std::sort(adjacency[i].begin(), adjacency[i].end());
+
         return adjacency;
     }
-    */
+    */ 
 
     inline void ILP_input::reorder(const permutation& order)
     {
@@ -370,6 +381,14 @@ namespace LPMP {
     {
         const auto adj = variable_adjacency_matrix();
         const auto order = Cuthill_McKee(adj);
+        reorder(order);
+        return order;
+    }
+
+    inline permutation ILP_input::reorder_minimum_degree_averaging()
+    {
+        const auto adj = variable_adjacency_matrix();
+        const auto order = minimum_degree_ordering(adj);
         reorder(order);
         return order;
     }

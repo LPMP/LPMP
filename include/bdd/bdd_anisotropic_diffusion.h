@@ -5,9 +5,9 @@
 #include "bdd_storage.h"
 #include "cuthill-mckee.h"
 #include "bfs_ordering.hxx"
+#include "minimum_degree_ordering.hxx"
 #include "two_dimensional_variable_array.hxx"
 #include "ILP_input.h"
-#include <Eigen/OrderingMethods>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -79,10 +79,10 @@ namespace LPMP {
             std::vector<std::size_t> bdd_branch_instruction_variables() const;
 
             two_dim_variable_array<std::size_t> bdd_adjacency() const;
-            std::vector<std::size_t> given_bdd_order() const;
-            std::vector<std::size_t> find_cuthill_mkkee_order() const;
-            std::vector<std::size_t> find_minimum_degree_bdd_ordering() const;
-            std::vector<std::size_t> find_bfs_bdd_ordering() const;
+            permutation given_bdd_order() const;
+            permutation find_cuthill_mkkee_order() const;
+            permutation find_minimum_degree_bdd_ordering() const;
+            permutation find_bfs_bdd_ordering() const;
 
             bdd_anisotropic_diffusion_options::direction current_direction() const;
             double current_residual() const;
@@ -213,43 +213,27 @@ namespace LPMP {
     }
 
 
-    std::vector<std::size_t> bdd_anisotropic_diffusion::given_bdd_order() const
+    permutation bdd_anisotropic_diffusion::given_bdd_order() const
     {
-        std::vector<std::size_t> order;
+        permutation order;
         for(std::size_t i=0; i<bdd_storage_.nr_bdds(); ++i)
             order.push_back(i);
         return order;
     }
 
-    std::vector<std::size_t> bdd_anisotropic_diffusion::find_cuthill_mkkee_order() const
+    permutation bdd_anisotropic_diffusion::find_cuthill_mkkee_order() const
     {
         const two_dim_variable_array<std::size_t> bdd_adj = bdd_adjacency();
         return Cuthill_McKee(bdd_adj);
     }
 
-    std::vector<std::size_t> bdd_anisotropic_diffusion::find_minimum_degree_bdd_ordering() const
+    permutation bdd_anisotropic_diffusion::find_minimum_degree_bdd_ordering() const
     {
-        Eigen::AMDOrdering<int> ordering;
-        Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm(bdd_storage_.nr_bdds());
-        Eigen::SparseMatrix<double> A(bdd_storage_.nr_bdds(), bdd_storage_.nr_bdds()); 
         const two_dim_variable_array<std::size_t> bdd_adj = bdd_adjacency();
-        std::vector< Eigen::Triplet<double> > adjacency_list;
-        for(std::size_t i=0; i<bdd_adj.size(); ++i) {
-            for(const std::size_t j : bdd_adj[i]) {
-                assert(j <= std::numeric_limits<int>::max());
-                adjacency_list.push_back({i,j,1.0});
-            }
-        }
-        A.setFromTriplets(adjacency_list.begin(), adjacency_list.end());
-        ordering(A, perm);
-        std::vector<std::size_t> bdd_ordering;
-        for(std::size_t i=0; i<perm.indices().size(); ++i) {
-            bdd_ordering.push_back(perm.indices()[i]);
-        }
-        return bdd_ordering; 
+        return minimum_degree_ordering(bdd_adj);
     }
 
-    std::vector<std::size_t> bdd_anisotropic_diffusion::find_bfs_bdd_ordering() const
+    permutation bdd_anisotropic_diffusion::find_bfs_bdd_ordering() const
     {
         const two_dim_variable_array<std::size_t> bdd_adj = bdd_adjacency();
         auto order = bfs_ordering(bdd_adj);
