@@ -23,6 +23,7 @@ namespace LPMP {
         seen[s] = 1;
         dist[s] = 0;
         std::vector<std::size_t> terminals;
+        std::vector<char> is_terminal(adj.size(), 0);
 
         // forward run of BFS from source to determine distances and terminals of search tree
         while (!Q.empty())
@@ -33,7 +34,7 @@ namespace LPMP {
             bool terminal = true;
             for(const std::size_t j : adj[i]) {
                 assert(j < dist.size() && i < dist.size());
-                if (dist[j] > dist[i])
+                if (dist[j] > dist[i] || is_terminal[j])
                     terminal = false;
                 if (seen[j])
                     continue;
@@ -43,24 +44,39 @@ namespace LPMP {
             }
 
             if(terminal)
+            {
                 terminals.push_back(i);
+                is_terminal[i] = 1;
+            }
         }
 
         struct node
         {
-            node(std::size_t index, std::size_t dist) : index_(index), dist_(dist)
+            node(std::size_t index, std::size_t dist, double avg_adj_dist) : 
+                index_(index), dist_(dist), avg_adj_dist_(avg_adj_dist)
             {}
 
-            bool operator <(node const & other) const { return dist_ < other.dist_; }
+            bool operator <(node const & other) const
+            {
+                if (dist_ != other.dist_)
+                    return dist_ < other.dist_;
+                else
+                    return avg_adj_dist_ < other.avg_adj_dist_;
+            }
 
             std::size_t index_;
             std::size_t dist_;
+            double avg_adj_dist_;
         };
 
         std::fill(seen.begin(), seen.end(), 0);
         std::priority_queue<node> dist_queue;
         for(const std::size_t t : terminals) {
-            dist_queue.emplace(t, dist[t]);
+            double avg_adj_dist = 0;
+            for (const auto n : adj[t])
+                avg_adj_dist += dist[n];
+            avg_adj_dist /= (double) adj[t].size();
+            dist_queue.emplace(t, dist[t], avg_adj_dist);
             seen[t] = 1;
         }
 
@@ -68,31 +84,21 @@ namespace LPMP {
         std::size_t pos = adj.size()-1;
         while(!dist_queue.empty()) {
 
-            // get next batch of nodes with greatest distance to source
             const auto next = dist_queue.top();
-            const size_t next_dist = next.dist_;
-            std::vector<node> batch;
-            while (!dist_queue.empty())
-            {
-                const auto n = dist_queue.top();
-                if (n.dist_ < next_dist)
-                    break;
-                dist_queue.pop();
-                batch.push_back(n);
-            }
-            // process batch
-            for (const auto n : batch)
-            {
-                const auto i = n.index_;
-                // ordering.push_back(i);
-                ordering[pos--] = i;
+            dist_queue.pop();
+            const auto i = next.index_;
+            // ordering.push_back(i);
+            ordering[pos--] = i;
 
-                for(const std::size_t j : adj[i]) {
-                    if (seen[j])
-                        continue;
-                    dist_queue.emplace(j, dist[j]);
-                    seen[j] = 1;
-                }
+            for(const std::size_t j : adj[i]) {
+                if (seen[j])
+                    continue;
+                double avg_adj_dist = 0;
+                for (const auto n : adj[j])
+                    avg_adj_dist += dist[n];
+                avg_adj_dist /= (double) adj[j].size();
+                dist_queue.emplace(j, dist[j], avg_adj_dist);
+                seen[j] = 1;
             }
         }
 

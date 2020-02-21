@@ -73,6 +73,8 @@ namespace LPMP {
             double lower_bound() { return lower_bound_; }
             double compute_lower_bound();
             double lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
+            std::vector<char> primal_solution() { return primal_solution_; }
+            double compute_upper_bound();
 
             // plain min-marginal averaging
             void min_marginal_averaging_iteration();
@@ -139,6 +141,7 @@ namespace LPMP {
             std::vector<double> costs_; 
 
             double lower_bound_ = -std::numeric_limits<double>::infinity();
+            std::vector<char> primal_solution_;
             bdd_min_marginal_averaging_options options;
     };
 
@@ -520,6 +523,16 @@ namespace LPMP {
         }
     }
 
+    double bdd_min_marginal_averaging::compute_upper_bound()
+    {
+        if (primal_solution_.size() < nr_variables())
+            return std::numeric_limits<double>::infinity();
+        if (!check_feasibility(primal_solution_.begin(), primal_solution_.end()))
+            return std::numeric_limits<double>::infinity();
+        else
+            return evaluate(primal_solution_.begin(), primal_solution_.end());
+    }
+
     void bdd_min_marginal_averaging::min_marginal_averaging_iteration()
     {
         const auto begin_time = std::chrono::steady_clock::now();
@@ -634,8 +647,9 @@ namespace LPMP {
             min_marginals.clear();
             for(std::size_t bdd_index=0; bdd_index<nr_bdds(var); ++bdd_index) {
                 forward_step(var,bdd_index);
-                min_marginals.push_back(min_marginal(var,bdd_index)); 
+                min_marginals.push_back(min_marginal(var,bdd_index));
             }
+
 
             const auto average_marginal = average_marginals_forward_SRMP(min_marginals.begin(), min_marginals.end(), var);
             const std::array<double,2> avg_marg = average_marginal.first;
@@ -647,6 +661,7 @@ namespace LPMP {
             } 
         }
     }
+
 
     void bdd_min_marginal_averaging::min_marginal_averaging_backward()
     {
@@ -964,15 +979,20 @@ namespace LPMP {
 
     std::size_t bdd_min_marginal_averaging::bdd_variable(const bdd_branch_instruction& bdd) const
     {
-        // TODO: recursive search
         const std::size_t i = bdd_branch_instruction_index(&bdd);
-        for(std::size_t v=0; v<nr_variables(); ++v) {
-            for(std::size_t bdd_index=0; bdd_index<bdd_branch_instruction_levels[v].size(); ++bdd_index)
-            if(i >= bdd_branch_instruction_levels(v,bdd_index).first_branch_instruction &&
-                    i < bdd_branch_instruction_levels(v,bdd_index).last_branch_instruction)
-                return v;
+
+        std::size_t lb = 0;
+        std::size_t ub = nr_variables()-1;
+        std::size_t v = nr_variables()/2;
+        while (! (i >= bdd_branch_instruction_levels(v, 0).first_branch_instruction && i < bdd_branch_instruction_levels[v].back().last_branch_instruction))
+        {
+            if (i > bdd_branch_instruction_levels(v, 0).first_branch_instruction)
+                lb = v+1;
+            else
+                ub = v-1;
+            v = (lb+ub)/2;
         }
-        throw std::runtime_error("Could not obtain bdd variable");
+        return v;
     }
 
     std::size_t bdd_min_marginal_averaging::bdd_level_variable(const bdd_branch_instruction_level& bdd_level) const
