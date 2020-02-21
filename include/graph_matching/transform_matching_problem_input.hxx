@@ -1,5 +1,4 @@
-#ifndef LPMP_TRANSFORM_MATCHING_PROBLEM_INPUT_HXX
-#define LPMP_TRANSFORM_MATCHING_PROBLEM_INPUT_HXX
+#pragma once
 
 #include <vector>
 #include "matching_problem_input.h"
@@ -90,7 +89,7 @@ multicut_instance transform_multigraph_matching_to_correlation_clustering(const 
    // first contruct matching edges
    for(auto& gm : input) {
       if(gm.graph_matching_input.quadratic_.size() > 0)
-         throw std::runtime_error("can only transform linear multigraph matching problems");
+         throw std::runtime_error("graph matching to multicut transform: can only transform linear multigraph matching problems");
 
       for(const auto& a : gm.assignments) {
          const std::size_t i = nodes.multigraph_matching_to_multicut_nodes(gm.p, a.left_node);
@@ -117,5 +116,3 @@ multicut_instance transform_multigraph_matching_to_correlation_clustering(const 
 }
 
 }
-
-#endif // LPMP_TRANSFORM_MATCHING_PROBLEM_INPUT_HXX

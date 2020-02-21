@@ -18,6 +18,14 @@ add_executable(test_bdd_bipartite_matching_problem test_bdd_bipartite_matching_p
 target_link_libraries(test_bdd_bipartite_matching_problem LPMP Cudd ILP_parser)
 add_test(test_bdd_bipartite_matching_problem test_bdd_bipartite_matching_problem)
 
+add_executable(test_bdd_chain_graph test_bdd_chain_graph.cpp)
+target_link_libraries(test_bdd_chain_graph LPMP Cudd ILP_parser)
+add_test(test_bdd_chain_graph test_bdd_chain_graph)
+
+add_executable(test_bdd_grid_graph test_bdd_grid_graph.cpp)
+target_link_libraries(test_bdd_grid_graph LPMP Cudd ILP_parser)
+add_test(test_bdd_grid_graph test_bdd_grid_graph)
+
 add_executable(test_ILP_input_export test_ILP_input_export.cpp)
 target_link_libraries(test_ILP_input_export LPMP Cudd ILP_parser)
 add_test(test_ILP_input_export test_ILP_input_export)
@@ -25,3 +33,11 @@ add_test(test_ILP_input_export test_ILP_input_export)
 add_executable(test_random_inequality_to_bdd test_random_inequality_to_bdd.cpp)
 target_link_libraries(test_random_inequality_to_bdd LPMP Cudd)
 add_test(test_random_inequality_to_bdd test_random_inequality_to_bdd)
+
+add_executable(test_random_chains_bdd test_random_chains_bdd.cpp)
+target_link_libraries(test_random_chains_bdd ILP_parser LPMP Cudd)
+add_test(test_random_chains_bdd test_random_chains_bdd)
+
+add_executable(test_ILP_input_reordering test_ILP_input_reordering.cpp)
+target_link_libraries(test_ILP_input_reordering ILP_parser LPMP)
+add_test(test_ILP_input_reordering test_ILP_input_reordering)

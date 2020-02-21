@@ -1,6 +1,6 @@
-#include "graph_matching/multigraph_matching_triplet_consistency_factor.h"
+#include "multigraph_matching/multigraph_matching_triplet_consistency_factor.h"
 #include "../src/multigraph_matching/multigraph_matching_triplet_consistency_factor.cpp"
-#include "generate_random_label_set.hxx"
+#include "../graph_matching/generate_random_label_set.hxx"
 #include "test/test.h"
 #include <array>
 #include <vector>

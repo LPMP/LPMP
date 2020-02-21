@@ -89,7 +89,9 @@ namespace LPMP {
                 static std::size_t padding(const std::size_t size)
                 {
                     const std::size_t padding = std::is_same<REAL,T>::value ? (REAL_ALIGNMENT-(size%REAL_ALIGNMENT))%REAL_ALIGNMENT : 0;
-                    assert((padding + size)%REAL_ALIGNMENT == 0);
+                    if(std::is_same<REAL,T>::value) {
+                        assert((padding + size)%REAL_ALIGNMENT == 0);
+                    }
                     return padding;
                 }
                 std::size_t padding() const

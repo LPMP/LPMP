@@ -4,18 +4,33 @@
 #include "bdd_branch_instruction.h"
 #include "bdd_storage.h"
 #include "cuthill-mckee.h"
+#include "bfs_ordering.hxx"
+#include "minimum_degree_ordering.hxx"
 #include "two_dimensional_variable_array.hxx"
 #include "ILP_input.h"
-#include <Eigen/OrderingMethods>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
 #include <limits>
+#include <chrono> // for now
+#include <iostream>
+#include "tclap/CmdLine.h"
 
 namespace LPMP {
 
+    struct bdd_anisotropic_diffusion_options {
+        bdd_anisotropic_diffusion_options(int argc, char** argv);
+        bdd_anisotropic_diffusion_options() {}
+        enum class order{ Cuthill_McKee, BFS, minimum_degree, given_order } order = order::minimum_degree;
+        enum class direction { isotropic, anisotropic };
+        std::vector<direction> directions = {direction::anisotropic};
+        std::vector<double> residuals = {0.0}; // round robin for residual
+    };
+
     class bdd_anisotropic_diffusion : public bdd_solver_interface {
         public:
+
+            void set_options(const bdd_anisotropic_diffusion_options& o) { options = o; }
 
             void init(const ILP_input& instance);
             void init();
@@ -28,9 +43,9 @@ namespace LPMP {
             void forward_run();
             double backward_run();
 
-            double anisotropic_diffusion_iteration();
+            void anisotropic_diffusion_iteration();
             void anisotropic_diffusion_forward();
-            double anisotropic_diffusion_backward();
+            void anisotropic_diffusion_backward();
             void iteration() { anisotropic_diffusion_iteration(); }
 
             double lower_bound() { return backward_run(); }
@@ -47,6 +62,9 @@ namespace LPMP {
             template<typename STREAM>
                 void export_dot(STREAM& s) const;
 
+            template<typename STREAM>
+                void export_state_dot(STREAM& s) const;
+
         private:
             void init_bdd_branch_instructions();
 
@@ -61,9 +79,13 @@ namespace LPMP {
             std::vector<std::size_t> bdd_branch_instruction_variables() const;
 
             two_dim_variable_array<std::size_t> bdd_adjacency() const;
-            std::vector<std::size_t> given_bdd_order() const;
-            std::vector<std::size_t> find_cathill_mkkee_order() const;
-            std::vector<std::size_t> find_minimum_degree_bdd_ordering() const;
+            permutation given_bdd_order() const;
+            permutation find_cuthill_mkkee_order() const;
+            permutation find_minimum_degree_bdd_ordering() const;
+            permutation find_bfs_bdd_ordering() const;
+
+            bdd_anisotropic_diffusion_options::direction current_direction() const;
+            double current_residual() const;
 
             bdd_storage bdd_storage_;
 
@@ -76,7 +98,50 @@ namespace LPMP {
             constexpr static std::size_t no_Lagrange_multipler = std::numeric_limits<std::size_t>::max();
             struct bdd_variable_delimiter { std::size_t variable; std::size_t bdd_branch_instruction_offset; std::size_t Lagrange_multipliers_index; };
             two_dim_variable_array<bdd_variable_delimiter> bdd_variable_delimiters;
+
+            bdd_anisotropic_diffusion_options options;
+            std::size_t iteration_nr = 0;
     };
+
+    bdd_anisotropic_diffusion_options::bdd_anisotropic_diffusion_options(int argc, char** argv)
+        {
+            TCLAP::CmdLine cmd("Command line parser for bdd anisotropic diffusion options", ' ', " ");
+            TCLAP::MultiArg<std::string> directions_arg("d","direction","propagation direction",false,"{isotropic|anisotropic}");
+            cmd.add(directions_arg);
+            TCLAP::ValueArg<std::string> order_arg("o","order","order of bdd subproblems",false,"bfs","{bfs|minimum-degree|cuthill-mckee|given}");
+            cmd.add(order_arg);
+            TCLAP::MultiArg<double> residual_arg("r","residual","residual weight in message passing",false,"[0,1]");
+            cmd.add(residual_arg); 
+
+            cmd.parse(argc, argv);
+
+            if(directions_arg.getValue().size() > 0) {
+                for(const auto d : directions_arg.getValue()) {
+                    if(d == "anisotropic")
+                        directions.push_back(direction::anisotropic);
+                    else if(d == "isotropic")
+                        directions.push_back(direction::isotropic);
+                    else
+                        throw std::runtime_error("direction not recognized");
+                }
+            }
+
+            if(order_arg.getValue() == "bfs")
+                order = order::BFS;
+            else if(order_arg.getValue() == "minimum-degree")
+                order = order::minimum_degree;
+            else if(order_arg.getValue() == "cuthill-mckee")
+                order = order::Cuthill_McKee;
+            else if(order_arg.getValue() == "given")
+                order = order::given_order;
+            else
+                throw std::runtime_error("order argument not recognized");
+
+            if(residual_arg.getValue().size() == 0)
+                residuals = {0.0};
+            else 
+                residuals = residual_arg.getValue(); 
+        }
 
 
     two_dim_variable_array<std::size_t> bdd_anisotropic_diffusion::bdd_adjacency() const
@@ -148,39 +213,31 @@ namespace LPMP {
     }
 
 
-    std::vector<std::size_t> bdd_anisotropic_diffusion::given_bdd_order() const
+    permutation bdd_anisotropic_diffusion::given_bdd_order() const
     {
-        std::vector<std::size_t> order;
+        permutation order;
         for(std::size_t i=0; i<bdd_storage_.nr_bdds(); ++i)
             order.push_back(i);
         return order;
     }
 
-    std::vector<std::size_t> bdd_anisotropic_diffusion::find_cathill_mkkee_order() const
+    permutation bdd_anisotropic_diffusion::find_cuthill_mkkee_order() const
     {
         const two_dim_variable_array<std::size_t> bdd_adj = bdd_adjacency();
         return Cuthill_McKee(bdd_adj);
     }
 
-    std::vector<std::size_t> bdd_anisotropic_diffusion::find_minimum_degree_bdd_ordering() const
+    permutation bdd_anisotropic_diffusion::find_minimum_degree_bdd_ordering() const
     {
-        Eigen::AMDOrdering<int> ordering;
-        Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm(bdd_storage_.nr_bdds());
-        Eigen::SparseMatrix<double> A(bdd_storage_.nr_bdds(), bdd_storage_.nr_bdds()); 
         const two_dim_variable_array<std::size_t> bdd_adj = bdd_adjacency();
-        std::vector< Eigen::Triplet<double> > adjacency_list;
-        for(std::size_t i=0; i<bdd_adj.size(); ++i) {
-            for(const std::size_t j : bdd_adj[i]) {
-                adjacency_list.push_back({i,j,1.0});
-            }
-        }
-        A.setFromTriplets(adjacency_list.begin(), adjacency_list.end());
-        ordering(A, perm);
-        std::vector<std::size_t> bdd_ordering;
-        for(std::size_t i=0; i<perm.indices().size(); ++i) {
-            bdd_ordering.push_back(perm.indices()[i]);
-        }
-        return bdd_ordering; 
+        return minimum_degree_ordering(bdd_adj);
+    }
+
+    permutation bdd_anisotropic_diffusion::find_bfs_bdd_ordering() const
+    {
+        const two_dim_variable_array<std::size_t> bdd_adj = bdd_adjacency();
+        auto order = bfs_ordering(bdd_adj);
+        return order;
     }
 
     void bdd_anisotropic_diffusion::init(const ILP_input& instance)
@@ -227,15 +284,30 @@ namespace LPMP {
         bdd_delimiters.reserve(bdd_storage_.nr_bdds()+1);
         bdd_delimiters.push_back(0);
 
-        //const auto bdd_order = given_bdd_order();
-        //const auto bdd_order = find_cathill_mkkee_order();
-        const auto bdd_order = find_minimum_degree_bdd_ordering();
+        const auto bdd_order = [&]() {
+            if(options.order == bdd_anisotropic_diffusion_options::order::given_order)
+                return given_bdd_order();
+            if(options.order == bdd_anisotropic_diffusion_options::order::Cuthill_McKee)
+                return find_cuthill_mkkee_order();
+            if(options.order == bdd_anisotropic_diffusion_options::order::minimum_degree)
+                return find_minimum_degree_bdd_ordering();
+            if(options.order == bdd_anisotropic_diffusion_options::order::BFS)
+                return find_bfs_bdd_ordering();
+            throw std::runtime_error("order not known");
+        }();
+        //for(const auto x : bdd_order)
+        //    std::cout << x << ",";
+        //std::cout << "\n";
 
         std::vector<std::size_t> bdd_variable_delimiter_size(bdd_storage_.nr_bdds(), 0);
+        std::vector<std::vector<bdd_variable_delimiter>> bdd_variable_delimiters_tmp;
+        struct Lagrange_multiplier_tmp { std::size_t bdd_nr; std::size_t bdd_branch_instruction_offset; };
+        std::vector<std::vector<Lagrange_multiplier_tmp>> Lagrange_multipliers_tmp(bdd_storage_.nr_variables());
         std::vector<std::size_t> Lagrange_multipliers_size(bdd_storage_.nr_variables(), 0);
         std::vector<std::size_t> bdd_branch_instruction_variable(bdd_storage_.bdd_nodes().size(), std::numeric_limits<std::size_t>::max());
 
         // distribute bdd nodes according to (i) bdd nr in order and (ii) variable the bdd node corresponds to
+        std::size_t cur_bdd_branch_instructions_offset = 0;
         for(std::size_t i=0; i<bdd_order.size(); ++i) {
             const std::size_t bdd_nr = bdd_order[i];
             const std::size_t first_bdd_node = bdd_storage_.bdd_delimiters()[bdd_nr];
@@ -254,13 +326,18 @@ namespace LPMP {
                 bdd_variable_nr_sorted.push_back({std::get<0>(nr_nodes_of_var), std::get<1>(nr_nodes_of_var)});
             bdd_node_counter_per_var.clear();
             std::sort(bdd_variable_nr_sorted.begin(), bdd_variable_nr_sorted.end(), [](const bdd_node_counter& a, const bdd_node_counter& b) { return a.variable < b.variable; });
-            std::size_t offset = first_bdd_node;
+            std::size_t offset = cur_bdd_branch_instructions_offset;
+            //std::cout << "bdd offset = " << offset << "\n";
+            bdd_variable_delimiters_tmp.push_back({});
             for(auto& c : bdd_variable_nr_sorted) {
                 bdd_node_counter_per_var.insert({c.variable, offset});
+                bdd_variable_delimiters_tmp.back().push_back({c.variable, offset, Lagrange_multipliers_tmp[c.variable].size()});
+                Lagrange_multipliers_tmp[c.variable].push_back({i,bdd_variable_delimiters_tmp.back().size()-1});
                 offset += c.nr_bdd_nodes;
-            } 
+            }
+            cur_bdd_branch_instructions_offset += offset - cur_bdd_branch_instructions_offset;
 
-            bdd_variable_delimiter_size[bdd_nr] = bdd_node_counter_per_var.size();
+            bdd_variable_delimiter_size[i] = bdd_node_counter_per_var.size();
 
             for(const auto [v, nr_bdd_nodes] : bdd_variable_nr_sorted)
                 Lagrange_multipliers_size[v]++;
@@ -318,7 +395,20 @@ namespace LPMP {
         Lagrange_multipliers.resize(Lagrange_multipliers_size.begin(), Lagrange_multipliers_size.end());
         std::fill(Lagrange_multipliers_size.begin(), Lagrange_multipliers_size.end(), 0);
 
+        for(std::size_t i=0; i<bdd_variable_delimiters_tmp.size(); ++i) {
+            for(std::size_t j=0; j<bdd_variable_delimiters_tmp[i].size(); ++j) {
+                bdd_variable_delimiters(i,j) = bdd_variable_delimiters_tmp[i][j];
+            } 
+        }
+        for(std::size_t i=0; i<Lagrange_multipliers_tmp.size(); ++i) {
+            for(std::size_t j=0; j<Lagrange_multipliers_tmp[i].size(); ++j) {
+                Lagrange_multipliers(i,j).bdd_nr = Lagrange_multipliers_tmp[i][j].bdd_nr;
+                Lagrange_multipliers(i,j).bdd_branch_instruction_offset = Lagrange_multipliers_tmp[i][j].bdd_branch_instruction_offset;
+            }
+        }
+        /*
         for(std::size_t i=0; i<bdd_storage_.nr_bdds(); ++i) {
+            assert(bdd_variable_delimiters[i].size() == bdd_variable_delimiters_tmp[i].size());
             const std::size_t bdd_nr = bdd_order[i];
             const std::size_t first_bdd_node = bdd_storage_.bdd_delimiters()[bdd_nr];
             const std::size_t last_bdd_node = bdd_storage_.bdd_delimiters()[bdd_nr+1];
@@ -330,22 +420,24 @@ namespace LPMP {
                 assert(variable != std::numeric_limits<std::size_t>::max());
                 if(variable != prev_variable) {
                     prev_variable = variable;
-                    auto& current_bdd_var_delimiter = bdd_variable_delimiters(bdd_nr,c);
+                    auto& current_bdd_var_delimiter = bdd_variable_delimiters(i,c);
                     auto& current_Lagrange_multiplier = Lagrange_multipliers(variable, Lagrange_multipliers_size[variable]);
 
-                    current_bdd_var_delimiter.bdd_branch_instruction_offset = bdd_node_idx;
+                    // TODO: not correct. Store contiguous in bdd_branch_instructions
+                    current_bdd_var_delimiter.bdd_branch_instruction_offset = bdd_variable_delimiters_tmp[i][c];//bdd_node_idx;
                     current_bdd_var_delimiter.Lagrange_multipliers_index = Lagrange_multipliers_size[variable];
                     current_bdd_var_delimiter.variable = variable;
 
-                    current_Lagrange_multiplier.bdd_nr = bdd_nr;
+                    current_Lagrange_multiplier.bdd_nr = i;
                     current_Lagrange_multiplier.bdd_branch_instruction_offset = bdd_node_idx;
 
                     c++;
                     Lagrange_multipliers_size[variable]++;
                 }
             }
-            assert(c == bdd_variable_delimiters[bdd_nr].size());
+            assert(c == bdd_variable_delimiters[i].size());
         }
+        */
 
         // set bdd branch instruction costs
         for(std::size_t i=0; i<nr_bdds(); ++i) {
@@ -436,6 +528,16 @@ namespace LPMP {
         return {first_bdd_node_index, last_bdd_node_index}; 
     }
 
+    bdd_anisotropic_diffusion_options::direction bdd_anisotropic_diffusion::current_direction() const
+    {
+        return options.directions[iteration_nr%options.directions.size()];
+    }
+
+    double bdd_anisotropic_diffusion::current_residual() const
+    {
+        return options.residuals[iteration_nr%options.residuals.size()]; 
+    }
+
     void bdd_anisotropic_diffusion::forward_step(const std::size_t bdd_nr, const std::size_t variable_index)
     {
         const auto [first_bdd_node_index, last_bdd_node_index] = bdd_branch_instruction_range(bdd_nr, variable_index);
@@ -453,16 +555,32 @@ namespace LPMP {
         // distribute min-marginals
         const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
+        assert(Lagrange_multipliers_index < Lagrange_multipliers[variable].size());
         const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        //const double delta = (marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - Lagrange_multipliers_index - 1);
-        //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - Lagrange_multipliers_index - 1);
-        const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - Lagrange_multipliers_index - 1);
-        for(std::size_t l=Lagrange_multipliers_index+1; l<Lagrange_multipliers[variable].size(); ++l) {
-            Lagrange_multipliers(variable, l).Lagrange_multiplier += delta; 
-            Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+        const double r = current_residual();
+        if(current_direction() == bdd_anisotropic_diffusion_options::direction::anisotropic) {
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+            //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //std::cout << "forward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
+            const double subgradient_stepsize = 0.0*std::max( 0.5*std::abs(delta), 0.1);
+            for(std::size_t l=Lagrange_multipliers_index+1; l<Lagrange_multipliers[variable].size(); ++l) {
+                //std::cout << "l = " << l << "\n";
+                assert(std::isfinite(delta));
+                Lagrange_multipliers(variable, l).Lagrange_multiplier += delta - subgradient_stepsize*subgradient;
+                Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta - subgradient_stepsize*subgradient;;
+            }
+        } else if(current_direction() == bdd_anisotropic_diffusion_options::direction::isotropic) {
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size()-1);
+            for(std::size_t l=0; l<Lagrange_multipliers[variable].size(); ++l) {
+                if(l != Lagrange_multipliers_index) {
+                    assert(std::isfinite(delta));
+                    Lagrange_multipliers(variable, l).Lagrange_multiplier += delta;
+                    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+                }
+            }
         }
-        //if(Lagrange_multipliers_index < Lagrange_multipliers[variable].size()-1)
-        //    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= (marginal[1] - marginal[0]); 
     }
 
     void bdd_anisotropic_diffusion::backward_step(const std::size_t bdd_nr, const std::size_t variable_index)
@@ -481,16 +599,32 @@ namespace LPMP {
         // distribute min-marginals
         const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
         const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
-        const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
-        //const double delta = (marginal[1] - marginal[0]) / Lagrange_multipliers_index;
-        //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - Lagrange_multipliers_index - 1);
-        const double delta = 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - Lagrange_multipliers_index - 1);
-        for(std::size_t l=0; l<Lagrange_multipliers_index; ++l) {
-            Lagrange_multipliers(variable, l).Lagrange_multiplier += delta; 
-            Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+        //std::cout << "Lagrange multiplier index = " << Lagrange_multipliers_index << ", #Lagrange multipliers = " << Lagrange_multipliers[variable].size() << "\n";
+        const double r = current_residual();
+        if(current_direction() == bdd_anisotropic_diffusion_options::direction::anisotropic) {
+            const double subgradient = marginal[1] < marginal[0] ? 1.0 : 0.0;
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / Lagrange_multipliers_index;
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index,Lagrange_multipliers[variable].size() - 1 - Lagrange_multipliers_index);
+            //const double delta = -0.01*subgradient + 0.99*(marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //const double delta = (marginal[1] - marginal[0]) / std::max(Lagrange_multipliers_index, Lagrange_multipliers[variable].size() - (Lagrange_multipliers_index - 1));
+            //assert(std::isfinite(delta));
+            //std::cout << "backward marginal for bdd " << bdd_nr << ", variable index " << variable_index << " = " << marginal[1] << "," << marginal[0] << ", marginal diff = " << (marginal[1] - marginal[0]) << ", delta = " << delta << "\n";
+            const double subgradient_stepsize = 0.0*std::max( 0.5*std::abs(delta), 0.1);
+            for(std::size_t l=0; l<Lagrange_multipliers_index; ++l) {
+                assert(std::isfinite(delta));
+                Lagrange_multipliers(variable, l).Lagrange_multiplier += delta - subgradient_stepsize*subgradient; 
+                Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta - subgradient_stepsize*subgradient;
+            }
+        } else if(current_direction() == bdd_anisotropic_diffusion_options::direction::isotropic) {
+            const double delta = (1.0-r)*(marginal[1] - marginal[0]) / (Lagrange_multipliers[variable].size() - 1);
+            for(std::size_t l=0; l<Lagrange_multipliers[variable].size(); ++l) {
+                if(l != Lagrange_multipliers_index) {
+                    assert(std::isfinite(delta));
+                    Lagrange_multipliers(variable, l).Lagrange_multiplier += delta;
+                    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= delta;
+                }
+            } 
         }
-        //if(Lagrange_multipliers_index > 0)
-        //    Lagrange_multipliers(variable, Lagrange_multipliers_index).Lagrange_multiplier -= (marginal[1] - marginal[0]); 
 
         for(std::size_t i=first_bdd_node_index; i<last_bdd_node_index; ++i) {
             auto& branch_instr = bdd_branch_instructions[i];
@@ -498,10 +632,16 @@ namespace LPMP {
         }
     }
 
-    double bdd_anisotropic_diffusion::anisotropic_diffusion_iteration()
+    void bdd_anisotropic_diffusion::anisotropic_diffusion_iteration()
     {
+        const auto begin_time = std::chrono::steady_clock::now();
         anisotropic_diffusion_forward();
-        return anisotropic_diffusion_backward();
+        const auto after_forward = std::chrono::steady_clock::now(); 
+        std::cout << "forward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " milliseconds\n";
+        anisotropic_diffusion_backward();
+        const auto end_time = std::chrono::steady_clock::now();
+        std::cout << "backward pass took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - after_forward).count() << " milliseconds\n";
+        ++iteration_nr;
     }
 
     void bdd_anisotropic_diffusion::anisotropic_diffusion_forward()
@@ -518,7 +658,7 @@ namespace LPMP {
         }
     }
 
-    double bdd_anisotropic_diffusion::anisotropic_diffusion_backward()
+    void bdd_anisotropic_diffusion::anisotropic_diffusion_backward()
     {
         for(std::ptrdiff_t bdd_nr=nr_bdds()-1; bdd_nr>=0; --bdd_nr) {
             const auto [first_bdd_index,last_bdd_index] = bdd_branch_instruction_range(bdd_nr);
@@ -530,16 +670,6 @@ namespace LPMP {
                 backward_step(bdd_nr, variable_index);
             }
         }
-
-        double lb = 0.0;
-        backward_run();
-        for(std::size_t bdd_nr=0; bdd_nr<nr_bdds(); ++bdd_nr) {
-            const auto& first_bdd_instr = bdd_branch_instructions[bdd_variable_delimiters(bdd_nr,0).bdd_branch_instruction_offset];
-            assert(first_bdd_instr.m == first_bdd_instr.cost_from_terminal());
-            lb += first_bdd_instr.m;
-        }
-
-        return lb;
     }
 
     std::size_t bdd_anisotropic_diffusion::bdd_branch_instruction_index(const bdd_branch_instruction* bdd) const
@@ -615,7 +745,7 @@ double bdd_anisotropic_diffusion::evaluate(SOL_ITERATOR sol_begin, SOL_ITERATOR 
     template<typename STREAM>
         void bdd_anisotropic_diffusion::export_dot(STREAM& s) const
         {
-            s << "digraph bdd_min_marginal_averaging {\n";
+            s << "digraph bdd_anisotropic_diffusion {\n";
             std::vector<char> bdd_node_visited(bdd_branch_instructions.size(), false);
             std::size_t cur_bdd_index = 0;
             for(const auto& bdd : bdd_branch_instructions) {
@@ -640,5 +770,32 @@ double bdd_anisotropic_diffusion::evaluate(SOL_ITERATOR sol_begin, SOL_ITERATOR 
 
             s << "}\n"; 
         }
+
+template<typename STREAM>
+void bdd_anisotropic_diffusion::export_state_dot(STREAM& s) const
+{
+    auto node_nr = [&](const std::size_t bdd_nr, const std::size_t variable_index) {
+        return variable_index*nr_bdds() + bdd_nr;
+    };
+    s << "digraph bdd_anisotropic_diffusion_state {\n";
+    for(std::size_t bdd_nr=0; bdd_nr<nr_bdds(); ++bdd_nr) {
+        //s << "subgraph cluster_" << bdd_nr << " {\n";
+        for(std::size_t variable_index=0; variable_index<nr_variables(bdd_nr); ++variable_index) {
+            const std::size_t Lagrange_multipliers_index = bdd_variable_delimiters(bdd_nr, variable_index).Lagrange_multipliers_index;
+            const std::size_t variable = bdd_variable_delimiters(bdd_nr, variable_index).variable;
+            const auto [first_bdd_node_index, last_bdd_node_index] = bdd_branch_instruction_range(bdd_nr, variable_index);
+            const bdd_branch_instruction& bdd = bdd_branch_instructions[first_bdd_node_index];
+            const auto [m0, m1] = bdd.min_marginal_debug();
+            s << node_nr(bdd_nr, variable) << " [label=\"m0=" << m0 << ", m1=" << m1 << ", L=" << *bdd.variable_cost << "\" pos=\"" << bdd_nr << "," << variable << "!\"];\n"; 
+            if(Lagrange_multipliers_index > 0) {
+                const std::size_t prev_bdd_nr = Lagrange_multipliers(variable,Lagrange_multipliers_index-1).bdd_nr;
+                s << node_nr(prev_bdd_nr, variable) << " -> " << node_nr(bdd_nr, variable) << ";\n";
+            }
+        }
+        //s << "graph[style=dotted];\n}\n";
+    } 
+    s << "}\n";
+
+}
 
 }

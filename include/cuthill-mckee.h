@@ -1,5 +1,8 @@
 #pragma once
+
 #include "two_dimensional_variable_array.hxx"
+#include "pseudo_peripheral_node.hxx"
+#include "permutation.hxx"
 #include <vector>
 #include <queue>
 #include <tuple>
@@ -8,65 +11,10 @@
 namespace LPMP {
 
     template<typename T>
-    std::tuple<std::size_t, std::size_t> farthest_node(const two_dim_variable_array<T>& adjacency, const std::size_t x)
-    {
-        std::size_t d=0;
-        struct queue_elem { std::size_t v; std::size_t d; };
-        std::queue<queue_elem> Q;
-        Q.push({x,0});
-        std::vector<char> visited(adjacency.size(), 0);
-        visited[x] = 1;
-        std::size_t farthest_node = x;
-        std::size_t max_distance = 0;
-        while(!Q.empty()) {
-            const auto [i,d] = Q.front();
-            Q.pop();
-            assert(visited[i] == 1);
-            visited[i] = 2;
-            if(d > max_distance) {
-                max_distance = d;
-                farthest_node = x;
-            }
-            for(const auto j : adjacency[i]) {
-                if(visited[j] == 0) {
-                    Q.push({j, d+1});
-                    visited[j] = 1;
-                } 
-            }
-
-        }
-
-        return {farthest_node, max_distance};
-    }
-
-    template<typename T>
-    std::size_t find_pseudo_peripheral_node(const two_dim_variable_array<T>& adjacency)
-    {
-        std::size_t min_degree = adjacency[0].size();
-        std::size_t x = 0;
-        for(std::size_t i=0; i<adjacency.size(); ++i) {
-            if(adjacency[i].size() < min_degree) {
-                min_degree = adjacency[i].size();
-                x = i;
-            }
-        }
-
-        assert(x < adjacency.size());
-        auto [y, d_y] = farthest_node(adjacency, x);
-        auto [z, d_z] = farthest_node(adjacency, y);
-        while(d_z > d_y) {
-            std::swap(y,z);
-            std::swap(d_z, d_y);
-            std::tie(z, d_z) = farthest_node(adjacency,y);
-        }
-        return y; 
-    }
-
-    template<typename T>
-    std::vector<std::size_t> Cuthill_McKee(const two_dim_variable_array<T>& adjacency)
+    permutation Cuthill_McKee(const two_dim_variable_array<T>& adjacency)
     {
         std::queue<std::size_t> Q;
-        std::vector<std::size_t> result;
+        permutation result;
         result.reserve(adjacency.size());
         std::vector<std::size_t> remaining_degree;
         remaining_degree.reserve(adjacency.size());
@@ -110,6 +58,7 @@ namespace LPMP {
         if(result.size() != adjacency.size())
             throw std::runtime_error("Graph not connected.");
 
+        assert(is_permutation(result.begin(), result.end()));
         return result;
     }
 

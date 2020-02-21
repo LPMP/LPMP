@@ -18,3 +18,11 @@ add_executable(test_multigraph_matching_synchronization test_multigraph_matching
 target_link_libraries(test_multigraph_matching_synchronization LPMP multigraph_matching_synchronization)
 add_test(test_multigraph_matching_synchronization test_multigraph_matching_synchronization)
 add_test(koopmans_beckmann_test_input koopmans_beckmann_test_input) 
+
+add_test(NAME test_multigraph_matching_instance_python_construction
+    COMMAND ${PYTHON_EXECUTABLE}  ${CMAKE_CURRENT_SOURCE_DIR}/test_multigraph_matching_instance_python_construction.py
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/multigraph_matching/
+    )
+set_tests_properties(test_multigraph_matching_instance_python_construction
+    PROPERTIES ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/multigraph_matching:$ENV{PYTHONPATH}")
+

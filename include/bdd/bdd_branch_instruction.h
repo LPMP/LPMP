@@ -35,6 +35,7 @@ namespace LPMP {
             bool is_initial_state() const { return *this == bdd_branch_instruction{}; }
 
             std::array<double,2> min_marginal() const;
+            std::array<double,2> min_marginal_debug() const;
     };
 
     static bdd_branch_instruction* const bdd_branch_instruction_terminal_0 = static_cast<bdd_branch_instruction*>(nullptr)+1;;
@@ -226,8 +227,38 @@ namespace LPMP {
         return {m0,m1};
     }
 
+    std::array<double,2> bdd_branch_instruction::min_marginal_debug() const
+    {
+        check_bdd_branch_instruction(*this);
+
+        const double m_debug = cost_from_first();
+
+        const double m0 = [&]() {
+            if(low_outgoing == bdd_branch_instruction_terminal_0)
+                return std::numeric_limits<double>::infinity();
+            if(low_outgoing == bdd_branch_instruction_terminal_1)
+                return m_debug;
+            return m_debug + this->low_outgoing->cost_from_terminal();
+        }();
+
+        const double m1 = [&]() {
+            if(high_outgoing == bdd_branch_instruction_terminal_0)
+                return std::numeric_limits<double>::infinity();
+            if(high_outgoing == bdd_branch_instruction_terminal_1)
+                return m_debug + *this->variable_cost;
+            return m_debug + *this->variable_cost + this->high_outgoing->cost_from_terminal();
+        }();
+
+        assert(std::isfinite(std::min(m0,m1)));
+
+        return {m0,m1}; 
+    }
+
     void check_bdd_branch_instruction(const bdd_branch_instruction& bdd, const bool last_variable, const bool first_variable)
     {
+#ifdef NDEBUG
+        return;
+#endif
         assert(bdd.low_outgoing != nullptr);
         assert(bdd.low_outgoing == bdd_branch_instruction_terminal_0 || bdd.low_outgoing == bdd_branch_instruction_terminal_1 || bdd.low_outgoing > &bdd);
         assert(bdd.high_outgoing != nullptr);

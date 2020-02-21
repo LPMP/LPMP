@@ -1,9 +1,9 @@
 #include <random>
 #include "graph_matching/matching_problem_input.h"
-#include "graph_matching/multigraph_matching_input.h"
+#include "multigraph_matching/multigraph_matching_input.h"
 #include "multicut/transform_multigraph_matching.h"
 #include "multicut/multicut_kernighan_lin.h"
-#include "generate_random_graph_matching_problem.h"
+#include "../graph_matching/generate_random_graph_matching_problem.h"
 #include "test.h"
 
 using namespace LPMP;
