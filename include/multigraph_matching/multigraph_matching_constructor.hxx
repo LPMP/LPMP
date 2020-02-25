@@ -888,6 +888,16 @@ public:
         return get_primal();
     }
 
+    multigraph_matching_input export_multigraph_matching_input() const
+    {
+        multigraph_matching_input mgm;
+        for(const auto& gm : graph_matching_constructors) {
+            mgm.push_back({gm.first.p, gm.first.q, gm.second->export_graph_matching_input()});
+        }
+        return mgm;
+    }
+
+
 private:
     std::size_t no_graphs_ = 0;
 

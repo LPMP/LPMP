@@ -170,6 +170,12 @@ PYBIND11_MODULE(multigraph_matching_py, m) {
         .def(py::init<std::vector<std::string>&>())
         .def("construct", [](mgm_solver& s, const LPMP::multigraph_matching_input& input){ return s.GetProblemConstructor().construct(input); })
         .def("solve", &mgm_solver::Solve)
+        .def("export_multigraph_matching_input", [](mgm_solver& s){ return s.GetProblemConstructor().export_multigraph_matching_input(); })
+        .def("duality_gap", [](mgm_solver& s){
+                const double lb = s.lower_bound();
+                const double p = s.primal_cost();
+                return p - lb;
+                })
         .def("result",  [](mgm_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
 
 
