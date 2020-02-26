@@ -375,7 +375,7 @@ namespace LPMP {
                 const std::size_t variable = bdd_storage_node.variable;
                 const std::size_t bdd_branch_node_index = bdd_node_counter_per_var.find(variable)->second;
                 bdd_node_counter_per_var.find(variable)->second++;
-                assert(bdd_branch_nodes_[bdd_branch_node_index].is_initial_state());
+                // assert(bdd_branch_nodes_[bdd_branch_node_index].is_initial_state());
                 bdd_storage_index_to_branch_node_index.insert({idx, &bdd_branch_nodes_[bdd_branch_node_index]});
                 return bdd_branch_node_index; 
             };

@@ -27,7 +27,7 @@ namespace LPMP {
             static bool is_terminal(DERIVED* p) { return p == terminal_0() || p == terminal_1(); }
             bool is_first() const { return first_low_incoming == nullptr && first_high_incoming == nullptr; }
             bool is_dead_end() const { return low_outgoing == terminal_0() && high_outgoing == terminal_0(); }
-            bool is_initial_state() const { return *this == DERIVED{}; }
+            // bool is_initial_state() const { return *this == DERIVED{}; }
     };
 
     template<typename DERIVED>
@@ -150,7 +150,7 @@ namespace LPMP {
 
         //std::cout << "forward step m for " << this << " = " << m << "\n";
         assert(std::isfinite(m));
-        assert(std::abs(m - cost_from_first()) <= 1e-8);
+        // assert(std::abs(m - cost_from_first()) <= 1e-8);
 
         check_bdd_branch_node(*this);
     }
@@ -194,7 +194,7 @@ namespace LPMP {
         //std::cout << "backward step m for " << this << ", low outgoing = " << low_outgoing << ", high outgoing = " << high_outgoing << " = " << m << "\n";
 
         check_bdd_branch_node(*this);
-        assert(std::abs(m - cost_from_terminal()) <= 1e-8);
+        // assert(std::abs(m - cost_from_terminal()) <= 1e-8);
     }
 
     double bdd_branch_node_opt::cost_from_first() const
@@ -258,12 +258,12 @@ namespace LPMP {
         check_bdd_branch_node(*this);
 
         //std::cout << "in min_marginal() for " << this << ", m = " << m << "\n";
-        assert(std::abs(m - cost_from_first()) <= 1e-8);
+        // assert(std::abs(m - cost_from_first()) <= 1e-8);
         if(!bdd_branch_node_opt::is_terminal(low_outgoing)) {
-            assert(std::abs(low_outgoing->m - low_outgoing->cost_from_terminal()) <= 1e-8);
+            // assert(std::abs(low_outgoing->m - low_outgoing->cost_from_terminal()) <= 1e-8);
         }
         if(!bdd_branch_node_opt::is_terminal(high_outgoing)) {
-            assert(std::abs(high_outgoing->m - high_outgoing->cost_from_terminal()) <= 1e-8);
+            // assert(std::abs(high_outgoing->m - high_outgoing->cost_from_terminal()) <= 1e-8);
         }
 
         const double m0 = [&]() {

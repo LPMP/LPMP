@@ -42,6 +42,12 @@ namespace LPMP {
             return var_name_to_index_.find(var)->second;
         }
 
+        std::string get_var_name(const std::size_t index) const
+        {
+            assert(index < var_index_to_name_.size());
+            return var_index_to_name_[index];
+        }
+
         std::size_t add_new_variable(const std::string& var)
         {
             assert(!var_exists(var));
@@ -283,41 +289,41 @@ namespace LPMP {
         return adjacency;
     }
 
-    /*
-    inline two_dim_variable_array<std::size_t> ILP_input::variable_adjacency_matrix() const
-    {
-        //std::unordered_set<std::array<std::size_t,2>> adjacent_vars;
-        tsl::robin_set<std::array<std::size_t,2>> adjacent_vars;
-        for(const auto& l : this->linear_constraints_) {
-            for(std::size_t i=0; i<l.variables.size(); ++i) {
-                for(std::size_t j=i+1; j<l.variables.size(); ++j) {
-                    const std::size_t var1 = l.variables[i].var;
-                    const std::size_t var2 = l.variables[j].var;
-                    adjacent_vars.insert({std::min(var1,var2), std::max(var1, var2)});
-                }
-            }
-        }
+    
+    // inline two_dim_variable_array<std::size_t> ILP_input::variable_adjacency_matrix() const
+    // {
+    //     //std::unordered_set<std::array<std::size_t,2>> adjacent_vars;
+    //     tsl::robin_set<std::array<std::size_t,2>> adjacent_vars;
+    //     for(const auto& l : this->linear_constraints_) {
+    //         for(std::size_t i=0; i<l.variables.size(); ++i) {
+    //             for(std::size_t j=i+1; j<l.variables.size(); ++j) {
+    //                 const std::size_t var1 = l.variables[i].var;
+    //                 const std::size_t var2 = l.variables[j].var;
+    //                 adjacent_vars.insert({std::min(var1,var2), std::max(var1, var2)});
+    //             }
+    //         }
+    //     }
 
-        std::vector<std::size_t> adjacency_size(this->nr_variables(),0);
-        for(const auto [i,j] : adjacent_vars) {
-            ++adjacency_size[i];
-            ++adjacency_size[j];
-        }
+    //     std::vector<std::size_t> adjacency_size(this->nr_variables(),0);
+    //     for(const auto [i,j] : adjacent_vars) {
+    //         ++adjacency_size[i];
+    //         ++adjacency_size[j];
+    //     }
 
-        two_dim_variable_array<std::size_t> adjacency(adjacency_size.begin(), adjacency_size.end());
-        std::fill(adjacency_size.begin(), adjacency_size.end(), 0);
-        for(const auto e : adjacent_vars) {
-            const auto [i,j] = e;
-            assert(i<j);
-            assert(adjacency_size[i] < adjacency[i].size());
-            assert(adjacency_size[j] < adjacency[j].size());
-            adjacency(i, adjacency_size[i]++) = j;
-            adjacency(j, adjacency_size[j]++) = i;
-        }
+    //     two_dim_variable_array<std::size_t> adjacency(adjacency_size.begin(), adjacency_size.end());
+    //     std::fill(adjacency_size.begin(), adjacency_size.end(), 0);
+    //     for(const auto e : adjacent_vars) {
+    //         const auto [i,j] = e;
+    //         assert(i<j);
+    //         assert(adjacency_size[i] < adjacency[i].size());
+    //         assert(adjacency_size[j] < adjacency[j].size());
+    //         adjacency(i, adjacency_size[i]++) = j;
+    //         adjacency(j, adjacency_size[j]++) = i;
+    //     }
 
-        return adjacency;
-    }
-    */
+    //     return adjacency;
+    // }
+    
 
     inline void ILP_input::reorder(const permutation& order)
     {
