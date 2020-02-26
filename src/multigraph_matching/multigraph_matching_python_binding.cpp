@@ -6,6 +6,7 @@
 #include <vector>
 #include <tuple>
 #include <iostream>
+#include <fstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
@@ -154,14 +155,14 @@ PYBIND11_MODULE(multigraph_matching_py, m) {
                 construct_from_arrays(instance, assignments, quadratic_terms, edges); 
                 return instance;
                 }))
-        //.def("add_assignment", &LPMP::multigraph_matching_input::add_assignment)
-        //.def("add_assignment", &LPMP::linear_assignment_problem_input::add_assignment)
-        //.def("add_quadratic_term", &LPMP::multigraph_matching_input::add_quadratic_term)
+        .def("write", [](const LPMP::multigraph_matching_input& i, const std::string& filename) {
+                std::fstream f;
+                f.open(filename, std::ios::out);
+                if(!f.is_open())
+                    throw std::runtime_error("file " + filename + " could not be opened for exporting multigraph matching problem");
+                return i.write_torresani_et_al(f); })
         .def("write", [](const LPMP::multigraph_matching_input& i){ return i.write_torresani_et_al(std::cout); })
-        .def("write", [](const LPMP::multigraph_matching_input& i, const std::string& filename) { std::fstream f(filename); return i.write_torresani_et_al(f); })
         .def("evaluate", &LPMP::multigraph_matching_input::evaluate)
-        //.def("add_assignments", add_assignments)
-        //.def("add_quadratic_terms", add_quadratic_terms);
         ;
 
 

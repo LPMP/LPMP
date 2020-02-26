@@ -26,7 +26,8 @@ namespace Torresani_et_al_multigraph_matching_input {
         pegtl::star<
             pegtl::star<ignore_line>, 
             graph_matching_line,
-            graph_matching
+            graph_matching,
+            pegtl::eof
         >
     {};
 
@@ -46,6 +47,7 @@ namespace Torresani_et_al_multigraph_matching_input {
          std::size_t right_graph_no; iss >> right_graph_no;
          assert(left_graph_no < right_graph_no);
 
+         std::cout << "read graph matching problem " << left_graph_no << " -> " << right_graph_no << "\n";
          input.push_back({});
          input.back().left_graph_no = left_graph_no;
          input.back().right_graph_no = right_graph_no;
@@ -68,7 +70,8 @@ namespace Torresani_et_al_multigraph_matching_input {
       std::cout << "parsing " << filename << "\n";
 
       const bool read_success = problem.parse< grammar, action >( input );
-      if(!read_success) throw std::runtime_error(std::string("could not read multigraph matching problem from file ") + filename);
+      if(!read_success) 
+          throw std::runtime_error(std::string("could not read multigraph matching problem from file ") + filename);
 
       return input;
    }
@@ -77,7 +80,8 @@ namespace Torresani_et_al_multigraph_matching_input {
    {
       multigraph_matching_input input;
       const bool read_success = pegtl::parse<grammar, action>(problem_input,"",input);
-      if(!read_success) throw std::runtime_error("could not read multigraph matching problem from string");
+      if(!read_success) 
+          throw std::runtime_error("could not read multigraph matching problem from string");
       return input;
    }
 

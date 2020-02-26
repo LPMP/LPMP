@@ -675,8 +675,8 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
        void write_torresani_et_al(STREAM& s) const
        {
            for(std::size_t c=0; c<(*this).size(); ++c) {
-               const auto gm_input = (*this)[c++];
-               s << "gm " << gm_input.left_graph_no << " -> " << gm_input.right_graph_no << "\n";
+               const auto gm_input = (*this)[c];
+               s << "gm " << gm_input.left_graph_no << " " << gm_input.right_graph_no << "\n";
                gm_input.gm_input.write_torresani_et_al(s);
            } 
        } 

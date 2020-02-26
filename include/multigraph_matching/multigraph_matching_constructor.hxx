@@ -648,6 +648,9 @@ public:
 
     void construct(const multigraph_matching_input& mgm_instance)
     {
+        if(mgm_instance.size() == 0) {
+            throw std::runtime_error("multigraph matching instance is empty");
+        }
         for(const auto& gm : mgm_instance) {
             auto* gm_constructor = add_graph_matching_problem(gm.left_graph_no, gm.right_graph_no, lp_);
             gm_constructor->construct(gm.gm_input);
