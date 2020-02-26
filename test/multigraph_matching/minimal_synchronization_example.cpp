@@ -1,5 +1,5 @@
 #include "graph_matching/matching_problem_input.h"
-#include "graph_matching/multigraph_matching.hxx"
+#include "multigraph_matching/multigraph_matching.hxx"
 #include "multicut/transform_multigraph_matching.h"
 #include "visitors/standard_visitor.hxx"
 #include "solver.hxx"

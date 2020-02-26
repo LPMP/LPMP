@@ -648,6 +648,9 @@ public:
 
     void construct(const multigraph_matching_input& mgm_instance)
     {
+        if(mgm_instance.size() == 0) {
+            throw std::runtime_error("multigraph matching instance is empty");
+        }
         for(const auto& gm : mgm_instance) {
             auto* gm_constructor = add_graph_matching_problem(gm.left_graph_no, gm.right_graph_no, lp_);
             gm_constructor->construct(gm.gm_input);
@@ -888,6 +891,16 @@ public:
         return get_primal();
     }
 
+    multigraph_matching_input export_multigraph_matching_input() const
+    {
+        multigraph_matching_input mgm;
+        for(const auto& gm : graph_matching_constructors) {
+            mgm.push_back({gm.first.p, gm.first.q, gm.second->export_graph_matching_input()});
+        }
+        return mgm;
+    }
+
+
 private:
     std::size_t no_graphs_ = 0;
 
@@ -901,7 +914,7 @@ private:
     {
        multigraph_matching_input mgm;
        for(const auto& gm : graph_matching_constructors)
-          mgm.push_back({gm.first.p, gm.first.q, gm.second->export_graph_matching_input()});
+          mgm.push_back({gm.first.p, gm.first.q, gm.second->export_linear_graph_matching_input()});
        return mgm;
     }
 

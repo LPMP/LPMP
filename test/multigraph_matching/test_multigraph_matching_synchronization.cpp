@@ -1,6 +1,6 @@
 #include "test.h"
 #include "graph_matching/matching_problem_input.h"
-#include "graph_matching/multigraph_matching_synchronization.h"
+#include "multigraph_matching/multigraph_matching_synchronization.h"
 #include <iostream>
 
 using namespace LPMP;

@@ -31,6 +31,11 @@ public:
        data_(offsets_.back())
        {}
 
+   two_dim_variable_array(const two_dim_variable_array<T>& o)
+       : offsets_(o.offsets_),
+       data_(o.data_)
+    {}
+
    // iterator holds size of each dimension of the two dimensional array
    template<typename I>
    two_dim_variable_array(const std::vector<I>& size)
@@ -255,29 +260,37 @@ public:
    }
 
    auto& data() { return data_; }
+   const auto& data() const { return data_; }
+
+   std::size_t first_index(const T* p) const
+   {
+       assert(false); // TODO: does not work yet, write test
+       assert(p >= &data_[0]);
+       assert(p < &data_[0] + data_.size());
+
+       // binary search to locate first index
+       std::size_t lower = 0;
+       std::size_t upper = size()-1;
+       while(lower <= upper) {
+           const std::size_t middle = (lower+upper)/2;
+           if( &(*this)(middle,0) <= p && p <= &(*this)[middle].back()) {
+               return middle; 
+           } else if( &(*this)(middle,0) < p ) {
+               lower = middle+1;
+           } else {
+               upper = middle-1; 
+           }
+       }
+       assert(false);
+       return std::numeric_limits<std::size_t>::max();
+   }
 
    std::array<std::size_t,2> indices(const T* p) const
    {
        assert(p >= &data_[0]);
        assert(p < &data_[0] + data_.size());
 
-       // binary search to locate first index
-       const std::size_t first_index = [&]() {
-           std::size_t lower = 0;
-           std::size_t upper = size()-1;
-           while(lower <= upper) {
-               const std::size_t middle = (lower+upper)/2;
-               if( &(*this)(middle,0) <= p && p <= &(*this)[middle].back()) {
-                   return middle; 
-               } else if( &(*this)(middle,0) < p ) {
-                   lower = middle+1;
-               } else {
-                   upper = middle-1; 
-               }
-           }
-           assert(false);
-           return std::numeric_limits<std::size_t>::max();
-       }();
+       const std::size_t first_index = first_index(p);
 
        // binary search for second index
        const std::size_t second_index = [&]() {
@@ -298,6 +311,13 @@ public:
 
        assert(p == &(*this)(first_index, second_index));
        return {first_index, second_index};
+   }
+
+   std::size_t index(const std::size_t first_index, const std::size_t second_index) const
+   {
+       assert(first_index < size());
+       assert(second_index < (*this)[first_index].size());
+       return std::distance(&data_[0], &(*this)(first_index, second_index)); 
    }
 
 private:

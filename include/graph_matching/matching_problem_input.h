@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <Eigen/Eigen>
 #include <array>
 #include <algorithm>
 #include <limits>
@@ -102,8 +103,13 @@ struct linear_assignment_problem_input {
       public:
       using std::vector<std::size_t>::vector;
 
-      template<typename MATRIX>
-      labeling(const MATRIX& m)
+      template<typename Derived>
+          struct is_matrix_expression
+          : std::is_base_of<Eigen::MatrixBase<std::decay_t<Derived> >, std::decay_t<Derived> >
+          {};
+
+      template<typename M, typename = typename std::enable_if<is_matrix_expression<M>::value>::type >
+      labeling(const M& m)
       {
          // check that each row and columns has at most one 1 entry
          std::cout << m << "\n";
@@ -168,24 +174,41 @@ struct linear_assignment_problem_input {
    };
 
 
+   std::tuple<bool, std::vector<char>> feasible(const labeling& l) const
+   {
+       if(l.no_left_nodes() != no_left_nodes)
+           throw std::runtime_error("labeling must have equal number of left nodes as matching problem.");
+
+       std::vector<char> nodes_taken(no_right_nodes,0);
+       for(std::size_t i=0; i<l.size(); ++i) {
+           if(l[i] != no_assignment) {
+               assert(l[i] < nodes_taken.size());
+               if(nodes_taken[l[i]] == 1)
+                   return {false, {}};
+               nodes_taken[l[i]] = 1;
+           }
+       }
+       return {true, nodes_taken};
+       // TODO: check that all assignments are allowed w.r.t. costs
+   }
+
    double evaluate(const labeling& l) const
    {
-      if(l.no_left_nodes() != no_left_nodes)
-         throw std::runtime_error("labeling must have equal number of left nodes as matching problem.");
+       const auto [labeling_feasible, right_nodes_taken] = feasible(l);
+       if(!labeling_feasible)
+           return std::numeric_limits<double>::infinity();
 
-      double cost = constant_;
+       double cost = constant_;
 
-      std::vector<std::size_t> nodes_taken(no_right_nodes,0);
-      for(const auto& a : assignments) {
-         if(l[a.left_node] == a.right_node) {
-            cost += a.cost;
-            assert(a.left_node < nodes_taken.size());
-            nodes_taken[a.left_node]++;
-         }
-      }
+       for(const auto& a : assignments) {
+           if(a.left_node != no_assignment && l[a.left_node] == a.right_node) {
+               cost += a.cost;
+               assert(a.left_node < no_left_nodes || a.left_node == no_assignment);
+               assert(a.right_node < no_right_nodes || a.right_node == no_assignment);
+           } else if(a.left_node == no_assignment) {
 
-      if(*std::max_element(nodes_taken.begin(), nodes_taken.end()) > 1)
-         return std::numeric_limits<double>::infinity();
+           }
+       }
 
       return cost;
    }
@@ -646,6 +669,17 @@ struct multigraph_matching_input : public std::vector<multigraph_matching_input_
       std::vector<std::size_t> no_nodes_; 
       std::vector<std::size_t> graph_node_offsets_;
    };
+
+   public:
+   template<typename STREAM>
+       void write_torresani_et_al(STREAM& s) const
+       {
+           for(std::size_t c=0; c<(*this).size(); ++c) {
+               const auto gm_input = (*this)[c];
+               s << "gm " << gm_input.left_graph_no << " " << gm_input.right_graph_no << "\n";
+               gm_input.gm_input.write_torresani_et_al(s);
+           } 
+       } 
 };
 
 } // namespace LPMP

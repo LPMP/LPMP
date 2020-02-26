@@ -12,11 +12,12 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const double min_progress = 1e-01;
-    const int max_iter = 1000;
+    const int max_iter = 5;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
     input.reorder_bfs();
-    // input.reorder_Cuthill_McKee();
+    //input.reorder_Cuthill_McKee();
+    //input.reorder_minimum_degree_averaging();
 
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
 
@@ -42,12 +43,10 @@ int main(int argc, char** argv)
     }
     double ub = std::numeric_limits<double>::infinity();
     std::cout << "Rounding.. " << std::flush;
-    if (solver.fix_variables())
-    {
+    if (solver.fix_variables()) {
         ub = solver.compute_upper_bound();
         std::cout << "\nPrimal solution value: " << ub << std::endl;
-    }
-    else
+    } else
         std::cout << "\nNo primal solution found." << std::endl;
 
 }

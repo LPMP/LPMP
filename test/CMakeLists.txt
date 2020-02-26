@@ -1,5 +1,6 @@
 add_subdirectory(mrf)
 add_subdirectory(graph_matching)
+add_subdirectory(multigraph_matching)
 add_subdirectory(max_cut)
 add_subdirectory(horizon_tracking)
 add_subdirectory(multicut)
