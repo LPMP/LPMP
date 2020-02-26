@@ -94,7 +94,8 @@ public:
 
     bool CheckPrimalConsistency() const
     {
-        if(debug()) std::cout << "check graph matching assignment\n";
+        if(debug()) 
+            std::cout << "check graph matching assignment\n";
 
         std::vector<char> labels_taken(inverse_graph_.size(),false);
         for(std::size_t i=0; i<left_mrf.get_number_of_variables(); ++i) {
@@ -251,10 +252,8 @@ public:
            const auto& a = instance.assignments[idx];
            assignment_nr.insert({{a.left_node, a.right_node}, idx});
        }
-       std::cout << "nr assignments = " << assignment_nr.size() << "\n";
 
        // quadratic terms
-       std::cout << "nr left pairwise factors = " << left_mrf.get_number_of_pairwise_factors() << "\n";
        for(std::size_t pairwise_idx=0; pairwise_idx<left_mrf.get_number_of_pairwise_factors(); ++pairwise_idx) {
            const auto [i,j] = left_mrf.get_pairwise_variables(pairwise_idx);
            const auto& pot = *left_mrf.get_pairwise_factor(pairwise_idx)->get_factor();
@@ -291,7 +290,6 @@ public:
            instance.add_quadratic_term(i_non_assignment, j_non_assignment, pot(pot.dim1()-1, pot.dim2()-1));
        }
 
-       std::cout << "nr right pairwise factors = " << right_mrf.get_number_of_pairwise_factors() << "\n";
        for(std::size_t pairwise_idx=0; pairwise_idx<right_mrf.get_number_of_pairwise_factors(); ++pairwise_idx) {
            const auto [i,j] = right_mrf.get_pairwise_variables(pairwise_idx);
            const auto& pot = *right_mrf.get_pairwise_factor(pairwise_idx)->get_factor();
@@ -816,7 +814,6 @@ public:
     {
        GRAPH_MATCHING_CONSTRUCTOR::construct(gm_input);
 
-       std::cout << "construct interquadratic messages\n";
        for(std::size_t left_pairwise_factor_id=0; left_pairwise_factor_id<this->left_mrf.get_number_of_pairwise_factors(); ++left_pairwise_factor_id) {
           auto* l = this->left_mrf.get_pairwise_factor(left_pairwise_factor_id);
           const auto [l_node_1,l_node_2] = this->left_mrf.get_pairwise_variables(left_pairwise_factor_id);

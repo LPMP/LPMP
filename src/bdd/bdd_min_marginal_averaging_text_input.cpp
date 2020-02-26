@@ -12,7 +12,7 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const double min_progress = 1e-01;
-    const int max_iter = 5;
+    const int max_iter = 100;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
     input.reorder_bfs();
