@@ -261,7 +261,7 @@ public:
         mcf_primal_rounding_arg_("", "mcfRounding", "enable runding by solving a linear assignment problem with a minimimum cost flow solver", s.get_cmd(), true),
         graph_matching_construction_arg_("", "graphMatchingConstruction", "mode of constructing pairwise potentials for graph matching", false, "both_sides", "{left|right|both_sides}", s.get_cmd()),
         output_format_arg_("", "multigraphMatchingOutputFormat", "output format for multigraph matching", false, "matching", "{matching|clustering}", s.get_cmd()),
-        primal_rounding_algorithms_arg_("", "multigraphMatchingRoundingMethod", "correlation clustering algorithms that are used for rounding a solution", false, "gaec_KL", "{gaec_KL|KL|MCF_KL|MCF_PS}", s.get_cmd())
+        primal_rounding_algorithms_arg_("", "multigraphMatchingRoundingMethod", "correlation clustering algorithms that are used for rounding a solution", false, "gaec_KL", "{gaec_KL|KL|MCF_KL|MCF_PS|FW_PS}", s.get_cmd())
         
         {
            omp_set_nested(0); // there is parallelism in the graph matching constructors, which we suppress hereby. TODO: should be better set somewhere else
@@ -805,8 +805,8 @@ public:
           if(debug()) std::cout << "send messages to unaries\n";
           send_messages_to_unaries(); 
 
-          enum class rounding_method {gaec_KL, KL, mcf_KL, mcf_ps};
-          rounding_method rm = [&]() {
+          enum class rounding_method {gaec_KL, KL, mcf_KL, mcf_ps, fw_ps};
+          const rounding_method rm = [&]() {
           if(primal_rounding_algorithms_arg_.getValue() == "gaec_KL") 
              return rounding_method::gaec_KL;
           else if(primal_rounding_algorithms_arg_.getValue() == "KL")
@@ -815,6 +815,8 @@ public:
              return rounding_method::mcf_KL;
           else if(primal_rounding_algorithms_arg_.getValue() == "MCF_PS") // permutation synchronization
              return rounding_method::mcf_ps;
+          else if(primal_rounding_algorithms_arg_.getValue() == "FW_PS") // permutation synchronization
+             return rounding_method::fw_ps;
           else
              throw std::runtime_error("could not recognize correlation clustering rounding method");
           }();
@@ -823,9 +825,13 @@ public:
           if(rm == rounding_method::mcf_KL || rm == rounding_method::mcf_ps)
              for(auto& c : graph_matching_constructors)
                 labeling_to_improve.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
+          else if(rm == rounding_method::fw_ps)
+             for(auto& c : graph_matching_constructors)
+                labeling_to_improve.push_back( {c.first.p, c.first.q, c.second->compute_primal_fw_solution()} );
+          
 
-          // TODO: split round_primal_async based on rounding method into multiple lambdas
-          auto mgm = std::make_shared<multigraph_matching_input>(export_linear_multigraph_matching_input());
+             // TODO: split round_primal_async based on rounding method into multiple lambdas
+             auto mgm = std::make_shared<multigraph_matching_input>(export_linear_multigraph_matching_input());
           const auto allowed_matchings = compute_allowed_matching_matrix();
           auto round_primal_async = ([=](std::shared_ptr<multigraph_matching_input> mgm, multigraph_matching_input::labeling labeling_to_improve) {
                   multigraph_matching_correlation_clustering_transform mgm_cc_trafo(mgm);
@@ -849,7 +855,7 @@ public:
                      auto cc_sol = mc_sol.transform_to_correlation_clustering();
                      auto mgm_sol = mgm_cc_trafo.transform(cc_sol); 
                      return mgm_sol;
-                  } else if(rm == rounding_method::mcf_ps) {
+                  } else if(rm == rounding_method::mcf_ps || rm == rounding_method::fw_ps) {
                      multigraph_matching_input::graph_size gs(*mgm);
                      synchronize_multigraph_matching(gs, labeling_to_improve, allowed_matchings); // for sparse assignment problems
                      //synchronize_multigraph_matching(gs, labeling_to_improve); // when all edges are present in pairwise matching subproblems

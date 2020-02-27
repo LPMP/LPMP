@@ -23,9 +23,13 @@ struct linear_assignment_problem_input {
 
    void add_assignment(const std::size_t left_node, const std::size_t right_node, const double cost)
    {
-     assignments.push_back({left_node, right_node, cost}); 
-     no_left_nodes = std::max(no_left_nodes, left_node+1);
-     no_right_nodes = std::max(no_right_nodes, right_node+1);
+      // TODO: remove, only test
+      //if(left_node == no_assignment || right_node == no_assignment)
+      //   assignments.push_back({left_node, right_node, 0.0});
+      //else
+         assignments.push_back({left_node, right_node, cost});
+      no_left_nodes = std::max(no_left_nodes, left_node + 1);
+      no_right_nodes = std::max(no_right_nodes, right_node + 1);
    }
 
    struct assignment {
@@ -54,16 +58,27 @@ struct linear_assignment_problem_input {
 
        mcf = MCF(no_mcf_nodes, no_mcf_edges);
 
-      for(const auto a : assignments)
-         mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling*a.cost);
-
-      for(std::size_t i=0; i<no_left_nodes; ++i) {
-         mcf.add_edge(i, no_nodes+1, 0, 1, 0.0); // for non-assignment
-         mcf.add_node_excess(i, 1);
+       std::vector<double> left_non_assignment_costs(no_left_nodes, 0.0);
+       std::vector<double> right_non_assignment_costs(no_right_nodes, 0.0);
+       for (const auto a : assignments)
+       {
+          if (a.left_node != no_assignment && a.right_node != no_assignment)
+             mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling * a.cost);
+          else if (a.left_node == no_assignment)
+            right_non_assignment_costs[a.right_node] += scaling*a.cost;
+          else if (a.right_node == no_assignment)
+            left_non_assignment_costs[a.left_node] += scaling*a.cost;
       }
 
+       for (std::size_t i = 0; i < no_left_nodes; ++i)
+       {
+          mcf.add_edge(i, no_nodes + 1, 0, 1, left_non_assignment_costs[i]); // for non-assignment
+          mcf.add_node_excess(i, 1);
+       }
+
+
       for(std::size_t i=0; i<no_right_nodes; ++i) {
-         mcf.add_edge(no_nodes, no_left_nodes + i, 0, 1, 0.0); // for non-assignment
+         mcf.add_edge(no_nodes, no_left_nodes + i, 0, 1, right_non_assignment_costs[i]); // for non-assignment
          mcf.add_node_excess(no_left_nodes + i, -1);
       }
 
@@ -296,7 +311,14 @@ struct graph_matching_input : public linear_assignment_problem_input {
         assert(std::max(assignment_1, assignment_2) < this->assignments.size());
         const std::size_t a1 = std::min(assignment_1, assignment_2);
         const std::size_t a2 = std::max(assignment_1, assignment_2);
-        quadratic_terms.push_back({a1, a2, cost});
+        //if(
+        //   this->assignments[a1].left_node == no_assignment ||
+        //   this->assignments[a1].right_node == no_assignment ||
+        //   this->assignments[a2].left_node == no_assignment ||
+        //   this->assignments[a2].right_node == no_assignment)
+        //   quadratic_terms.push_back({a1, a2, 0.0});
+        //else
+           quadratic_terms.push_back({a1, a2, cost});
     }
 
     double evaluate(const labeling& l) const

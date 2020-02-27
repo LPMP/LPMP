@@ -413,7 +413,7 @@ namespace LPMP {
 
             void set_options(const bdd_min_marginal_averaging_options o) { options = o; }
 
-        private:
+        protected:
             void init_costs();
 
             std::array<double,2> min_marginal(const std::size_t var, const std::size_t bdd_index) const;

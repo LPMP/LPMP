@@ -126,7 +126,6 @@ namespace LPMP {
 
         gm.initialize_mcf(mcf);
 
-        std::cout << "initialized problem\n";
 
         //if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::SparseVector<double>>)
         //    L.makeCompressed();
@@ -367,10 +366,10 @@ namespace LPMP {
         const auto s = read_solution();
         const ASSIGNMENT_VECTOR_TYPE d(s-M); // update direction
         const double gap = -d.cwiseProduct(g).sum();
-        if(iter%20 == 0)
-            std::cout << "gap = " << gap << "\n";
+        //if(iter%20 == 0)
+            //std::cout << "gap = " << gap << "\n";
         if(gap < 1e-4) {
-            std::cout << "gap smaller than threshold, terminate!\n";
+            //std::cout << "gap smaller than threshold, terminate!\n";
             return false;
         }
 
@@ -390,8 +389,8 @@ namespace LPMP {
         M += gamma * d;
         assert(feasible(M));
 
-        if(iter%20 == 0)
-            std::cout << "iteration = " << iter << ", optimal step size = " << gamma << ", quadratic term = " << quadratic_term << ", linear term = " << linear_term << "\n";
+        //if(iter%20 == 0)
+        //    std::cout << "iteration = " << iter << ", optimal step size = " << gamma << ", quadratic term = " << quadratic_term << ", linear term = " << linear_term << "\n";
 
         return true;
     }
@@ -430,12 +429,12 @@ namespace LPMP {
         for(std::size_t iter=0; iter<400; ++iter) {
             if(!perform_fw_step(iter))
                 break;
-            if(iter%20 == 0)
-                std::cout << "objective = " << evaluate() << "\n";
+            //if(iter%20 == 0)
+            //    std::cout << "objective = " << evaluate() << "\n";
         }
 
         M = round();
-        std::cout << "Rounded solution cost = " << evaluate() << "\n";
+        //std::cout << "Rounded solution cost = " << evaluate() << "\n";
     }
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>

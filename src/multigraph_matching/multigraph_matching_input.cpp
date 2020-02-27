@@ -22,13 +22,13 @@ namespace Torresani_et_al_multigraph_matching_input {
     struct graph_matching_line : pegtl::seq< opt_whitespace, pegtl::string<'g','m'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace, pegtl::eol > {};
     struct graph_matching : pegtl::star<pegtl::not_at<graph_matching_line>, pegtl::any> {};
 
-    struct grammar :
-        pegtl::star<
-            pegtl::star<ignore_line>, 
-            graph_matching_line,
-            graph_matching,
-            pegtl::eof
-        >
+    struct grammar : pegtl::seq<
+                         pegtl::star<
+                             pegtl::star<ignore_line>,
+                             graph_matching_line,
+                             graph_matching
+                             >,
+                         pegtl::eof>
     {};
 
    template< typename Rule >
@@ -47,7 +47,6 @@ namespace Torresani_et_al_multigraph_matching_input {
          std::size_t right_graph_no; iss >> right_graph_no;
          assert(left_graph_no < right_graph_no);
 
-         std::cout << "read graph matching problem " << left_graph_no << " -> " << right_graph_no << "\n";
          input.push_back({});
          input.back().left_graph_no = left_graph_no;
          input.back().right_graph_no = right_graph_no;
