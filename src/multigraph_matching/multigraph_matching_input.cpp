@@ -22,12 +22,13 @@ namespace Torresani_et_al_multigraph_matching_input {
     struct graph_matching_line : pegtl::seq< opt_whitespace, pegtl::string<'g','m'>, mand_whitespace, positive_integer, mand_whitespace, positive_integer, opt_whitespace, pegtl::eol > {};
     struct graph_matching : pegtl::star<pegtl::not_at<graph_matching_line>, pegtl::any> {};
 
-    struct grammar :
-        pegtl::star<
-            pegtl::star<ignore_line>, 
-            graph_matching_line,
-            graph_matching
-        >
+    struct grammar : pegtl::seq<
+                         pegtl::star<
+                             pegtl::star<ignore_line>,
+                             graph_matching_line,
+                             graph_matching
+                             >,
+                         pegtl::eof>
     {};
 
    template< typename Rule >
@@ -68,7 +69,8 @@ namespace Torresani_et_al_multigraph_matching_input {
       std::cout << "parsing " << filename << "\n";
 
       const bool read_success = problem.parse< grammar, action >( input );
-      if(!read_success) throw std::runtime_error(std::string("could not read multigraph matching problem from file ") + filename);
+      if(!read_success) 
+          throw std::runtime_error(std::string("could not read multigraph matching problem from file ") + filename);
 
       return input;
    }
@@ -77,7 +79,8 @@ namespace Torresani_et_al_multigraph_matching_input {
    {
       multigraph_matching_input input;
       const bool read_success = pegtl::parse<grammar, action>(problem_input,"",input);
-      if(!read_success) throw std::runtime_error("could not read multigraph matching problem from string");
+      if(!read_success) 
+          throw std::runtime_error("could not read multigraph matching problem from string");
       return input;
    }
 

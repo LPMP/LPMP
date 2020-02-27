@@ -215,14 +215,13 @@ namespace LPMP {
                 else
                 return {i,j};
             }();
-            auto stable_node = node_pair[0];
-            auto merge_node = node_pair[1];
+            const auto [stable_node, merge_node] = node_pair;
 
             for (auto& e: g.edges(merge_node)){
-                std::size_t head = e.first;
+                const std::size_t head = e.first;
                 if(head == stable_node)
                 continue;
-                auto& p = g.edge(merge_node,head);
+                const auto& p = g.edge(merge_node,head);
 
                 if(g.edge_present(stable_node, head)) {
                     auto& pp = g.edge(stable_node, head);
@@ -232,10 +231,10 @@ namespace LPMP {
                     pp_reverse.cost += p.cost;
                     pp_reverse.stamp++;
                     if(pp.cost >= 0.0)
-                    Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp, g.edges(stable_node).size() + g.edges(head).size()});
+                        Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp, g.edges(stable_node).size() + g.edges(head).size()});
                 } else {
                     if(p.cost >= 0.0)
-                    Q.push(edge_type_q{stable_node, head, p.cost, 0, g.edges(stable_node).size() + g.edges(head).size()});
+                        Q.push(edge_type_q{stable_node, head, p.cost, 0, g.edges(stable_node).size() + g.edges(head).size()});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
                 }
             }
@@ -251,18 +250,17 @@ namespace LPMP {
             }
 
             for(const auto& e : insert_candidates)
-            g.insert_edge(e.first[0], e.first[1], e.second);
+                g.insert_edge(e.first[0], e.first[1], e.second);
             insert_candidates.clear();
 
             if constexpr(SYNCHRONIZE)
-            for (auto& n: neighbor)
-            mask[n].clear(std::memory_order_release);;
+                for (auto& n: neighbor)
+                    mask[n].clear(std::memory_order_release);;
         }
         const auto end_time = std::chrono::steady_clock::now();
         //std::cout << "Parallel gaec time for thread " << std::this_thread::get_id() << " : "<<
         //std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count() << " milliseconds\n";
     }
-
 
     multicut_edge_labeling greedy_additive_edge_contraction_parallel(const multicut_instance& instance, const int nr_threads, const std::string option)
     {
@@ -281,10 +279,10 @@ namespace LPMP {
         std::vector<std::atomic_flag> mask(instance.no_nodes());
         std::cout << "Number of nodes: " << instance.no_nodes() << std::endl;
 
-        dynamic_graph_thread_safe<edge_type>  g(instance.no_nodes());
+        dynamic_graph_thread_safe<edge_type> g(instance.no_nodes());
         std::vector<std::size_t> partition_to_node(instance.no_nodes());
         for(std::size_t i=0; i<instance.no_nodes(); ++i)
-        partition_to_node[partition.find(i)] = i;
+            partition_to_node[partition.find(i)] = i;
 
         if (option != "non-blocking") {
             auto construct_graph = [&]() {

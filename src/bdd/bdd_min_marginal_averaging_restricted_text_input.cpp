@@ -1,4 +1,4 @@
-#include "bdd/bdd_min_marginal_averaging.h"
+#include "bdd/bdd_min_marginal_averaging_restricted.h"
 #include "bdd/ILP_parser.h"
 #include "cuddObj.hh"
 

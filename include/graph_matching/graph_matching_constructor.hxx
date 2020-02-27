@@ -78,13 +78,7 @@ public:
        if(rounding_arg_.getValue() == "mcf") {
            return compute_primal_mcf_solution();
        } else if(rounding_arg_.getValue() == "fw") {
-           // check if pairwise potentials are sparse or not
-           const graph_matching_input input = export_graph_matching_input();
-           const graph_matching_input::labeling labeling = compute_primal_mcf_solution();
-           graph_matching_frank_wolfe gm_fw(input, labeling);
-           const auto& l = gm_fw.solve();
-           assert(input.evaluate(l) < std::numeric_limits<double>::infinity());
-           return l;
+          return compute_primal_fw_solution();
        } else {
            throw std::runtime_error("rounding method not recognized.");
        }
@@ -94,7 +88,8 @@ public:
 
     bool CheckPrimalConsistency() const
     {
-        if(debug()) std::cout << "check graph matching assignment\n";
+        if(debug()) 
+            std::cout << "check graph matching assignment\n";
 
         std::vector<char> labels_taken(inverse_graph_.size(),false);
         for(std::size_t i=0; i<left_mrf.get_number_of_variables(); ++i) {
@@ -210,6 +205,16 @@ public:
        return labeling;
     }
 
+    linear_assignment_problem_input::labeling compute_primal_fw_solution()
+    {
+       const graph_matching_input input = export_graph_matching_input();
+       const graph_matching_input::labeling labeling = compute_primal_mcf_solution();
+       graph_matching_frank_wolfe gm_fw(input, labeling);
+       const auto l = gm_fw.solve();
+       assert(input.evaluate(l) < std::numeric_limits<double>::infinity());
+       return l;
+    }
+
     graph_matching_input export_linear_graph_matching_input() const
     {
        graph_matching_input instance;
@@ -251,10 +256,8 @@ public:
            const auto& a = instance.assignments[idx];
            assignment_nr.insert({{a.left_node, a.right_node}, idx});
        }
-       std::cout << "nr assignments = " << assignment_nr.size() << "\n";
 
        // quadratic terms
-       std::cout << "nr left pairwise factors = " << left_mrf.get_number_of_pairwise_factors() << "\n";
        for(std::size_t pairwise_idx=0; pairwise_idx<left_mrf.get_number_of_pairwise_factors(); ++pairwise_idx) {
            const auto [i,j] = left_mrf.get_pairwise_variables(pairwise_idx);
            const auto& pot = *left_mrf.get_pairwise_factor(pairwise_idx)->get_factor();
@@ -291,7 +294,6 @@ public:
            instance.add_quadratic_term(i_non_assignment, j_non_assignment, pot(pot.dim1()-1, pot.dim2()-1));
        }
 
-       std::cout << "nr right pairwise factors = " << right_mrf.get_number_of_pairwise_factors() << "\n";
        for(std::size_t pairwise_idx=0; pairwise_idx<right_mrf.get_number_of_pairwise_factors(); ++pairwise_idx) {
            const auto [i,j] = right_mrf.get_pairwise_variables(pairwise_idx);
            const auto& pot = *right_mrf.get_pairwise_factor(pairwise_idx)->get_factor();
@@ -415,10 +417,11 @@ protected:
     {
        assert(node_1 < graph.size());
        assert(std::is_sorted(graph[node_1].begin(), graph[node_1].end()));
-       for(std::size_t i=0; i+1<graph[node_1].size(); ++i) {
-          assert(graph[node_1][i] < graph[node_1][i+1]);
+       for (std::size_t i = 0; i + 1 < graph[node_1].size(); ++i)
+       {
+          assert(graph[node_1][i] < graph[node_1][i + 1]);
        }
-       if(node_2 == std::numeric_limits<std::size_t>::max())
+       if (node_2 == graph_matching_input::no_assignment)
           return graph[node_1].size();
 
        assert(std::binary_search(graph[node_1].begin(), graph[node_1].end(), node_2));
@@ -433,11 +436,13 @@ protected:
        graph_.resize(input.no_left_nodes);
        inverse_graph_.resize(input.no_right_nodes);
        for(const auto& a : input.assignments) {
-          assert(a.left_node < graph_.size());
-          assert(a.right_node < inverse_graph_.size());
+          assert(a.left_node < graph_.size() || a.left_node == graph_matching_input::no_assignment);
+          assert(a.right_node < inverse_graph_.size() || a.right_node == graph_matching_input::no_assignment);
 
-          graph_[a.left_node].push_back(a.right_node);
-          inverse_graph_[a.right_node].push_back(a.left_node);
+          if (a.left_node != graph_matching_input::no_assignment && a.right_node != graph_matching_input::no_assignment) {
+             graph_[a.left_node].push_back(a.right_node);
+             inverse_graph_[a.right_node].push_back(a.left_node);
+          }
        }
 
         for(auto& v : graph_) { std::sort(v.begin(), v.end()); }
@@ -470,16 +475,46 @@ protected:
        }();
 
        for(const auto& a : input.assignments) {
-           const std::size_t left_index = get_left_index(a.left_node, a.right_node);
-           const std::size_t right_index = get_right_index(a.right_node, a.left_node);
+          auto [left_index, left_factor] = [&]() -> std::tuple<std::size_t, typename MRF_CONSTRUCTOR::UnaryFactorContainer*> {
+             if (a.left_node != graph_matching_input::no_assignment)
+             {
+                const std::size_t left_index = get_left_index(a.left_node, a.right_node);
+                auto *left_factor = left_mrf.get_unary_factor(a.left_node);
+                assert((*left_factor->get_factor())[left_index] == 0.0);
+                return {left_index, left_factor};
+             }
+             else
+             {
+                return {graph_matching_input::no_assignment, nullptr};
+             }
+          }();
 
-           auto* left_factor = left_mrf.get_unary_factor(a.left_node);
-           assert((*left_factor->get_factor())[left_index] == 0.0);
-           (*left_factor->get_factor())[left_index] = left_weight*a.cost;
+          auto [right_index, right_factor] = [&]() -> std::tuple<std::size_t, typename MRF_CONSTRUCTOR::UnaryFactorContainer*> {
+             if (a.right_node != graph_matching_input::no_assignment)
+             {
+                const std::size_t right_index = get_right_index(a.right_node, a.left_node);
+                auto *right_factor = right_mrf.get_unary_factor(a.right_node);
+                assert((*right_factor->get_factor())[right_index] == 0.0);
+                return {right_index, right_factor};
+             }
+             else
+             {
+                return {graph_matching_input::no_assignment, nullptr};
+             }
+          }();
 
-           auto* right_factor = right_mrf.get_unary_factor(a.right_node);
-           assert((*right_factor->get_factor())[right_index] == 0.0);
-           (*right_factor->get_factor())[right_index] = right_weight*a.cost;
+          if(left_factor != nullptr && right_factor != nullptr) {
+             (*left_factor->get_factor())[left_index] = left_weight * a.cost;
+             (*right_factor->get_factor())[right_index] = right_weight * a.cost;
+          }
+          else if (left_factor != nullptr)
+          {
+             (*left_factor->get_factor())[left_index] = a.cost;
+          }
+          else if (right_factor != nullptr)
+          {
+             (*right_factor->get_factor())[right_index] = a.cost;
+          }
        }
    }
 
@@ -507,28 +542,32 @@ protected:
                }
            }();
 
-           assert(node_1 < node_2);
+           assert(node_1 < node_2 || node_1 == graph_matching_input::no_assignment);
 
-           if(!mrf.has_pairwise_factor(node_1, node_2)) {
-               auto* f = mrf.add_empty_pairwise_factor(node_1, node_2);
-               // add infinities on diagonal
-               for(std::size_t i1=0; i1<graph[node_1].size(); ++i1) {
-                   for(std::size_t i2=0; i2<graph[node_2].size(); ++i2) {
-                       if(graph[node_1][i1] == graph[node_2][i2]) {
-                           f->get_factor()->cost(i1, i2) = std::numeric_limits<REAL>::infinity();
+           if(node_1 != graph_matching_input::no_assignment && node_2 != graph_matching_input::no_assignment) {
+              if (!mrf.has_pairwise_factor(node_1, node_2))
+              {
+                 auto *f = mrf.add_empty_pairwise_factor(node_1, node_2);
+                 // add infinities on diagonal
+                 for (std::size_t i1 = 0; i1 < graph[node_1].size(); ++i1)
+                 {
+                    for (std::size_t i2 = 0; i2 < graph[node_2].size(); ++i2)
+                    {
+                       if (graph[node_1][i1] == graph[node_2][i2])
+                       {
+                          f->get_factor()->cost(i1, i2) = std::numeric_limits<REAL>::infinity();
                        }
-                   }
-               }
+                    }
+                 }
+              }
 
+                 auto *f = mrf.get_pairwise_factor(node_1, node_2);
 
-           } 
+                 const auto index_1 = get_index(node_1, label_1, graph);
+                 const auto index_2 = get_index(node_2, label_2, graph);
 
-           auto* f = mrf.get_pairwise_factor(node_1, node_2);
-
-           const auto index_1 = get_index(node_1, label_1, graph);
-           const auto index_2 = get_index(node_2, label_2, graph);
-
-           f->get_factor()->cost(index_1, index_2) = scaling*q.cost; 
+                 f->get_factor()->cost(index_1, index_2) = scaling * q.cost; // TODO: remove scaling for entry that is only present in left or right mrf
+           }
        } 
    }
    void construct_pairwise_factors(const graph_matching_input& input)
@@ -816,7 +855,6 @@ public:
     {
        GRAPH_MATCHING_CONSTRUCTOR::construct(gm_input);
 
-       std::cout << "construct interquadratic messages\n";
        for(std::size_t left_pairwise_factor_id=0; left_pairwise_factor_id<this->left_mrf.get_number_of_pairwise_factors(); ++left_pairwise_factor_id) {
           auto* l = this->left_mrf.get_pairwise_factor(left_pairwise_factor_id);
           const auto [l_node_1,l_node_2] = this->left_mrf.get_pairwise_variables(left_pairwise_factor_id);

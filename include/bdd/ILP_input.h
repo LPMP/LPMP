@@ -44,6 +44,12 @@ namespace LPMP {
             return var_name_to_index_.find(var)->second;
         }
 
+        std::string get_var_name(const std::size_t index) const
+        {
+            assert(index < var_index_to_name_.size());
+            return var_index_to_name_[index];
+        }
+
         std::size_t add_new_variable(const std::string& var)
         {
             assert(!var_exists(var));

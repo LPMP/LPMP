@@ -11,8 +11,8 @@ namespace LPMP {
         virtual double lower_bound() = 0;
         virtual void iteration() = 0;
 
-        virtual std::size_t nr_bdds() const = 0;
-        virtual std::size_t nr_variables() const = 0;
+        // virtual std::size_t nr_bdds() const = 0;
+        // virtual std::size_t nr_variables() const = 0;
 
     };
 
