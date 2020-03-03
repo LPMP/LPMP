@@ -12,7 +12,8 @@ namespace LPMP {
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
     class graph_matching_frank_wolfe_impl {
         public:
-            graph_matching_frank_wolfe_impl(const graph_matching_input& gm, const graph_matching_input::labeling& l = {});
+            graph_matching_frank_wolfe_impl(const graph_matching_input& gm, const graph_matching_input::labeling& l,  const graph_matching_frank_wolfe_options o);
+            void set_options(const graph_matching_frank_wolfe_options o) { options = o; }
             ASSIGNMENT_VECTOR_TYPE construct_matching_matrix(const graph_matching_input::labeling& l) const;
 
             std::size_t no_left_nodes() const;
@@ -52,17 +53,19 @@ namespace LPMP {
             ASSIGNMENT_VECTOR_TYPE M; // current matching
             MCF::SSP<int, double> mcf;
             double constant_ = 0.0;
+            graph_matching_frank_wolfe_options options;
     };
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
-    graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::graph_matching_frank_wolfe_impl(const graph_matching_input& gm, const graph_matching_input::labeling& labeling)
+    graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::graph_matching_frank_wolfe_impl(const graph_matching_input& gm, const graph_matching_input::labeling& labeling, const graph_matching_frank_wolfe_options o)
         :
             no_left_nodes_(gm.no_left_nodes),
             no_right_nodes_(gm.no_right_nodes),
             //Q((gm.no_left_nodes+1)*(gm.no_right_nodes+1), (gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
             //L((gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
             //M((gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
-            constant_(gm.get_constant())
+            constant_(gm.get_constant()),
+            options(o)
     {
         Q = QUADRATIC_COST_TYPE((gm.no_left_nodes+1)*(gm.no_right_nodes+1), (gm.no_left_nodes+1)*(gm.no_right_nodes+1));
         L = ASSIGNMENT_VECTOR_TYPE((gm.no_left_nodes + 1) * (gm.no_right_nodes + 1));
@@ -418,7 +421,7 @@ namespace LPMP {
         const double gap = -d.cwiseProduct(g).sum();
         //if(iter%20 == 0)
             //std::cout << "gap = " << gap << "\n";
-        if(gap < 1e-4) {
+        if(gap < options.gap) {
             //std::cout << "gap smaller than threshold, terminate!\n";
             return false;
         }
@@ -478,7 +481,7 @@ namespace LPMP {
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
     void graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::solve()
     {
-        for(std::size_t iter=0; iter<400; ++iter) {
+        for(std::size_t iter=0; iter<options.max_iter; ++iter) {
             if(!perform_fw_step(iter))
                 break;
             //if(iter%20 == 0)

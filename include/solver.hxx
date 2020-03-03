@@ -523,8 +523,8 @@ namespace LPMP {
         void ProblemConstructorRoundingSolver<SOLVER>::Begin()
         {
             SOLVER::Begin();
-            ComputePrimal();
-            this->RegisterPrimal();
+            //ComputePrimal();
+            //this->RegisterPrimal();
         }
 
     template<typename SOLVER>

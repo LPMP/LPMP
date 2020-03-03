@@ -5,8 +5,8 @@
 #include "tree_decomposition.hxx"
 #include "graph_matching_input.h"
 #include "graph_matching_frank_wolfe.h"
-// TODO: for fork FW
 
+// TODO: for fork FW
 extern "C"
 {
 #include <stdio.h>
@@ -30,7 +30,8 @@ public:
         left_mrf(solver),
         right_mrf(solver),
         construction_arg_("", "graphMatchingConstruction", "mode of constructing pairwise potentials for graph matching", false, "left", "{left|right|both_sides}", solver.get_cmd()),
-        rounding_arg_("", "graphMatchingRounding", "method for graph matching rounding", false, "mcf", "{mcf/fw}", solver.get_cmd())
+        rounding_arg_("", "graphMatchingRounding", "method for graph matching rounding", false, "mcf", "{mcf/fw}", solver.get_cmd()),
+        frank_wolfe_iterations_arg_("","graphMatchingFrankWolfeIterations", "how many iterations to run the Frank Wolfe method for graph matching rounding", false, 400, "integer > 0", solver.get_cmd()) 
     {}
 
     graph_matching_mrf_constructor(LP<FMC>* lp, const std::string& construction_method, const std::string& rounding_method)
@@ -236,7 +237,9 @@ public:
        }
        else if (pid == 0)
        {
-          graph_matching_frank_wolfe gm_fw(input, labeling);
+          graph_matching_frank_wolfe_options o;
+          o.max_iter = frank_wolfe_iterations_arg_.getValue();
+          graph_matching_frank_wolfe gm_fw(input, labeling, o);
           const auto l_tmp = gm_fw.solve();
           for (std::size_t i = 0; i < input.no_left_nodes; ++i)
           {
@@ -569,57 +572,93 @@ protected:
    template<Chirality CHIRALITY>
    void construct_pairwise_factors(MRF_CONSTRUCTOR& mrf, const REAL scaling, std::vector<std::vector<std::size_t>>& graph, const graph_matching_input& input)
    {
-       for(const auto& q : input.quadratic_terms) {
-           const auto assignment_1 = input.assignments[q.assignment_1];
-           const auto assignment_2 = input.assignments[q.assignment_2];
+      assert(scaling == 0.0 || scaling == 0.5 || scaling == 1.0);
+      auto term_on_left_side_only = [&](const std::array<std::size_t,2> a1, const std::array<std::size_t,2> a2) {
+         if(a1[1] == graph_matching_input::no_assignment || a2[1] == graph_matching_input::no_assignment)
+            return true;
+         return false;
+      };
+      auto term_on_right_side_only = [&](const std::array<std::size_t,2> a1, const std::array<std::size_t,2> a2) {
+         if(a1[0] == graph_matching_input::no_assignment || a2[0] == graph_matching_input::no_assignment)
+            return true;
+         return false;
+      };
+      auto term_on_both_sides = [&](const std::array<std::size_t, 2> a1, const std::array<std::size_t, 2> a2) {
+         if (a1[0] != graph_matching_input::no_assignment && a1[1] != graph_matching_input::no_assignment && a2[0] != graph_matching_input::no_assignment && a2[1] != graph_matching_input::no_assignment)
+            return true;
+         return false;
+      };
+      for (const auto &q : input.quadratic_terms)
+      {
+         const auto assignment_1 = input.assignments[q.assignment_1];
+         const auto assignment_2 = input.assignments[q.assignment_2];
+         const bool on_left_only = term_on_left_side_only({assignment_1.left_node, assignment_1.right_node}, {assignment_2.left_node, assignment_2.right_node});
+         const bool on_right_only = term_on_right_side_only({assignment_1.left_node, assignment_1.right_node}, {assignment_2.left_node, assignment_2.right_node});
+         const bool on_both_sides = term_on_both_sides({assignment_1.left_node, assignment_1.right_node}, {assignment_2.left_node, assignment_2.right_node});
+         assert(int(on_left_only) + int(on_right_only) + int(on_both_sides) == 1);
 
-           const auto [node_1, node_2, label_1, label_2] = [&]()  {
-               if(Chirality::left == CHIRALITY) {
-                   if(assignment_1.left_node < assignment_2.left_node) { 
-                       return std::make_tuple(assignment_1.left_node, assignment_2.left_node, assignment_1.right_node, assignment_2.right_node);
-                   } else {
-                       return std::make_tuple(assignment_2.left_node, assignment_1.left_node, assignment_2.right_node, assignment_1.right_node);
-                   }
-               } else {
-                   assert(CHIRALITY == Chirality::right);
-                   if(assignment_1.right_node < assignment_2.right_node) { 
-                       return std::make_tuple(assignment_1.right_node, assignment_2.right_node, assignment_1.left_node, assignment_2.left_node);
-                   } else {
-                       return std::make_tuple(assignment_2.right_node, assignment_1.right_node, assignment_2.left_node, assignment_1.left_node);
-                   }
+         const auto [node_1, node_2, label_1, label_2] = [&]() {
+            if (Chirality::left == CHIRALITY)
+            {
+               if (assignment_1.left_node < assignment_2.left_node)
+               {
+                  return std::make_tuple(assignment_1.left_node, assignment_2.left_node, assignment_1.right_node, assignment_2.right_node);
                }
-           }();
+               else
+               {
+                  return std::make_tuple(assignment_2.left_node, assignment_1.left_node, assignment_2.right_node, assignment_1.right_node);
+               }
+            }
+            else
+            {
+               assert(CHIRALITY == Chirality::right);
+               if (assignment_1.right_node < assignment_2.right_node)
+               {
+                  return std::make_tuple(assignment_1.right_node, assignment_2.right_node, assignment_1.left_node, assignment_2.left_node);
+               }
+               else
+               {
+                  return std::make_tuple(assignment_2.right_node, assignment_1.right_node, assignment_2.left_node, assignment_1.left_node);
+               }
+            }
+         }();
 
-           assert(node_1 < node_2 || node_1 == graph_matching_input::no_assignment);
+         assert(node_1 < node_2 || node_1 == graph_matching_input::no_assignment);
 
-           if(node_1 != graph_matching_input::no_assignment && node_2 != graph_matching_input::no_assignment) {
-              if (!mrf.has_pairwise_factor(node_1, node_2))
-              {
-                 auto *f = mrf.add_empty_pairwise_factor(node_1, node_2);
-                 // add infinities on diagonal
-                 for (std::size_t i1 = 0; i1 < graph[node_1].size(); ++i1)
-                 {
-                    for (std::size_t i2 = 0; i2 < graph[node_2].size(); ++i2)
-                    {
-                       if (graph[node_1][i1] == graph[node_2][i2])
-                       {
-                          f->get_factor()->cost(i1, i2) = std::numeric_limits<REAL>::infinity();
-                       }
-                    }
-                 }
-              }
+         if (node_1 != graph_matching_input::no_assignment && node_2 != graph_matching_input::no_assignment)
+         {
+            if (!mrf.has_pairwise_factor(node_1, node_2))
+            {
+               auto *f = mrf.add_empty_pairwise_factor(node_1, node_2);
+               // add infinities on diagonal
+               for (std::size_t i1 = 0; i1 < graph[node_1].size(); ++i1)
+               {
+                  for (std::size_t i2 = 0; i2 < graph[node_2].size(); ++i2)
+                  {
+                     if (graph[node_1][i1] == graph[node_2][i2])
+                     {
+                        f->get_factor()->cost(i1, i2) = std::numeric_limits<REAL>::infinity();
+                     }
+                  }
+               }
+            }
 
-                 auto *f = mrf.get_pairwise_factor(node_1, node_2);
+            auto *f = mrf.get_pairwise_factor(node_1, node_2);
 
-                 const auto index_1 = get_index(node_1, label_1, graph);
-                 const auto index_2 = get_index(node_2, label_2, graph);
+            const auto index_1 = get_index(node_1, label_1, graph);
+            const auto index_2 = get_index(node_2, label_2, graph);
 
-                 f->get_factor()->cost(index_1, index_2) = scaling * q.cost; // TODO: remove scaling for entry that is only present in left or right mrf
-           }
+            if (on_left_only || on_right_only) {
+               assert(index_1 + 1 == f->get_factor()->dim1() || index_2 + 1 == f->get_factor()->dim2());
+               f->get_factor()->cost(index_1, index_2) += q.cost; // TODO: remove scaling for entry that is only present in left or right mrf. Correct?
+            } else
+               f->get_factor()->cost(index_1, index_2) += scaling * q.cost;
+         }
        } 
    }
    void construct_pairwise_factors(const graph_matching_input& input)
    {
+      // TODO: check if all quadratic entries are on correct side when using only left or right
        if(construction_arg_.getValue() == "left") {
            construct_pairwise_factors<Chirality::left>(left_mrf, 1.0, graph_, input);
        } else if(construction_arg_.getValue() == "right") {
@@ -706,6 +745,7 @@ public:
 private:
     TCLAP::ValueArg<std::string> construction_arg_;
     TCLAP::ValueArg<std::string> rounding_arg_;
+    TCLAP::ValueArg<std::size_t> frank_wolfe_iterations_arg_;
 
 protected: 
    // TODO: remove and change mcf construction in mcf solver

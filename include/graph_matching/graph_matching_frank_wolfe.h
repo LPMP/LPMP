@@ -6,12 +6,17 @@
 
 namespace LPMP {
 
+    struct graph_matching_frank_wolfe_options {
+        std::size_t max_iter = 1000;
+        double gap = 1e-4;
+    };
+
     class graph_matching_frank_wolfe_dense;
     class graph_matching_frank_wolfe_sparse;
 
     class graph_matching_frank_wolfe {
         public:
-            graph_matching_frank_wolfe(const graph_matching_input& gm, const graph_matching_input::labeling& l = {});
+            graph_matching_frank_wolfe(const graph_matching_input& gm, const graph_matching_input::labeling& l = {}, const graph_matching_frank_wolfe_options o = {});
             graph_matching_input::labeling solve(); 
         private:
             std::variant<graph_matching_frank_wolfe_dense*, graph_matching_frank_wolfe_sparse*> solver;
