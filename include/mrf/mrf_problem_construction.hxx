@@ -393,7 +393,8 @@ public:
 
   void send_messages_to_unaries()
   {
-     for(auto* p : pairwiseFactor_) {
+     for (auto *p : pairwiseFactor_)
+     {
         auto msgs = get_unary_messages(p);
         std::get<0>(msgs)->send_message_to_right(1.0);
         std::get<1>(msgs)->send_message_to_right(1.0);
@@ -401,7 +402,7 @@ public:
         std::get<0>(msgs)->send_message_to_left(0.5);
         std::get<1>(msgs)->send_message_to_left(1.0);
         std::get<0>(msgs)->send_message_to_left(1.0);
-     } 
+     }
   }
 
   void construct(const mrf_input& input)

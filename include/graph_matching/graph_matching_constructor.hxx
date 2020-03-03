@@ -96,6 +96,11 @@ public:
        }
        }();
        read_in_labeling(l);
+       const double labeling_cost = this->lp_->EvaluatePrimal(); // TODO: storing best solution should be done by the solver class.
+       if(labeling_cost < best_labeling_cost_) {
+          best_labeling_cost_ = labeling_cost;
+          best_labeling_ = l; 
+       }
     }
 
     bool CheckPrimalConsistency() const
@@ -444,6 +449,11 @@ public:
        return output;
     }
 
+    graph_matching_input::labeling best_labeling() const
+    {
+       return best_labeling_;
+    }
+
     bool has_edge(const std::size_t node_left, const std::size_t node_right) const
     {
        assert(node_left < no_left_nodes());
@@ -753,6 +763,8 @@ protected:
    std::vector<assignment> assignments_;
    struct quadratic {const std::size_t assignment_1; const std::size_t assignment_2; const REAL cost;};
    std::vector<quadratic> quadratic_; 
+   graph_matching_input::labeling best_labeling_;
+   double best_labeling_cost_ = std::numeric_limits<double>::infinity();
 };
 
 template<typename GRAPH_MATCHING_MRF_CONSTRUCTOR, typename ASSIGNMENT_MESSAGE>

@@ -193,16 +193,15 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("construct", [](gm_mp_solver& s, const LPMP::graph_matching_input& input){ return s.GetProblemConstructor().construct(input); })
         .def("solve", &gm_mp_solver::Solve)
         .def("export", [](gm_mp_solver& s){ return s.GetProblemConstructor().export_graph_matching_input(); })
-        .def("result", [](gm_mp_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
+        .def("result", [](gm_mp_solver& s){ return s.GetProblemConstructor().best_labeling(); });
 
-/*
     using gm_mp_q_solver = LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::FMC_MP_Q>,LPMP::StandardVisitor>>; 
     py::class_<gm_mp_q_solver>(m, "graph_matching_message_passing_interquadratic_message_solver")
         .def(py::init<std::vector<std::string>&>())
         .def("construct", [](gm_mp_q_solver& s, const LPMP::graph_matching_input& input){ return s.GetProblemConstructor().construct(input); })
         .def("solve", &gm_mp_q_solver::Solve)
         .def("export",  [](gm_mp_q_solver& s){ return s.GetProblemConstructor().export_graph_matching_input(); })
-        .def("result",  [](gm_mp_q_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
+        .def("result",  [](gm_mp_q_solver& s){ return s.GetProblemConstructor().best_labeling(); });
 
     using gm_mp_t_solver = LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::FMC_MP_T>,LPMP::StandardVisitor>>; 
     py::class_<gm_mp_t_solver>(m, "graph_matching_message_passing_tightening_solver")
@@ -210,7 +209,7 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("construct", [](gm_mp_t_solver& s, const LPMP::graph_matching_input& input){ return s.GetProblemConstructor().construct(input); })
         .def("solve", &gm_mp_t_solver::Solve)
         .def("export",  [](gm_mp_t_solver& s){ return s.GetProblemConstructor().export_graph_matching_input(); })
-        .def("result",  [](gm_mp_t_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
+        .def("result",  [](gm_mp_t_solver& s){ return s.GetProblemConstructor().best_labeling(); });
 
     using gm_mp_q_t_solver = LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::FMC_MP_Q_T>,LPMP::StandardVisitor>>; 
     py::class_<gm_mp_q_t_solver>(m, "graph_matching_message_passing_interquadratic_message_tightening_solver")
@@ -218,7 +217,7 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("construct", [](gm_mp_q_t_solver& s, const LPMP::graph_matching_input& input){ return s.GetProblemConstructor().construct(input); })
         .def("solve", &gm_mp_q_t_solver::Solve)
         .def("export",  [](gm_mp_q_t_solver& s){ return s.GetProblemConstructor().export_graph_matching_input(); })
-        .def("result",  [](gm_mp_q_t_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
+        .def("result",  [](gm_mp_q_t_solver& s){ return s.GetProblemConstructor().best_labeling(); });
 
     using gm_mrf_solver = LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::FMC_GM>,LPMP::StandardVisitor>>; 
     py::class_<gm_mrf_solver>(m, "graph_matching_mrf_solver")
@@ -226,7 +225,7 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("construct", [](gm_mrf_solver& s, const LPMP::graph_matching_input& input){ return s.GetProblemConstructor().construct(input); })
         .def("solve", &gm_mrf_solver::Solve)
         .def("export",  [](gm_mrf_solver& s){ return s.GetProblemConstructor().export_graph_matching_input(); })
-        .def("result",  [](gm_mrf_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
+        .def("result",  [](gm_mrf_solver& s){ return s.GetProblemConstructor().best_labeling(); });
 
     using gm_mrf_t_solver = LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::FMC_GM_T>,LPMP::StandardVisitor>>; 
     py::class_<gm_mrf_t_solver>(m, "graph_matching_mrf_tightening_solver")
@@ -234,7 +233,6 @@ PYBIND11_MODULE(graph_matching_py, m) {
         .def("construct", [](gm_mrf_t_solver& s, const LPMP::graph_matching_input& input){ return s.GetProblemConstructor().construct(input); })
         .def("solve", &gm_mrf_t_solver::Solve)
         .def("export",  [](gm_mrf_t_solver& s){ return s.GetProblemConstructor().export_graph_matching_input(); })
-        .def("result",  [](gm_mrf_t_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
-        */
+        .def("result",  [](gm_mrf_t_solver& s){ return s.GetProblemConstructor().best_labeling(); });
 
 }
