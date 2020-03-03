@@ -363,8 +363,8 @@ namespace LPMP {
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
     void graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::read_solution(Eigen::SparseVector<double>& sol) const
     { 
-        sol = Eigen::SparseVector<double>((no_left_nodes()+1)*(no_right_nodes()+1));
-        sol.reserve(no_left_nodes() + no_right_nodes());
+        Eigen::SparseVector<double> tmp((no_left_nodes()+1)*(no_right_nodes()+1));
+        tmp.reserve(no_left_nodes() + no_right_nodes());
         // assignment
         for(std::size_t i=0; i<no_left_nodes(); ++i) {
             const auto e_first = mcf.first_outgoing_arc(i);
@@ -374,7 +374,7 @@ namespace LPMP {
                 if(mcf.flow(e) == 1) {
                     assert(mcf.head(e) >= no_left_nodes());
                     const std::size_t j = mcf.head(e) - no_left_nodes();
-                    sol.insert(linear_coeff(i,j)) = 1.0;
+                    tmp.insert(linear_coeff(i,j)) = 1.0;
                 }
             }
         }
@@ -382,7 +382,7 @@ namespace LPMP {
         for(std::size_t i=0; i<no_left_nodes(); ++i) {
             const std::size_t e = mcf.first_outgoing_arc(i) + mcf.no_outgoing_arcs(i) - 1;
             if(mcf.flow(e) == 1) {
-                sol.insert(linear_coeff(i, graph_matching_input::no_assignment)) = 1.0;
+                tmp.insert(linear_coeff(i, graph_matching_input::no_assignment)) = 1.0;
             }
         }
 
@@ -390,11 +390,12 @@ namespace LPMP {
             const std::size_t e = mcf.first_outgoing_arc(no_left_nodes() + i) + mcf.no_outgoing_arcs(no_left_nodes() + i) - 1;
             assert(mcf.flow(e) == 0 || mcf.flow(e) == -1);
             if(mcf.flow(e) == -1) {
-                sol.insert(linear_coeff(graph_matching_input::no_assignment, i)) = 1.0;
+                tmp.insert(linear_coeff(graph_matching_input::no_assignment, i)) = 1.0;
             }
         }
 
-        assert(feasible(sol));
+        assert(feasible(tmp));
+        sol = tmp;
         //return sol; 
     }
 
@@ -435,7 +436,7 @@ namespace LPMP {
         // diminishing step size
         //const double gamma = 2.0/(iter+3.0);
 
-        M += gamma * d;
+        M += (gamma * d).eval(); // TODO: needed?
         assert(feasible(M));
 
         //if(iter%20 == 0)
