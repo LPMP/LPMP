@@ -29,7 +29,8 @@ namespace LPMP {
             double evaluate(const MATRIX &m) const;
             double evaluate() const { return evaluate(M); }
             bool perform_fw_step(const std::size_t iter);
-            Eigen::SparseVector<double> round();
+            //Eigen::SparseVector<double> round();
+            void round(Eigen::SparseVector<double>& sol);
             graph_matching_input::labeling get_solution();
             void solve();
 
@@ -39,7 +40,8 @@ namespace LPMP {
 
             template<typename MATRIX>
                 void update_costs(const MATRIX& m);
-            Eigen::SparseVector<double> read_solution() const;
+            //Eigen::SparseVector<double> read_solution() const;
+            void read_solution(Eigen::SparseVector<double>& sol) const;
 
             std::array<std::size_t,2> quadratic_indices(const std::size_t l1, const std::size_t l2, const std::size_t r1, const std::size_t r2) const;
 
@@ -48,7 +50,7 @@ namespace LPMP {
             QUADRATIC_COST_TYPE Q; // quadratic costs
             ASSIGNMENT_VECTOR_TYPE L; // linear costs
             ASSIGNMENT_VECTOR_TYPE M; // current matching
-            MCF::SSP<int, double> mcf; 
+            MCF::SSP<int, double> mcf;
             double constant_ = 0.0;
     };
 
@@ -57,11 +59,14 @@ namespace LPMP {
         :
             no_left_nodes_(gm.no_left_nodes),
             no_right_nodes_(gm.no_right_nodes),
-            Q((gm.no_left_nodes+1)*(gm.no_right_nodes+1), (gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
-            L((gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
-            M((gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
+            //Q((gm.no_left_nodes+1)*(gm.no_right_nodes+1), (gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
+            //L((gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
+            //M((gm.no_left_nodes+1)*(gm.no_right_nodes+1)),
             constant_(gm.get_constant())
     {
+        Q = QUADRATIC_COST_TYPE((gm.no_left_nodes+1)*(gm.no_right_nodes+1), (gm.no_left_nodes+1)*(gm.no_right_nodes+1));
+        L = ASSIGNMENT_VECTOR_TYPE((gm.no_left_nodes + 1) * (gm.no_right_nodes + 1));
+        M = ASSIGNMENT_VECTOR_TYPE((gm.no_left_nodes + 1) * (gm.no_right_nodes + 1));
         Q.setZero();
         L.setZero();
         M.setZero();
@@ -124,8 +129,7 @@ namespace LPMP {
             assert(std::abs(gm.evaluate(labeling) - evaluate(M)) <= tolerance);
         }
 
-        gm.initialize_mcf(mcf);
-
+        gm.initialize_mcf(mcf); 
 
         //if constexpr(std::is_same_v<ASSIGNMENT_VECTOR_TYPE, Eigen::SparseVector<double>>)
         //    L.makeCompressed();
@@ -357,10 +361,10 @@ namespace LPMP {
 
     // possibly sparse matrix does not accelerate
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
-    Eigen::SparseVector<double> graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::read_solution() const
+    void graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::read_solution(Eigen::SparseVector<double>& sol) const
     { 
-        Eigen::SparseVector<double> sol((no_left_nodes()+1)*(no_right_nodes()+1));
-        sol.reserve(no_left_nodes() + no_right_nodes());
+        Eigen::SparseVector<double> tmp((no_left_nodes()+1)*(no_right_nodes()+1));
+        tmp.reserve(no_left_nodes() + no_right_nodes());
         // assignment
         for(std::size_t i=0; i<no_left_nodes(); ++i) {
             const auto e_first = mcf.first_outgoing_arc(i);
@@ -370,7 +374,7 @@ namespace LPMP {
                 if(mcf.flow(e) == 1) {
                     assert(mcf.head(e) >= no_left_nodes());
                     const std::size_t j = mcf.head(e) - no_left_nodes();
-                    sol.insert(linear_coeff(i,j)) = 1.0;
+                    tmp.insert(linear_coeff(i,j)) = 1.0;
                 }
             }
         }
@@ -378,7 +382,7 @@ namespace LPMP {
         for(std::size_t i=0; i<no_left_nodes(); ++i) {
             const std::size_t e = mcf.first_outgoing_arc(i) + mcf.no_outgoing_arcs(i) - 1;
             if(mcf.flow(e) == 1) {
-                sol.insert(linear_coeff(i, graph_matching_input::no_assignment)) = 1.0;
+                tmp.insert(linear_coeff(i, graph_matching_input::no_assignment)) = 1.0;
             }
         }
 
@@ -386,12 +390,13 @@ namespace LPMP {
             const std::size_t e = mcf.first_outgoing_arc(no_left_nodes() + i) + mcf.no_outgoing_arcs(no_left_nodes() + i) - 1;
             assert(mcf.flow(e) == 0 || mcf.flow(e) == -1);
             if(mcf.flow(e) == -1) {
-                sol.insert(linear_coeff(graph_matching_input::no_assignment, i)) = 1.0;
+                tmp.insert(linear_coeff(graph_matching_input::no_assignment, i)) = 1.0;
             }
         }
 
-        assert(feasible(sol));
-        return sol; 
+        assert(feasible(tmp));
+        sol = tmp;
+        //return sol; 
     }
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
@@ -406,7 +411,9 @@ namespace LPMP {
         // min_x <x,g> s.t. x in matching polytope
         update_costs(g);
         mcf.solve();
-        const auto s = read_solution();
+        Eigen::SparseVector<double> s;
+        read_solution(s);
+        //const auto s = read_solution();
         const ASSIGNMENT_VECTOR_TYPE d(s-M); // update direction
         const double gap = -d.cwiseProduct(g).sum();
         //if(iter%20 == 0)
@@ -429,7 +436,7 @@ namespace LPMP {
         // diminishing step size
         //const double gamma = 2.0/(iter+3.0);
 
-        M += gamma * d;
+        M += (gamma * d).eval(); // TODO: needed?
         assert(feasible(M));
 
         //if(iter%20 == 0)
@@ -439,17 +446,19 @@ namespace LPMP {
     }
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
-    Eigen::SparseVector<double> graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::round()
+    void graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::round(Eigen::SparseVector<double>& sol)
     {
         update_costs(ASSIGNMENT_VECTOR_TYPE(-M));
         mcf.solve();
-        return read_solution();
+        read_solution(sol);
     }
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
         graph_matching_input::labeling graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::get_solution()
         {
-            const Eigen::SparseVector<double> sol_matrix = round();
+            Eigen::SparseVector<double> sol_matrix;
+            round(sol_matrix);
+            //const Eigen::SparseVector<double> sol_matrix = round();
             assert(sol_matrix.size() == (no_left_nodes()+1)*(no_right_nodes()+1));
             graph_matching_input::labeling sol(no_left_nodes(), graph_matching_input::no_assignment);
 
@@ -476,7 +485,10 @@ namespace LPMP {
             //    std::cout << "objective = " << evaluate() << "\n";
         }
 
-        M = round();
+        Eigen::SparseVector<double> M_temp;
+        round(M_temp);
+        M = ASSIGNMENT_VECTOR_TYPE(M_temp);
+        //M = round();
         //std::cout << "Rounded solution cost = " << evaluate() << "\n";
     }
 

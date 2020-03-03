@@ -5,6 +5,17 @@
 #include "tree_decomposition.hxx"
 #include "graph_matching_input.h"
 #include "graph_matching_frank_wolfe.h"
+// TODO: for fork FW
+
+extern "C"
+{
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h> 
+#include <sys/mman.h>
+}
 
 namespace LPMP {
 
@@ -209,9 +220,46 @@ public:
     {
        const graph_matching_input input = export_graph_matching_input();
        const graph_matching_input::labeling labeling = compute_primal_mcf_solution();
-       graph_matching_frank_wolfe gm_fw(input, labeling);
-       const auto l = gm_fw.solve();
+
+       const int protection = PROT_READ | PROT_WRITE;
+       const int visibility = MAP_SHARED | MAP_ANONYMOUS;
+       const int shared_sz = input.no_left_nodes*sizeof(std::size_t);
+       void* shared_mem_tmp = mmap(NULL, shared_sz, protection, visibility, -1, 0);
+       std::size_t *shared_mem = reinterpret_cast<std::size_t*>(shared_mem_tmp);
+       // TODO: this is a quick and dirty fix for fw memory leak.
+       pid_t pid = fork();
+
+       if (pid == -1)
+       {
+          perror("fork failed");
+          exit(EXIT_FAILURE);
+       }
+       else if (pid == 0)
+       {
+          graph_matching_frank_wolfe gm_fw(input, labeling);
+          const auto l_tmp = gm_fw.solve();
+          for (std::size_t i = 0; i < input.no_left_nodes; ++i)
+          {
+             shared_mem[i] = l_tmp[i];
+          }
+          _exit(EXIT_SUCCESS);
+       }
+       else
+       {
+          int status;
+          (void)waitpid(pid, &status, 0);
+       }
+       graph_matching_input::labeling l;
+       for (std::size_t i = 0; i < input.no_left_nodes; ++i)
+       {
+          l.push_back(shared_mem[i]);
+       }
+       munmap(shared_mem_tmp, shared_sz);
+
+       //graph_matching_frank_wolfe gm_fw(input, labeling);
+       //const auto l = gm_fw.solve();
        assert(input.evaluate(l) < std::numeric_limits<double>::infinity());
+       assert(input.evaluate(l) >= this->lp_->LowerBound() - 1e-8);
        return l;
     }
 
