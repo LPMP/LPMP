@@ -177,14 +177,14 @@ struct linear_assignment_problem_input {
       {
          assert(left != no_assignment || right != no_assignment);
          assert(left == no_assignment || left < no_left_nodes());
-         assert(right == no_assignment || right < highest_matched_node()+1);
+         //assert(right == no_assignment || right < highest_matched_node()+1);
          assert(right_node_taken.size() > highest_matched_node());
          if(left != no_assignment && right != no_assignment)
             return (*this)[left] == right;
          else if (right == no_assignment)
             return (*this)[left] == no_assignment;
          else
-           return right_node_taken[right] == 0; 
+           return right >= right_node_taken.size() || right_node_taken[right] == 0; 
       }
 
       template<typename STREAM>
