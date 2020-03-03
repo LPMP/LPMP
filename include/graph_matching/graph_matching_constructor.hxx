@@ -34,12 +34,13 @@ public:
         frank_wolfe_iterations_arg_("","graphMatchingFrankWolfeIterations", "how many iterations to run the Frank Wolfe method for graph matching rounding", false, 400, "integer > 0", solver.get_cmd()) 
     {}
 
-    graph_matching_mrf_constructor(LP<FMC>* lp, const std::string& construction_method, const std::string& rounding_method)
+    graph_matching_mrf_constructor(LP<FMC> *lp, const std::string &construction_method, const std::string &rounding_method, const std::size_t frank_wolfe_iterations)
         : lp_(lp),
-        left_mrf(lp),
-        right_mrf(lp),
-        construction_arg_("", "", "", false, construction_method, ""),
-        rounding_arg_("", "", "", false, rounding_method, "")
+          left_mrf(lp),
+          right_mrf(lp),
+          construction_arg_("", "", "", false, construction_method, ""),
+          rounding_arg_("", "", "", false, rounding_method, ""),
+          frank_wolfe_iterations_arg_("", "", "", false, frank_wolfe_iterations, "")
     {}
 
     void order_factors()

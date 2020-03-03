@@ -338,7 +338,7 @@ public:
     GRAPH_MATCHING_CONSTRUCTOR* add_graph_matching_problem(const std::size_t p, const std::size_t q, LP<FMC>* lp)
     {
         assert(!has_graph_matching_problem(p,q));
-        auto ptr = std::make_unique<GRAPH_MATCHING_CONSTRUCTOR>(lp, graph_matching_construction_arg_.getValue(), "mcf");
+        auto ptr = std::make_unique<GRAPH_MATCHING_CONSTRUCTOR>(lp, graph_matching_construction_arg_.getValue(), "mcf", 0);
         auto* c = ptr.get();
         graph_matching_constructors.push_back(std::make_pair(graph_matching({p,q}), std::move(ptr))); 
         graph_matching_constructors_map.insert(std::make_pair(graph_matching({p,q}), c)); 
@@ -794,8 +794,14 @@ public:
        if(primal_result_handle_.valid() && primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
           if(debug()) 
              std::cout << "read in primal mgm solution\n";
-          auto mgm_sol = primal_result_handle_.get();
+          const auto mgm_sol = primal_result_handle_.get();
           read_in_labeling(mgm_sol); 
+          const double labeling_cost = lp_->EvaluatePrimal();
+          if(labeling_cost < best_labeling_cost_)
+          {
+             best_labeling_cost_ = labeling_cost;
+             best_labeling_ = mgm_sol;
+          }
        }
 
        if(!primal_result_handle_.valid() || primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
@@ -895,6 +901,11 @@ public:
     multigraph_matching_input::labeling write_out_labeling() const
     {
         return get_primal();
+    }
+
+    multigraph_matching_input::labeling best_labeling() const
+    {
+       return best_labeling_;
     }
 
     multigraph_matching_input export_multigraph_matching_input() const
@@ -1023,6 +1034,9 @@ private:
     TCLAP::ValueArg<std::string> primal_rounding_algorithms_arg_; // which multicut algorithms to run on
 
     std::future<multigraph_matching_input::labeling> primal_result_handle_;
+
+    multigraph_matching_input::labeling best_labeling_;
+    double best_labeling_cost_ = std::numeric_limits<double>::infinity();
 }; 
 
 } // namespace LPMP
