@@ -209,9 +209,17 @@ public:
     {
        const graph_matching_input input = export_graph_matching_input();
        const graph_matching_input::labeling labeling = compute_primal_mcf_solution();
-       graph_matching_frank_wolfe gm_fw(input, labeling);
-       const auto l = gm_fw.solve();
-       assert(input.evaluate(l) < std::numeric_limits<double>::infinity());
+       graph_matching_input::labeling l;
+       // TODO: this is a quick and dirty fix for fw memory leak.
+       auto task = [&]() {
+          graph_matching_frank_wolfe gm_fw(input, labeling);
+          l = gm_fw.solve();
+          assert(input.evaluate(l) < std::numeric_limits<double>::infinity());
+          assert(input.evaluate(l) >= this->lp_->LowerBound() - 1e-8);
+          //return l;
+       };
+       std::thread t(task);
+       t.join();
        return l;
     }
 

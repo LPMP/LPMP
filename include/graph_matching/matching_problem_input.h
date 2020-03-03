@@ -54,7 +54,7 @@ struct linear_assignment_problem_input {
    {
       const std::size_t no_nodes = no_left_nodes + no_right_nodes;
       const std::size_t no_mcf_nodes = no_left_nodes + no_right_nodes + 2;
-      const std::size_t no_mcf_edges = assignments.size() + no_left_nodes + no_right_nodes + 1;
+      const std::size_t no_mcf_edges = assignments.size() + no_left_nodes + no_right_nodes + 1; // TODO: filter out the assignment that have non-assignment in one of their endpoints
 
        mcf = MCF(no_mcf_nodes, no_mcf_edges);
 
@@ -63,19 +63,26 @@ struct linear_assignment_problem_input {
        for (const auto a : assignments)
        {
           if (a.left_node != no_assignment && a.right_node != no_assignment)
+          {
              mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling * a.cost);
+          }
           else if (a.left_node == no_assignment)
-            right_non_assignment_costs[a.right_node] += scaling*a.cost;
+          {
+             assert(a.right_node < right_non_assignment_costs.size());
+             right_non_assignment_costs[a.right_node] += scaling * a.cost;
+          }
           else if (a.right_node == no_assignment)
-            left_non_assignment_costs[a.left_node] += scaling*a.cost;
-      }
+          {
+             assert(a.left_node < left_non_assignment_costs.size());
+             left_non_assignment_costs[a.left_node] += scaling * a.cost;
+          }
+       }
 
        for (std::size_t i = 0; i < no_left_nodes; ++i)
        {
           mcf.add_edge(i, no_nodes + 1, 0, 1, left_non_assignment_costs[i]); // for non-assignment
           mcf.add_node_excess(i, 1);
        }
-
 
       for(std::size_t i=0; i<no_right_nodes; ++i) {
          mcf.add_edge(no_nodes, no_left_nodes + i, 0, 1, right_non_assignment_costs[i]); // for non-assignment

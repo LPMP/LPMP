@@ -44,9 +44,9 @@ namespace LPMP {
       Eigen::VectorXd n = Eigen::VectorXd::Constant(largest_k_eigenvectors.rows(),1.0).array() / largest_k_eigenvectors.rowwise().norm().array();
       largest_k_eigenvectors = n.asDiagonal() * largest_k_eigenvectors;
       // test if each of k largest eigenvectors of U has l2-norm 1
-      for(std::size_t i=0; i<largest_k_eigenvectors.rows(); ++i) {
-         assert(std::abs( largest_k_eigenvectors.row(i).norm() - 1.0) < 1e-8);
-      }
+      //for(std::size_t i=0; i<largest_k_eigenvectors.rows(); ++i) {
+      //   assert(std::abs( largest_k_eigenvectors.row(i).norm() - 1.0) < 1e-8);
+      //}
 
       U = largest_k_eigenvectors * largest_k_eigenvectors.transpose();
       assert(U.cols() == mgm_size.total_no_nodes() && U.rows() == mgm_size.total_no_nodes());
