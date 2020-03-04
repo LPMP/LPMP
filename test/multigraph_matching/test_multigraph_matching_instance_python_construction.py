@@ -31,7 +31,7 @@ def construct_mgm_problem(nr_nodes):
 
     instance = mgm.multigraph_matching_input(assignments, quadratic_terms, edges)
 
-    solver = mgm.multigraph_matching_message_passing_solver(['','--multigraphMatchingRoundingMethod','MCF_PS','-v','0'])
+    solver = mgm.multigraph_matching_message_passing_solver(['','--multigraphMatchingRoundingMethod','MCF_PS','-v','1','--tighten', '--tightenConstraintsPercentage','0.1','--tightenInterval 50', '--tightenIteration 100', '--tightenReparametrization','uniform:0.5'])
     solver.construct(instance)
     solver.solve()
     result = solver.result()
