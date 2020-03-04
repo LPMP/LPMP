@@ -605,6 +605,9 @@ public:
 
     INDEX Tighten(const INDEX no_constraints_to_add)
     {
+       // If there are only two graphs, we need not tighten
+       if(graph_matching_constructors.size() <= 1)
+          return 0;
         // iterate over all triplets of graphs and enumerate all possible triplet consistency factors that can be added. 
         // Record guaranteed dual increase of adding the triplet consistency factor
         std::vector< std::vector<std::pair<triplet_consistency_factor, double>> > triplet_consistency_candidates_local(omp_get_max_threads());
@@ -788,90 +791,196 @@ public:
     // remote cycles that are inconsistent through a multicut solver
     void ComputePrimal()
     {
-       if(!mcf_primal_rounding_arg_.getValue())
+       if (debug())
+          std::cout << "construct mgm rounding problem\n";
+
+       if (debug())
+          std::cout << "send messages to unaries\n";
+       send_messages_to_unaries();
+
+       enum class rounding_method { gaec_KL, KL, mcf_KL, mcf_ps, fw_ps };
+
+       const rounding_method rm = [&]() {
+          if (primal_rounding_algorithms_arg_.getValue() == "gaec_KL")
+             return rounding_method::gaec_KL;
+          else if (primal_rounding_algorithms_arg_.getValue() == "KL")
+             return rounding_method::KL;
+          else if (primal_rounding_algorithms_arg_.getValue() == "MCF_KL") // K&L on infeasible partial minimum cost flow matchings
+             return rounding_method::mcf_KL;
+          else if (primal_rounding_algorithms_arg_.getValue() == "MCF_PS") // permutation synchronization
+             return rounding_method::mcf_ps;
+          else if (primal_rounding_algorithms_arg_.getValue() == "FW_PS") // permutation synchronization
+             return rounding_method::fw_ps;
+          else
+             throw std::runtime_error("could not recognize correlation clustering rounding method");
+       }();
+
+       multigraph_matching_input::labeling labeling_to_improve;
+       if (rm == rounding_method::mcf_KL || rm == rounding_method::mcf_ps)
+          for (auto &c : graph_matching_constructors)
+             labeling_to_improve.push_back({c.first.p, c.first.q, c.second->compute_primal_mcf_solution()});
+       else if (rm == rounding_method::fw_ps)
+          for (auto &c : graph_matching_constructors)
+             labeling_to_improve.push_back({c.first.p, c.first.q, c.second->compute_primal_fw_solution()});
+
+       const auto mgm = export_linear_multigraph_matching_input();
+       const auto allowed_matchings = compute_allowed_matching_matrix();
+       auto mgm_sol = [&]() {
+          auto mgm_ptr = std::make_shared<multigraph_matching_input>(mgm);
+          multigraph_matching_correlation_clustering_transform mgm_cc_trafo(mgm_ptr);
+          auto cc = mgm_cc_trafo.get_correlatino_clustering_instance();
+          auto mc = cc.transform_to_multicut();
+          if (rm == rounding_method::gaec_KL)
+          {
+             auto mc_sol = compute_multicut_gaec_kernighan_lin(mc); // seems better than just computing with Kernighan&Lin
+             auto cc_sol = mc_sol.transform_to_correlation_clustering();
+             auto mgm_sol = mgm_cc_trafo.transform(cc_sol);
+             return mgm_sol;
+          }
+          else if (rm == rounding_method::KL)
+          {
+             auto mc_sol = compute_multicut_kernighan_lin(mc);
+             auto cc_sol = mc_sol.transform_to_correlation_clustering();
+             auto mgm_sol = mgm_cc_trafo.transform(cc_sol);
+             return mgm_sol;
+          }
+          else if (rm == rounding_method::mcf_KL)
+          {
+             // try fixing infeasible matchings computed by individual graph matching solvers with Kernighan&Lin
+             auto cc_sol_to_improve = mgm_cc_trafo.transform(labeling_to_improve);
+             auto mc_sol_to_improve = cc_sol_to_improve.transform_to_multicut();
+             auto mc_sol = compute_multicut_kernighan_lin(mc, mc_sol_to_improve);
+             auto cc_sol = mc_sol.transform_to_correlation_clustering();
+             auto mgm_sol = mgm_cc_trafo.transform(cc_sol);
+             return mgm_sol;
+          }
+          else if (rm == rounding_method::mcf_ps || rm == rounding_method::fw_ps)
+          {
+             multigraph_matching_input::graph_size gs(mgm);
+             synchronize_multigraph_matching(gs, labeling_to_improve, allowed_matchings); // for sparse assignment problems
+             //synchronize_multigraph_matching(gs, labeling_to_improve); // when all edges are present in pairwise matching subproblems
+             return labeling_to_improve;
+          }
+          else
+          {
+             throw std::runtime_error("rounding method not supported");
+          }
+       }();
+
+       // read in primal solution
+       read_in_labeling(mgm_sol);
+       const double labeling_cost = lp_->EvaluatePrimal();
+       if (labeling_cost < best_labeling_cost_)
+       {
+          best_labeling_cost_ = labeling_cost;
+          best_labeling_ = mgm_sol;
+       }
+    }
+
+    // TODO: Use concurrency only optionally
+    void ComputePrimal_concurrent()
+    {
+       if (!mcf_primal_rounding_arg_.getValue())
           return;
 
-       if(primal_result_handle_.valid() && primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-          if(debug()) 
+       if (primal_result_handle_.valid() && primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+       {
+          if (debug())
              std::cout << "read in primal mgm solution\n";
           const auto mgm_sol = primal_result_handle_.get();
-          read_in_labeling(mgm_sol); 
+          read_in_labeling(mgm_sol);
           const double labeling_cost = lp_->EvaluatePrimal();
-          if(labeling_cost < best_labeling_cost_)
+          if (labeling_cost < best_labeling_cost_)
           {
              best_labeling_cost_ = labeling_cost;
              best_labeling_ = mgm_sol;
           }
        }
 
-       if(!primal_result_handle_.valid() || primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred) {
-          if(debug()) 
+       if (!primal_result_handle_.valid() || primal_result_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::deferred)
+       {
+          if (debug())
              std::cout << "construct mgm rounding problem\n";
 
-          if(debug()) std::cout << "send messages to unaries\n";
-          send_messages_to_unaries(); 
+          if (debug())
+             std::cout << "send messages to unaries\n";
+          send_messages_to_unaries();
 
-          enum class rounding_method {gaec_KL, KL, mcf_KL, mcf_ps, fw_ps};
+          enum class rounding_method
+          {
+             gaec_KL,
+             KL,
+             mcf_KL,
+             mcf_ps,
+             fw_ps
+          };
           const rounding_method rm = [&]() {
-          if(primal_rounding_algorithms_arg_.getValue() == "gaec_KL") 
-             return rounding_method::gaec_KL;
-          else if(primal_rounding_algorithms_arg_.getValue() == "KL")
-             return rounding_method::KL;
-          else if(primal_rounding_algorithms_arg_.getValue() == "MCF_KL") // K&L on infeasible partial minimum cost flow matchings
-             return rounding_method::mcf_KL;
-          else if(primal_rounding_algorithms_arg_.getValue() == "MCF_PS") // permutation synchronization
-             return rounding_method::mcf_ps;
-          else if(primal_rounding_algorithms_arg_.getValue() == "FW_PS") // permutation synchronization
-             return rounding_method::fw_ps;
-          else
-             throw std::runtime_error("could not recognize correlation clustering rounding method");
+             if (primal_rounding_algorithms_arg_.getValue() == "gaec_KL")
+                return rounding_method::gaec_KL;
+             else if (primal_rounding_algorithms_arg_.getValue() == "KL")
+                return rounding_method::KL;
+             else if (primal_rounding_algorithms_arg_.getValue() == "MCF_KL") // K&L on infeasible partial minimum cost flow matchings
+                return rounding_method::mcf_KL;
+             else if (primal_rounding_algorithms_arg_.getValue() == "MCF_PS") // permutation synchronization
+                return rounding_method::mcf_ps;
+             else if (primal_rounding_algorithms_arg_.getValue() == "FW_PS") // permutation synchronization
+                return rounding_method::fw_ps;
+             else
+                throw std::runtime_error("could not recognize correlation clustering rounding method");
           }();
 
           multigraph_matching_input::labeling labeling_to_improve;
-          if(rm == rounding_method::mcf_KL || rm == rounding_method::mcf_ps)
-             for(auto& c : graph_matching_constructors)
-                labeling_to_improve.push_back( {c.first.p, c.first.q, c.second->compute_primal_mcf_solution()} );
-          else if(rm == rounding_method::fw_ps)
-             for(auto& c : graph_matching_constructors)
-                labeling_to_improve.push_back( {c.first.p, c.first.q, c.second->compute_primal_fw_solution()} );
-          
+          if (rm == rounding_method::mcf_KL || rm == rounding_method::mcf_ps)
+             for (auto &c : graph_matching_constructors)
+                labeling_to_improve.push_back({c.first.p, c.first.q, c.second->compute_primal_mcf_solution()});
+          else if (rm == rounding_method::fw_ps)
+             for (auto &c : graph_matching_constructors)
+                labeling_to_improve.push_back({c.first.p, c.first.q, c.second->compute_primal_fw_solution()});
 
-             // TODO: split round_primal_async based on rounding method into multiple lambdas
-             auto mgm = std::make_shared<multigraph_matching_input>(export_linear_multigraph_matching_input());
+          // TODO: split round_primal_async based on rounding method into multiple lambdas
+          auto mgm = std::make_shared<multigraph_matching_input>(export_linear_multigraph_matching_input());
           const auto allowed_matchings = compute_allowed_matching_matrix();
           auto round_primal_async = ([=](std::shared_ptr<multigraph_matching_input> mgm, multigraph_matching_input::labeling labeling_to_improve) {
-                  multigraph_matching_correlation_clustering_transform mgm_cc_trafo(mgm);
-                  auto cc = mgm_cc_trafo.get_correlatino_clustering_instance();
-                  auto mc = cc.transform_to_multicut();
-                  if(rm == rounding_method::gaec_KL) {
-                     auto mc_sol = compute_multicut_gaec_kernighan_lin(mc); // seems better than just computing with Kernighan&Lin
-                     auto cc_sol = mc_sol.transform_to_correlation_clustering();
-                     auto mgm_sol = mgm_cc_trafo.transform(cc_sol); 
-                     return mgm_sol;
-                  } else if(rm == rounding_method::KL) {
-                     auto mc_sol = compute_multicut_kernighan_lin(mc);
-                     auto cc_sol = mc_sol.transform_to_correlation_clustering();
-                     auto mgm_sol = mgm_cc_trafo.transform(cc_sol); 
-                     return mgm_sol;
-                  } else if(rm == rounding_method::mcf_KL) {
-                     // try fixing infeasible matchings computed by individual graph matching solvers with Kernighan&Lin
-                     auto cc_sol_to_improve = mgm_cc_trafo.transform(labeling_to_improve);
-                     auto mc_sol_to_improve = cc_sol_to_improve.transform_to_multicut();
-                     auto mc_sol = compute_multicut_kernighan_lin(mc, mc_sol_to_improve);
-                     auto cc_sol = mc_sol.transform_to_correlation_clustering();
-                     auto mgm_sol = mgm_cc_trafo.transform(cc_sol); 
-                     return mgm_sol;
-                  } else if(rm == rounding_method::mcf_ps || rm == rounding_method::fw_ps) {
-                     multigraph_matching_input::graph_size gs(*mgm);
-                     synchronize_multigraph_matching(gs, labeling_to_improve, allowed_matchings); // for sparse assignment problems
-                     //synchronize_multigraph_matching(gs, labeling_to_improve); // when all edges are present in pairwise matching subproblems
-                     return labeling_to_improve; 
-                  } else {
-                     throw std::runtime_error("rounding method not supported");
-                  }
-
-                });
-          primal_result_handle_ = std::async(std::launch::async, round_primal_async, mgm, labeling_to_improve);
+             multigraph_matching_correlation_clustering_transform mgm_cc_trafo(mgm);
+             auto cc = mgm_cc_trafo.get_correlatino_clustering_instance();
+             auto mc = cc.transform_to_multicut();
+             if (rm == rounding_method::gaec_KL)
+             {
+                auto mc_sol = compute_multicut_gaec_kernighan_lin(mc); // seems better than just computing with Kernighan&Lin
+                auto cc_sol = mc_sol.transform_to_correlation_clustering();
+                auto mgm_sol = mgm_cc_trafo.transform(cc_sol);
+                return mgm_sol;
+             }
+             else if (rm == rounding_method::KL)
+             {
+                auto mc_sol = compute_multicut_kernighan_lin(mc);
+                auto cc_sol = mc_sol.transform_to_correlation_clustering();
+                auto mgm_sol = mgm_cc_trafo.transform(cc_sol);
+                return mgm_sol;
+             }
+             else if (rm == rounding_method::mcf_KL)
+             {
+                // try fixing infeasible matchings computed by individual graph matching solvers with Kernighan&Lin
+                auto cc_sol_to_improve = mgm_cc_trafo.transform(labeling_to_improve);
+                auto mc_sol_to_improve = cc_sol_to_improve.transform_to_multicut();
+                auto mc_sol = compute_multicut_kernighan_lin(mc, mc_sol_to_improve);
+                auto cc_sol = mc_sol.transform_to_correlation_clustering();
+                auto mgm_sol = mgm_cc_trafo.transform(cc_sol);
+                return mgm_sol;
+             }
+             else if (rm == rounding_method::mcf_ps || rm == rounding_method::fw_ps)
+             {
+                multigraph_matching_input::graph_size gs(*mgm);
+                synchronize_multigraph_matching(gs, labeling_to_improve, allowed_matchings); // for sparse assignment problems
+                //synchronize_multigraph_matching(gs, labeling_to_improve); // when all edges are present in pairwise matching subproblems
+                return labeling_to_improve;
+             }
+             else
+             {
+                throw std::runtime_error("rounding method not supported");
+             }
+          });
+          primal_result_handle_ = std::async(std::launch::deferred, round_primal_async, mgm, labeling_to_improve); // TODO: should be async for parallel evaluation
        }
     }
 
