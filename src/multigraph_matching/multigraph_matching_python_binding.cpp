@@ -177,7 +177,7 @@ PYBIND11_MODULE(multigraph_matching_py, m) {
                 const double p = s.primal_cost();
                 return p - lb;
                 })
-        .def("result",  [](mgm_solver& s){ return s.GetProblemConstructor().write_out_labeling(); });
+        .def("result",  [](mgm_solver& s){ return s.GetProblemConstructor().best_labeling(); });
 
 
 }

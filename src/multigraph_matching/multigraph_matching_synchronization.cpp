@@ -16,7 +16,7 @@ namespace LPMP {
       for(const auto& gm : labeling) {
          for(std::size_t i=0; i<gm.labeling.size(); ++i) {
             const std::size_t left_index = mgm_size.node_no(gm.left_graph_no, i);
-            if(gm.labeling[i] != std::numeric_limits<std::size_t>::max()) {
+            if(gm.labeling[i] != graph_matching_input::no_assignment) {
                const std::size_t right_index = mgm_size.node_no(gm.right_graph_no, gm.labeling[i]);
                W(left_index, right_index) = 1;
                W(right_index, left_index) = 1;
@@ -34,7 +34,11 @@ namespace LPMP {
          return max_no_nodes;
       }();
 
-      Eigen::SelfAdjointEigenSolver<decltype(W)> U_tmp(W*W.transpose());
+      Eigen::MatrixXd W_product = W*W.transpose();
+      //std::cout << W_product;
+      //std::cout << W.cols() << ";" << W.rows() << "\n";
+
+      Eigen::SelfAdjointEigenSolver<decltype(W)> U_tmp(W_product);
       Eigen::MatrixXd U = U_tmp.eigenvectors();
       auto largest_k_eigenvectors = U.block(0,U.rows()-k,U.cols(),k);
       //std::cout << "eigenvectors:\n" << U << "\n";
