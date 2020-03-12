@@ -1080,7 +1080,6 @@ namespace LPMP {
         private:
             void init_pointers();
 
-            bool fix_variables_recursive(const std::vector<size_t> & vars, const std::vector<char> & vals, const size_t index);
             bool fix_variable(const size_t var, const char value);
             bool is_fixed(const size_t var) const;
 
