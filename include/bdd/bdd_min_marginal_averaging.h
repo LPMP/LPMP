@@ -393,6 +393,7 @@ namespace LPMP {
             double lower_bound() { return lower_bound_; }
             double compute_lower_bound();
             double lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
+            double lower_bound_forward(const std::size_t var, const std::size_t bdd_index);
 
             double compute_upper_bound(const std::vector<char> & primal_solution) const;
             std::vector<double> total_min_marginals();
@@ -418,7 +419,7 @@ namespace LPMP {
 
             std::array<double,2> min_marginal(const std::size_t var, const std::size_t bdd_index) const;
             template<typename ITERATOR>
-                static std::array<double,2> average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end);
+                static std::array<double,2> average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t nr_marginals_to_distribute = std::numeric_limits<std::size_t>::max());
             template<typename ITERATOR>
                 std::pair<std::array<double,2>, bool> average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
             template<typename ITERATOR>
@@ -625,6 +626,36 @@ namespace LPMP {
         }
     }
 
+    double bdd_min_marginal_averaging::lower_bound_forward(const std::size_t var, const std::size_t bdd_index)
+    {
+        const auto& bdd_var = bdd_variables_(var,bdd_index);
+        if(last_variable_of_bdd(var, bdd_index)) 
+        {
+            double lb = std::numeric_limits<double>::infinity();
+            const std::size_t first_node_index = bdd_var.first_node_index;
+            const std::size_t last_node_index = bdd_var.last_node_index;
+            for (std::size_t i = first_node_index; i < last_node_index; ++i)
+            {
+                const auto& node = bdd_branch_nodes_[i];
+                assert(node.low_outgoing == node.terminal_1() || node.high_outgoing == node.terminal_1());
+                const double node_lb = [&]() {
+                    double lb = std::numeric_limits<double>::infinity();
+                    if(node.low_outgoing == node.terminal_1())
+                        lb = std::min(lb, node.m);
+                    if(node.high_outgoing == node.terminal_1())
+                        lb = std::min(lb, node.m + *node.variable_cost);
+                    return lb;
+                }();
+                lb = std::min(lb, node_lb); 
+            }
+            return lb;
+        }
+        else
+        {
+            return 0.0;
+        }
+    }
+
     void bdd_min_marginal_averaging::forward_run()
     {
         for(std::size_t var=0; var<nr_variables(); ++var) {
@@ -691,16 +722,24 @@ namespace LPMP {
     }
 
     template<typename ITERATOR>
-        std::array<double,2> bdd_min_marginal_averaging::average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end)
+        std::array<double,2> bdd_min_marginal_averaging::average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t nr_marginals_to_distribute)
         {
             std::array<double,2> average_marginal = {0.0, 0.0};
             for(auto m_iter=marginals_begin; m_iter!=marginals_end; ++m_iter) {
                 average_marginal[0] += (*m_iter)[0];
                 average_marginal[1] += (*m_iter)[1];
             }
-            const double no_marginals = std::distance(marginals_begin, marginals_end);
-            average_marginal[0] /= no_marginals;
-            average_marginal[1] /= no_marginals;
+            if(nr_marginals_to_distribute == std::numeric_limits<std::size_t>::max()) 
+            {
+                const double no_marginals = std::distance(marginals_begin, marginals_end);
+                average_marginal[0] /= no_marginals;
+                average_marginal[1] /= no_marginals;
+            } 
+            else
+            {
+                average_marginal[0] /= nr_marginals_to_distribute;
+                average_marginal[1] /= nr_marginals_to_distribute; 
+            }
 
             assert(std::isfinite(average_marginal[0]));
             assert(std::isfinite(average_marginal[1]));
