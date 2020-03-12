@@ -6,7 +6,8 @@ import subprocess
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from distutils.version import LooseVersion
+from pkg_resources import parse_version
+
 
 
 
@@ -25,8 +26,8 @@ class CMakeBuild(build_ext):
                                ", ".join(e.name for e in self.extensions))
 
         if platform.system() == "Windows":
-            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
-            if cmake_version < '3.1.0':
+            cmake_version = parse_version(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            if cmake_version < parse_version('3.1.0'):
                 raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
         for ext in self.extensions:
@@ -35,24 +36,28 @@ class CMakeBuild(build_ext):
     def _validate_gcc_version(self, gcc_command):
         print(f'Testing {gcc_command}...')
         out = subprocess.check_output([gcc_command, '--version']).decode()
-        last_word_first_line = out.split('\n')[0].split(' ')[-1]
+        words = out.split('\n')[0].split(' ')
+        for word in reversed(words):
+            if "." in word:
+                gcc_version = parse_version(word)
+                if gcc_version >= parse_version('9.0'):
+                    return True
 
-        gcc_version = LooseVersion(last_word_first_line)
-        return (gcc_version >= '8.0')
+        return False
 
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
-        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find {} -maxdepth 1 -executable -type"
-                            " f -printf '%P\n' | grep \'^gcc-.\\..\'")
+        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find -H {} -maxdepth 1 -perm -o=x -type"
+                            " l,f -printf '%P\n' | grep \'^gcc-[0-9].\\?.\\?.\\?'")
         all_gccs = subprocess.check_output(cmd_for_all_gccs, shell=True).decode("utf-8").rstrip().split("\n")
 
         for gcc in ['gcc'] + all_gccs:
             if self._validate_gcc_version(gcc):
-                matching_gpp = gcc.replace('cc', '++')
+                matching_gpp = gcc.replace("cc", "++")
                 print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
                 return gcc, matching_gpp
 
-        raise RuntimeError("gcc >= 8.0 not found on the system")
+        raise RuntimeError("gcc >= 9.0 not found on the system")
 
 
     def _prepare_environment(self):
