@@ -40,7 +40,7 @@ class CMakeBuild(build_ext):
         for word in reversed(words):
             if "." in word:
                 gcc_version = parse_version(word)
-                if gcc_version >= parse_version('9.0'):
+                if gcc_version >= parse_version('8.0'):
                     return True
 
         return False
@@ -57,7 +57,7 @@ class CMakeBuild(build_ext):
                 print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
                 return gcc, matching_gpp
 
-        raise RuntimeError("gcc >= 9.0 not found on the system")
+        raise RuntimeError("gcc >= 8.0 not found on the system")
 
 
     def _prepare_environment(self):
@@ -94,7 +94,7 @@ class CMakeBuild(build_ext):
             os.makedirs(self.build_temp)
 
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
-        subprocess.check_call(['cmake', '--build', '.', '--target', 'graph_matching_py'] + build_args, cwd=self.build_temp)
+        subprocess.check_call(['cmake', '--build', '.', '--target', ext.name] + build_args, cwd=self.build_temp)
 
 setup(
     name='graph_matching_py',
@@ -107,3 +107,16 @@ setup(
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
+
+setup(
+    name='multigraph_matching_py',
+    version='0.0.1',
+    author='Paul Swoboda',
+    author_email='pswoboda@mpi-inf.mpg.de',
+    description='LPMP multi-graph matching binding for python',
+    long_description='',
+    ext_modules=[CMakeExtension(name='multigraph_matching_py')],
+    cmdclass=dict(build_ext=CMakeBuild),
+    zip_safe=False,
+)
+
