@@ -103,6 +103,7 @@ setup(
     author_email='pswoboda@mpi-inf.mpg.de',
     description='LPMP graph matching binding for python',
     long_description='',
+    ext_package='lpmp',
     ext_modules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
