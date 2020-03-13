@@ -14,6 +14,7 @@ namespace LPMP {
 
             std::size_t nr_bdd_nodes() const { return last_node_index - first_node_index; }
             bool is_first_bdd_variable() const { return prev == nullptr; }
+            bool is_last_bdd_variable() const { return next == nullptr; }
             // bool is_initial_state() const { return *this == bdd_variable<DERIVED>{}; }
             friend bool operator==(const bdd_variable<DERIVED>&, const bdd_variable<DERIVED>&);
     };

@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
 
-    bdd_opt solver;
+    bdd_min_marginal_averaging_restricted solver;
     solver.set_options(options);
     solver.init(input);
 
@@ -33,20 +33,12 @@ int main(int argc, char** argv)
     double new_lb = old_lb;
 
     for(std::size_t iter=0; iter<max_iter; ++iter) {
-        std::cout << "iteration " << iter << ": " << std::flush;
         solver.iteration();
         const double new_lb = solver.lower_bound();
+        std::cout << "iteration " << iter << ": " << std::flush;
         std::cout << "lower bound = " << new_lb << "\n";
         if (new_lb - old_lb < min_progress)
             break;
         old_lb = new_lb;
     }
-    double ub = std::numeric_limits<double>::infinity();
-    std::cout << "Rounding.. " << std::flush;
-    if (solver.fix_variables()) {
-        ub = solver.compute_upper_bound();
-        std::cout << "\nPrimal solution value: " << ub << std::endl;
-    } else
-        std::cout << "\nNo primal solution found." << std::endl;
-
 }

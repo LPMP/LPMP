@@ -519,7 +519,7 @@ namespace LPMP {
 
     struct graph_matching_frank_wolfe_dense : public graph_matching_frank_wolfe_impl<Eigen::VectorXd, Eigen::MatrixXd> 
     {
-        using graph_matching_frank_wolfe_impl<Eigen::VectorXd, Eigen::MatrixXd>::graph_matching_frank_wolfe_impl;;
+        using graph_matching_frank_wolfe_impl<Eigen::VectorXd, Eigen::MatrixXd>::graph_matching_frank_wolfe_impl;
     };
 
     struct  graph_matching_frank_wolfe_sparse : public graph_matching_frank_wolfe_impl<Eigen::SparseVector<double>, Eigen::SparseMatrix<double>>
