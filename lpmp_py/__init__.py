@@ -1,2 +1,2 @@
-from .graph_matching import *
-from .multigraph_matching import *
+import .graph_matching
+import .multigraph_matching

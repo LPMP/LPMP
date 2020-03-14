@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/BCFW-Bundle" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/ConicBundle" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/DD_ILP" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/DD_ILP/external/lingeling" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/Eigen" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/MCF-SSP" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/PEGTL" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/TCLAP" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/andres-graph" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/arboricity" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/cpp-taskflow" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/cudd" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/libsimdpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/maxflow" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/meta" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/meta/doc/gh-pages" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/opengm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/pybind11" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/pybind11/tools/clang" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/qpbo" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/tsl-robin-map" vcs="Git" />
+  </component>
+</project>
