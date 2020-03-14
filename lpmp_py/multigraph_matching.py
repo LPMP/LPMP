@@ -1,8 +1,6 @@
-import numpy as np
 import torch
 
-from utils.utils import torch_to_numpy_list, numpy_to_torch_list
-from utils.utils import lexico_iter_pairs
+from .utils import torch_to_numpy_list, numpy_to_torch_list, lexico_iter_pairs
 import bindings.multigraph_matching_py as mgm
 
 
