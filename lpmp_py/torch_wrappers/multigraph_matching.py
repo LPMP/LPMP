@@ -1,28 +1,7 @@
 import torch
 
-from .utils import torch_to_numpy_list, numpy_to_torch_list, lexico_iter_pairs
-import bindings.multigraph_matching_py as mgm
-
-
-def mgm_solver(unary_costs, quadratic_costs, edges, solver_params, verbose=False):
-    instance = mgm.multigraph_matching_input(unary_costs, quadratic_costs, edges)
-
-    params = ["", f"-v {int(verbose)}"] + [
-        f"--{key} {val}" if val else f"--{key}" for key, val in solver_params.items()
-    ]
-    solver = mgm.multigraph_matching_message_passing_solver(params)
-
-    solver.construct(instance)
-    solver.solve()
-    result = solver.result()
-
-    costs_paid, quadratic_costs_paid = result.result_masks(unary_costs, quadratic_costs, edges)
-    return costs_paid, quadratic_costs_paid
-
-
-def detach(list_of_tensors):
-    return [x.detach() for x in list_of_tensors]
-
+from .utils import torch_to_numpy_list, numpy_to_torch_list, lexico_iter_pairs, detach
+from ..raw_solvers import mgm_solver
 
 class MultiGraphMatchingSolver(torch.autograd.Function):
     @staticmethod

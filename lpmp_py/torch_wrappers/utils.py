@@ -1,6 +1,10 @@
 import torch
 import itertools
 
+def detach(list_of_tensors):
+    return [x.detach() for x in list_of_tensors]
+
+
 def lexico_iter_pairs(lst):
     return itertools.combinations(lst, 2)
 

@@ -1,35 +1,5 @@
-import bindings.graph_matching_py as gm
-import numpy as np
 import torch
-
-
-def gm_solver(costs, quadratic_costs, edges_left, edges_right, solver_params, verbose=False):
-    if verbose:
-        print(
-            f"Building graph with\t"
-            f"#vertices left: {costs.shape[0]}\t"
-            f"#vertices right: {costs.shape[1]}\t"
-            f"#edges left: {len(edges_left)}\t"
-            f"#edges right: {len(edges_right)}\t"
-            f"#quadratic terms: {quadratic_costs.size}"
-        )
-
-    instance = gm.graph_matching_input(
-        costs, quadratic_costs, np.array(edges_left, dtype=np.intc), np.array(edges_right, dtype=np.intc)
-    )
-
-    params = ["tmp", f"-v {int(verbose)}"] + [f"--{key} {val}" for key, val in solver_params.items()]
-    solver = gm.graph_matching_message_passing_solver(params)
-
-    solver.construct(instance)
-    solver.solve()
-
-    result = solver.result()
-    costs_paid, quadratic_costs_paid = result.result_masks(
-        costs, quadratic_costs, np.array(edges_left), np.array(edges_right)
-    )
-
-    return costs_paid, quadratic_costs_paid
+from ..raw_solvers import gm_solver
 
 
 class GraphMatchingSolver(torch.autograd.Function):
@@ -75,7 +45,7 @@ class GraphMatchingSolver(torch.autograd.Function):
         return grad_costs, grad_quadratic_costs, None
 
 
-class GraphMatching(torch.nn.Module):
+class GraphMatchingModule(torch.nn.Module):
     def __init__(
         self,
         edges_left_batch,
@@ -128,86 +98,3 @@ class GraphMatching(torch.nn.Module):
             tmp = self.solver.apply(costs[0], costs[1], params)
             result[i, :num_vertices_s, :num_vertices_t] = tmp[0]  # Only unary matching returned
         return result
-
-
-# testing
-
-
-def random_instance(size_left, size_right):
-    graph_left = np.ones([size_left] * 2, dtype=int)
-    graph_left = graph_left - np.diag(graph_left.diagonal())
-
-    it = np.nditer(graph_left, flags=["multi_index"])
-    edges_left = [it.multi_index for i in it if i == 1]
-
-    graph_right = np.random.uniform(0, 1, size=(size_right, size_right)) > 0.5
-    graph_right = np.triu(graph_right, 1)
-
-    it = np.nditer(graph_right, flags=["multi_index"])
-    edges_right = [it.multi_index for i in it if i == 1]
-
-    costs_unary = 0.1 * np.array(2.0 * np.random.randint(-10, -1, [size_left, size_right]) - 1.0, dtype=np.double)
-
-    costs_binary = 0.1 * np.array(
-        2.0 * np.random.randint(-15, -1, [len(edges_left), len(edges_right)]) - 1.0, dtype=np.double
-    )
-
-    return edges_left, edges_right, costs_unary, costs_binary
-
-
-def random_instance_batch(max_num_vertices, batch_size):
-    num_vertices_batch = np.random.randint(4, max_num_vertices, [batch_size])
-
-    instances = [random_instance(num_vertices, num_vertices) for num_vertices in num_vertices_batch]
-
-    edges_left_batch, edges_right_batch, costs_unary_batch, costs_binary_batch = zip(*instances)
-
-    max_num_vertices = max(num_vertices_batch)
-    max_edges_left = max([len(edges_left) for edges_left in edges_left_batch])
-    max_edges_right = max([len(edges_right) for edges_right in edges_right_batch])
-
-    costs_unary_batch_numpy = np.zeros([batch_size, max_num_vertices, max_num_vertices])
-    for i, (unary_costs, num_vertices) in enumerate(zip(costs_unary_batch, num_vertices_batch)):
-        costs_unary_batch_numpy[i, :num_vertices, :num_vertices] = unary_costs
-
-    costs_binary_batch_numpy = np.zeros([batch_size, max_edges_left, max_edges_right])
-    for i, (binary_costs, edges_left, edges_right) in enumerate(
-        zip(costs_binary_batch, edges_left_batch, edges_right_batch)
-    ):
-        costs_binary_batch_numpy[i, : len(edges_left), : len(edges_right)] = binary_costs
-
-    return (
-        (edges_left_batch, edges_right_batch, num_vertices_batch),
-        (costs_unary_batch_numpy, costs_binary_batch_numpy),
-    )
-
-
-if __name__ == "__main__":
-
-    verbose = True
-
-    graph_info_batch, costs_batch = random_instance_batch(max_num_vertices=15, batch_size=8)
-
-    solver_params = {"timeout": 200, "primalComputationInterval": 1, "maxIter": 30}
-
-    Solver = GraphMatching(*graph_info_batch, 1.0, solver_params)
-
-    costs_unary, costs_binary = costs_batch
-    costs_unary_torch = torch.from_numpy(costs_unary)
-    costs_unary_torch.requires_grad = True
-    costs_binary_torch = torch.from_numpy(costs_binary)
-    costs_binary_torch.requires_grad = True
-
-    import time
-
-    beg = time.time()
-    out_torch = Solver(costs_unary_torch, costs_binary_torch)
-
-    random_mask = torch.randn_like(out_torch)
-    faked_loss = (out_torch * random_mask).sum()
-    faked_loss.backward()
-
-    secs = time.time() - beg
-    print("Unary gradient:", costs_unary_torch.grad.abs().sum())
-    print("Quadratic gradient: ", costs_binary_torch.grad.abs().sum())
-    print(f"Time elapsed: {secs}")
