@@ -4,7 +4,7 @@ import sys
 import platform
 import subprocess
 
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 from pkg_resources import parse_version
 
@@ -104,7 +104,7 @@ setup(
     description='LPMP graph matching binding for python',
     long_description='',
     ext_package='bindings',
-    packages=['lpmp_py'],
+    packages=find_packages(),
     ext_modules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
