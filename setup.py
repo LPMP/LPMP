@@ -9,8 +9,6 @@ from setuptools.command.build_ext import build_ext
 from pkg_resources import parse_version
 
 
-
-
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         Extension.__init__(self, name, sources=[])
@@ -101,7 +99,7 @@ setup(
     version='0.0.1',
     author='Paul Swoboda',
     author_email='pswoboda@mpi-inf.mpg.de',
-    description='LPMP graph matching binding for python',
+    description='LPMP bindings for python with differentiable torch wrappers',
     long_description='',
     ext_package='bindings',
     packages=find_packages(),

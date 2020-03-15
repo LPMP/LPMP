@@ -4,8 +4,32 @@ from .utils import torch_to_numpy_list, numpy_to_torch_list, lexico_iter_pairs, 
 from ..raw_solvers import mgm_solver
 
 class MultiGraphMatchingSolver(torch.autograd.Function):
+    """
+        Multigraph Matching solver as a torch.Function where the backward pass is provided by
+        [1] 'Vlastelica* M, Paulus* A., Differentiation of Blackbox Combinatorial Solvers, ICLR 2020'
+    """
     @staticmethod
     def forward(ctx, params, *all_costs_tup):
+        """
+            Implementation of the forward pass of min-cost matching between k directed graphs
+            G_1 = (V_1, E_1),..., G_k = (V_k, E_k)
+
+            @param ctx: context for backpropagation
+            @param params: a dict of additional params. Must contain:
+                    edges: a list of k torch.tensor with shapes (|E_i|, 2) describing edges of G_i,
+                    lambda_val: float/np.float32/torch.float32, the value of lambda for computing the gradient with [1]
+                    solver_params: a dict of command line parameters to the solver (see solver documentation)
+            @param all_costs_tup: a list of 2*{k choose 2} torch.Tensors:
+                    The first {k choose 2} describe unary costs - torch.Tensors of shape (|V_i|, |V_j|) for i \neq j
+                        in lexicographical order.
+                    The second {k choose 2} describe quadratic costs - torch.Tensors of shape (|E_i|, |E_j|) for
+                        i \neq j in lexicographical order
+            @return: a tuple of list of 2*{k choose 2} torch.Tensors:
+                    The first {k choose 2} are paid unary costs - torch.Tensors of shape (|V_i|, |V_j|) with 0/1 values
+                    capturing the min-cost matching.
+                    The second {k choose 2} describe paid quadratic costs torch.Tensors of shape (|E_i|, |E_j|)
+                    with 0/1 values capturing which pairwise costs were paid in suggested matching.
+        """
         l = len(all_costs_tup) // 2
         costs_l, quadratic_costs_l = all_costs_tup[:l], all_costs_tup[l:]
         assert len(costs_l) == len(quadratic_costs_l)
@@ -69,7 +93,20 @@ class MultiGraphMatchingSolver(torch.autograd.Function):
 
 
 class MultiGraphMatchingModule(torch.nn.Module):
+    """
+        Torch module for handling batches of Multigraph Matching Instances.
+    """
     def __init__(self, edges_batch_list, num_vertices_batch_list, lambda_val, solver_params):
+        """
+        Prepares a module for a batch of k multigraph matching instances each with n graphs.
+
+        @param edges_batch_list: A list of k lists, each containing n torch.Tensors of shape (num_edges, 2) describing
+        edges of all graphs in all instances.
+        @param num_vertices_batch_list: A list of k lists, each containing n integers, the numbers of vertices in the
+        participating graphs
+        @param lambda_val: lambda value for backpropagation by [1]
+        @param solver_params: a dict of command line parameters to the solver (see solver documentation)
+        """
         super().__init__()
         self.solver = MultiGraphMatchingSolver()
         self.edges_batch_list = edges_batch_list
@@ -77,6 +114,12 @@ class MultiGraphMatchingModule(torch.nn.Module):
         self.params = {"lambda_val": lambda_val, "solver_params": solver_params}
 
     def forward(self, costs_batch_list, quadratic_costs_batch_list):
+        """
+        Forward pass for a batch of k multigraph matching instances on n graphs
+        @param costs_batch_list: a list of k lists, each with {n choose 2} unary cost torch.Tensors
+        @param quadratic_costs_batch_list: a list of k lists, each with {n choose 2} pariwise cost torch.Tensors
+        @return: a list of k lists, each with {n choose 2} unary cost torch.Tensors with the suggested matchings
+        """
         def params_generator():
             for edges in zip(*self.edges_batch_list):
                 yield {"edges": [e.T for e in edges], **self.params}

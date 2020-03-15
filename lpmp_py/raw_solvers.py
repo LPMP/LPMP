@@ -4,6 +4,20 @@ import bindings.multigraph_matching_py as mgm
 
 
 def gm_solver(costs, quadratic_costs, edges_left, edges_right, solver_params, verbose=False):
+    """
+    A thin python wrapper of the solver Graph Matching solver. Computes min-cost matching between two directed graphs
+    G_1 = (V_1, E_1) and G_2 = (V_2, E_2).
+
+    @param costs: np.array of shape (|V_1|, |V_2|) with unary matching costs
+    @param quadratic_costs: np.array of shape (|E_1|, |E_2|) with pairwise matching costs
+    @param edges_left: np.array of shape (|E_1|, 2) with edges of G_1 (pairs of vertex indices)
+    @param edges_right: np.array of shape (|E_2|, 2) with edges of G_2 (pairs of vertex indices)
+    @param solver_params: dict of command line flags to pass to the solver (see solver documentation)
+    @param verbose: bool, if true print summary of input data AND raw solver output
+    @return: np.array of shape (|V_1|, |V_2|) with 0/1 values capturing the min-cost matching produced by the solver,
+             np.array of shape (|E_1|, |E_2|) with 0/1 values capturing which pairwise costs were paid in suggested
+             matching
+    """
     if verbose:
         print(
             f"Building graph with\t"
@@ -33,6 +47,21 @@ def gm_solver(costs, quadratic_costs, edges_left, edges_right, solver_params, ve
 
 
 def mgm_solver(unary_costs, quadratic_costs, edges, solver_params, verbose=False):
+    """
+    A thin python wrapper of the solver Multigraph Matching solver. Computes min-cost matching of k directed graphs
+    G_1 = (V_1, E_1),...,G_k = (V_k, E_k). The suggested matching is "globally consistent" i.e. obey cycle consistency
+
+    @param unary_costs: a list of {k choose 2} unary costs - np.arrays of shape (|V_i|, |V_j|)
+    for i \neq j in lexicographical order
+    @param quadratic_costs: a list of {k choose 2} pairwise costs - np.arrays of shape (|E_i|, |E_j|) for i \neq j in
+    lexicographical order
+    @param edges: a list of k edge descriptions - np.arrays of shape (|E_i|, 2)
+    @param solver_params: dict of command line flags to pass to the solver (see solver documentation)
+    @param verbose: bool, if true print raw solver output
+    @return: list of {k choose 2} np.arrays of shape (|V_i|, |V_j|) with 0/1 values capturing the min-cost matching
+             list of {k choose 2} np.array of shape (|E_i|, |E_j|) with 0/1 values capturing which pairwise costs were
+             paid in suggested matching
+    """
     instance = mgm.multigraph_matching_input(unary_costs, quadratic_costs, edges)
 
     params = ["", f"-v {int(verbose)}"] + [
