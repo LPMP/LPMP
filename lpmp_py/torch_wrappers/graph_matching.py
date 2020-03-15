@@ -141,7 +141,7 @@ class GraphMatchingModule(torch.nn.Module):
         batch_size = len(costs_batch)
         max_dimension_x = max(x.shape[0] for x in costs_batch)
         max_dimension_y = max(x.shape[1] for x in costs_batch)
-        result = torch.zeros(size=(batch_size, max_dimension_x, max_dimension_y)).to(costs_batch.device)
+        result = torch.zeros(size=(batch_size, max_dimension_x, max_dimension_y)).to(costs_batch[0].device)
         for i, (params, costs, num_vertices_s, num_vertices_t) in enumerate(
             zip(params_generator(), costs_generator(), self.num_vertices_s_batch, self.num_vertices_t_batch)
         ):
