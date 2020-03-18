@@ -1582,8 +1582,7 @@ namespace LPMP {
 
         // }
 
-        bool success = false;
-        while (!success)
+        while (true)
         {
             double min_score = std::numeric_limits<double>::infinity();
             size_t min_var;
@@ -1596,6 +1595,9 @@ namespace LPMP {
                 min_var = var;
             }
 
+            if (min_score == std::numeric_limits<double>::infinity())
+                return true;
+
             const char val = (min_score < 0) ? 1 : 0;
             bool feasible = bdd_fix_.fix_variable(min_var, val);
 
@@ -1603,6 +1605,7 @@ namespace LPMP {
             if (!feasible)
                 return false;
 
+            // update min marginals
             const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
             bdd_mma_.set_cost(min_var, fixed_cost);
             total_min_marginals = bdd_mma_.total_min_marginals();
