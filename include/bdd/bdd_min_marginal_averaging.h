@@ -1582,8 +1582,17 @@ namespace LPMP {
 
         // }
 
+        // size_t nfixes = 0;
+        // size_t max_fixes = bdd_fix_.nr_variables();
+        // std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
+
         while (true)
         {
+            // nfixes++;
+            // std::cout << "\rExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
+            // if (nfixes > max_fixes)
+            //     return false;
+
             double min_score = std::numeric_limits<double>::infinity();
             size_t min_var;
             for (size_t var = 0; var < bdd_fix_.nr_variables(); var++)
@@ -1600,6 +1609,8 @@ namespace LPMP {
 
             const char val = (min_score < 0) ? 1 : 0;
             bool feasible = bdd_fix_.fix_variable(min_var, val);
+
+            std::cout << "Fixed var " << min_var << " to " << (int) val << std::endl;
 
             // TODO enable backtracking
             if (!feasible)
