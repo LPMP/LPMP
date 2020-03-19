@@ -4,10 +4,9 @@ import sys
 import platform
 import subprocess
 
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
-from distutils.version import LooseVersion
-
+from pkg_resources import parse_version
 
 
 class CMakeExtension(Extension):
@@ -25,8 +24,8 @@ class CMakeBuild(build_ext):
                                ", ".join(e.name for e in self.extensions))
 
         if platform.system() == "Windows":
-            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
-            if cmake_version < '3.1.0':
+            cmake_version = parse_version(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            if cmake_version < parse_version('3.1.0'):
                 raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
         for ext in self.extensions:
@@ -35,20 +34,24 @@ class CMakeBuild(build_ext):
     def _validate_gcc_version(self, gcc_command):
         print(f'Testing {gcc_command}...')
         out = subprocess.check_output([gcc_command, '--version']).decode()
-        last_word_first_line = out.split('\n')[0].split(' ')[-1]
+        words = out.split('\n')[0].split(' ')
+        for word in reversed(words):
+            if "." in word:
+                gcc_version = parse_version(word)
+                if gcc_version >= parse_version('8.0'):
+                    return True
 
-        gcc_version = LooseVersion(last_word_first_line)
-        return (gcc_version >= '8.0')
+        return False
 
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
-        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find {} -maxdepth 1 -executable -type"
-                            " f -printf '%P\n' | grep \'^gcc-.\\..\'")
+        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find -H {} -maxdepth 1 -perm -o=x -type"
+                            " l,f -printf '%P\n' | grep \'^gcc-[0-9].\\?.\\?.\\?'")
         all_gccs = subprocess.check_output(cmd_for_all_gccs, shell=True).decode("utf-8").rstrip().split("\n")
 
         for gcc in ['gcc'] + all_gccs:
             if self._validate_gcc_version(gcc):
-                matching_gpp = gcc.replace('cc', '++')
+                matching_gpp = gcc.replace("cc", "++")
                 print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
                 return gcc, matching_gpp
 
@@ -89,16 +92,19 @@ class CMakeBuild(build_ext):
             os.makedirs(self.build_temp)
 
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
-        subprocess.check_call(['cmake', '--build', '.', '--target', 'graph_matching_py'] + build_args, cwd=self.build_temp)
+        subprocess.check_call(['cmake', '--build', '.', '--target', ext.name] + build_args, cwd=self.build_temp)
 
 setup(
-    name='graph_matching_py',
+    name='lpmp_py',
     version='0.0.1',
     author='Paul Swoboda',
     author_email='pswoboda@mpi-inf.mpg.de',
-    description='LPMP graph matching binding for python',
+    description='LPMP bindings for python with differentiable torch wrappers',
     long_description='',
-    ext_modules=[CMakeExtension(name='graph_matching_py')],
+    ext_package='bindings',
+    packages=find_packages(),
+    ext_modules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
+

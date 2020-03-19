@@ -41,4 +41,4 @@ foreach( source_file ${MGM_SOURCE_FILES} )
 endforeach( source_file ${MGM_SOURCE_FILES} )
 
 pybind11_add_module(multigraph_matching_py multigraph_matching_python_binding.cpp)
-target_link_libraries(multigraph_matching_py PRIVATE LPMP graph_matching_py_helper multigraph_matching_factors multigraph_matching_input MRF_factors)
+target_link_libraries(multigraph_matching_py PRIVATE LPMP graph_matching_py_helper graph_matching_frank_wolfe multigraph_matching_factors multigraph_matching_input MRF_factors)

@@ -23,9 +23,13 @@ struct linear_assignment_problem_input {
 
    void add_assignment(const std::size_t left_node, const std::size_t right_node, const double cost)
    {
-     assignments.push_back({left_node, right_node, cost}); 
-     no_left_nodes = std::max(no_left_nodes, left_node+1);
-     no_right_nodes = std::max(no_right_nodes, right_node+1);
+      // TODO: remove, only test
+      //if(left_node == no_assignment || right_node == no_assignment)
+      //   assignments.push_back({left_node, right_node, 0.0});
+      //else
+         assignments.push_back({left_node, right_node, cost});
+      no_left_nodes = std::max(no_left_nodes, left_node + 1);
+      no_right_nodes = std::max(no_right_nodes, right_node + 1);
    }
 
    struct assignment {
@@ -50,20 +54,38 @@ struct linear_assignment_problem_input {
    {
       const std::size_t no_nodes = no_left_nodes + no_right_nodes;
       const std::size_t no_mcf_nodes = no_left_nodes + no_right_nodes + 2;
-      const std::size_t no_mcf_edges = assignments.size() + no_left_nodes + no_right_nodes + 1;
+      const std::size_t no_mcf_edges = assignments.size() + no_left_nodes + no_right_nodes + 1; // TODO: filter out the assignment that have non-assignment in one of their endpoints
 
        mcf = MCF(no_mcf_nodes, no_mcf_edges);
 
-      for(const auto a : assignments)
-         mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling*a.cost);
+       std::vector<double> left_non_assignment_costs(no_left_nodes, 0.0);
+       std::vector<double> right_non_assignment_costs(no_right_nodes, 0.0);
+       for (const auto a : assignments)
+       {
+          if (a.left_node != no_assignment && a.right_node != no_assignment)
+          {
+             mcf.add_edge(a.left_node, no_left_nodes + a.right_node, 0, 1, scaling * a.cost);
+          }
+          else if (a.left_node == no_assignment)
+          {
+             assert(a.right_node < right_non_assignment_costs.size());
+             right_non_assignment_costs[a.right_node] += scaling * a.cost;
+          }
+          else if (a.right_node == no_assignment)
+          {
+             assert(a.left_node < left_non_assignment_costs.size());
+             left_non_assignment_costs[a.left_node] += scaling * a.cost;
+          }
+       }
 
-      for(std::size_t i=0; i<no_left_nodes; ++i) {
-         mcf.add_edge(i, no_nodes+1, 0, 1, 0.0); // for non-assignment
-         mcf.add_node_excess(i, 1);
-      }
+       for (std::size_t i = 0; i < no_left_nodes; ++i)
+       {
+          mcf.add_edge(i, no_nodes + 1, 0, 1, left_non_assignment_costs[i]); // for non-assignment
+          mcf.add_node_excess(i, 1);
+       }
 
       for(std::size_t i=0; i<no_right_nodes; ++i) {
-         mcf.add_edge(no_nodes, no_left_nodes + i, 0, 1, 0.0); // for non-assignment
+         mcf.add_edge(no_nodes, no_left_nodes + i, 0, 1, right_non_assignment_costs[i]); // for non-assignment
          mcf.add_node_excess(no_left_nodes + i, -1);
       }
 
@@ -101,6 +123,7 @@ struct linear_assignment_problem_input {
 
    class labeling : public std::vector<std::size_t> {
       public:
+      
       using std::vector<std::size_t>::vector;
 
       template<typename Derived>
@@ -134,6 +157,34 @@ struct linear_assignment_problem_input {
             }
          }
          assert(this->size() == m.cols());
+      }
+
+      std::vector<char> compute_right_node_taken() const
+      {
+         std::vector<char> right_node_taken(highest_matched_node()+1, 0);
+         for(const std::size_t r : *this) 
+         {
+            if(r != no_assignment) 
+            {
+               assert(r < highest_matched_node()+1);
+               right_node_taken[r] = 1;
+            }
+         }
+         return right_node_taken;
+      }
+
+      bool assignment_active(const std::size_t left, const std::size_t right, const std::vector<char>& right_node_taken) const
+      {
+         assert(left != no_assignment || right != no_assignment);
+         assert(left == no_assignment || left < no_left_nodes());
+         //assert(right == no_assignment || right < highest_matched_node()+1);
+         assert(right_node_taken.size() > highest_matched_node());
+         if(left != no_assignment && right != no_assignment)
+            return (*this)[left] == right;
+         else if (right == no_assignment)
+            return (*this)[left] == no_assignment;
+         else
+           return right >= right_node_taken.size() || right_node_taken[right] == 0; 
       }
 
       template<typename STREAM>
@@ -192,22 +243,52 @@ struct linear_assignment_problem_input {
        // TODO: check that all assignments are allowed w.r.t. costs
    }
 
-   double evaluate(const labeling& l) const
+   double evaluate_linear(const labeling &l) const
    {
+      double cost = constant_;
+
+      const std::vector<char> right_node_taken = l.compute_right_node_taken();
+
+      for (const auto &a : assignments)
+      {
+         assert(a.left_node < no_left_nodes || a.left_node == no_assignment);
+         assert(a.right_node < no_right_nodes || a.right_node == no_assignment);
+         assert(a.left_node != no_assignment || a.right_node != no_assignment);
+
+         if (l.assignment_active(a.left_node, a.right_node, right_node_taken))
+            cost += a.cost;
+       }
+
+      return cost;
+   }
+
+   double evaluate(const labeling &l) const
+   {
+      return evaluate_linear(l);
        const auto [labeling_feasible, right_nodes_taken] = feasible(l);
        if(!labeling_feasible)
            return std::numeric_limits<double>::infinity();
 
        double cost = constant_;
 
-       for(const auto& a : assignments) {
-           if(a.left_node != no_assignment && l[a.left_node] == a.right_node) {
-               cost += a.cost;
-               assert(a.left_node < no_left_nodes || a.left_node == no_assignment);
-               assert(a.right_node < no_right_nodes || a.right_node == no_assignment);
-           } else if(a.left_node == no_assignment) {
+       std::vector<char> right_node_taken(no_right_nodes, 0);
+       for (const std::size_t r : l)
+          if (r != no_assignment)
+             right_node_taken[r] = 1;
 
-           }
+       for (const auto &a : assignments)
+       {
+          assert(a.left_node < no_left_nodes || a.left_node == no_assignment);
+          assert(a.right_node < no_right_nodes || a.right_node == no_assignment);
+          assert(a.left_node != no_assignment || a.right_node != no_assignment);
+          if (a.left_node != no_assignment && l[a.left_node] == a.right_node)
+          {
+             cost += a.cost;
+          }
+          else if (a.left_node == no_assignment && right_nodes_taken[a.right_node] == 0)
+          {
+             cost += a.cost;
+          }
        }
 
       return cost;
@@ -296,11 +377,32 @@ struct graph_matching_input : public linear_assignment_problem_input {
         assert(std::max(assignment_1, assignment_2) < this->assignments.size());
         const std::size_t a1 = std::min(assignment_1, assignment_2);
         const std::size_t a2 = std::max(assignment_1, assignment_2);
-        quadratic_terms.push_back({a1, a2, cost});
+        //if(
+        //   this->assignments[a1].left_node == no_assignment ||
+        //   this->assignments[a1].right_node == no_assignment ||
+        //   this->assignments[a2].left_node == no_assignment ||
+        //   this->assignments[a2].right_node == no_assignment)
+        //   quadratic_terms.push_back({a1, a2, 0.0});
+        //else
+           quadratic_terms.push_back({a1, a2, cost});
     }
 
-    double evaluate(const labeling& l) const
+    double evaluate_quadratic(const labeling &l) const
     {
+       double cost = 0.0;
+       const auto right_node_taken = l.compute_right_node_taken();
+       for(const auto& q : quadratic_terms) {
+          const auto a1 = this->assignments[q.assignment_1];
+          const auto a2 = this->assignments[q.assignment_2];
+          if (l.assignment_active(a1.left_node, a1.right_node, right_node_taken) && l.assignment_active(a2.left_node, a2.right_node, right_node_taken))
+             cost += q.cost;
+       }
+       return cost; 
+    }
+
+    double evaluate(const labeling &l) const
+    {
+       return this->evaluate_linear(l) + evaluate_quadratic(l);
        double cost = linear_assignment_problem_input::evaluate(l);
        for(const auto& q : quadratic_terms) {
           const auto a1 = this->assignments[q.assignment_1];

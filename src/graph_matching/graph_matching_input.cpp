@@ -93,9 +93,9 @@ namespace TorresaniEtAlInput {
          std::size_t right_node; iss >> right_node;
          double cost; iss >> cost;
 
-         if(left_node >= gmInput.no_left_nodes)
+         if(left_node >= gmInput.no_left_nodes && left_node != graph_matching_input::no_assignment)
             throw std::runtime_error("error in assignment: left index larger than number of left nodes.");
-         if(right_node >= gmInput.no_right_nodes)
+         if(right_node >= gmInput.no_right_nodes && right_node != graph_matching_input::no_assignment)
             throw std::runtime_error("error in assignment: right index larger than number of right nodes.");
          if(assignmentsno != gmInput.assignments.size())
             throw std::runtime_error("error in assignment: assignment numbers must be sequential starting at 0."); 
@@ -123,9 +123,9 @@ namespace TorresaniEtAlInput {
          const std::size_t left_2 = gmInput.assignments[assignments2].left_node;
          const std::size_t right_2 = gmInput.assignments[assignments2].right_node;
 
-         if(left_1 == left_2)
+         if(left_1 == left_2 && left_1 != graph_matching_input::no_assignment)
             throw std::runtime_error("assignments in quadratic infeasible: origin from same node");
-         if(right_1 == right_2)
+         if(right_1 == right_2 && right_1 != graph_matching_input::no_assignment)
             throw std::runtime_error("assignments in quadratic infeasible: point to same node");
 
          gmInput.quadratic_terms.push_back({assignments1, assignments2, cost});

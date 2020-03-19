@@ -84,6 +84,37 @@ std::tuple<double, std::vector<char>> min_cost(LHS_ITERATOR lhs_begin, LHS_ITERA
     return {opt_val, sol};
 }
 
+template<typename LHS_ITERATOR, typename COST_ITERATOR>
+double exp_sum_impl(LHS_ITERATOR lhs_begin, LHS_ITERATOR lhs_end, const inequality_type ineq, const int rhs, COST_ITERATOR cost_begin, COST_ITERATOR cost_end, const double partial_sum)
+{
+    assert(std::distance(lhs_begin, lhs_end) == std::distance(cost_begin, cost_end));
+
+    if(lhs_begin == lhs_end) {
+        if(ineq == inequality_type::equal) {
+            return rhs == 0 ? partial_sum : 0.0;
+        } else if(ineq == inequality_type::smaller_equal) {
+            return rhs >= 0 ? partial_sum : 0.0;
+        } else if(ineq == inequality_type::greater_equal) {
+            return rhs <= 0 ? partial_sum : 0.0;
+        } 
+    }
+
+    const double zero_cost = min_cost_impl(lhs_begin+1, lhs_end, ineq, rhs, cost_begin+1, cost_end, sol_begin+1, partial_cost);
+    const double one_cost = min_cost_impl(lhs_begin+1, lhs_end, ineq, rhs - *lhs_begin, cost_begin+1, cost_end, sol_begin+1, partial_cost + *cost_begin) + *cost_begin;
+
+    const double sub_tree_sum = zero_cost + one_cost;
+    const double cur_cost = partial_cost + sub_tree_cost;
+
+    return std::min(zero_cost, one_cost);
+}
+
+template<typename LHS_ITERATOR, typename COST_ITERATOR>
+double exp_sum(LHS_ITERATOR lhs_begin, LHS_ITERATOR lhs_end, const inequality_type ineq, const int rhs, COST_ITERATOR cost_begin, COST_ITERATOR cost_end)
+{
+    const double sum = min_cost_impl(lhs_begin, lhs_end, ineq, rhs, cost_begin, cost_end, sol.begin(), 0.0);
+    return sum;
+} 
+
 template<typename BDD_SOLVER>
 void test_random_inequality()
 {

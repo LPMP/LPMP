@@ -12,3 +12,10 @@ add_test(NAME test_graph_matching_instance_python_construction
     )
 set_tests_properties(test_graph_matching_instance_python_construction
     PROPERTIES ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/graph_matching:$ENV{PYTHONPATH}")
+
+add_test(NAME test_graph_matching_instance_python_input_evaluation
+    COMMAND ${PYTHON_EXECUTABLE}  ${CMAKE_CURRENT_SOURCE_DIR}/test_graph_matching_instance_python_input_evaluation.py
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/graph_matching/
+    )
+set_tests_properties(test_graph_matching_instance_python_input_evaluation
+    PROPERTIES ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/src/graph_matching:$ENV{PYTHONPATH}")

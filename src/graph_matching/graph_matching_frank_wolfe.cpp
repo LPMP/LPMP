@@ -3,23 +3,36 @@
 
 namespace LPMP {
 
-    graph_matching_frank_wolfe::graph_matching_frank_wolfe(const graph_matching_input& instance, const graph_matching_input::labeling& l)
+graph_matching_frank_wolfe::graph_matching_frank_wolfe(const graph_matching_input &instance, const graph_matching_input::labeling &l, const graph_matching_frank_wolfe_options o)
+{
+    if (instance.quadratic_terms.size() >= std::pow(instance.no_left_nodes, 2) * std::pow(instance.no_right_nodes, 2) / 20)
     {
-        if(instance.quadratic_terms.size() >= std::pow(instance.no_left_nodes,2) * std::pow(instance.no_right_nodes,2) / 20) {
-            //solver = std::make_unique<graph_matching_frank_wolfe_dense>(instance, l);
-            solver = new graph_matching_frank_wolfe_dense(instance, l);
-        } else {
-            //solver = std::make_unique<graph_matching_frank_wolfe_sparse>(instance, l);
-            solver = new graph_matching_frank_wolfe_sparse(instance, l);
-        } 
+        //solver = std::make_shared<graph_matching_frank_wolfe_dense>(new graph_matching_frank_wolfe_dense(instance, l, o));
+        solver = new graph_matching_frank_wolfe_dense(instance, l, o);
     }
-
-    graph_matching_input::labeling graph_matching_frank_wolfe::solve()
+    else
     {
-        return std::visit([](auto&& s){
-                s->solve();
-                return s->get_solution();
-                }, solver);
+        //solver = std::make_shared<graph_matching_frank_wolfe_sparse>(new graph_matching_frank_wolfe_sparse(instance, l, o));
+        solver = new graph_matching_frank_wolfe_sparse(instance, l, o);
     }
-
 }
+
+graph_matching_input::labeling graph_matching_frank_wolfe::solve()
+{
+    return std::visit([](auto &&s) {
+        s->solve();
+        return s->get_solution();
+    },
+                      solver);
+}
+
+graph_matching_frank_wolfe::~graph_matching_frank_wolfe()
+{
+    std::visit([](auto &&s) {
+        if (s != nullptr)
+            delete s;
+    },
+               solver);
+}
+
+} // namespace LPMP 
