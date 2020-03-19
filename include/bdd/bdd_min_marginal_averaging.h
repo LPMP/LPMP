@@ -1619,7 +1619,7 @@ namespace LPMP {
             // update min marginals
             const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
             bdd_mma_.set_cost(min_var, fixed_cost);
-            total_min_marginals = bdd_mma_.total_min_marginals();
+	    total_min_marginals = bdd_mma_.total_min_marginals();
         }
     }
 
