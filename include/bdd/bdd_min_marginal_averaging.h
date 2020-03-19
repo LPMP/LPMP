@@ -729,12 +729,6 @@ namespace LPMP {
         return total_min_marginals;
     }
 
-    void bdd_min_marginal_averaging::update_total_min_marginals(std::vector<double> & total_min_marginals, const size_t var)
-    {
-        // TODO
-    }
-
-
     void bdd_min_marginal_averaging::min_marginal_averaging_iteration()
     {
         const auto begin_time = std::chrono::steady_clock::now();
@@ -984,12 +978,6 @@ namespace LPMP {
             }
             backward_run();
         }
-
-    void bdd_min_marginal_averaging::set_cost(const size_t var, const double cost)
-    {
-        for (size_t bdd_index = 0; bdd_index < nr_bdds(var); bdd_index++)
-            bdd_variables_(var, bdd_index).cost = cost;
-    }
 
     template<typename ITERATOR>
         bool bdd_min_marginal_averaging::check_feasibility(ITERATOR var_begin, ITERATOR var_end) const
@@ -1644,7 +1632,6 @@ namespace LPMP {
 
             // update min marginals
             const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
-            bdd_mma_.set_cost(min_var, fixed_cost);
 	    total_min_marginals = bdd_mma_.total_min_marginals();
         }
     }
