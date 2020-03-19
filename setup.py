@@ -4,11 +4,9 @@ import sys
 import platform
 import subprocess
 
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 from pkg_resources import parse_version
-
-
 
 
 class CMakeExtension(Extension):
@@ -97,25 +95,15 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', '--build', '.', '--target', ext.name] + build_args, cwd=self.build_temp)
 
 setup(
-    name='graph_matching_py',
+    name='lpmp_py',
     version='0.0.1',
     author='Paul Swoboda',
     author_email='pswoboda@mpi-inf.mpg.de',
-    description='LPMP graph matching binding for python',
+    description='LPMP bindings for python with differentiable torch wrappers',
     long_description='',
-    ext_modules=[CMakeExtension(name='graph_matching_py')],
-    cmdclass=dict(build_ext=CMakeBuild),
-    zip_safe=False,
-)
-
-setup(
-    name='multigraph_matching_py',
-    version='0.0.1',
-    author='Paul Swoboda',
-    author_email='pswoboda@mpi-inf.mpg.de',
-    description='LPMP multi-graph matching binding for python',
-    long_description='',
-    ext_modules=[CMakeExtension(name='multigraph_matching_py')],
+    ext_package='bindings',
+    packages=find_packages(),
+    ext_modules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
