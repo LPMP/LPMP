@@ -58,6 +58,14 @@ namespace LPMP {
             const multigraph_matching_input& instance_;
     };
 
+    multigraph_matching_frank_wolfe_universe::multigraph_matching_frank_wolfe_universe(const multigraph_matching_input& instance, const multigraph_matching_input::labeling& l)
+    {
+        // determine universe size from labeling and transform present labeling into universe one.
+        for
+
+
+    }
+
     multigraph_matching_frank_wolfe_universe::multigraph_matching_frank_wolfe_universe(const multigraph_matching_input& instance, const std::size_t universe_size)
         : gs(instance),
         instance_(instance)

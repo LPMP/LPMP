@@ -39,6 +39,17 @@ namespace LPMP {
             std::size_t nr_bdds() const { return bdd_variables_.size()-1; }
             std::size_t nr_bdds(const std::size_t var) const { assert(var<nr_variables()); return bdd_variables_[var].size(); }
 
+            void forward_step(const std::size_t var, const std::size_t bdd_index);
+            void backward_step(const std::size_t var, const std::size_t bdd_index);
+            void forward_step(const std::size_t var);
+            void backward_step(const std::size_t var);
+
+            void backward_run(); // also used to initialize
+            void forward_run();
+
+            const BDD_VARIABLE &get_bdd_variable(const std::size_t var, const std::size_t bdd_index) const;
+            const BDD_BRANCH_NODE &get_bdd_branch_node(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const;
+
         protected:
             std::size_t bdd_branch_node_index(const BDD_BRANCH_NODE* bdd) const;
             std::size_t bdd_branch_node_index(const BDD_BRANCH_NODE& bdd) const { return bdd_branch_node_index(&bdd); }
@@ -354,6 +365,90 @@ namespace LPMP {
         return bdd_var.prev == nullptr; 
     }
 
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::forward_step(const std::size_t var, const std::size_t bdd_index)
+    {
+        assert(var < bdd_variables_.size());
+        assert(bdd_index < bdd_variables_[var].size());
+
+        auto& bdd_var = bdd_variables_(var,bdd_index);
+        assert(var != 0 || bdd_var.prev == nullptr);
+
+        // iterate over all bdd nodes and make forward step
+        const std::size_t first_node_index = bdd_var.first_node_index;
+        const std::size_t last_node_index = bdd_var.last_node_index;
+        for(std::size_t i=first_node_index; i<last_node_index; ++i) {
+            //std::cout << "forward step for var = " << var << ", bdd_index = " << bdd_index << ", bdd_node_index = " << i << "\n";
+            bdd_branch_nodes_[i].forward_step();
+        }
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::forward_step(const std::size_t var)
+    {
+        assert(var < bdd_variables_.size());
+        for(std::size_t bdd_index = 0; bdd_index<bdd_variables_[var].size(); ++bdd_index)
+            forward_step(var, bdd_index);
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::backward_step(const std::size_t var, const std::size_t bdd_index)
+    {
+        assert(var < bdd_variables_.size());
+        assert(bdd_index < bdd_variables_[var].size());
+
+        auto& bdd_var = bdd_variables_(var,bdd_index);
+        assert(var+1 != nr_variables() || bdd_var.next == nullptr);
+
+        // iterate over all bdd nodes and make forward step
+        const std::ptrdiff_t first_node_index = bdd_var.first_node_index;
+        const std::ptrdiff_t last_node_index = bdd_var.last_node_index;
+        //std::cout << "no bdd nodes for var " << var << " = " << last_node_index - first_node_index << "\n";
+        //std::cout << "bdd branch instruction offset = " << first_node_index << "\n";
+        for(std::ptrdiff_t i=last_node_index-1; i>=first_node_index; --i) {
+            check_bdd_branch_node(bdd_branch_nodes_[i], var+1 == nr_variables(), var == 0);
+            bdd_branch_nodes_[i].backward_step();
+        }
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::backward_step(const std::size_t var)
+    {
+        assert(var < bdd_variables_.size());
+        for(std::size_t bdd_index = 0; bdd_index<bdd_variables_[var].size(); ++bdd_index)
+            backward_step(var, bdd_index);
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::backward_run()
+    {
+        for(long int var=nr_variables()-1; var>=0; --var)
+            backward_step(var); 
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::forward_run()
+    {
+        for(std::size_t var=0; var<nr_variables(); ++var)
+            forward_step(var); 
+    }
+
+    template <typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    const BDD_VARIABLE &bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::get_bdd_variable(const std::size_t var, const std::size_t bdd_index) const
+    {
+        assert(var < nr_variables());
+        assert(bdd_index < bdd_variables_[var].size());
+        return bdd_variables_(var, bdd_index);
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    const BDD_BRANCH_NODE& bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::get_bdd_branch_node(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const
+    {
+        assert(var < nr_variables());
+        assert(bdd_index < bdd_variables_[var].size());
+        assert(bdd_node_index < bdd_variables_(var,bdd_index).nr_bdd_nodes());
+        return bdd_branch_nodes_[ bdd_variables_(var,bdd_index).first_node_index + bdd_node_index ];
+    } 
 
     ////////////////////////////////////////////////////
     // Min-Marginal Averaging Solver
@@ -365,72 +460,62 @@ namespace LPMP {
         enum class averaging_type {classic, SRMP} averaging_type = averaging_type::classic;
     };
 
-    class bdd_min_marginal_averaging : public bdd_base<bdd_variable_mma, bdd_branch_node_opt>, public bdd_solver_interface {
-        public:
+    class bdd_min_marginal_averaging : public bdd_base<bdd_variable_mma, bdd_branch_node_opt>, public bdd_solver_interface
+    {
+    public:
+        bdd_min_marginal_averaging() {}
+        bdd_min_marginal_averaging(const bdd_min_marginal_averaging &) = delete; // no copy constructor because of pointers in bdd_branch_node
 
-            bdd_min_marginal_averaging() {}
-            bdd_min_marginal_averaging(const bdd_min_marginal_averaging&) = delete; // no copy constructor because of pointers in bdd_branch_node
+        void init(const ILP_input &input);
+        void init();
 
-            void init(const ILP_input& input);
-            void init();
+        template <typename ITERATOR>
+        void set_costs(ITERATOR begin, ITERATOR end);
 
-            template<typename ITERATOR>
-                void set_costs(ITERATOR begin, ITERATOR end);
+        template <typename ITERATOR>
+        bool check_feasibility(ITERATOR var_begin, ITERATOR var_end) const;
+        template <typename ITERATOR>
+        double evaluate(ITERATOR var_begin, ITERATOR var_end) const;
 
-            template<typename ITERATOR>
-                bool check_feasibility(ITERATOR var_begin, ITERATOR var_end) const; 
-            template<typename ITERATOR>
-                double evaluate(ITERATOR var_begin, ITERATOR var_end) const; 
+        double lower_bound() { return lower_bound_; }
+        double compute_lower_bound();
+        double lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
+        double lower_bound_forward(const std::size_t var, const std::size_t bdd_index);
 
-            void forward_step(const std::size_t var, const std::size_t bdd_index);
-            void backward_step(const std::size_t var, const std::size_t bdd_index);
-            void forward_step(const std::size_t var);
-            void backward_step(const std::size_t var);
+        double compute_upper_bound(const std::vector<char> &primal_solution) const;
+        std::vector<double> total_min_marginals();
 
-            void backward_run(); // also used to initialize
-            void forward_run();
+        void min_marginal_averaging_iteration();
+        void min_marginal_averaging_forward();
+        void min_marginal_averaging_backward();
+        void min_marginal_averaging_forward_SRMP();
+        void min_marginal_averaging_backward_SRMP();
+        void min_marginal_averaging_iteration_SRMP();
 
-            double lower_bound() { return lower_bound_; }
-            double compute_lower_bound();
-            double lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
-            double lower_bound_forward(const std::size_t var, const std::size_t bdd_index);
+        void iteration();
 
-            double compute_upper_bound(const std::vector<char> & primal_solution) const;
-            std::vector<double> total_min_marginals();
+        template <typename STREAM>
+        void export_dot(STREAM &s) const;
 
-            void min_marginal_averaging_iteration();
-            void min_marginal_averaging_forward();
-            void min_marginal_averaging_backward();
-            void min_marginal_averaging_forward_SRMP();
-            void min_marginal_averaging_backward_SRMP();
-            void min_marginal_averaging_iteration_SRMP();
+        void set_options(const bdd_min_marginal_averaging_options o) { options = o; }
 
-            void iteration();
+    protected:
+        void init_costs();
 
-            const bdd_branch_node_opt& get_bdd_branch_node(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const;
+        std::array<double, 2> min_marginal(const std::size_t var, const std::size_t bdd_index) const;
+        template <typename ITERATOR>
+        static std::array<double, 2> average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t nr_marginals_to_distribute = std::numeric_limits<std::size_t>::max());
+        template <typename ITERATOR>
+        std::pair<std::array<double, 2>, bool> average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
+        template <typename ITERATOR>
+        std::pair<std::array<double, 2>, bool> average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
+        void set_marginal(const std::size_t var, const std::size_t bdd_index, const std::array<double, 2> marginals, const std::array<double, 2> min_marginals);
+        void set_marginal_forward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double, 2> marginals, const std::array<double, 2> min_marginals, const bool default_avg);
+        void set_marginal_backward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double, 2> marginals, const std::array<double, 2> min_marginals, const bool default_avg);
 
-            template<typename STREAM>
-                void export_dot(STREAM& s) const;
-
-            void set_options(const bdd_min_marginal_averaging_options o) { options = o; }
-
-        protected:
-            void init_costs();
-
-            std::array<double,2> min_marginal(const std::size_t var, const std::size_t bdd_index) const;
-            template<typename ITERATOR>
-                static std::array<double,2> average_marginals(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t nr_marginals_to_distribute = std::numeric_limits<std::size_t>::max());
-            template<typename ITERATOR>
-                std::pair<std::array<double,2>, bool> average_marginals_forward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
-            template<typename ITERATOR>
-                std::pair<std::array<double,2>, bool> average_marginals_backward_SRMP(ITERATOR marginals_begin, ITERATOR marginals_end, const std::size_t var) const;
-            void set_marginal(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals);
-            void set_marginal_forward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals, const bool default_avg);
-            void set_marginal_backward_SRMP(const std::size_t var, const std::size_t bdd_index, const std::array<double,2> marginals, const std::array<double,2> min_marginals, const bool default_avg);
-
-            std::vector<double> costs_; 
-            double lower_bound_ = -std::numeric_limits<double>::infinity();
-            bdd_min_marginal_averaging_options options;
+        std::vector<double> costs_;
+        double lower_bound_ = -std::numeric_limits<double>::infinity();
+        bdd_min_marginal_averaging_options options;
     };
 
 
@@ -473,56 +558,6 @@ namespace LPMP {
     {
         bdd_base<bdd_variable_mma, bdd_branch_node_opt>::init();
         init_costs();
-    }
-
-    void bdd_min_marginal_averaging::forward_step(const std::size_t var, const std::size_t bdd_index)
-    {
-        assert(var < bdd_variables_.size());
-        assert(bdd_index < bdd_variables_[var].size());
-
-        auto& bdd_var = bdd_variables_(var,bdd_index);
-        assert(var != 0 || bdd_var.prev == nullptr);
-
-        // iterate over all bdd nodes and make forward step
-        const std::size_t first_node_index = bdd_var.first_node_index;
-        const std::size_t last_node_index = bdd_var.last_node_index;
-        for(std::size_t i=first_node_index; i<last_node_index; ++i) {
-            //std::cout << "forward step for var = " << var << ", bdd_index = " << bdd_index << ", bdd_node_index = " << i << "\n";
-            bdd_branch_nodes_[i].forward_step();
-        }
-    }
-
-    void bdd_min_marginal_averaging::forward_step(const std::size_t var)
-    {
-        assert(var < bdd_variables_.size());
-        for(std::size_t bdd_index = 0; bdd_index<bdd_variables_[var].size(); ++bdd_index)
-            forward_step(var, bdd_index);
-    }
-
-    void bdd_min_marginal_averaging::backward_step(const std::size_t var, const std::size_t bdd_index)
-    {
-        assert(var < bdd_variables_.size());
-        assert(bdd_index < bdd_variables_[var].size());
-
-        auto& bdd_var = bdd_variables_(var,bdd_index);
-        assert(var+1 != nr_variables() || bdd_var.next == nullptr);
-
-        // iterate over all bdd nodes and make forward step
-        const std::ptrdiff_t first_node_index = bdd_var.first_node_index;
-        const std::ptrdiff_t last_node_index = bdd_var.last_node_index;
-        //std::cout << "no bdd nodes for var " << var << " = " << last_node_index - first_node_index << "\n";
-        //std::cout << "bdd branch instruction offset = " << first_node_index << "\n";
-        for(std::ptrdiff_t i=last_node_index-1; i>=first_node_index; --i) {
-            check_bdd_branch_node(bdd_branch_nodes_[i], var+1 == nr_variables(), var == 0);
-            bdd_branch_nodes_[i].backward_step();
-        }
-    }
-
-    void bdd_min_marginal_averaging::backward_step(const std::size_t var)
-    {
-        assert(var < bdd_variables_.size());
-        for(std::size_t bdd_index = 0; bdd_index<bdd_variables_[var].size(); ++bdd_index)
-            backward_step(var, bdd_index);
     }
 
     std::array<double,2> bdd_min_marginal_averaging::min_marginal(const std::size_t var, const std::size_t bdd_index) const
@@ -598,13 +633,6 @@ namespace LPMP {
         }
     }
 
-    void bdd_min_marginal_averaging::backward_run()
-    {
-        for(long int var=nr_variables()-1; var>=0; --var) {
-            backward_step(var); 
-        } 
-    }
-
     double bdd_min_marginal_averaging::compute_lower_bound()
     {
         double lb = 0.0;
@@ -653,13 +681,6 @@ namespace LPMP {
         else
         {
             return 0.0;
-        }
-    }
-
-    void bdd_min_marginal_averaging::forward_run()
-    {
-        for(std::size_t var=0; var<nr_variables(); ++var) {
-            forward_step(var); 
         }
     }
 
@@ -920,14 +941,6 @@ namespace LPMP {
         std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
 
-
-    const bdd_branch_node_opt& bdd_min_marginal_averaging::get_bdd_branch_node(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const
-    {
-        assert(var < nr_variables());
-        assert(bdd_index < bdd_variables_[var].size());
-        assert(bdd_node_index < bdd_variables_(var,bdd_index).nr_bdd_nodes());
-        return bdd_branch_nodes_[ bdd_variables_(var,bdd_index).first_node_index + bdd_node_index ];
-    }
 
 
     //const bdd_branch_instruction& bdd_min_marginal_averaging::get_bdd_branch_instruction(const std::size_t var, const std::size_t bdd_index, const std::size_t bdd_node_index) const
@@ -1529,4 +1542,76 @@ namespace LPMP {
         return bdd_fix_.fix_variables(variables, values);
     }
 
+
+    // helper functions
+    template <typename BDD_BASE, typename BDD_VARIABLE_FUNC, typename BDD_INDEX_FUNC, typename VAR_ITERATOR>
+    std::tuple<std::vector<std::size_t>, two_dim_variable_array<std::size_t>> compute_bdd_mask(
+        VAR_ITERATOR variable_begin, VAR_ITERATOR variable_end,
+        BDD_BASE& bdd_base, BDD_VARIABLE_FUNC bdd_variable_func, BDD_INDEX_FUNC bdd_index_func
+        )
+    {
+        std::unordered_set<std::array<std::size_t, 2>> affected_bdd_variables_set;
+        for (auto variable_it = variable_begin; variable_it != variable_end; ++variable_it)
+        {
+            const std::size_t var = *variable_it;
+            for (std::size_t bdd_index = 0; bdd_index < bdd_base.nr_bdds(var); ++bdd_index)
+            {
+                affected_bdd_variables_set.insert({var, bdd_index});
+                const auto *prev_bdd_variable = bdd_base.get_bdd_variable(var, bdd_index).prev;
+                while (prev_bdd_variable != nullptr)
+                {
+                    const std::size_t var = bdd_variable_func(prev_bdd_variable);
+                    const std::size_t bdd_index = bdd_index_func(prev_bdd_variable);
+                    affected_bdd_variables_set.insert({var, bdd_index});
+                    prev_bdd_variable = prev_bdd_variable->prev;
+                }
+
+                const auto *next_bdd_variable = bdd_base.get_bdd_variable(var, bdd_index).next;
+                while (next_bdd_variable != nullptr)
+                {
+                    const std::size_t var = bdd_variable_func(next_bdd_variable);
+                    const std::size_t bdd_index = bdd_index_func(next_bdd_variable);
+                    affected_bdd_variables_set.insert({var, bdd_index});
+                    next_bdd_variable = next_bdd_variable->next;
+                }
+            }
+        }
+
+        std::vector<std::array<std::size_t, 2>> affected_bdd_variables;
+        affected_bdd_variables.reserve(affected_bdd_variables_set.size());
+        for (const auto x : affected_bdd_variables_set)
+            affected_bdd_variables.push_back(x);
+        auto bdd_var_compare = [](const auto a, const auto b) { return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end()); };
+        std::sort(affected_bdd_variables.begin(), affected_bdd_variables.end(), bdd_var_compare);
+        //const auto tmp_it = std::adjacent_find(affected_bdd_variables.begin(), affected_bdd_variables.end(), bdd_var_compare);
+        //assert(std::adjacent_find(affected_bdd_variables.begin(), affected_bdd_variables.end(), bdd_var_compare) == affected_bdd_variables.end());
+        std::vector<std::size_t> affected_variables;
+        std::vector<std::size_t> affected_variables_bdd_index_size;
+        for (const auto [var, bdd_index] : affected_bdd_variables)
+        {
+            if (affected_variables.size() == 0 || affected_variables.back() != var)
+            {
+                affected_variables.push_back(var);
+                affected_variables_bdd_index_size.push_back(0);
+            }
+            ++affected_variables_bdd_index_size.back();
+        }
+
+        two_dim_variable_array<std::size_t> affected_variables_bdd_index(affected_variables_bdd_index_size.begin(), affected_variables_bdd_index_size.end());
+        affected_variables.clear();
+        std::size_t counter = 0;
+
+        for (const auto [var, bdd_index] : affected_bdd_variables)
+        {
+            if (affected_variables.size() == 0 || affected_variables.back() != var)
+            {
+                affected_variables.push_back(var);
+                counter = 0;
+            }
+            const std::size_t var_idx = affected_variables.size() - 1;
+            affected_variables_bdd_index(var_idx, counter++) = bdd_index;
+        }
+
+        return {affected_variables, affected_variables_bdd_index};
+    }
 }
