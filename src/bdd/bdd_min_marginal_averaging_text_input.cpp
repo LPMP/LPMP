@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
 
-    bdd_opt solver;
+    bdd_mma_fixing solver;
     solver.set_options(options);
     solver.init(input);
 

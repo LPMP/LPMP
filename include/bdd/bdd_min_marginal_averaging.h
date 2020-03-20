@@ -1034,9 +1034,9 @@ namespace LPMP {
                                     return bdd.high_outgoing;
                             }();
 
-                            if(bdd_next_index == bdd_branch_node_opt::terminal_0())
+                            if(bdd_next_index == BDD_BRANCH_NODE::terminal_0())
                                 return false;
-                            if(bdd_next_index == bdd_branch_node_opt::terminal_1()) {
+                            if(bdd_next_index == BDD_BRANCH_NODE::terminal_1()) {
                             } else { 
                                 bdd_nbranch_node_marks[ this->bdd_branch_node_index(bdd_next_index) ] = 1;
                             }
@@ -1153,6 +1153,8 @@ namespace LPMP {
 
     class bdd_mma_fixing : public bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix> {
         public:
+            bool fix_variables();
+
             bool fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values);
             bool fix_variable(const size_t var, const char value);
             bool is_fixed(const size_t var) const;
@@ -1164,6 +1166,7 @@ namespace LPMP {
 
             void init_primal_solution() { primal_solution_.resize(nr_variables(), 2); }
             const std::vector<char> & primal_solution() const { return primal_solution_; }
+            double compute_upper_bound();
             const size_t log_size() const { return log_.size(); }
 
         private:
@@ -1177,6 +1180,11 @@ namespace LPMP {
             std::vector<char> primal_solution_;
             std::stack<log_entry, std::vector<log_entry>> log_;
     };
+
+    double bdd_mma_fixing::compute_upper_bound()
+    {
+        return bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix>::compute_upper_bound(primal_solution());
+    }
 
     void bdd_mma_fixing::init_pointers()
     {
@@ -1506,50 +1514,12 @@ namespace LPMP {
         }
     }
 
-
-
-    ////////////////////////////////////////////////////
-    // Solver with Final Rounding
-    ////////////////////////////////////////////////////
-
-    class bdd_opt : public bdd_solver_interface {
-        public:
-
-            bdd_opt() {}
-            bdd_opt(const bdd_opt&) = delete; // no copy constructor because of pointers in bdd_branch_node
-
-            void init(const ILP_input& input);
-            double lower_bound() { return bdd_mma_.lower_bound(); }
-            void iteration() { bdd_mma_.iteration(); }
-            void mma_iteration() { bdd_mma_.min_marginal_averaging_iteration(); }
-            void srmp_iteration() { bdd_mma_.min_marginal_averaging_iteration_SRMP(); }
-
-            bool fix_variables();
-            double compute_upper_bound() { return bdd_mma_.compute_upper_bound(bdd_fix_.primal_solution()); }
-            std::vector<char> primal_solution() const { return bdd_fix_.primal_solution(); }
-
-            void set_options(const bdd_min_marginal_averaging_options o) { bdd_mma_.set_options(o); }
-
-        private:
-            
-            bdd_min_marginal_averaging bdd_mma_;
-            bdd_mma_fixing bdd_fix_;
-    };
-
-    void bdd_opt::init(const ILP_input& input)
+    bool bdd_mma_fixing::fix_variables()
     {
-        bdd_mma_.init(input);
-        bdd_mma_.compute_lower_bound();
-        bdd_fix_.init(input);
-    }
-
-
-    bool bdd_opt::fix_variables()
-    {
-        mma_iteration();
-        std::vector<double> total_min_marginals = bdd_mma_.total_min_marginals();
+        min_marginal_averaging_iteration();
+        std::vector<double> total_min_marginals = this->total_min_marginals();
         std::vector<size_t> variables;
-        for (size_t i = 0; i < bdd_mma_.nr_variables(); i++)
+        for (size_t i = 0; i < nr_variables(); i++)
             variables.push_back(i);
 
         // TODO change to more sensible ordering
@@ -1568,9 +1538,8 @@ namespace LPMP {
             values.push_back(val);
         }
 
-        return bdd_fix_.fix_variables(variables, values);
+        return fix_variables(variables, values);
     }
-
 
     // bool bdd_opt::fix_variables()
     // {
@@ -1664,9 +1633,13 @@ namespace LPMP {
 
     //         // update min marginals
     //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
-	   //      total_min_marginals = bdd_mma_.total_min_marginals();
+       //      total_min_marginals = bdd_mma_.total_min_marginals();
     //     }
     // }
+
+
+
+    ////////////////////////////////////////////////////
 
 
     // helper functions
