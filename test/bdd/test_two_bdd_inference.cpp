@@ -31,6 +31,8 @@ void test_two_bdd_inference()
     bdds.set_costs(simplex_costs.begin(), simplex_costs.end());
 
     {
+        bdds.backward_run();
+        bdds.compute_lower_bound();
         const double backward_lb = bdds.lower_bound();
         test(std::abs(backward_lb - -3.75) <= 1e-8);
     }

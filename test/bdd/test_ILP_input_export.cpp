@@ -31,10 +31,14 @@ void test_input_export()
 
     BDD_SOLVER bdds_1;
     bdds_1.init(input_orig); 
+    bdds_1.backward_run();
+    bdds_1.compute_lower_bound();
     const double initial_lb_1 = bdds_1.lower_bound();
 
     bdd_min_marginal_averaging bdds_2;
     bdds_2.init(input_exported); 
+    bdds_2.backward_run();
+    bdds_2.compute_lower_bound();
     const double initial_lb_2 = bdds_2.lower_bound();
 
     test(std::abs(initial_lb_1 - initial_lb_2) <= 1e-8);
