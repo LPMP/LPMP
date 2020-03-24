@@ -28,7 +28,8 @@ void test_single_bdd_inference()
     //std::vector<double> simplex_costs = {1.0, -1.0, 0.0, 2.0, -1.5};
     std::vector<double> simplex_costs = {1.0, -1.0, 0.0, 2.0, -0.5};
     bdds.set_costs(simplex_costs.begin(), simplex_costs.end());
-    //bdds.backward_run(); 
+    bdds.backward_run(); 
+    bdds.compute_lower_bound(); 
 
     const double backward_lb = bdds.lower_bound();
     test(backward_lb == -1.0);
@@ -51,6 +52,8 @@ void test_single_bdd_inference()
         for(auto& x : simplex_costs)
             x = d(gen);
         bdds.set_costs(simplex_costs.begin(), simplex_costs.end());
+        bdds.backward_run();
+        bdds.compute_lower_bound();
         const double backward_lb = bdds.lower_bound();
         test(backward_lb == *std::min_element(simplex_costs.begin(), simplex_costs.end()));
     }

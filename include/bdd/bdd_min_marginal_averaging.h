@@ -421,7 +421,7 @@ namespace LPMP {
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::backward_run()
     {
-        for(long int var=nr_variables()-1; var>=0; --var)
+        for(std::ptrdiff_t var=nr_variables()-1; var>=0; --var)
             backward_step(var); 
     }
 
@@ -653,6 +653,7 @@ namespace LPMP {
         for(long int var=this->nr_variables()-1; var>=0; --var)
             for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index)
                 lb += lower_bound_backward(var,bdd_index);
+        this->lower_bound_ = lb;
         return lb;
     }
 

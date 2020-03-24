@@ -16,6 +16,8 @@ void test_problem_anisotropic(const std::string input_string, const double expec
     bdd_anisotropic_diffusion bdds;
     bdds.init(input);
 
+    bdds.backward_run(); 
+    bdds.compute_lower_bound(); 
     const double initial_lb = bdds.lower_bound();
     test(initial_lb <= expected_lb + 1e-8);
 
@@ -34,6 +36,7 @@ void test_problem_anisotropic(const std::string input_string, const double expec
         old_lb = new_lb;
     }
 
+    bdds.compute_lower_bound(); 
     const double lb = bdds.lower_bound();
 
     test(std::abs(lb - expected_lb) <= 1e-8);
@@ -92,6 +95,8 @@ void test_problem(const std::string input_string, const double expected_lb)
     BDD_SOLVER bdds;
     bdds.init(input); 
 
+    bdds.backward_run(); 
+    bdds.compute_lower_bound(); 
     const double initial_lb = bdds.lower_bound();
     test(initial_lb <= expected_lb + 1e-8);
 
@@ -113,6 +118,7 @@ void test_problem(const std::string input_string, const double expected_lb)
         old_lb = new_lb;
     }
 
+    bdds.backward_run(); 
     const double lb = bdds.lower_bound();
 
     test(std::abs(lb - expected_lb) <= 1e-8);
