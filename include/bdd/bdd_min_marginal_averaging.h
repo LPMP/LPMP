@@ -640,7 +640,6 @@ namespace LPMP {
         else if(this->first_variable_of_bdd(var, bdd_index)) {
             bdd_var.cost -= marginal_diff;
         } else {
-            bdd_var.cost += -marginal_diff + marginal_diff_target; 
             assert(std::isfinite(marginal_diff_target));
             bdd_var.cost += -marginal_diff + marginal_diff_target; 
         }
@@ -963,8 +962,7 @@ namespace LPMP {
         const auto after_forward = std::chrono::steady_clock::now();
         std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
         const auto before_backward = std::chrono::steady_clock::now();
-        //min_marginal_averaging_backward_SRMP();
-        min_marginal_averaging_backward();
+        min_marginal_averaging_backward_SRMP();
         const auto end_time = std::chrono::steady_clock::now();
         std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
