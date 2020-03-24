@@ -28,12 +28,14 @@ namespace LPMP {
             x.next == y.next); 
     }
 
-    class bdd_variable_mma : public bdd_variable<bdd_variable_mma> {
+    template<typename DERIVED>
+    class bdd_variable_mma_base : public bdd_variable<DERIVED> {
         public:
             double cost = std::numeric_limits<double>::infinity();
     };
 
-    bool operator==(const bdd_variable_mma& x, const bdd_variable_mma& y)
+    template<typename DERIVED>
+    bool operator==(const bdd_variable_mma_base<DERIVED>& x, const bdd_variable_mma_base<DERIVED>& y)
     {
         return (x.first_node_index == y.first_node_index &&
             x.last_node_index == y.last_node_index &&
@@ -42,7 +44,10 @@ namespace LPMP {
             x.cost == y.cost); 
     }
 
-    class bdd_variable_fix : public bdd_variable<bdd_variable_fix> {
+    class bdd_variable_mma : public bdd_variable_mma_base<bdd_variable_mma> {   
+    };
+
+    class bdd_variable_fix : public bdd_variable_mma_base<bdd_variable_fix> {
         public:
             std::size_t nr_feasible_low_arcs;
             std::size_t nr_feasible_high_arcs;
@@ -55,6 +60,7 @@ namespace LPMP {
             x.last_node_index == y.last_node_index &&
             x.prev == y.prev &&
             x.next == y.next &&
+            x.cost == y.cost &&
             x.nr_feasible_low_arcs == y.nr_feasible_low_arcs &&
             x.nr_feasible_high_arcs == y.nr_feasible_high_arcs &&
             x.variable_index == y.variable_index); 
