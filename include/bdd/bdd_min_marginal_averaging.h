@@ -726,11 +726,13 @@ namespace LPMP {
             };
             current_marginals.clear();
             double total_min_marg = 0;
+            double total_abs_marg = 0;
             for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index)
             {
                 this->forward_step(var,bdd_index);
                 std::array<double,2> min_marg = min_marginal(var,bdd_index);
                 total_min_marg += (min_marg[1] - min_marg[0]);
+                total_abs_marg += std::abs(total_min_marg);
                 current_marginals.push_back(min_marg[1] - min_marg[0]);
             }
 
@@ -1179,6 +1181,9 @@ namespace LPMP {
 
             std::vector<char> primal_solution_;
             std::stack<log_entry, std::vector<log_entry>> log_;
+
+            // FOR INSPECTION
+            ILP_input input_;
     };
 
     double bdd_mma_fixing::compute_upper_bound()
@@ -1228,6 +1233,7 @@ namespace LPMP {
     {
         bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix>::init(input);
         init_pointers();
+        input_ = input;
     }
 
     void bdd_mma_fixing::init()
@@ -1514,128 +1520,142 @@ namespace LPMP {
         }
     }
 
+    // bool bdd_mma_fixing::fix_variables()
+    // {
+    //     min_marginal_averaging_iteration();
+    //     std::vector<double> total_min_marginals = this->total_min_marginals();
+    //     std::vector<size_t> variables;
+    //     for (size_t i = 0; i < nr_variables(); i++)
+    //         variables.push_back(i);
+
+    //     // TODO change to more sensible ordering
+    //     auto order = [&](const size_t a, const size_t b)
+    //     {
+    //         if (total_min_marginals[a] >= 0.0 && total_min_marginals[b] >= 0.0)
+    //             return (total_min_marginals[a]) > (total_min_marginals[b]);
+    //         return (total_min_marginals[a]) < (total_min_marginals[b]);
+    //     };
+    //     std::sort(variables.begin(), variables.end(), order);
+
+    //     std::vector<char> values;
+    //     for (size_t i = 0; i < variables.size(); i++)
+    //     {
+    //         const char val = (total_min_marginals[variables[i]] < 0) ? 1 : 0;
+    //         values.push_back(val);
+    //     }
+
+    //     return fix_variables(variables, values);
+    // }
+
     bool bdd_mma_fixing::fix_variables()
     {
         min_marginal_averaging_iteration();
+        init_primal_solution();
+
         std::vector<double> total_min_marginals = this->total_min_marginals();
-        std::vector<size_t> variables;
-        for (size_t i = 0; i < nr_variables(); i++)
-            variables.push_back(i);
 
-        // TODO change to more sensible ordering
-        auto order = [&](const size_t a, const size_t b)
-        {
-            if (total_min_marginals[a] >= 0.0 && total_min_marginals[b] >= 0.0)
-                return (total_min_marginals[a]) > (total_min_marginals[b]);
-            return (total_min_marginals[a]) < (total_min_marginals[b]);
-        };
-        std::sort(variables.begin(), variables.end(), order);
+        // struct VarFix
+        // {
+        //     VarFix(const size_t index, const double score, const size_t edition)
+        //     : index_(index), score_(score), edition_(edition) {}
 
-        std::vector<char> values;
-        for (size_t i = 0; i < variables.size(); i++)
+        //     const size_t index_;
+        //     const double score_;
+        //     const size_t edition_;
+
+        //     bool operator <(VarFix const & other) const
+        //     {
+        //         // TODO adjust
+        //         return score_ > other.score_;
+        //     }
+        // }
+
+        // std::priority_queue<VarFix> queue;
+        // std::vector<size_t> editions(nr_variables(), 0);
+        // for (size_t var = 0; var < nr_variables(); var++)
+        //     queue.emplace(var, total_min_marginals[var], 0);
+
+        // while (!queue.empty())
+        // {
+        //     const auto next = queue.top();
+        //     queue.pop();
+
+        //     const size_t var = next.index_;
+        //     const char val = (next.score_ < 0) ? 1 : 0;
+        //     const size_t edition = next.edition_;
+
+        //     if (bdd_fix_.is_fixed(var) || edition < editions[var])
+        //         continue;
+
+        //     const size_t log_size = bdd_fix_.log_size();
+        //     bool feasible = bdd_fix_.fix_variable(var, val);
+
+        //     if (feasible)
+        //     {
+        //         // update total min marginals
+        //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
+        //         bdd_mma_.set_cost(var, fixed_cost);
+        //         // TODO
+        //     }
+        //     else
+        //         // TODO enable backtracking
+        //         return false;
+
+        // }
+
+        // size_t nfixes = 0;
+        // size_t max_fixes = nr_variables();
+        // std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
+
+        while (true)
         {
-            const char val = (total_min_marginals[variables[i]] < 0) ? 1 : 0;
-            values.push_back(val);
+            // nfixes++;
+            // std::cout << "\rExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
+            // if (nfixes > max_fixes)
+            //     return false;
+
+            double min_score = std::numeric_limits<double>::infinity();
+            double max_score = -min_score;
+            double prev_min_score = min_score;
+            size_t min_var;
+            size_t max_var;
+            for (size_t var = 0; var < nr_variables(); var++)
+            {
+                if (is_fixed(var))
+                    continue;
+
+                if (total_min_marginals[var] < min_score)
+                {
+                    min_score = total_min_marginals[var];
+                    min_var = var;
+                }
+                if (total_min_marginals[var] > max_score)
+                {
+                    max_score = total_min_marginals[var];
+                    max_var = var;
+                }
+            }
+
+            if (min_score == -std::numeric_limits<double>::infinity())
+                std::cout << "Min score is -inf" << std::endl;
+
+            if (min_score == std::numeric_limits<double>::infinity())
+                return true;
+
+            const char val = (min_score < 0) ? 1 : 0;
+            const size_t best_var = (min_score < 0) ? min_var : max_var;
+            bool feasible = fix_variable(best_var, val);
+
+            std::cout << "Fixed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) val << ". score = " << min_score << std::endl;
+
+            // TODO enable backtracking
+            if (!feasible)
+                return false;
+
+            // update min marginals
+            total_min_marginals = this->total_min_marginals();
         }
-
-        return fix_variables(variables, values);
     }
-
-    // bool bdd_opt::fix_variables()
-    // {
-    //     mma_iteration();
-    //     bdd_fix_.init_primal_solution();
-
-    //     std::vector<double> total_min_marginals = bdd_mma_.total_min_marginals();
-
-    //     // struct VarFix
-    //     // {
-    //     //     VarFix(const size_t index, const double score, const size_t edition)
-    //     //     : index_(index), score_(score), edition_(edition) {}
-
-    //     //     const size_t index_;
-    //     //     const double score_;
-    //     //     const size_t edition_;
-
-    //     //     bool operator <(VarFix const & other) const
-    //     //     {
-    //     //         // TODO adjust
-    //     //         return score_ > other.score_;
-    //     //     }
-    //     // }
-
-    //     // std::priority_queue<VarFix> queue;
-    //     // std::vector<size_t> editions(nr_variables(), 0);
-    //     // for (size_t var = 0; var < nr_variables(); var++)
-    //     //     queue.emplace(var, total_min_marginals[var], 0);
-
-    //     // while (!queue.empty())
-    //     // {
-    //     //     const auto next = queue.top();
-    //     //     queue.pop();
-
-    //     //     const size_t var = next.index_;
-    //     //     const char val = (next.score_ < 0) ? 1 : 0;
-    //     //     const size_t edition = next.edition_;
-
-    //     //     if (bdd_fix_.is_fixed(var) || edition < editions[var])
-    //     //         continue;
-
-    //     //     const size_t log_size = bdd_fix_.log_size();
-    //     //     bool feasible = bdd_fix_.fix_variable(var, val);
-
-    //     //     if (feasible)
-    //     //     {
-    //     //         // update total min marginals
-    //     //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
-    //     //         bdd_mma_.set_cost(var, fixed_cost);
-    //     //         // TODO
-    //     //     }
-    //     //     else
-    //     //         // TODO enable backtracking
-    //     //         return false;
-
-    //     // }
-
-    //     // size_t nfixes = 0;
-    //     // size_t max_fixes = bdd_fix_.nr_variables();
-    //     // std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-
-    //     while (true)
-    //     {
-    //         // nfixes++;
-    //         // std::cout << "\rExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-    //         // if (nfixes > max_fixes)
-    //         //     return false;
-
-    //         double min_score = std::numeric_limits<double>::infinity();
-    //         size_t min_var;
-    //         for (size_t var = 0; var < bdd_fix_.nr_variables(); var++)
-    //         {
-    //             if (bdd_fix_.is_fixed(var) || total_min_marginals[var] > min_score)
-    //                 continue;
-
-    //             min_score = total_min_marginals[var];
-    //             min_var = var;
-    //         }
-
-    //         if (min_score == std::numeric_limits<double>::infinity())
-    //             return true;
-
-    //         const char val = (min_score < 0) ? 1 : 0;
-    //         bool feasible = bdd_fix_.fix_variable(min_var, val);
-
-    //         std::cout << "Fixed var " << min_var << " to " << (int) val << std::endl;
-
-    //         // TODO enable backtracking
-    //         if (!feasible)
-    //             return false;
-
-    //         // update min marginals
-    //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
-       //      total_min_marginals = bdd_mma_.total_min_marginals();
-    //     }
-    // }
 
 
 
