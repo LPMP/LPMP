@@ -1,4 +1,5 @@
 #include "bdd/bdd_min_marginal_averaging.h"
+#include "bdd/bdd_min_marginal_averaging_smoothed.h"
 #include "bdd/bdd_anisotropic_diffusion.h"
 #include "bdd/convert_pb_to_bdd.h"
 #include <vector>
@@ -84,8 +85,36 @@ std::tuple<double, std::vector<char>> min_cost(LHS_ITERATOR lhs_begin, LHS_ITERA
     return {opt_val, sol};
 }
 
+template<typename LHS_ITERATOR, typename COST_ITERATOR>
+double exp_sum_impl(LHS_ITERATOR lhs_begin, LHS_ITERATOR lhs_end, const inequality_type ineq, const int rhs, COST_ITERATOR cost_begin, COST_ITERATOR cost_end, const double partial_sum)
+{
+    assert(std::distance(lhs_begin, lhs_end) == std::distance(cost_begin, cost_end));
+
+    if(lhs_begin == lhs_end) {
+        if(ineq == inequality_type::equal) {
+            return rhs == 0 ? std::exp(partial_sum) : 0.0;
+        } else if(ineq == inequality_type::smaller_equal) {
+            return rhs >= 0 ? std::exp(partial_sum) : 0.0;
+        } else if(ineq == inequality_type::greater_equal) {
+            return rhs <= 0 ? std::exp(partial_sum) : 0.0;
+        } 
+    }
+
+    const double zero_cost = exp_sum_impl(lhs_begin+1, lhs_end, ineq, rhs, cost_begin+1, cost_end, partial_sum);
+    const double one_cost = exp_sum_impl(lhs_begin+1, lhs_end, ineq, rhs - *lhs_begin, cost_begin+1, cost_end, partial_sum + *cost_begin);
+
+    return zero_cost + one_cost;
+}
+
+template<typename LHS_ITERATOR, typename COST_ITERATOR>
+double log_exp(LHS_ITERATOR lhs_begin, LHS_ITERATOR lhs_end, const inequality_type ineq, const int rhs, COST_ITERATOR cost_begin, COST_ITERATOR cost_end)
+{
+    const double sum = exp_sum_impl(lhs_begin, lhs_end, ineq, rhs, cost_begin, cost_end, 0.0);
+    return std::log(sum);
+} 
+
 template<typename BDD_SOLVER>
-void test_random_inequality()
+void test_random_inequality_min_sum()
 {
     Cudd bdd_mgr;
     bdd_converter converter(bdd_mgr);
@@ -118,6 +147,8 @@ void test_random_inequality()
             std::cout << x << " ";
         std::cout << "\n"; 
         bdds.set_costs(costs.begin(), costs.end());
+        bdds.backward_run();
+        bdds.compute_lower_bound();
         const double backward_lb = bdds.lower_bound();
         const auto [enumeration_lb, sol] = min_cost(coefficients.begin(), coefficients.end(), ineq, rhs, costs.begin(), costs.end());
         std::cout << "enumeration lb = " << enumeration_lb << ", backward lb = " << backward_lb << "\n";
@@ -131,8 +162,49 @@ void test_random_inequality()
     } 
 }
 
+void test_random_inequality_log_exp()
+{
+    Cudd bdd_mgr;
+    bdd_converter converter(bdd_mgr);
+
+    for(std::size_t nr_vars = 3; nr_vars <= 15; ++nr_vars) {
+        const auto [coefficients, ineq, rhs] = generate_random_inequality(nr_vars);
+        for(const auto c : coefficients) {
+            std::cout << c << " ";
+        }
+        if(ineq == inequality_type::equal)
+            std::cout << " = ";
+        if(ineq == inequality_type::smaller_equal)
+            std::cout << " <= ";
+        if(ineq == inequality_type::greater_equal)
+            std::cout << " >= ";
+        std::cout << rhs << "\n";
+
+        auto bdd = converter.convert_to_bdd(coefficients.begin(), coefficients.end(), ineq, rhs);
+        if(bdd.nodeCount() < 2) 
+            continue;
+        bdd_min_marginal_averaging_smoothed bdds;
+        std::vector<std::size_t> vars(nr_vars);
+        std::iota (std::begin(vars), std::end(vars), 0);
+        bdds.add_bdd(bdd, vars.begin(), vars.end(), bdd_mgr);
+        //bdds.export_dot(std::cout);
+        bdds.init(); 
+        const std::vector<double> costs = generate_random_costs(nr_vars);
+        std::cout << "cost: ";
+        for(const auto x : costs)
+            std::cout << x << " ";
+        std::cout << "\n"; 
+        bdds.set_costs(costs.begin(), costs.end());
+        const double backward_lb = bdds.compute_lower_bound();
+        const double enumeration_lb = log_exp(coefficients.begin(), coefficients.end(), ineq, rhs, costs.begin(), costs.end());
+        std::cout << "enumeration lb = " << enumeration_lb << ", backward lb = " << backward_lb << "\n";
+        test(std::abs(backward_lb - enumeration_lb) <= 1e-8);
+    } 
+}
+
 int main(int argc, char** arv)
 {
-    test_random_inequality<bdd_min_marginal_averaging>();
-    test_random_inequality<bdd_anisotropic_diffusion>();
+    test_random_inequality_log_exp();
+    test_random_inequality_min_sum<bdd_min_marginal_averaging>();
+    test_random_inequality_min_sum<bdd_anisotropic_diffusion>();
 }

@@ -12,7 +12,7 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const double min_progress = 1e-01;
-    const int max_iter = 100;
+    const int max_iter = 200;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
     input.reorder_bfs();
@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
 
-    bdd_opt solver;
+    bdd_mma_fixing solver;
     solver.set_options(options);
     solver.init(input);
 

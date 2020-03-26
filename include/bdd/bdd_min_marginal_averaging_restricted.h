@@ -175,68 +175,9 @@ namespace LPMP {
         template <typename ITERATOR>
         std::tuple<std::vector<std::size_t>, two_dim_variable_array<std::size_t>> bdd_min_marginal_averaging_restricted::compute_bdd_mask(ITERATOR variable_begin, ITERATOR variable_end) const
         {
-            std::unordered_set<std::array<std::size_t,2>> affected_bdd_variables_set;
-            for(auto variable_it=variable_begin; variable_it!=variable_end; ++variable_it) {
-                const std::size_t var = *variable_it;
-                for (std::size_t bdd_index = 0; bdd_index < nr_bdds(var); ++bdd_index)
-                {
-                    affected_bdd_variables_set.insert({var, bdd_index});
-                    const auto *prev_bdd_variable = bdd_variables_(var, bdd_index).prev;
-                    while (prev_bdd_variable != nullptr)
-                    {
-                        const std::size_t var = variable(prev_bdd_variable);
-                        const std::size_t bdd_index = this->bdd_index(prev_bdd_variable);
-                        affected_bdd_variables_set.insert({var,bdd_index});
-                        prev_bdd_variable = prev_bdd_variable->prev;
-                    }
-
-                    const auto *next_bdd_variable = bdd_variables_(var, bdd_index).next;
-                    while (next_bdd_variable != nullptr)
-                    {
-                        const std::size_t var = variable(next_bdd_variable);
-                        const std::size_t bdd_index = this->bdd_index(next_bdd_variable);
-                        affected_bdd_variables_set.insert({var,bdd_index});
-                        next_bdd_variable = next_bdd_variable->next;
-                    }
-                }
-            }
-
-            std::vector<std::array<std::size_t,2>> affected_bdd_variables;
-            affected_bdd_variables.reserve(affected_bdd_variables_set.size());
-            for(const auto x : affected_bdd_variables_set)
-                affected_bdd_variables.push_back(x);
-            auto bdd_var_compare = [](const auto a, const auto b) { return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end()); };
-            std::sort(affected_bdd_variables.begin(), affected_bdd_variables.end(), bdd_var_compare);
-            //const auto tmp_it = std::adjacent_find(affected_bdd_variables.begin(), affected_bdd_variables.end(), bdd_var_compare);
-            //assert(std::adjacent_find(affected_bdd_variables.begin(), affected_bdd_variables.end(), bdd_var_compare) == affected_bdd_variables.end());
-            std::vector<std::size_t> affected_variables;
-            std::vector<std::size_t> affected_variables_bdd_index_size;
-            for (const auto [var, bdd_index] : affected_bdd_variables)
-                {
-                    if (affected_variables.size() == 0 || affected_variables.back() != var)
-                    {
-                        affected_variables.push_back(var);
-                        affected_variables_bdd_index_size.push_back(0);
-                    }
-                    ++affected_variables_bdd_index_size.back();
-                }
-
-            two_dim_variable_array<std::size_t> affected_variables_bdd_index(affected_variables_bdd_index_size.begin(), affected_variables_bdd_index_size.end());
-            affected_variables.clear();
-            std::size_t counter = 0;
-
-            for(const auto [var,bdd_index] : affected_bdd_variables) 
-            {
-                if (affected_variables.size() == 0 || affected_variables.back() != var)
-                {
-                    affected_variables.push_back(var);
-                    counter = 0;
-                }
-                const std::size_t var_idx = affected_variables.size()-1;
-                affected_variables_bdd_index(var_idx, counter++) = bdd_index; 
-            }
-
-            return {affected_variables, affected_variables_bdd_index};
+            auto bdd_variable_func = [&](const bdd_variable_mma* bdd_var) { return this->variable(bdd_var); };
+            auto bdd_index_func = [&](const bdd_variable_mma* bdd_var) { return this->bdd_index(bdd_var); };
+            return LPMP::compute_bdd_mask(variable_begin, variable_end, *this, bdd_variable_func, bdd_index_func);
         }
 
         // return variables with inconsistent marginals
