@@ -84,13 +84,14 @@ namespace LPMP {
     // Optimization Branch Node
     /////////////////////////////////
 
-    class bdd_branch_node_opt : public bdd_branch_node<bdd_branch_node_opt> {
+    template<typename DERIVED>
+    class bdd_branch_node_opt_base : public bdd_branch_node<DERIVED> {
         public:
             double* variable_cost = nullptr;
             double m = 0.0; // intermediate value of shortest path from either terminal or first node (depending on algorithm state)
 
             // From C++20
-            friend bool operator==(const bdd_branch_node_opt& x, const bdd_branch_node_opt& y);
+            friend bool operator==(const bdd_branch_node_opt_base<DERIVED>& x, const bdd_branch_node_opt_base<DERIVED>& y);
 
             void backward_step();
             void forward_step();
@@ -103,7 +104,8 @@ namespace LPMP {
             std::array<double,2> min_marginal_debug() const;
     };
 
-    bool operator==(const bdd_branch_node_opt& x, const bdd_branch_node_opt& y)
+    template<typename DERIVED>
+    bool operator==(const bdd_branch_node_opt_base<DERIVED>& x, const bdd_branch_node_opt_base<DERIVED>& y)
     {
         const bool equal = (x.low_outgoing == y.low_outgoing &&
             x.high_outgoing == y.high_outgoing &&
@@ -116,11 +118,12 @@ namespace LPMP {
         return equal;
     }
 
-    void bdd_branch_node_opt::forward_step()
+    template<typename DERIVED>
+    void bdd_branch_node_opt_base<DERIVED>::forward_step()
     {
         check_bdd_branch_node(*this);
 
-        if(is_first()) {
+        if(this->is_first()) {
             m = 0.0;
             //std::cout << "forward step m for " << this << " = " << m << "\n";
             return;
@@ -130,7 +133,7 @@ namespace LPMP {
 
         // iterate over all incoming low edges 
         {
-            bdd_branch_node_opt* cur = first_low_incoming;
+            auto* cur = this->first_low_incoming;
             while(cur != nullptr) {
                 //m = std::min(m, cur->m + *cumulative_sum - *(cur->cumulative_sum));
                 m = std::min(m, cur->m);
@@ -140,7 +143,7 @@ namespace LPMP {
 
         // iterate over all incoming high edges 
         {
-            bdd_branch_node_opt* cur = first_high_incoming;
+            auto* cur = this->first_high_incoming;
             while(cur != nullptr) {
                 //m = std::min(m, cur->m + *variable_cost + *cumulative_sum - *(cur->cumulative_sum));
                 m = std::min(m, cur->m + *(cur->variable_cost));
@@ -155,33 +158,34 @@ namespace LPMP {
         check_bdd_branch_node(*this);
     }
 
-    void bdd_branch_node_opt::backward_step()
+    template<typename DERIVED>
+    void bdd_branch_node_opt_base<DERIVED>::backward_step()
     {
         check_bdd_branch_node(*this);
 
         // low edge
         const double low_cost = [&]() {
-            if(low_outgoing == bdd_branch_node_opt::terminal_0()) {
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0()) {
                 return std::numeric_limits<double>::infinity();
-            } else if(low_outgoing == bdd_branch_node_opt::terminal_1()) {
+            } else if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1()) {
                 //return *cumulative_sum;
                 return 0.0;
             } else {
                 //return low_outgoing->m + *cumulative_sum - *(low_outgoing->cumulative_sum) - std::min(*low_outgoing->variable_cost,0.0);
-                return low_outgoing->m;
+                return this->low_outgoing->m;
             }
         }();
 
         // high edge
         const double high_cost = [&]() {
-            if(high_outgoing == bdd_branch_node_opt::terminal_0()) {
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0()) {
                 return std::numeric_limits<double>::infinity(); 
-            } else if(high_outgoing == bdd_branch_node_opt::terminal_1()) {
+            } else if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1()) {
                 //return *cumulative_sum + *variable_cost; 
                 return *variable_cost; 
             } else {
                 //return high_outgoing->m + *variable_cost + *cumulative_sum - *(high_outgoing->cumulative_sum) - std::min(*high_outgoing->variable_cost,0.0);
-                return high_outgoing->m + *variable_cost;
+                return this->high_outgoing->m + *variable_cost;
             }
         }();
 
@@ -197,16 +201,17 @@ namespace LPMP {
         // assert(std::abs(m - cost_from_terminal()) <= 1e-8);
     }
 
-    double bdd_branch_node_opt::cost_from_first() const
+    template<typename DERIVED>
+    double bdd_branch_node_opt_base<DERIVED>::cost_from_first() const
     {
         // TODO: only works if no bdd nodes skips variables
         double c = std::numeric_limits<double>::infinity();
-        if(is_first())
+        if(this->is_first())
             return 0.0;
         
         // iterate over all incoming low edges 
         {
-            bdd_branch_node_opt* cur = first_low_incoming;
+            auto* cur = this->first_low_incoming;
             while(cur != nullptr) {
                 c = std::min(c, cur->cost_from_first());
                 cur = cur->next_low_incoming;
@@ -215,7 +220,7 @@ namespace LPMP {
 
         // iterate over all incoming high edges 
         {
-            bdd_branch_node_opt* cur = first_high_incoming;
+            auto* cur = this->first_high_incoming;
             while(cur != nullptr) {
                 c = std::min(c, cur->cost_from_first() + *cur->variable_cost);
                 cur = cur->next_high_incoming;
@@ -225,59 +230,61 @@ namespace LPMP {
         return c;
     }
 
-    double bdd_branch_node_opt::cost_from_terminal() const
+    template<typename DERIVED>
+    double bdd_branch_node_opt_base<DERIVED>::cost_from_terminal() const
     {
         // TODO: only works if no bdd nodes skips variables
         // low edge
         const double low_cost = [&]() {
-            if(low_outgoing == bdd_branch_node_opt::terminal_0()) {
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0()) {
                 return std::numeric_limits<double>::infinity();
-            } else if(low_outgoing == bdd_branch_node_opt::terminal_1()) {
+            } else if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1()) {
                 return 0.0;
             } else {
-                return low_outgoing->cost_from_terminal();;
+                return this->low_outgoing->cost_from_terminal();;
             }
         }();
 
         // high edge
         const double high_cost = [&]() {
-            if(high_outgoing == bdd_branch_node_opt::terminal_0()) {
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0()) {
                 return std::numeric_limits<double>::infinity(); 
-            } else if(high_outgoing == bdd_branch_node_opt::terminal_1()) {
+            } else if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1()) {
                 return *variable_cost; 
             } else {
-                return high_outgoing->cost_from_terminal() + *variable_cost;
+                return this->high_outgoing->cost_from_terminal() + *variable_cost;
             }
         }();
 
         return std::min(low_cost, high_cost); 
     }
 
-    std::array<double,2> bdd_branch_node_opt::min_marginal() const
+    template<typename DERIVED>
+    std::array<double,2> bdd_branch_node_opt_base<DERIVED>::min_marginal() const
     {
         check_bdd_branch_node(*this);
 
         //std::cout << "in min_marginal() for " << this << ", m = " << m << "\n";
         // assert(std::abs(m - cost_from_first()) <= 1e-8);
-        if(!bdd_branch_node_opt::is_terminal(low_outgoing)) {
+        if(!bdd_branch_node_opt_base<DERIVED>::is_terminal(this->low_outgoing)) {
             // assert(std::abs(low_outgoing->m - low_outgoing->cost_from_terminal()) <= 1e-8);
         }
-        if(!bdd_branch_node_opt::is_terminal(high_outgoing)) {
+        if(!bdd_branch_node_opt_base<DERIVED>::is_terminal(this->high_outgoing)) {
             // assert(std::abs(high_outgoing->m - high_outgoing->cost_from_terminal()) <= 1e-8);
         }
 
         const double m0 = [&]() {
-            if(low_outgoing == bdd_branch_node_opt::terminal_0())
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(low_outgoing == bdd_branch_node_opt::terminal_1())
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1())
                 return this->m;
             return this->m + this->low_outgoing->m;
         }();
 
         const double m1 = [&]() {
-            if(high_outgoing == bdd_branch_node_opt::terminal_0())
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(high_outgoing == bdd_branch_node_opt::terminal_1())
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1())
                 return this->m + *this->variable_cost;
             return this->m + *this->variable_cost + this->high_outgoing->m;
         }();
@@ -287,24 +294,25 @@ namespace LPMP {
         return {m0,m1};
     }
 
-    std::array<double,2> bdd_branch_node_opt::min_marginal_debug() const
+    template<typename DERIVED>
+    std::array<double,2> bdd_branch_node_opt_base<DERIVED>::min_marginal_debug() const
     {
         check_bdd_branch_node(*this);
 
         const double m_debug = cost_from_first();
 
         const double m0 = [&]() {
-            if(low_outgoing == bdd_branch_node_opt::terminal_0())
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(low_outgoing == bdd_branch_node_opt::terminal_1())
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1())
                 return m_debug;
             return m_debug + this->low_outgoing->cost_from_terminal();
         }();
 
         const double m1 = [&]() {
-            if(high_outgoing == bdd_branch_node_opt::terminal_0())
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0())
                 return std::numeric_limits<double>::infinity();
-            if(high_outgoing == bdd_branch_node_opt::terminal_1())
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1())
                 return m_debug + *this->variable_cost;
             return m_debug + *this->variable_cost + this->high_outgoing->cost_from_terminal();
         }();
@@ -314,12 +322,14 @@ namespace LPMP {
         return {m0,m1}; 
     }
 
+    class bdd_branch_node_opt : public bdd_branch_node_opt_base<bdd_branch_node_opt>{
+    };
 
     /////////////////////////////////
     // Variable Fixing Branch Node
     /////////////////////////////////
 
-    class bdd_branch_node_fix : public bdd_branch_node<bdd_branch_node_fix> {
+    class bdd_branch_node_fix : public bdd_branch_node_opt_base<bdd_branch_node_fix> {
         public:
             bdd_branch_node_fix* prev_low_incoming = nullptr;
             bdd_branch_node_fix* prev_high_incoming = nullptr;
