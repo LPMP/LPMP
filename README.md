@@ -23,6 +23,20 @@ Optimization techniques include
 * **Subgradient ascent with a proximal bundle method based on the Frank-Wolfe algorithm [2]**, [Vladimir Kolmogorov's](http://http://pub.ist.ac.at/~vnk/) [original implementation](http://pub.ist.ac.at/~vnk/papers/FWMAP.html).
 * An interface to **external solvers** is provided by [DD_ILP](https://github.com/pawelswoboda/DD_ILP).
 
+## Differentiable wrappers
+
+The solvers can be wrapped as differentiable PyTorch modules using the technique of [7]. Currently, wrappers are available for graph matching and multigraph matching solvers. For usage examples see an application to keypoint matching [8] ([code](https://github.com/martius-lab/blackbox-deep-graph-matching)) or the general [repository](https://github.com/martius-lab/blackbox-backprop) of [7].
+
+All these can be `pip` installed with
+
+```python3 -m pip install git+https://github.com/lpmp/LPMP.git```
+
+or
+
+```python3 -m pip install git+https://github.com/lpmp/LPMP.git@keypiont_submission```
+
+for the precise version used in [8].
+
 ## Installation
 Type `git clone https://github.com/LPMP/LPMP.git` for downloading, then `cd LPMP` and `git submodule update --init --remote --recursive` for downloading dependencies and finally `cmake .` for building.
 
@@ -30,6 +44,7 @@ Prerequisites:
 * Clang 5.0 or GCC 8.0 upwards for C++17 compatibility (see [here](https://solarianprogrammer.com/2016/10/07/building-gcc-ubuntu-linux/) for installation instructions).
 * HDF5 (install with `apt install libhdf5-serial-dev`)
 * cmake (install with `apt install cmake`)
+
 
 ## Documentation
 
@@ -42,3 +57,5 @@ A tutorial on writing a new solver from scratch can be found [here](/doc/Getting
 * [4]: [`P. Swoboda, C. Rother, H. A. Alhaija, D. Kainmuller, B. Savchynskyy. A Study of Lagrangean Decompositions and Dual Ascent Solvers for Graph Matching. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Study_of_CVPR_2017_paper.html)
 * [5]: [`P. Swoboda, D. Kainmueller, A. Mokarian, C. Theobalt and F. Bernard. A convex approach to multi-graph matching. In CVPR 2019.`](http://openaccess.thecvf.com/content_CVPR_2019/html/Swoboda_A_Convex_Relaxation_for_Multi-Graph_Matching_CVPR_2019_paper.html)
 * [6]: [`A. Abbas, P. Swoboda. Bottleneck Potentials in Markov Random Fields. In ICCV 2019.`](http://openaccess.thecvf.com/content_ICCV_2019/html/Abbas_Bottleneck_Potentials_in_Markov_Random_Fields_ICCV_2019_paper.html)
+* [7]: [`M. Vlastelica, A. Paulus, V. Musil, G. Martius, M. Rolínek. Differentiation of Blackbox Combinatorial Solvers. In ICLR 2020.`](https://openreview.net/forum?id=BkevoJSYPB)
+* [8]: [`M. Rolínek, P. Swoboda, D. Zietlow, A. Paulus, V. Musil, G. Martius. Deep Graph Matching via Blackbox Differentiation of Combinatorial Solvers.`](http://arxiv.org)
