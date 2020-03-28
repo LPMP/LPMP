@@ -293,7 +293,8 @@ namespace LPMP {
                 [](const edge_t& e) { return e.cost; }); };
         auto CPE = taskflow.emplace(construct_pos_edges_graph);
 
-        CPE.gather(init_edge);
+        init_edge.precede(CPE);
+        //CPE.gather(init_edge);
 
         std::future<void> fu = executor.run(taskflow);
         fu.get();
