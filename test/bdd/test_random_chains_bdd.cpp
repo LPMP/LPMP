@@ -61,6 +61,7 @@ void test_randon_chains_problem(const std::size_t n, const std::size_t l, const 
     bfs_options.order = bdd_anisotropic_diffusion_options::order::BFS;
     bdd_solver_bfs.set_options(bfs_options);
     bdd_solver_bfs.init(input);
+    bdd_solver_bfs.compute_lower_bound();
     const double initial_lb_bfs = bdd_solver_bfs.lower_bound();
     bdd_solver_bfs.iteration();
     const double end_lb_bfs = bdd_solver_bfs.lower_bound();
@@ -72,6 +73,7 @@ void test_randon_chains_problem(const std::size_t n, const std::size_t l, const 
     min_deg_options.order = bdd_anisotropic_diffusion_options::order::minimum_degree;
     bdd_solver_min_deg.set_options(min_deg_options);
     bdd_solver_min_deg.init(input);
+    bdd_solver_min_deg.compute_lower_bound();
     const double initial_lb_min_deg = bdd_solver_min_deg.lower_bound();
     bdd_solver_min_deg.iteration();
     const double end_lb_min_deg = bdd_solver_min_deg.lower_bound();

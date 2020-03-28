@@ -32,11 +32,11 @@ namespace LPMP {
             }
         };
         auto Q = taskflow.emplace(extract);
-        Q.gather(prev);
+        prev.precede(Q);
         if (sort) {
             auto sort_edge = [&](){std::sort(positive_edges.begin(), positive_edges.end(), pq_cmp);};
             auto T = taskflow.emplace(sort_edge);
-            T.gather(Q);
+            Q.precede(T);
             return T;
         } else {
             return Q;
@@ -59,7 +59,7 @@ namespace LPMP {
                 }
             }
         });
-        Q.first.gather(prev);
+        prev.precede(Q.first);
     }
 
 
@@ -98,7 +98,7 @@ namespace LPMP {
                 e += nr_threads;
             }
         });
-        Q.first.gather(prev);
+        prev.precede(Q.first);
     }
 
     void distribute_edges_in_chunks(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, std::pair<tf::Task, tf::Task>& Q, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
@@ -110,7 +110,7 @@ namespace LPMP {
             for(std::size_t e=first_edge; e<last_edge; ++e)
             queues[thread_no].push(positive_edges[e]);
         });
-        Q.first.gather(prev);
+        prev.precede(Q.first);
     }
 
     static std::vector<std::size_t> empty_partition_node = {};
@@ -320,7 +320,7 @@ namespace LPMP {
             std::cout << "initialization took " <<  std::chrono::duration_cast<std::chrono::milliseconds>(initialization_end_time - begin_time).count() << " milliseconds\n";
         };
         auto IE = taskflow.emplace(int_end);
-        IE.gather(prev);
+        prev.precede(IE);
 
         auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
             //    std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
@@ -329,7 +329,7 @@ namespace LPMP {
             else
                 gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(partition_to_node), std::ref(mask));
         });
-        GAEC_begin.gather(prev);
+        prev.precede(GAEC_begin);
         executor.run(taskflow);
         executor.wait_for_all();
 

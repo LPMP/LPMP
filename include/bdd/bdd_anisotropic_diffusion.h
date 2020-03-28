@@ -48,6 +48,7 @@ namespace LPMP {
             void anisotropic_diffusion_backward();
             void iteration() { anisotropic_diffusion_iteration(); }
 
+            double compute_lower_bound() { return backward_run(); }
             double lower_bound() { return backward_run(); }
 
             template<typename SOL_ITERATOR>
