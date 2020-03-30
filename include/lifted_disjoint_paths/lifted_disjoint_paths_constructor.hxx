@@ -20,7 +20,7 @@ namespace LPMP {
 
             void Tighten(const std::size_t nr_constraints_to_add);
 
-        private
+        private:
             LP<FMC>* lp_; 
     };
 

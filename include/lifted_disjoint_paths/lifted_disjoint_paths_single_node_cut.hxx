@@ -40,6 +40,8 @@ namespace LPMP {
             	liftedCosts=std::vector<double>(numberOfLiftedEdges);
             	solutionCosts=std::vector<double>(numberOfEdges+1,0);
 
+
+
             }
 
             //ldp_single_node_cut_factor(const std::size_t nr_outgoing_base_edges, const std::size_t nr_outgoing_lifted_edges);
@@ -50,13 +52,15 @@ namespace LPMP {
             template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primal_); }
             template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
 
-            auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
+            //auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
+            auto export_variables() { return std::tie(solutionCosts); }//TODO change this. This will not work with so many variables
 
             //void init_primal() { primal_ = no_edge_active; }
             void init_primal() { primal_ = numberOfEdges; }
 
         private:
-            void updateValues(size_t liftedEdgeID=numberOfLiftedEdges,double update=0);  //Highest number: update all.For base edge update, simpler procedure
+            void updateValues(size_t liftedEdgeID=numberOfLiftedEdges);  //Highest number: update all.For base edge update, simpler procedure
+            //TODO implement update for base edge cost
 
             std::size_t nodeID;
             std::size_t primal_; // the incoming resp. outgoing edge that is active.
@@ -79,7 +83,6 @@ namespace LPMP {
             std::vector<double> baseCosts;
             std::vector<double> liftedCosts;
             std::unordered_map<size_t,double> valuesStructure;  //vertexID->value,
-            std::unordered_map<size_t,size_t> indexStructure; //vertex->vertex. For reconstruction of opt. solution in lifted edges
 
             std::vector<double> solutionCosts;
 
@@ -95,16 +98,17 @@ namespace LPMP {
 //
 //    }
     template<class LDP_STRUCT>
-        inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEdgeID,double update){
-        bool oneEdge=liftedEdgeID>=numberOfLiftedEdges;
+        inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEdgeID){
+    	std::unordered_map<size_t,size_t> indexStructure; //vertex->vertex. For reconstruction of opt. solution in lifted edges
+    	                                                  //In case that we do not need the reconstruction, unordered_set will be enough
+        bool oneEdgeUpdate=liftedEdgeID>=numberOfLiftedEdges;
         size_t vertexToReach=ldpStructure.getTerminalNode();
-        if(oneEdge){
+        if(oneEdgeUpdate){
         	vertexToReach=liftedGraph.edgeFromVertex(nodeID,liftedEdgeID);
         }
 
     	std::stack<size_t> nodeStack;
-        	//std::stack<size_t> parentStack;
-        	nodeStack.push(nodeID);
+           	nodeStack.push(nodeID);
 
         	while(!nodeStack.empty()){
         		size_t currentNode=nodeStack.top();
@@ -113,23 +117,23 @@ namespace LPMP {
         		size_t minValueIndex=ldpStructure.getTerminalNode;
 
         		for (int i = 0; i < baseGraph.numberOfEdgesFromVertex(currentNode); ++i) {
-					size_t desc=baseGraph.vertexFromVertex(currentNode,i);
-					if(ldpStructure.getGroupIndex(desc)<=maxLayer&&(!oneEdge||ldpStructure.isReachable(currentNode,vertexToReach))){
-						if(indexStructure.count(desc)>0){  //descendant closed
-							if(descClosed&&valuesStructure.count(desc)>0){
-								if(minValue>valuesStructure[desc]){
-									minValue=valuesStructure[desc];
-									minValueIndex=desc;
-								}
-							}
-						}
-						else{  //descendant not closed
-							nodeStack.push(desc);
-							//parentStack.push(currentNode);
-							descClosed=false;
-						}
-					}
-				}
+        			size_t desc=baseGraph.vertexFromVertex(currentNode,i);
+        			if(ldpStructure.getGroupIndex(desc)<=maxLayer){
+        				if(indexStructure.count(desc)>0||(oneEdgeUpdate&&!ldpStructure.isReachable(currentNode,vertexToReach))){  //descendant closed
+        					if(descClosed&&valuesStructure.count(desc)>0){
+        						if(minValue>valuesStructure[desc]){
+        							minValue=valuesStructure[desc];
+        							minValueIndex=desc;
+        						}
+        					}
+        				}
+        				else{  //descendant not closed
+        					nodeStack.push(desc);
+        					descClosed=false;
+
+        				}
+        			}
+        		}
         		if(descClosed){ //Close node if all descendants are closed
         			if(currentNode==nodeID){
 
@@ -146,10 +150,10 @@ namespace LPMP {
         						if(findEdge.first){
         							valueToAdd=liftedCosts[findEdge.second];
         						}
-        						size_t forwardVertex=indexStructure[vertex];
-        						if(forwardVertex!=ldpStructure.getTerminalNode){
-        							valueToAdd+=valuesStructure[forwardVertex];
-        						}
+//        						size_t forwardVertex=indexStructure[vertex];
+//        						if(forwardVertex!=ldpStructure.getTerminalNode){
+//        							valueToAdd+=valuesStructure[forwardVertex];
+//        						}
         					}
 
 							solutionCosts[i]=baseCosts[i]+valueToAdd;
@@ -167,7 +171,8 @@ namespace LPMP {
         				if(findEdge.first){
         					minValue+=liftedCosts[findEdge.second];  //add lifted edge cost if the edge exists
         				}
-        				if(minValue<0){  //store only negative values
+        				auto findEdgeBase=baseGraph.findEdge(nodeID,currentNode);
+        				if(minValue<0||(findEdgeBase.first&&minValue<liftedCosts[findEdge.second])){  //store only negative values or values needed to correct solutionCosts
         					valuesStructure[currentNode]=minValue;
         				}
         				else{
