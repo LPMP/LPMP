@@ -102,6 +102,10 @@ LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteS
 		//desc=initReachable(graph_,parameters);
 		reachable=initReachableSet(graph_);
 	}
+
+	numberOfVertices=graph_.numberOfVertices();
+	numberOfEdges=graph_.numberOfEdges();
+	numberOfLiftedEdges=graphLifted_.numberOfEdges();
 }
 
 void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs){
@@ -282,171 +286,133 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 	}
 }
 
-/*
+
 template<typename EDGE_LABEL_ITERATOR>
-	bool LdpInstance::check_feasiblity(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const{
-
-		std::vector<bool> isOnPath(graph_.numberOfVertices(),0);
-		std::vector<bool> isOnAnyPath(graph_.numberOfVertices(),0);
-
-		//std::vector<size_t> pathToEnd(graph.numberOfVertices());
+bool LdpInstance::check_feasiblity(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const{
 
 
+	//Labels into vector
+	size_t indexCounter=0;
+	std::vector<double> solution0(graph_.numberOfEdges()+graphLifted_.numberOfEdges()+graph_.numberOfVertices());
+	auto it=begin;
+	for (;it!=end&&indexCounter<solution0.size();it++) {
+		double value=*it;
+		solution0[indexCounter]=value;
+		indexCounter++;
+	}
 
-		size_t trackCounter=0;
-		size_t activeEdgeCounter=0;
-		size_t indexCounter=0;
+	if(it!=end){
+		throw std::runtime_error("Wrong size of solution labels for feasibility check.");
+	}
 
-		std::vector<double> solution0(graph_.numberOfEdges()+graphLifted_.numberOfEdges()+graphLifted_.numberOfVertices());
-		for (auto it=begin;it!=end&&indexCounter<solution0.size();it++) {
-				double value=*it;
-				solution0[indexCounter]=value;
-				indexCounter++;
+
+	//Check flow conservation
+	bool isFeasible=true;
+	std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
+	for (int i = 0; i < graph_.numberOfVertices()&&isFeasible; ++i) {
+		if(i==s_||i==t_) continue;
+		bool vertexActive=solution0[getVertexVarIndex(i)]>0.5;
+		bool outputFound=false;
+		for (int j = 0; j < graph_.numberOfEdgesFromVertex(i)&&isFeasible; ++j) {
+			size_t e=graph_.edgeFromVertex(i,j);
+			if(solution0[getEdgeVarIndex(e)]>0.5){
+				if(outputFound||!vertexActive){
+					isFeasible=false;
+				}
+
+				else{
+					outputFound=true;
+				}
+			}
+		}
+		if(vertexActive&&!outputFound){
+			isFeasible=false;
 		}
 
-		for (int i = 0; i < graph_.numberOfEdgesToVertex(t_); ++i) {
-			//std::cout<<i<<"-th edge to t"<<std::endl;
+		bool inputFound=false;
+		for (int j = 0; j < graph_.numberOfEdgesToVertex(i)&&isFeasible; ++j) {
+			size_t e=graph_.edgeToVertex(i,j);
+			if(solution0[getEdgeVarIndex(e)]>0.5){
+				if(inputFound||!vertexActive){
+					isFeasible=false;
+				}
+				else{
+					inputFound=true;
+					predecessors[i]=graph_.vertexToVertex(i,j);
+				}
+			}
+		}
+		if(vertexActive&&!inputFound){
+			isFeasible=false;
+		}
 
-			size_t e=graph_.edgeToVertex(t_,i);
-			size_t eVarIndex=getEdgeVarIndex(e);
-			if(solution0[eVarIndex] > 0.5){
-				//std::cout<<"check track "<<trackCounter<<std::endl;
-				trackCounter++;
-				activeEdgeCounter++;
-				//std::map<size_t,size_t> vertexToDepth;
-				size_t vertex=graph_.vertexToVertex(t_,i);
+	}
+
+	//Check lifted edge labels consistency with paths
+	for (int i = 0; i < graph_.numberOfEdgesToVertex(t_)&&isFeasible; ++i) {
+		size_t e=graph_.edgeToVertex(t_,i);
+		size_t eVarIndex=getEdgeVarIndex(e);
+		if(solution0[eVarIndex] > 0.5){
+
+			std::vector<bool> isOnPath(graph_.numberOfVertices(),0);
+			size_t vertex=graph_.vertexToVertex(t_,i);
+			isOnPath[vertex]=1;
+			isOnPath[t_]=1;  //Maybe not necessary
+
+			while(vertex!=s_&&isFeasible){
+
+				for (int j = 0; j < graphLifted_.numberOfEdgesFromVertex(vertex); ++j) {
+					size_t le=graphLifted_.edgeFromVertex(vertex,j);
+					size_t vertex2=graphLifted_.vertexFromVertex(vertex,j);
+					size_t leVarIndex=getLiftedEdgeVarIndex(le);
+					//size_t vertex2VarIndex=data_.getVertexVarIndex(vertex2);
+					if(isOnPath[vertex2]&&solution0[leVarIndex]<0.5) {
+						isFeasible=false;
+					}
+					else if(!isOnPath[vertex2]&&solution0[leVarIndex]>0.5){
+						isFeasible=false;
+					}
+				}
 				isOnPath[vertex]=1;
-				isOnPath[t_]=1;  //Maybe not necessary
-				isOnAnyPath[vertex]=1;
-				isOnAnyPath[t_]=1;
-
-				std::list<size_t> path;
-				path.push_front(t_);
-				path.push_front(vertex);
-
-				while(vertex!=s_){
-
-					for (int j = 0; j < graphLifted_.numberOfEdgesFromVertex(vertex); ++j) {
-						size_t le=graphLifted_.edgeFromVertex(vertex,j);
-						size_t vertex2=graphLifted_.vertexFromVertex(vertex,j);
-						size_t leVarIndex=getLiftedEdgeVarIndex(le);
-						//size_t vertex2VarIndex=data_.getVertexVarIndex(vertex2);
-						if(isOnPath[vertex2]&&solution0[leVarIndex]<0.5) {
-							parameters.infoFile()<<"check track "<<trackCounter<<std::endl;
-							parameters.infoFile()<<"Error: Inactive lifted edge on an active path"<<std::endl;
-							parameters.infoFile().flush();
-							std::cout<<"check track "<<trackCounter<<std::endl;
-							throw std::runtime_error(std::string("Inactive lifted edge on an active path"));
-						}
-						else if(!isOnPath[vertex2]&&solution0[leVarIndex]>0.5){
-							parameters.infoFile()<<"check track "<<trackCounter<<std::endl;
-							parameters.infoFile()<<"Active lifted edge outside an active path"<<std::endl;
-							parameters.infoFile().flush();
-							std::cout<<"check track "<<trackCounter<<std::endl;
-							throw std::runtime_error(std::string("Active lifted edge outside an active path"));
-						}
-
-
-					}
-
-
-					size_t newVertex=0;
-					bool nextFound=false;
-					for (int j = 0; j < graph_.numberOfEdgesToVertex(vertex);
-							++j) {
-						e = graph_.edgeToVertex(vertex, j);
-						eVarIndex = getEdgeVarIndex(e);
-
-						if (solution0[eVarIndex] > 0.5) {
-							newVertex = graph_.vertexToVertex(vertex, j);
-							path.push_front(newVertex);
-							isOnPath[newVertex]=1;
-							isOnAnyPath[newVertex]=1;
-							activeEdgeCounter++;
-							if(nextFound){
-								parameters.infoFile()<<"check track "<<trackCounter<<std::endl;
-								parameters.infoFile()<<"Multiple active incoming edges to vertex "<<vertex<<std::endl;
-								parameters.infoFile().flush();
-								std::cout<<"check track "<<trackCounter<<std::endl;
-								std::cout<<"Multiple active incoming edges to vertex "<<vertex<<std::endl;
-							}
-							nextFound=true;
-
-
-							//break;
-						}
-					}
-					vertex=newVertex;
-
-
-
-				}
-
-				//std::cout<<std::endl;
-				while(!path.empty()){
-					isOnPath[path.front()]=0;
-					path.pop_front();
-				}
-			}
-		}
-
-		for (int i = 0; i < graph_.numberOfVertices(); ++i) {
-			if(i==s_||i==t_) continue;
-			if((solution0[i]>0.5&&!isOnAnyPath[i])||(solution0[i]<0.5&&isOnAnyPath[i])){
-				parameters.infoFile()<<"check track "<<trackCounter<<std::endl;
-				parameters.infoFile()<<"vertex "<<i<<" labeled "<<solution0[i]<<" is on Path "<<isOnAnyPath[i]<<std::endl;
-				parameters.infoFile().flush();
-				std::cout<<"check track "<<trackCounter<<std::endl;
-				std::cout<<"vertex "<<i<<" labeled "<<solution0[i]<<" is on Path "<<isOnAnyPath[i]<<std::endl;
-			}
-		}
-		size_t activeEdgeCounter2=0;
-		for (int i = 0; i < graph_.numberOfEdges(); ++i) {
-			size_t index=getEdgeVarIndex(i);
-			size_t v=getVertexVarIndex(graph_.vertexOfEdge(i,0));
-			size_t w=getVertexVarIndex(graph_.vertexOfEdge(i,1));
-
-			if(v==s_||w==t_) continue;
-			if(solution0[index]>0.5){
-				activeEdgeCounter2++;
-				//if(v==s||w==t) continue;
-				if(solution0[v]<0.5||solution0[w]<0.5){
-					parameters.infoFile()<<"check track "<<trackCounter<<std::endl;
-					parameters.infoFile()<<"edge "<<v<<","<<w<<" has label 1, but "<<solution0[v]<<","<<solution0[w]<<" are its vertices"<<std::endl;
-					parameters.infoFile().flush();
-					std::cout<<"check track "<<trackCounter<<std::endl;
-					std::cout<<"edge "<<v<<","<<w<<" has label 1, but "<<solution0[v]<<","<<solution0[w]<<" are its vertices"<<std::endl;
-				}
-			}
-			//		if(solution0[index]==0&&(solution0[v]==1||solution0[w]==1)){
-			//			std::cout<<"edge "<<v<<","<<w<<" has label , but "<<solution0[v]<<","<<solution0[w]<<" are its vertices"<<std::endl;
-			//		}
-		}
-		for (int i = 0; i < graphLifted_.numberOfEdges(); ++i) {
-			size_t index=getLiftedEdgeVarIndex(i);
-			size_t v=getVertexVarIndex(graphLifted_.vertexOfEdge(i,0));
-			size_t w=getVertexVarIndex(graphLifted_.vertexOfEdge(i,1));
-			if(v==s_||w==t_) continue;
-			if(solution0[index]>0.5&&(solution0[v]<0.5||solution0[w]<0.5)){
-				parameters.infoFile()<<"check track "<<trackCounter<<std::endl;
-				parameters.infoFile()<<"lifted edge "<<v<<","<<w<<" has label 1, but "<<solution0[v]<<","<<solution0[w]<<" are its vertices"<<std::endl;
-				parameters.infoFile().flush();
-				std::cout<<"check track "<<trackCounter<<std::endl;
-				std::cout<<"lifted edge "<<v<<","<<w<<" has label 1, but "<<solution0[v]<<","<<solution0[w]<<" are its vertices"<<std::endl;
+				vertex=predecessors[vertex];
 			}
 
 		}
+	}
 
-			std::cout<<"Solution checked. Tracks: "<<trackCounter<<std::endl;
-			parameters.infoFile()<<"Solution checked. Tracks: "<<trackCounter<<std::endl;
-			parameters.infoFile().flush();
-
+	return isFeasible;
 
 }
 
-*/
 
 
+template<typename EDGE_LABEL_ITERATOR>
+double LdpInstance::evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const{
+	size_t indexCounter=0;
+	std::vector<double> solution0(graph_.numberOfEdges()+graphLifted_.numberOfEdges()+graph_.numberOfVertices());
+	auto it=begin;
+	for (;it!=end&&indexCounter<solution0.size();it++) {
+		double value=*it;
+		solution0[indexCounter]=value;
+		indexCounter++;
+	}
+
+	if(it!=end){
+		throw std::runtime_error("Wrong size of solution labels for evaluation.");
+	}
+
+	double objectiveValue=0;
+	for (int i = 0; i < numberOfEdges; ++i) {
+		if(solution0[getEdgeVarIndex(i)]>0.5) objectiveValue+=edgeScore[i];
+	}
+	for (int i = 0; i < numberOfLiftedEdges; ++i) {
+		if(solution0[getLiftedEdgeVarIndex(i)]>0.5) objectiveValue+=liftedEdgeScore[i];
+	}
+
+	return objectiveValue;
+
+
+}
 
 
 

@@ -124,10 +124,23 @@ public:
 		return useTimeFrames;
 	}
 
-//	template<typename EDGE_LABEL_ITERATOR>
-//	bool check_feasiblity(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
-//	template<typename EDGE_LABEL_ITERATOR>
-//	double evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
+	size_t getEdgeVarIndex(size_t edgeIndex)const {
+		return edgeIndex+numberOfVertices;
+	}
+
+
+	size_t getLiftedEdgeVarIndex(size_t liftedEdgeIndex)const {
+		return liftedEdgeIndex+numberOfEdges+numberOfVertices;
+	}
+
+	size_t getVertexVarIndex(size_t vertexIndex)const{
+		return vertexIndex;
+	}
+
+	template<typename EDGE_LABEL_ITERATOR>
+	bool check_feasiblity(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
+	template<typename EDGE_LABEL_ITERATOR>
+	double evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
 
 
 	ConfigDisjoint<>& parameters;
@@ -149,6 +162,10 @@ private:
 
 	andres::graph::Digraph<> graph_;
 	andres::graph::Digraph<> graphLifted_;
+
+	size_t numberOfVertices;
+	size_t numberOfEdges;
+	size_t numberOfLiftedEdges;
 
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
 	void readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs);
