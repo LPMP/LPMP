@@ -1,6 +1,7 @@
 #include "lifted_disjoint_paths/lifted_disjoint_paths_input.h"
 #include "lifted_disjoint_paths/lifted_disjoint_paths_fmc.h"
 #include "visitors/standard_visitor.hxx"
+#include "solver.hxx"
 
 using namespace LPMP;
 
