@@ -44,6 +44,8 @@ namespace LPMP {
 
             }
 
+            //virtual size_t getNeighborBase()
+
             //ldp_single_node_cut_factor(const std::size_t nr_outgoing_base_edges, const std::size_t nr_outgoing_lifted_edges);
             double LowerBound() const{return solutionCosts[optimalSolution]; }
             double EvaluatePrimal() const {return solutionCosts[primal_]; }
@@ -58,6 +60,7 @@ namespace LPMP {
             //void init_primal() { primal_ = no_edge_active; }
             void init_primal() { primal_ = numberOfEdges; }
 
+            void updateCost(const double value,const size_t index);
         private:
             void updateValues(size_t liftedEdgeID=numberOfLiftedEdges);  //Highest number: update all.For base edge update, simpler procedure
             //TODO implement update for base edge cost
@@ -69,7 +72,7 @@ namespace LPMP {
             std::size_t numberOfEdges;
             std::size_t numberOfLiftedEdges;
 
-            double primalValue_=0;
+           // double primalValue_=0;
 
             std::size_t minLayer;
             std::size_t maxLayer;
@@ -86,6 +89,10 @@ namespace LPMP {
 
             std::vector<double> solutionCosts;
 
+            size_t decodeIndex(size_t index){
+            	return index;  //TODO implement decoding of message index into edge/lifted edge indices
+            }
+
 
     };
 
@@ -97,6 +104,37 @@ namespace LPMP {
 //
 //
 //    }
+
+    template<class LDP_STRUCT>
+            inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCost(const double value,const size_t index){
+    	    size_t myIndex=decodeIndex(index);
+    	    if(myIndex<numberOfEdges){ //update in base edge
+    	    	baseCosts[myIndex]+=value;
+    	    	solutionCosts[myIndex]+=value;
+    	    	if(myIndex==optimalSolution){
+    	    		if(value>0){
+    	    		    for (int i = 0; i < numberOfEdges; ++i) {
+							if(solutionCosts[i]<solutionCosts[optimalSolution]){
+								optimalSolution=i;
+								primal_=i;
+							}
+						}
+    	    		}
+    	    	}
+    	    	else if(solutionCosts[myIndex]<solutionCosts[optimalSolution]){
+    	    		optimalSolution=myIndex;
+    	    		primal_=myIndex; //maybe not
+
+    	    	}
+
+    	    }
+    	    else{ //update in lifted edge
+    	    	liftedCosts[myIndex-numberOfEdges]+=value;
+    	    	updateValues(myIndex-numberOfEdges);
+    	    }
+    }
+
+
     template<class LDP_STRUCT>
         inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEdgeID){
     	std::unordered_map<size_t,size_t> indexStructure; //vertex->vertex. For reconstruction of opt. solution in lifted edges
@@ -192,118 +230,6 @@ namespace LPMP {
 
 
 
-//    template<class LDP_STRUCT>
-//    inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEdgeID,double update){
-//    	//TODO special case if number of lifted edges is low, or only one layer or whatever
-//    	if(liftedEdgeID>=numberOfLiftedEdges){//update all lifted edges in the highest layer
-//    		size_t lastVertex=liftedGraph.vertexFromVertex(nodeID,numberOfLiftedEdges-1);
-//    		//valuesStructure[lastVertex]+=update;
-//
-//    		size_t highestTime=ldpStructure.getGroupIndex(lastVertex); //In both cases, maximal time for updates
-//    		size_t currentLeIndex=numberOfLiftedEdges-2;
-//    		size_t currentVertex=liftedGraph.vertexFromVertex(nodeID,currentLeIndex);
-//    		size_t currentTime=ldpStructure.getGroupIndex(currentVertex);
-//
-//    		//std::unordered_set<size_t> activeVertices; //maybe only store in the
-//    		//additional to valuesStructure for reconstruction of solution, maybe should be private
-//
-//    		while(currentTime==highestTime){
-//    			if(liftedCosts[currentLeIndex]<0){
-//    				valuesStructure[currentVertex]=liftedCosts[currentLeIndex]; //maybe without the plus
-//    			}
-//    			currentLeIndex--;
-//    			if(currentLeIndex>=0){
-//    				currentVertex=liftedGraph.vertexFromVertex(nodeID,currentLeIndex);
-//    				currentTime=ldpStructure.getGroupIndex(currentVertex);
-//    			}
-//    			else{//Maybe, this was the minimal layer in the same time
-//    				break;
-//    			}
-//    		}
-//    		while(currentLeIndex>=0){ //maybe the same code for the else branch
-//    			currentVertex=baseGraph.vertexFromVertex(nodeID,currentLeIndex);
-//    			double minForVertex=0;
-//    			size_t minIndex=ldpStructure.getTerminalNode();
-//    			for (int i = 0; i < baseGraph.numberOfEdgesFromVertex(currentVertex); ++i) {
-//    				size_t forwardVertex=baseGraph.vertexFromVertex(currentVertex,i);
-//    				if(ldpStructure.getGroupIndex(forwardVertex)<=highestTime){//automatically reachable from nodeID
-//    					//TODO if there is no lifted edge from nodeID to forward vertex, start bfs from the vertex, do not store the value
-//    					//BFS: go through vertices that are not connected with nodeID via a lifted edge, maybe store as additional connections
-//    					//TODO the same for cases when lifted edge cost is positive?
-//    					if(valuesStructure.count(forwardVertex)>0){
-//    						if(valuesStructure[forwardVertex]<minForVertex){
-//    							minForVertex=valuesStructure[forwardVertex];
-//    							minIndex=forwardVertex;
-//    						}
-//    					}
-//    				}
-//    			}
-//    			if(minForVertex+liftedCosts[currentLeIndex]<0){ //Maybe remove this constraint for completeness? No, they will never be selected
-//    				valuesStructure[currentVertex]=minForVertex+liftedCosts[currentLeIndex];
-//    				indexStructure[currentVertex]=minIndex;
-//    			}
-//    			currentLeIndex--;
-//    			if(currentLeIndex>=0){
-//    				currentVertex=liftedGraph.vertexFromVertex(nodeID,currentLeIndex);
-//    				currentTime=ldpStructure.getGroupIndex(currentVertex);
-//    			}
-//    			else{//Maybe, this was the minimal layer in the same time
-//    				break;
-//    			}
-//    		}
-//    		double minValue=0;
-//    		for (int i = 0; i < numberOfEdges; ++i) {
-//				size_t vertex=baseGraph.vertexFromVertex(nodeID,i);  //TODO implement several special methods calling "from" or "to" vertex based on task type
-//				size_t edge=baseGraph.edgeFromVertex(nodeID,i);
-//				if(valuesStructure.count(vertex)>0){
-//					double value=valuesStructure[vertex]+baseCosts[edge];
-//					if(value<minValue){
-//						primal_=i;
-//						minValue=value;
-//					}
-//				}
-//				else{
-//					double liftedECost=0;
-//					auto fe=liftedGraph.findEdge(nodeID,vertex);
-//					if(fe.first){
-//						liftedECost=liftedCosts[fe.second];
-//					}
-//					double value=liftedECost+baseCosts[edge];
-//					if(value<minValue){
-//						primal_=i;
-//						minValue=value;
-//					}
-//				}
-//			}
-//    		primalValue_=minValue;
-//    	}
-//    	else{//update just one edge and skip the rest in the same layer. TODO merge with the if block, most of the code is the same. Difference in the init layer
-//    		size_t lastVertex=liftedGraph.vertexFromVertex(nodeID,liftedEdgeID);
-//    		size_t highestTime=ldpStructure.getGroupIndex(lastVertex);
-//    		valuesStructure[lastVertex]+=update;
-//
-//    		size_t currentLeIndex=liftedEdgeID-1;
-//    		size_t currentVertex=liftedGraph.vertexFromVertex(nodeID,currentLeIndex);
-//    		size_t currentTime=ldpStructure.getGroupIndex(currentVertex);
-//    		while(currentTime==highestTime){
-//    			currentLeIndex--;
-//    			if(currentLeIndex>=0){
-//    				currentVertex=liftedGraph.vertexFromVertex(nodeID,currentLeIndex);
-//    				currentTime=ldpStructure.getGroupIndex(currentVertex);
-//    			}
-//    			else{//Maybe, this was the minimal layer in the same time
-//    				break;
-//    			}
-//    		}
-//
-//    	}
-//
-//
-//
-//    }
-
-
-
 
 
 
@@ -312,6 +238,7 @@ namespace LPMP {
         template<typename SINGLE_NODE_CUT_FACTOR>
             void RepamLeft(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
             {
+        	    r.updateCost(msg,msg_dim);
         	//Update costs in vectors, run updateValues or simpleUpdateValues
 
             } 
