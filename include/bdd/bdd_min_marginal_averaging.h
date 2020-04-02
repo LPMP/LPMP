@@ -760,7 +760,7 @@ namespace LPMP {
             //     }
         }
         // std::cout << "#conflicts in min-marginals = " << nr_conflicts << "\n";
-        this->backward_run();
+        // this->backward_run();
         return total_min_marginals;
     }
 
@@ -1176,6 +1176,10 @@ namespace LPMP {
             bool fix_variable(const size_t var, const char value);
             bool is_fixed(const size_t var) const;
 
+            void min_marginal_averaging_forward();
+            void min_marginal_averaging_backward();
+            void min_marginal_averaging_iteration();
+
             void init(const ILP_input& input);
             void init();
 
@@ -1280,8 +1284,7 @@ namespace LPMP {
             auto & bdd_var = bdd_variables_(var, bdd_index);
             for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
             {
-                // auto & bdd_node = bdd_branch_nodes_[node_index];
-                auto & bdd_node = bdd_branch_nodes_.at(node_index);
+                auto & bdd_node = bdd_branch_nodes_[node_index];
 
                 // skip isolated branch nodes
                 if (bdd_node.is_first() && bdd_node.is_dead_end())
@@ -1564,10 +1567,11 @@ namespace LPMP {
 
     bool bdd_mma_fixing::fix_variables()
     {
-        min_marginal_averaging_iteration();
         init_primal_solution();
-
-        std::vector<double> total_min_marginals = this->total_min_marginals();
+        std::vector<double> total_min_marginals;
+        min_marginal_averaging_iteration();
+        std::cout << "iters = 1, lower bound = " << lower_bound_ << ". " << std::flush;
+        total_min_marginals = this->total_min_marginals();
 
         // struct VarFix
         // {
@@ -1659,7 +1663,12 @@ namespace LPMP {
 
             const char val = (min_score < 0) ? 1 : 0;
             const size_t best_var = (min_score < 0) ? min_var : max_var;
+
+            const size_t lsize = log_size();
+            const double old_lb = lower_bound_;
+
             bool feasible = fix_variable(best_var, val);
+            this->backward_run();
 
             std::cout << "Fixed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) val << ". score = " << min_score << std::endl;
 
@@ -1667,9 +1676,80 @@ namespace LPMP {
             if (!feasible)
                 return false;
 
-            // update min marginals
+            double prev_lb = lower_bound_;
+            double min_progress = 1e-02;
+            int max_iter = 10;
+            for (int iter = 0; iter < max_iter; iter++)
+            {
+                min_marginal_averaging_iteration();
+                if (std::abs((lower_bound_-prev_lb)/prev_lb) < min_progress)
+                {
+                    std::cout << "iters = " << iter+1 << ", " << std::flush;
+                    break;
+                }
+                prev_lb = lower_bound_;
+                if (iter+1 == max_iter)
+                    std::cout << "iters = " << max_iter << ", " << std::flush;
+            }
+            std::cout << "lower bound = " << lower_bound_ << ". " << std::flush;
+
             total_min_marginals = this->total_min_marginals();
         }
+    }
+
+    void bdd_mma_fixing::min_marginal_averaging_forward()
+    {
+        std::vector<std::array<double,2>> min_marginals;
+        for(std::size_t var=0; var<this->nr_variables(); ++var) {
+
+            min_marginals.clear();
+            for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+                this->forward_step(var,bdd_index);
+                if (!is_fixed(var))
+                    min_marginals.push_back(min_marginal(var,bdd_index)); 
+            }
+
+            if (is_fixed(var))
+                continue;
+
+            const std::array<double,2> average_marginal = average_marginals(min_marginals.begin(), min_marginals.end());
+
+            for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+                set_marginal(var,bdd_index,average_marginal,min_marginals[bdd_index]);
+            } 
+        }
+    }
+
+    void bdd_mma_fixing::min_marginal_averaging_backward()
+    {
+        double lb = 0.0;
+        std::vector<std::array<double,2>> min_marginals;
+
+        for(long int var=this->nr_variables()-1; var>=0; --var) {
+
+            min_marginals.clear();
+            if (!is_fixed(var))
+            {
+                for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+                    min_marginals.push_back(min_marginal(var,bdd_index)); 
+                }
+            }
+            const std::array<double,2> average_marginal = average_marginals(min_marginals.begin(), min_marginals.end());
+            
+            for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+                if (!is_fixed(var))
+                    set_marginal(var,bdd_index,average_marginal,min_marginals[bdd_index]);
+                this->backward_step(var, bdd_index);
+                lb += lower_bound_backward(var,bdd_index);
+            }
+        }
+        lower_bound_ = lb; 
+    }
+
+    void bdd_mma_fixing::min_marginal_averaging_iteration()
+    {
+        this->min_marginal_averaging_forward();
+        this->min_marginal_averaging_backward();
     }
 
 

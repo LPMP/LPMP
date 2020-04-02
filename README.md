@@ -58,4 +58,4 @@ A tutorial on writing a new solver from scratch can be found [here](/doc/Getting
 * [5]: [`P. Swoboda, D. Kainmueller, A. Mokarian, C. Theobalt and F. Bernard. A convex approach to multi-graph matching. In CVPR 2019.`](http://openaccess.thecvf.com/content_CVPR_2019/html/Swoboda_A_Convex_Relaxation_for_Multi-Graph_Matching_CVPR_2019_paper.html)
 * [6]: [`A. Abbas, P. Swoboda. Bottleneck Potentials in Markov Random Fields. In ICCV 2019.`](http://openaccess.thecvf.com/content_ICCV_2019/html/Abbas_Bottleneck_Potentials_in_Markov_Random_Fields_ICCV_2019_paper.html)
 * [7]: [`M. Vlastelica, A. Paulus, V. Musil, G. Martius, M. Rolínek. Differentiation of Blackbox Combinatorial Solvers. In ICLR 2020.`](https://openreview.net/forum?id=BkevoJSYPB)
-* [8]: [`M. Rolínek, P. Swoboda, D. Zietlow, A. Paulus, V. Musil, G. Martius. Deep Graph Matching via Blackbox Differentiation of Combinatorial Solvers.`](http://arxiv.org)
+* [8]: [`M. Rolínek, P. Swoboda, D. Zietlow, A. Paulus, V. Musil, G. Martius. Deep Graph Matching via Blackbox Differentiation of Combinatorial Solvers.`](https://arxiv.org/abs/2003.11657)

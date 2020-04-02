@@ -11,7 +11,7 @@ int main(int argc, char** argv)
     if(argc < 2)
         throw std::runtime_error("input filename must be present as argument");
 
-    const double min_progress = 1e-1;
+    const double min_progress = 1e-02; // relative to objective function
     const int max_iter = 200;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     solver.init(input);
 
     std::cout << std::setprecision(10);
-    const double initial_lb = solver.lower_bound();
+    const double initial_lb = solver.compute_lower_bound();
     std::cout << "initial lower bound = " << initial_lb << "\n";
 
     double old_lb = initial_lb;
@@ -37,12 +37,17 @@ int main(int argc, char** argv)
         solver.iteration();
         const double new_lb = solver.lower_bound();
         std::cout << "lower bound = " << new_lb << "\n";
-        if (new_lb - old_lb < min_progress)
+        if (std::abs((new_lb - old_lb) / old_lb) < min_progress)
+        {
+            std::cout << "Relative improvement less than " << min_progress*100 << "\%." << std::endl;
             break;
+        }
         old_lb = new_lb;
+        if (iter+1==max_iter)
+            std::cout << "Maximum number of iterations reached." << std::endl;
     }
     double ub = std::numeric_limits<double>::infinity();
-    std::cout << "Rounding.. " << std::flush;
+    std::cout << "Rounding.. " << std::endl;
     if (solver.fix_variables()) {
         ub = solver.compute_upper_bound();
         std::cout << "\nPrimal solution value: " << ub << std::endl;
