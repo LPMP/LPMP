@@ -48,6 +48,8 @@ namespace LPMP {
 #ifdef NDEBUG
         return;
 #endif
+        // need not hold true if variable is always infeasible
+        //assert(!bdd.is_first() || (bdd.low_outgoing != bdd_branch_node<DERIVED>::terminal_0() && bdd.high_outgoing != bdd_branch_node<DERIVED>::terminal_0()));
         assert(bdd.low_outgoing != nullptr);
         assert(bdd.low_outgoing == DERIVED::terminal_0() || bdd.low_outgoing == DERIVED::terminal_1() || bdd.low_outgoing > &bdd);
         assert(bdd.high_outgoing != nullptr);

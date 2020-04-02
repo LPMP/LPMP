@@ -11,7 +11,7 @@ int main(int argc, char** argv)
     if(argc < 2)
         throw std::runtime_error("input filename must be present as argument");
 
-    const double min_progress = 1e-01;
+    const double min_progress = 1e-1;
     const int max_iter = 200;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));

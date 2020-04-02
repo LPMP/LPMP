@@ -8,6 +8,8 @@ using namespace LPMP;
 
 int main(int argc, char** argv)
 {
+    std::cout << std::setprecision(10);
+
     if(argc < 2)
         throw std::runtime_error("input filename must be present as argument");
 
@@ -22,7 +24,11 @@ int main(int argc, char** argv)
     bdd_min_marginal_averaging_smoothed solver;
     solver.init(input);
 
-    std::cout << std::setprecision(10);
+    solver.forward_run();
+    const double initial_lb_forward = solver.compute_lower_bound_forward();
+    solver.backward_run();
+    const double initial_lb_backward = solver.compute_lower_bound();
+    std::cout << "initial lower bounds: " << initial_lb_backward << ", " << initial_lb_forward << "\n";
     //const double initial_lb = solver.lower_bound();
     //std::cout << "initial lower bound = " << initial_lb << "\n";
 

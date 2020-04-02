@@ -64,7 +64,6 @@ namespace LPMP {
             std::vector<BDD_BRANCH_NODE> bdd_branch_nodes_;
             two_dim_variable_array<BDD_VARIABLE> bdd_variables_;
 
-        private:
             void init_branch_nodes();
 
             bdd_storage bdd_storage_;
@@ -256,7 +255,7 @@ namespace LPMP {
 
                 //if(!bdd.low_outgoing->is_terminal()) { assert(variable_index(bdd) < variable_index(*bdd.low_outgoing)); }
                 //if(!bdd.high_outgoing->is_terminal()) { assert(variable_index(bdd) < variable_index(*bdd.high_outgoing)); }
-                check_bdd_branch_node(bdd, v+1 == nr_variables(), v == 0);
+                //check_bdd_branch_node(bdd, v+1 == nr_variables(), v == 0); // TODO: cannot be enabled because not all pointers are set yet.
                 //check_bdd_branch_instruction_level(bdd_level, v+1 == nr_variables(), v == 0);
                 ++nr_bdd_nodes_per_variable[v]; 
                 ++bdd_offset_per_variable[v];
@@ -727,16 +726,31 @@ namespace LPMP {
             current_marginals.clear();
             double total_min_marg = 0;
             double total_abs_marg = 0;
+            double min_max_marg = std::numeric_limits<double>::infinity();
+            int s = -2;
             for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index)
             {
                 this->forward_step(var,bdd_index);
                 std::array<double,2> min_marg = min_marginal(var,bdd_index);
                 total_min_marg += (min_marg[1] - min_marg[0]);
                 total_abs_marg += std::abs(total_min_marg);
+                min_max_marg = std::min(min_max_marg, std::abs(min_marg[1] - min_marg[0]));
+                if(s == -2)
+                    s = sign(min_marg[1] - min_marg[0]);
+                if(sign(min_marg[1] - min_marg[0]) != s) 
+                {
+                    min_max_marg = 0.0; 
+                }
                 current_marginals.push_back(min_marg[1] - min_marg[0]);
             }
 
             total_min_marginals.push_back(total_min_marg);
+            //total_min_marginals.back() = double(s) * min_max_marg;
+            //total_min_marginals.push_back(total_min_marg + 10.0 * s * max_min_marg);
+            //if (total_min_marg < 0.0)
+            //   total_min_marginals.push_back(-max_min_marg + 0.1 * total_min_marg);
+            //else if (s > 0)
+            //    total_min_marginals.push_back(-s * max_min_marg * 0.05);
 
             // for(std::size_t i=0; i+1<current_marginals.size(); ++i) 
             //     if(sign(current_marginals[i]) != sign(current_marginals[i+1])) {
@@ -997,7 +1011,7 @@ namespace LPMP {
             for(std::size_t v=0; v<this->nr_variables(); ++v) {
                 assert(this->bdd_variables_[v].size() > 0);
                 for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(v); ++bdd_index) {
-                    assert(nr_bdds(v) > 0);
+                    assert(this->nr_bdds(v) > 0);
                     const double cost = v < std::distance(begin,end) ? *(begin+v)/this->nr_bdds(v) : 0.0; 
                     this->bdd_variables_(v,bdd_index).cost = cost;
                     assert(!std::isnan(this->bdd_variables_(v,bdd_index).cost));
@@ -1070,6 +1084,7 @@ namespace LPMP {
         void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::export_dot(STREAM& s) const
         {
             return this->bdd_storage_.export_dot(s);
+            /*
             s << "digraph bdd_min_marginal_averaging {\n";
 
             std::vector<char> bdd_node_visited(this->bdd_branch_nodes_.size(), false);
@@ -1091,6 +1106,7 @@ namespace LPMP {
             }
 
             s << "}\n"; 
+            */
         }
 
     ////////////////////////////////////////////////////
