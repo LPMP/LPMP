@@ -1,5 +1,6 @@
 #include "test.h"
 #include "bdd/bdd_anisotropic_diffusion.h"
+#include "bdd/bdd_min_marginal_averaging.h"
 #include "bdd/ILP_parser.h"
 #include "mrf/mrf_input.h"
 #include <random>
@@ -87,6 +88,46 @@ void test_randon_chains_problem(const std::size_t n, const std::size_t l, const 
     test(std::abs(end_lb_min_deg - end_lb_bfs) <= 1e-8);
 }
 
+void test_randon_chains_problem_mma(const std::size_t n, const std::size_t l, const unsigned long int seed)
+{
+    const mrf_input instance = generate_random_mrf_chain(n,l,seed);
+    std::stringstream ss;
+    instance.write(ss);
+    // instance.write(std::cout);
+    ILP_input input = ILP_parser::parse_string(ss.str());
+    input.reorder_bfs();
+
+    bdd_mma_fixing bdd_solver;
+    bdd_min_marginal_averaging_options bdd_options;
+    bdd_options.averaging_type = bdd_min_marginal_averaging_options::averaging_type::SRMP;
+    bdd_solver.set_options(bdd_options);
+    bdd_solver.init(input);
+    const double initial_lb = bdd_solver.compute_lower_bound();
+    double lb = initial_lb;
+    double prev_lb = -std::numeric_limits<double>::infinity();
+    size_t iterations = 0;
+    while ((lb - prev_lb) > 1e-08)
+    {
+        iterations++;
+        bdd_solver.iteration();
+        prev_lb = lb;
+        lb = bdd_solver.lower_bound();
+    }
+    double ub;
+
+    std::cout << "\niterations = " << iterations << ", lower bound = " << lb << std::endl;
+    if (bdd_solver.fix_variables())
+    {
+        ub = bdd_solver.compute_upper_bound();
+        std::cout << "\nUpper bound = " << ub << std::endl;
+    }
+    else
+        std::cout << "\nNo primal solution found." << std::endl;
+
+    test(initial_lb <= lb);
+    test(std::abs(ub - lb) <= 1e-8);
+}
+
 int main(int argc, char** argv)
 {
     std::random_device rd;
@@ -94,7 +135,7 @@ int main(int argc, char** argv)
     for(std::size_t n=2; n<20; ++n) {
         for(std::size_t l=2; l<20; ++l) {
             std::cout << "n = " << n << ", l = " << l << "\n";
-            test_randon_chains_problem(n,l,seed++);
+            test_randon_chains_problem_mma(n,l,seed++);
         }
     }
 }
