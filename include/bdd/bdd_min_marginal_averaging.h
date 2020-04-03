@@ -446,7 +446,7 @@ namespace LPMP {
         assert(bdd_index < bdd_variables_[var].size());
         assert(bdd_node_index < bdd_variables_(var,bdd_index).nr_bdd_nodes());
         return bdd_branch_nodes_[ bdd_variables_(var,bdd_index).first_node_index + bdd_node_index ];
-    } 
+    }
 
     ////////////////////////////////////////////////////
     // Min-Marginal Averaging Solver

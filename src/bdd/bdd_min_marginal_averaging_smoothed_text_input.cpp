@@ -1,4 +1,5 @@
 #include "bdd/bdd_min_marginal_averaging_smoothed.h"
+#include "bdd/bdd_min_marginal_averaging.h"
 #include "bdd/ILP_parser.h"
 #include "cuddObj.hh"
 
@@ -24,10 +25,10 @@ int main(int argc, char** argv)
     bdd_min_marginal_averaging_smoothed solver;
     solver.init(input);
 
-    solver.forward_run();
-    const double initial_lb_forward = solver.compute_lower_bound_forward();
-    solver.backward_run();
-    const double initial_lb_backward = solver.compute_lower_bound();
+    solver.smooth_forward_run();
+    const double initial_lb_forward = solver.compute_smooth_lower_bound_forward();
+    solver.smooth_backward_run();
+    const double initial_lb_backward = solver.compute_smooth_lower_bound();
     std::cout << "initial lower bounds: " << initial_lb_backward << ", " << initial_lb_forward << "\n";
     //const double initial_lb = solver.lower_bound();
     //std::cout << "initial lower bound = " << initial_lb << "\n";
@@ -36,8 +37,8 @@ int main(int argc, char** argv)
     //double new_lb = old_lb;
 
     for(std::size_t iter=0; iter<max_iter; ++iter) {
-        solver.iteration();
-        const double new_lb = solver.compute_lower_bound(); // TODO: change, if available
+        solver.smooth_iteration();
+        const double new_lb = solver.compute_smooth_lower_bound(); // TODO: change, if available
         std::cout << "iteration " << iter << ": " << std::flush;
         std::cout << "lower bound = " << new_lb << "\n";
         //if (new_lb - old_lb < min_progress)
