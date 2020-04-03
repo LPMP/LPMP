@@ -38,8 +38,10 @@ public:
 class bdd_branch_node_opt_smoothed : public bdd_branch_node_opt_smoothed_base<bdd_branch_node_opt_smoothed>
 {};
 
-    //template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-    //class bdd_mma_base : public bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>, public bdd_solver_interface
+struct bdd_min_marginal_averaging_smoothed_options
+{
+    double cost_scaling_ = 1.0;
+};
 
 template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
 class bdd_min_marginal_averaging_smoothed_base : public bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>
@@ -47,16 +49,6 @@ class bdd_min_marginal_averaging_smoothed_base : public bdd_mma_base<BDD_VARIABL
 public:
     bdd_min_marginal_averaging_smoothed_base() {}
     bdd_min_marginal_averaging_smoothed_base(const bdd_min_marginal_averaging_smoothed_base &) = delete; // no copy constructor because of pointers in bdd_branch_node
-
-    void init(const ILP_input &input);
-    void init();
-
-    template <typename ITERATOR>
-    void set_costs(ITERATOR begin, ITERATOR end); // copy from bdd_min_marginal_averaging
-
-    // TODO: delete, for now only for interface
-    double lower_bound() { return -std::numeric_limits<double>::infinity(); } // TODO: not implemented yet
-    void iteration() {}
 
     double smooth_lower_bound() { return -std::numeric_limits<double>::infinity(); } // TODO: not implemented yet
     double compute_smooth_lower_bound();
@@ -69,11 +61,10 @@ public:
     void smooth_averaging_pass_backward();
     void smooth_iteration();
 
-    template <typename STREAM>
-    void export_dot(STREAM &s) const { return this->bdd_storage_.export_dot(s); }
+    void set_cost_scaling(const double scale);
 
 private:
-    void init_costs(); // copy from bdd_min_marginal_averaging
+    //void init_costs(); // copy from bdd_min_marginal_averaging
     double smooth_lower_bound_backward(const std::size_t var, const std::size_t bdd_index);
     double smooth_lower_bound_forward(const std::size_t var, const std::size_t bdd_index);
 
@@ -379,61 +370,6 @@ std::array<double, 2> bdd_branch_node_opt_smoothed::min_marginal_debug() const
 /////////////////////////////////////////
 
 template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-void bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init_costs()
-{
-    for (size_t var = 0; var < this->nr_variables(); var++)
-        for (size_t bdd_index = 0; bdd_index < this->nr_bdds(var); bdd_index++)
-        {
-            auto &bdd_var = this->bdd_variables_(var, bdd_index);
-            for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
-                this->bdd_branch_nodes_[node_index].variable_cost = &bdd_var.cost;
-        }
-}
-
-template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-void bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init(const ILP_input &input)
-{
-    bdd_base<bdd_variable_mma, bdd_branch_node_opt_smoothed>::init(input);
-    init_costs();
-    set_costs(input.objective().begin(), input.objective().end());
-}
-
-template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-void bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init()
-{
-    bdd_base<bdd_variable_mma, bdd_branch_node_opt_smoothed>::init();
-    init_costs();
-}
-
-template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-template <typename ITERATOR>
-void bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::set_costs(ITERATOR begin, ITERATOR end)
-{
-    const double max_entry = *std::max_element(begin, end);
-    const double min_entry = *std::min_element(begin, end);
-    assert(std::abs(max_entry) > 0.0 || std::abs(min_entry) > 0.0);
-    cost_scaling_ = 1.0; //std::max(std::abs(max_entry), std::abs(min_entry));
-    // distribute costs to bdds uniformly
-    for (std::size_t v = 0; v < this->nr_variables(); ++v)
-    {
-        assert(this->bdd_variables_[v].size() > 0);
-        for (std::size_t bdd_index = 0; bdd_index < this->nr_bdds(v); ++bdd_index)
-        {
-            const double cost = v < std::distance(begin, end) ? *(begin + v) / this->nr_bdds(v) : 0.0;
-            this->bdd_variables_(v, bdd_index).cost = 1.0/cost_scaling_ * cost;
-            assert(!std::isnan(this->bdd_variables_(v, bdd_index).cost));
-        }
-    }
-    for (const auto &bdd : this->bdd_branch_nodes_)
-    {
-        assert(!std::isnan(*bdd.variable_cost));
-    }
-    smooth_backward_run();
-    const double init_lb = compute_smooth_lower_bound();
-    std::cout << "initial lb = " << init_lb << "\n";
-}
-
-template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
 double bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::compute_smooth_lower_bound()
 {
     double lb = 0.0;
@@ -594,6 +530,26 @@ void bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::sm
 {
     smooth_averaging_pass_forward();
     smooth_averaging_pass_backward();
+}
+
+
+template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+void bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::set_cost_scaling(const double scale)
+{
+    assert(scale > 0.0);
+
+    // rescale Lagrange multipliers
+    for (std::size_t var = 0; var < this->nr_variables(); ++var)
+    {
+        for (std::size_t bdd_index = 0; bdd_index < this->nr_bdds(var); ++bdd_index)
+        {
+            auto &bdd_var = this->bdd_variables_(var, bdd_index);
+            bdd_var.cost *= cost_scaling_ / scale;
+        }
+    }
+
+    cost_scaling_ = scale;
+    // TODO: backward run must be performed
 }
 
 template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>

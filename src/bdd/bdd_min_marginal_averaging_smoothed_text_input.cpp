@@ -15,7 +15,7 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const double min_progress = 1e-01;
-    const int max_iter = 100;
+    const int max_iter = 300;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
     input.reorder_bfs();
@@ -24,6 +24,7 @@ int main(int argc, char** argv)
 
     bdd_min_marginal_averaging_smoothed solver;
     solver.init(input);
+    solver.set_cost_scaling(0.001);
 
     solver.smooth_forward_run();
     const double initial_lb_forward = solver.compute_smooth_lower_bound_forward();
@@ -45,5 +46,10 @@ int main(int argc, char** argv)
         //    break;
         //old_lb = new_lb;
     }
+
+    solver.set_cost_scaling(1.0);
+    solver.backward_run();
+    const double orig_lb = solver.compute_lower_bound();
+    std::cout << "original final lower bound = " << orig_lb << "\n";
 }
 
