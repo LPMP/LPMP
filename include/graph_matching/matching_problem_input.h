@@ -415,23 +415,30 @@ struct graph_matching_input : public linear_assignment_problem_input {
 
     std::string quadratic_identifier(const std::array<std::size_t,2> left_nodes, const std::array<std::size_t,2> right_nodes) const
     {
-        return std::string("q_") + std::to_string(left_nodes[0]) + "_" + std::to_string(left_nodes[1]) + "_" + std::to_string(right_nodes[0]) + "_" + std::to_string(right_nodes[1]);
+       if (left_nodes[0] < left_nodes[1])
+          return std::string("q_") + std::to_string(left_nodes[0]) + "_" + std::to_string(left_nodes[1]) + "_" + std::to_string(right_nodes[0]) + "_" + std::to_string(right_nodes[1]);
+       else
+          return quadratic_identifier({left_nodes[1], left_nodes[0]}, {right_nodes[1], right_nodes[0]});
     }
 
     std::string quadratic_identifier(const std::size_t assignment_1, const std::size_t assignment_2) const
     {
-        const std::size_t l1 = this->assignments[assignment_1].left_node;
-        const std::size_t l2 = this->assignments[assignment_2].left_node;
-        const std::size_t r1 = this->assignments[assignment_1].right_node;
-        const std::size_t r2 = this->assignments[assignment_2].right_node;
-        return quadratic_identifier({l1,l2}, {r1,r2});
+       assert(assignment_1 != assignment_2);
+       assert(assignment_1 < this->assignments.size());
+       assert(assignment_2 < this->assignments.size());
+
+       const std::size_t l1 = this->assignments[assignment_1].left_node;
+       const std::size_t l2 = this->assignments[assignment_2].left_node;
+       const std::size_t r1 = this->assignments[assignment_1].right_node;
+       const std::size_t r2 = this->assignments[assignment_2].right_node;
+       return quadratic_identifier({l1, l2}, {r1, r2});
     }
 
-    template<typename STREAM>
-        void write_quadratic_objective(STREAM& s) const
-        {
-            for(const auto& q : quadratic_terms)
-                s << (q.cost < 0.0 ? "-" : "+") << std::abs(q.cost) << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
+    template <typename STREAM>
+    void write_quadratic_objective(STREAM &s) const
+    {
+       for (const auto &q : quadratic_terms)
+          s << (q.cost < 0.0 ? "-" : "+") << std::abs(q.cost) << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
         }
 
     template<typename STREAM>
