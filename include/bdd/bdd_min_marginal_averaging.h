@@ -487,7 +487,6 @@ namespace LPMP {
         double lower_bound_forward(const std::size_t var, const std::size_t bdd_index);
 
         double compute_upper_bound(const std::vector<char> &primal_solution) const;
-        std::vector<double> total_min_marginals();
 
         void min_marginal_averaging_iteration();
         void min_marginal_averaging_forward();
@@ -708,60 +707,6 @@ namespace LPMP {
             return std::numeric_limits<double>::infinity();
         else
             return evaluate(primal_solution.begin(), primal_solution.end());
-    }
-
-    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-    std::vector<double> bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::total_min_marginals()
-    {
-        std::vector<double> total_min_marginals;
-        std::vector<double> current_marginals;
-        size_t nr_conflicts = 0;
-        for(std::size_t var=0; var<this->nr_variables(); ++var)
-        {
-            auto sign = [](const double x) -> int {
-                if (x > 0.0) return 1;
-                if (x < 0.0) return -1;
-                return 0;
-            };
-            current_marginals.clear();
-            double total_min_marg = 0;
-            double total_abs_marg = 0;
-            double min_max_marg = std::numeric_limits<double>::infinity();
-            int s = -2;
-            for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index)
-            {
-                this->forward_step(var,bdd_index);
-                std::array<double,2> min_marg = min_marginal(var,bdd_index);
-                total_min_marg += (min_marg[1] - min_marg[0]);
-                total_abs_marg += std::abs(total_min_marg);
-                min_max_marg = std::min(min_max_marg, std::abs(min_marg[1] - min_marg[0]));
-                if(s == -2)
-                    s = sign(min_marg[1] - min_marg[0]);
-                if(sign(min_marg[1] - min_marg[0]) != s) 
-                {
-                    min_max_marg = 0.0; 
-                }
-                current_marginals.push_back(min_marg[1] - min_marg[0]);
-            }
-
-            total_min_marginals.push_back(total_min_marg);
-            //total_min_marginals.back() = double(s) * min_max_marg;
-            //total_min_marginals.push_back(total_min_marg + 10.0 * s * max_min_marg);
-            //if (total_min_marg < 0.0)
-            //   total_min_marginals.push_back(-max_min_marg + 0.1 * total_min_marg);
-            //else if (s > 0)
-            //    total_min_marginals.push_back(-s * max_min_marg * 0.05);
-
-            // for(std::size_t i=0; i+1<current_marginals.size(); ++i) 
-            //     if(sign(current_marginals[i]) != sign(current_marginals[i+1])) {
-            //         total_min_marginals.back() = 0.0;
-            //         ++nr_conflicts;
-            //         continue;
-            //     }
-        }
-        // std::cout << "#conflicts in min-marginals = " << nr_conflicts << "\n";
-        // this->backward_run();
-        return total_min_marginals;
     }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -1176,6 +1121,8 @@ namespace LPMP {
             bool fix_variable(const size_t var, const char value);
             bool is_fixed(const size_t var) const;
 
+            std::vector<double> total_min_marginals();
+
             void min_marginal_averaging_forward();
             void min_marginal_averaging_backward();
             void min_marginal_averaging_iteration();
@@ -1538,164 +1485,232 @@ namespace LPMP {
         }
     }
 
-    // bool bdd_mma_fixing::fix_variables()
-    // {
-    //     min_marginal_averaging_iteration();
-    //     std::vector<double> total_min_marginals = this->total_min_marginals();
-    //     std::vector<size_t> variables;
-    //     for (size_t i = 0; i < nr_variables(); i++)
-    //         variables.push_back(i);
-
-    //     // TODO change to more sensible ordering
-    //     auto order = [&](const size_t a, const size_t b)
-    //     {
-    //         if (total_min_marginals[a] >= 0.0 && total_min_marginals[b] >= 0.0)
-    //             return (total_min_marginals[a]) > (total_min_marginals[b]);
-    //         return (total_min_marginals[a]) < (total_min_marginals[b]);
-    //     };
-    //     std::sort(variables.begin(), variables.end(), order);
-
-    //     std::vector<char> values;
-    //     for (size_t i = 0; i < variables.size(); i++)
-    //     {
-    //         const char val = (total_min_marginals[variables[i]] < 0) ? 1 : 0;
-    //         values.push_back(val);
-    //     }
-
-    //     return fix_variables(variables, values);
-    // }
+    std::vector<double> bdd_mma_fixing::total_min_marginals()
+    {
+        std::vector<double> total_min_marginals;
+        size_t nr_conflicts = 0;
+        for(std::size_t var=0; var<this->nr_variables(); ++var)
+        {
+            double total_min_marg = 0;
+            for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index)
+            {
+                this->forward_step(var,bdd_index);
+                if (is_fixed(var))
+                    continue;
+                std::array<double,2> min_marg = min_marginal(var,bdd_index);
+                total_min_marg += (min_marg[1] - min_marg[0]);
+            }
+            total_min_marginals.push_back(total_min_marg);
+            // std::cout << input_.get_var_name(var) << " : " << total_min_marginals[var] << std::endl;
+        }
+        return total_min_marginals;
+    }
 
     bool bdd_mma_fixing::fix_variables()
     {
-        init_primal_solution();
-        std::vector<double> total_min_marginals;
+        // additional MMA iteration increases chance of finding a feasible solution
         min_marginal_averaging_iteration();
-        std::cout << "iters = 1, lower bound = " << lower_bound_ << ". " << std::flush;
-        total_min_marginals = this->total_min_marginals();
+        std::vector<double> total_min_marginals = this->total_min_marginals();
+        std::vector<size_t> variables;
+        for (size_t i = 0; i < nr_variables(); i++)
+            variables.push_back(i);
 
-        // struct VarFix
-        // {
-        //     VarFix(const size_t index, const double score, const size_t edition)
-        //     : index_(index), score_(score), edition_(edition) {}
+        const double eps = -std::numeric_limits<double>::epsilon();
 
-        //     const size_t index_;
-        //     const double score_;
-        //     const size_t edition_;
-
-        //     bool operator <(VarFix const & other) const
-        //     {
-        //         // TODO adjust
-        //         return score_ > other.score_;
-        //     }
-        // }
-
-        // std::priority_queue<VarFix> queue;
-        // std::vector<size_t> editions(nr_variables(), 0);
-        // for (size_t var = 0; var < nr_variables(); var++)
-        //     queue.emplace(var, total_min_marginals[var], 0);
-
-        // while (!queue.empty())
-        // {
-        //     const auto next = queue.top();
-        //     queue.pop();
-
-        //     const size_t var = next.index_;
-        //     const char val = (next.score_ < 0) ? 1 : 0;
-        //     const size_t edition = next.edition_;
-
-        //     if (bdd_fix_.is_fixed(var) || edition < editions[var])
-        //         continue;
-
-        //     const size_t log_size = bdd_fix_.log_size();
-        //     bool feasible = bdd_fix_.fix_variable(var, val);
-
-        //     if (feasible)
-        //     {
-        //         // update total min marginals
-        //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
-        //         bdd_mma_.set_cost(var, fixed_cost);
-        //         // TODO
-        //     }
-        //     else
-        //         // TODO enable backtracking
-        //         return false;
-
-        // }
-
-        // size_t nfixes = 0;
-        // size_t max_fixes = nr_variables();
-        // std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-
-        while (true)
+        // TODO change to more sensible ordering
+        auto order = [&](const size_t a, const size_t b)
         {
-            // nfixes++;
-            // std::cout << "\rExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-            // if (nfixes > max_fixes)
-            //     return false;
+            if (total_min_marginals[a] > eps && total_min_marginals[b] > eps)
+                return (total_min_marginals[a]) > (total_min_marginals[b]);
+            return (total_min_marginals[a]) < (total_min_marginals[b]);
+        };
+        std::sort(variables.begin(), variables.end(), order);
 
-            double min_score = std::numeric_limits<double>::infinity();
-            double max_score = -min_score;
-            double prev_min_score = min_score;
-            size_t min_var;
-            size_t max_var;
-            for (size_t var = 0; var < nr_variables(); var++)
-            {
-                if (is_fixed(var))
-                    continue;
-
-                if (total_min_marginals[var] < min_score)
-                {
-                    min_score = total_min_marginals[var];
-                    min_var = var;
-                }
-                if (total_min_marginals[var] > max_score)
-                {
-                    max_score = total_min_marginals[var];
-                    max_var = var;
-                }
-            }
-
-            if (min_score == -std::numeric_limits<double>::infinity())
-                std::cout << "Min score is -inf" << std::endl;
-
-            if (min_score == std::numeric_limits<double>::infinity())
-                return true;
-
-            const char val = (min_score < 0) ? 1 : 0;
-            const size_t best_var = (min_score < 0) ? min_var : max_var;
-
-            const size_t lsize = log_size();
-            const double old_lb = lower_bound_;
-
-            bool feasible = fix_variable(best_var, val);
-            this->backward_run();
-
-            std::cout << "Fixed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) val << ". score = " << min_score << std::endl;
-
-            // TODO enable backtracking
-            if (!feasible)
-                return false;
-
-            double prev_lb = lower_bound_;
-            double min_progress = 1e-02;
-            int max_iter = 10;
-            for (int iter = 0; iter < max_iter; iter++)
-            {
-                min_marginal_averaging_iteration();
-                if (std::abs((lower_bound_-prev_lb)/prev_lb) < min_progress)
-                {
-                    std::cout << "iters = " << iter+1 << ", " << std::flush;
-                    break;
-                }
-                prev_lb = lower_bound_;
-                if (iter+1 == max_iter)
-                    std::cout << "iters = " << max_iter << ", " << std::flush;
-            }
-            std::cout << "lower bound = " << lower_bound_ << ". " << std::flush;
-
-            total_min_marginals = this->total_min_marginals();
+        std::vector<char> values;
+        for (size_t i = 0; i < variables.size(); i++)
+        {
+            const char val = (total_min_marginals[variables[i]] < eps) ? 1 : 0;
+            values.push_back(val);
         }
+
+        return fix_variables(variables, values);
     }
+
+    // bool bdd_mma_fixing::fix_variables()
+    // {
+    //     init_primal_solution();
+    //     std::vector<double> total_min_marginals = this->total_min_marginals();
+
+    //     // struct VarFix
+    //     // {
+    //     //     VarFix(const size_t index, const double score, const size_t edition)
+    //     //     : index_(index), score_(score), edition_(edition) {}
+
+    //     //     const size_t index_;
+    //     //     const double score_;
+    //     //     const size_t edition_;
+
+    //     //     bool operator <(VarFix const & other) const
+    //     //     {
+    //     //         // TODO adjust
+    //     //         return score_ > other.score_;
+    //     //     }
+    //     // }
+
+    //     // std::priority_queue<VarFix> queue;
+    //     // std::vector<size_t> editions(nr_variables(), 0);
+    //     // for (size_t var = 0; var < nr_variables(); var++)
+    //     //     queue.emplace(var, total_min_marginals[var], 0);
+
+    //     // while (!queue.empty())
+    //     // {
+    //     //     const auto next = queue.top();
+    //     //     queue.pop();
+
+    //     //     const size_t var = next.index_;
+    //     //     const char val = (next.score_ < 0) ? 1 : 0;
+    //     //     const size_t edition = next.edition_;
+
+    //     //     if (bdd_fix_.is_fixed(var) || edition < editions[var])
+    //     //         continue;
+
+    //     //     const size_t log_size = bdd_fix_.log_size();
+    //     //     bool feasible = bdd_fix_.fix_variable(var, val);
+
+    //     //     if (feasible)
+    //     //     {
+    //     //         // update total min marginals
+    //     //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
+    //     //         bdd_mma_.set_cost(var, fixed_cost);
+    //     //         // TODO
+    //     //     }
+    //     //     else
+    //     //         // TODO enable backtracking
+    //     //         return false;
+
+    //     // }
+
+    //     // size_t nfixes = 0;
+    //     // size_t max_fixes = nr_variables();
+    //     // std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
+
+    //     while (true)
+    //     {
+    //         // nfixes++;
+    //         // std::cout << "\rExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
+    //         // if (nfixes > max_fixes)
+    //         //     return false;
+
+    //         // double prev_lb = lower_bound_;
+    //         // double min_progress = 1e-04;
+    //         // int max_iter = 10;
+    //         // for (int iter = 0; iter < max_iter; iter++)
+    //         // {
+    //         //     min_marginal_averaging_iteration();
+    //         //     if (std::abs((lower_bound_-prev_lb)/prev_lb) < min_progress)
+    //         //     {
+    //         //         std::cout << "iters = " << iter+1 << ", " << std::flush;
+    //         //         break;
+    //         //     }
+    //         //     prev_lb = lower_bound_;
+    //         //     if (iter+1 == max_iter)
+    //         //         std::cout << "iters = " << max_iter << ", " << std::flush;
+    //         // }
+    //         // std::cout << "lower bound = " << lower_bound_ << ". " << std::flush;
+
+    //         // total_min_marginals = this->total_min_marginals();
+
+    //         double min_score = std::numeric_limits<double>::infinity();
+    //         double max_score = -min_score;
+    //         double prev_min_score = min_score;
+    //         size_t min_var;
+    //         size_t max_var;
+    //         for (size_t var = 0; var < nr_variables(); var++)
+    //         {
+    //             if (is_fixed(var))
+    //                 continue;
+
+    //             if (total_min_marginals[var] < min_score)
+    //             {
+    //                 min_score = total_min_marginals[var];
+    //                 min_var = var;
+    //             }
+    //             if (total_min_marginals[var] > max_score)
+    //             {
+    //                 max_score = total_min_marginals[var];
+    //                 max_var = var;
+    //             }
+    //         }
+
+    //         if (min_score == -std::numeric_limits<double>::infinity())
+    //             std::cout << "Min score is -inf" << std::endl;
+
+    //         if (min_score == std::numeric_limits<double>::infinity())
+    //             return true;
+
+    //         const size_t lsize = log_size();
+    //         const double old_lb = lower_bound_;
+
+    //         const double eps = -std::numeric_limits<double>::epsilon();
+    //         const char val = (min_score < eps) ? 1 : 0;
+    //         const size_t best_var = (min_score < eps) ? min_var : max_var;
+    //         const double best_score = (min_score < eps) ? min_score : max_score;
+
+    //         bool feasible = fix_variable(best_var, val);
+    //         this->backward_run();
+
+    //         std::cout << "Fixed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) val << ". score = " << best_score << std::endl;
+
+    //         // TODO enable backtracking
+    //         if (!feasible)
+    //             return false;
+
+    //         // double prev_lb = lower_bound_;
+    //         // double min_progress = 1e-04;
+    //         // int max_iter = 10;
+    //         // for (int iter = 0; iter < max_iter; iter++)
+    //         // {
+    //         //     min_marginal_averaging_iteration();
+    //         //     if (std::abs((lower_bound_-prev_lb)/prev_lb) < min_progress)
+    //         //     {
+    //         //         std::cout << "iters = " << iter+1 << ", " << std::flush;
+    //         //         break;
+    //         //     }
+    //         //     prev_lb = lower_bound_;
+    //         //     if (iter+1 == max_iter)
+    //         //         std::cout << "iters = " << max_iter << ", " << std::flush;
+    //         // }
+    //         // std::cout << "lower bound = " << lower_bound_ << ". " << std::flush;
+
+    //         // if (std::abs(lower_bound_-old_lb) > std::abs(5*min_score))
+    //         // {
+    //         //     revert_changes(lsize);
+    //         //     bool feasible = fix_variable(best_var, 1-val);
+    //         //     if (!feasible)
+    //         //         return false;
+    //         //     this->backward_run();
+
+    //         //     std::cout << "Changed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) 1-val << std::endl;
+
+    //         //     double prev_lb = lower_bound_;
+    //         //     double min_progress = 1e-04;
+    //         //     int max_iter = 10;
+    //         //     for (int iter = 0; iter < max_iter; iter++)
+    //         //     {
+    //         //         min_marginal_averaging_iteration();
+    //         //         if (std::abs((lower_bound_-prev_lb)/prev_lb) < min_progress)
+    //         //         {
+    //         //             std::cout << "iters = " << iter+1 << ", " << std::flush;
+    //         //             break;
+    //         //         }
+    //         //         prev_lb = lower_bound_;
+    //         //         if (iter+1 == max_iter)
+    //         //             std::cout << "iters = " << max_iter << ", " << std::flush;
+    //         //     }
+    //         //     std::cout << "lower bound = " << lower_bound_ << ". " << std::flush;
+    //         // }
+    //     }
+    // }
 
     void bdd_mma_fixing::min_marginal_averaging_forward()
     {
