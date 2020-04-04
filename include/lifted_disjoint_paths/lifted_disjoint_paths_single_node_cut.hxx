@@ -39,6 +39,7 @@ public:
 		baseCosts=std::vector<double>(numberOfEdges);
 		liftedCosts=std::vector<double>(numberOfLiftedEdges);
 		solutionCosts=std::vector<double>(numberOfEdges+1,0);
+		vsUpToDate=false;
 
 
 
@@ -58,7 +59,24 @@ public:
 	virtual std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode)=0;
 
 	//ldp_single_node_cut_factor(const std::size_t nr_outgoing_base_edges, const std::size_t nr_outgoing_lifted_edges);
-	double LowerBound() const{return solutionCosts[optimalSolution]; }
+	double LowerBound() {//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
+		if(!vsUpToDate){
+			updateValues();
+		}
+		else{
+			double minValue=solutionCosts[optimalSolution];
+			size_t minIndex=optimalSolution;
+			for (int i = 0; i < numberOfEdges; ++i) {
+				if(solutionCosts[i]<minValue){
+					minValue=solutionCosts[i];
+					minIndex=i;
+				}
+			}
+			optimalSolution=minIndex;
+
+		}
+		return solutionCosts[optimalSolution];
+	}
 	double EvaluatePrimal() const {return solutionCosts[primal_]; }
 
 
@@ -71,7 +89,8 @@ public:
 	//void init_primal() { primal_ = no_edge_active; }
 	void init_primal() { primal_ = numberOfEdges; }
 
-	void updateCost(const double value,const size_t index);
+	void updateCostFull(const double value,const size_t index);
+	void updateCostSimple(const double value,const size_t index);
 
 	const andres::graph::Digraph<>&& getBaseGraph() const {
 		return baseGraph;
@@ -128,6 +147,8 @@ private:
 	std::unordered_map<size_t,double> valuesStructure;  //vertexID->value,
 
 	std::vector<double> solutionCosts;
+
+	bool vsUpToDate;
 
 	size_t decodeIndex(size_t index){
 		return index;  //TODO implement decoding of message index into edge/lifted edge indices
@@ -231,7 +252,7 @@ public:
 //    }
 
 template<class LDP_STRUCT>
-inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCost(const double value,const size_t index){
+inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCostFull(const double value,const size_t index){//Includes DFS update
 	size_t myIndex=decodeIndex(index);
 	if(myIndex<numberOfEdges){ //update in base edge
 		baseCosts[myIndex]+=value;
@@ -261,7 +282,25 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCost(const double valu
 
 
 template<class LDP_STRUCT>
+inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCostSimple(const double value,const size_t index){//Only cost change
+	size_t myIndex=decodeIndex(index);  //global variable index to factor variable index
+	if(myIndex<numberOfEdges){ //update in base edge
+		baseCosts[myIndex]+=value;
+		solutionCosts[myIndex]+=value;
+	}
+	else{ //update in lifted edge
+		liftedCosts[myIndex-numberOfEdges]+=value;
+		size_t vertex=getNeighborLiftedVertex(nodeID,myIndex-numberOfEdges);
+		valuesStructure[vertex]+=value;
+		vsUpToDate=false;
+	}
+}
+
+
+
+template<class LDP_STRUCT>
 inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEdgeID){
+	//TODO probably switch from liftedEdgeID to the index of the max layer that has been changed
 	std::unordered_map<size_t,size_t> indexStructure; //vertex->vertex. For reconstruction of opt. solution in lifted edges
 	//In case that we do not need the reconstruction, unordered_set will be enough
 	bool oneEdgeUpdate=liftedEdgeID>=numberOfLiftedEdges;
@@ -347,6 +386,7 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEd
 		}
 	}
 
+	vsUpToDate=true;
 
 }
 
@@ -362,8 +402,8 @@ class ldp_mcf_single_node_cut_message
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamLeft(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
 	{
-		r.updateCost(msg,msg_dim);
-		//Update costs in vectors, run updateValues or simpleUpdateValues
+		r.updateCostSimple(msg,msg_dim);
+		//Only base edges are updated if message comes from mcf, the dfs procedure not needed
 
 	}
 
