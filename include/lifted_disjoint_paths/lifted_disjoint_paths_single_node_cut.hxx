@@ -45,18 +45,6 @@ public:
 
 	}
 
-	virtual size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex)=0;
-	virtual size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex)=0;
-	virtual size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex)=0;
-	virtual size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex)=0;
-	virtual size_t numberOfNeighborsBase(size_t nodeIndex)=0;
-	virtual size_t numberOfNeighborsLifted(size_t nodeIndex)=0;
-	virtual bool inInRange(size_t nodeIndex)=0;
-	virtual bool reachable(size_t firstVertex,size_t secondVertex)=0;
-	virtual ~ldp_single_node_cut_factor()=0;
-	virtual size_t getVertexToReach()=0;
-	virtual std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode)=0;
-	virtual std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode)=0;
 
 	//ldp_single_node_cut_factor(const std::size_t nr_outgoing_base_edges, const std::size_t nr_outgoing_lifted_edges);
 	double LowerBound() {//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
@@ -92,35 +80,143 @@ public:
 	void updateCostFull(const double value,const size_t index);
 	void updateCostSimple(const double value,const size_t index);
 
-	const andres::graph::Digraph<>&& getBaseGraph() const {
+	const andres::graph::Digraph<>& getBaseGraph() const {
 		return baseGraph;
 	}
 
-	const LDP_STRUCT& getLdpStructure() const {
-		return ldpStructure;
-	}
-
-	const andres::graph::Digraph<>&& getLiftedGraph() const {
-		return liftedGraph;
-	}
-
-	std::size_t getMaxLayer() const {
-		return maxLayer;
-	}
-
-	std::size_t getMinLayer() const {
-		return minLayer;
-	}
-
-	std::size_t getNumberOfEdges() const {
-		return numberOfEdges;
-	}
+//	const LDP_STRUCT& getLdpStructure() const {
+//		return ldpStructure;
+//	}
+//
+//	const andres::graph::Digraph<>& getLiftedGraph() const {
+//		return liftedGraph;
+//	}
+//
+//	std::size_t getMaxLayer() const {
+//		return maxLayer;
+//	}
+//
+//	std::size_t getMinLayer() const {
+//		return minLayer;
+//	}
+//
+//	std::size_t getNumberOfEdges() const {
+//		return numberOfEdges;
+//	}
 
 	const std::size_t nodeID;
+	virtual ~ldp_single_node_cut_factor()=0;
 
 
 private:
-	void updateValues(size_t liftedEdgeID=numberOfLiftedEdges);  //Highest number: update all.For base edge update, simpler procedure
+	 size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
+		 if(isOutFlow){
+			 return baseGraph.edgeFromVertex(firstNode,neighborIndex);
+		 }
+		 else{
+			 return baseGraph.edgeToVertex(firstNode,neighborIndex);
+		 }
+	 }
+	 size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex){
+		 if(isOutFlow){
+			 return baseGraph.vertexFromVertex(firstNode,neighborIndex);
+		 }
+		 else{
+			 return baseGraph.vertexToVertex(firstNode,neighborIndex);
+		 }
+	 }
+	 size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
+		 if(isOutFlow){
+			 return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
+		 }
+		 else{
+			 return liftedGraph.edgeToVertex(firstNode,neighborIndex);
+		 }
+	 }
+	 size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
+		 if(isOutFlow){
+			 return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
+		 }
+		 else{
+			 return liftedGraph.vertexToVertex(firstNode,neighborIndex);
+		 }
+	 }
+	 size_t numberOfNeighborsBase(size_t nodeIndex){
+		 if(isOutFlow){
+			 return baseGraph.numberOfEdgesFromVertex(nodeIndex);
+		 }
+		 else{
+			 return baseGraph.numberOfEdgesToVertex(nodeIndex);
+		 }
+	 }
+	 size_t numberOfNeighborsLifted(size_t nodeIndex){
+		 if(isOutFlow){
+			 return liftedGraph.numberOfEdgesFromVertex(nodeIndex);
+		 }
+		 else{
+			 return liftedGraph.numberOfEdgesToVertex(nodeIndex);
+		 }
+	 }
+	 bool inInRange(size_t nodeIndex){
+		 if(isOutFlow){
+			 return ldpStructure.getGroupIndex(nodeIndex)<=maxLayer;
+		 }
+		 else{
+			 return ldpStructure.getGroupIndex(nodeIndex)>=minLayer;
+		 }
+	 }
+	 bool reachable(size_t firstVertex,size_t secondVertex){
+		 if(isOutFlow){
+			 return ldpStructure.isReachable(firstVertex,secondVertex);
+		 }
+		 else{
+			 return ldpStructure.isReachable(secondVertex,firstVertex);
+		 }
+	 }
+
+	 size_t getVertexToReach(){
+		 if(isOutFlow){
+			 return ldpStructure.getTerminalNode;
+		 }
+		 else{
+			 return ldpStructure.getSourceNode;
+		 }
+	 }
+	 std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
+		 if(isOutFlow){
+			 return baseGraph.findEdge(firstNode,secondNode);
+		 }
+		 else{
+			 return baseGraph.findEdge(secondNode,firstNode);
+		 }
+
+	 }
+	 std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode){
+		 if(isOutFlow){
+			 return liftedGraph.findEdge(firstNode,secondNode);
+		 }
+		 else{
+			 return liftedGraph.findEdge(secondNode,firstNode);
+		 }
+	 }
+
+
+//	virtual size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex)=0;
+//	virtual size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex)=0;
+//	virtual size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex)=0;
+//	virtual size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex)=0;
+//	virtual size_t numberOfNeighborsBase(size_t nodeIndex)=0;
+//	virtual size_t numberOfNeighborsLifted(size_t nodeIndex)=0;
+//	virtual bool inInRange(size_t nodeIndex)=0;
+//	virtual bool reachable(size_t firstVertex,size_t secondVertex)=0;
+//
+//	virtual size_t getVertexToReach()=0;
+//	virtual std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode)=0;
+//	virtual std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode)=0;
+
+
+
+	void updateValues(size_t liftedEdgeID=std::numeric_limits<std::size_t>::infinity());  //Highest number: update all.For base edge update, simpler procedure
 	//TODO implement update for base edge cost
 
 
@@ -157,89 +253,90 @@ private:
 
 };
 
-template<class LDP_STRUCT>
-class ldp_node_cut_outflow: public ldp_single_node_cut_factor<LDP_STRUCT>
-{
-public:
-	size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
-		return getBaseGraph().edgeFromVertex(firstNode,neighborIndex);
-	}
-	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex){
-		return getBaseGraph().vertexFromVertex(firstNode,neighborIndex);
-	}
-	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
-		return getLiftedGraph().edgeFromVertex(firstNode,neighborIndex);
-	}
-	size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
-		return getLiftedGraph().vertexFromVertex(firstNode,neighborIndex);
-	}
-	bool inInRange(size_t nodeIndex){
-		return getLdpStructure().getGroupIndex(nodeIndex)<=maxLayer;
-	}
-	size_t numberOfNeighborsBase(size_t nodeIndex){
-		return getBaseGraph().numberOfEdgesFromVertex(nodeIndex);
-	}
-    size_t numberOfNeighborsLifted(size_t nodeIndex){
-    	return getLiftedGraph().numberOfEdgesFromVertex(nodeIndex);
-    }
-    bool reachable(size_t firstVertex,size_t secondVertex){
-        return getLdpStructure().isReachable(firstVertex,secondVertex);
-    }
-    size_t getVertexToReach(){
-    	return getLdpStructure().getTerminalNode;
-    }
-    std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
-    	return getBaseGraph().findEdge(firstNode,secondNode);
-    }
-    std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode){
-    	return getLiftedGraph().findEdge(firstNode,secondNode);
-    }
-
-	~ldp_node_cut_outflow(){ }
-
-};
-
-
-template<class LDP_STRUCT>
-class ldp_node_cut_inflow: public ldp_single_node_cut_factor<LDP_STRUCT>
-{
-public:
-	size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
-		return getBaseGraph().edgeToVertex(firstNode,neighborIndex);
-	}
-	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex){
-		return getBaseGraph().vertexToVertex(firstNode,neighborIndex);
-	}
-	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
-		return getLiftedGraph().edgeToVertex(firstNode,neighborIndex);
-	}
-	size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
-		return getLiftedGraph().vertexToVertex(firstNode,neighborIndex);
-	}
-	bool inInRange(size_t nodeIndex){
-		return getLdpStructure().getGroupIndex(nodeIndex)>=minLayer;
-	}
-	size_t numberOfNeighborsBase(size_t nodeIndex){
-		return getBaseGraph().numberOfEdgesToVertex(nodeIndex);
-	}
-	size_t numberOfNeighborsLifted(size_t nodeIndex){
-		return getLiftedGraph().numberOfEdgesToVertex(nodeIndex);
-	}
-	bool reachable(size_t firstVertex,size_t secondVertex){
-		return getLdpStructure().isReachable(secondVertex,firstVertex);
-	}
-	size_t getVertexToReach(){
-		return getLdpStructure().getSourceNode;
-	}
-	std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
-		return getBaseGraph().findEdge(secondNode,firstNode);
-	}
-	std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode){
-		return getLiftedGraph().findEdge(secondNode,firstNode);
-	}
-	~ldp_node_cut_inflow(){ }
-
-};
+//template<class LDP_STRUCT>
+//class ldp_node_cut_outflow: public ldp_single_node_cut_factor<LDP_STRUCT>
+//{
+//private:
+//	size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex) const{
+//		const andres::graph::Digraph<>& g=getBaseGraph();
+//		return g.edgeFromVertex(firstNode,neighborIndex);
+//	}
+//	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex)const {
+//		return getBaseGraph().vertexFromVertex(firstNode,neighborIndex);
+//	}
+//	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex)const{
+//		return getLiftedGraph().edgeFromVertex(firstNode,neighborIndex);
+//	}
+//	size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex)const{
+//		return getLiftedGraph().vertexFromVertex(firstNode,neighborIndex);
+//	}
+//	bool inInRange(size_t nodeIndex)const {
+//		return getLdpStructure().getGroupIndex(nodeIndex)<=maxLayer;
+//	}
+//	size_t numberOfNeighborsBase(size_t nodeIndex)const {
+//		return getBaseGraph().numberOfEdgesFromVertex(nodeIndex);
+//	}
+//    size_t numberOfNeighborsLifted(size_t nodeIndex)const{
+//    	return getLiftedGraph().numberOfEdgesFromVertex(nodeIndex);
+//    }
+//    bool reachable(size_t firstVertex,size_t secondVertex)const{
+//        return getLdpStructure().isReachable(firstVertex,secondVertex);
+//    }
+//    size_t getVertexToReach()const{
+//    	return getLdpStructure().getTerminalNode;
+//    }
+//    std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
+//    	return getBaseGraph().findEdge(firstNode,secondNode);
+//    }
+//    std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode){
+//    	return getLiftedGraph().findEdge(firstNode,secondNode);
+//    }
+//
+//	~ldp_node_cut_outflow(){ }
+//
+//};
+//
+//
+//template<class LDP_STRUCT>
+//class ldp_node_cut_inflow: public ldp_single_node_cut_factor<LDP_STRUCT>
+//{
+//private:
+//	size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
+//		return getBaseGraph().edgeToVertex(firstNode,neighborIndex);
+//	}
+//	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex){
+//		return getBaseGraph().vertexToVertex(firstNode,neighborIndex);
+//	}
+//	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
+//		return getLiftedGraph().edgeToVertex(firstNode,neighborIndex);
+//	}
+//	size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
+//		return getLiftedGraph().vertexToVertex(firstNode,neighborIndex);
+//	}
+//	bool inInRange(size_t nodeIndex){
+//		return getLdpStructure().getGroupIndex(nodeIndex)>=minLayer;
+//	}
+//	size_t numberOfNeighborsBase(size_t nodeIndex){
+//		return getBaseGraph().numberOfEdgesToVertex(nodeIndex);
+//	}
+//	size_t numberOfNeighborsLifted(size_t nodeIndex){
+//		return getLiftedGraph().numberOfEdgesToVertex(nodeIndex);
+//	}
+//	bool reachable(size_t firstVertex,size_t secondVertex){
+//		return getLdpStructure().isReachable(secondVertex,firstVertex);
+//	}
+//	size_t getVertexToReach(){
+//		return getLdpStructure().getSourceNode;
+//	}
+//	std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
+//		return getBaseGraph().findEdge(secondNode,firstNode);
+//	}
+//	std::pair<bool,size_t> findEdgeLifted(size_t firstNode,size_t secondNode){
+//		return getLiftedGraph().findEdge(secondNode,firstNode);
+//	}
+//	~ldp_node_cut_inflow(){ }
+//
+//};
 
 
 //    template<class LDP_STRUCT>
@@ -304,7 +401,7 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEd
 	std::unordered_map<size_t,size_t> indexStructure; //vertex->vertex. For reconstruction of opt. solution in lifted edges
 	//In case that we do not need the reconstruction, unordered_set will be enough
 	bool oneEdgeUpdate=liftedEdgeID>=numberOfLiftedEdges;
-	size_t vertexToReach=vertexToReach();
+	size_t vertexToReach=getVertexToReach();
 	if(oneEdgeUpdate){
 		//vertexToReach=liftedGraph.edgeFromVertex(nodeID,liftedEdgeID);
 		vertexToReach=getNeighborLiftedEdge(nodeID,liftedEdgeID);
@@ -317,7 +414,7 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(size_t liftedEd
 		size_t currentNode=nodeStack.top();
 		bool descClosed=true;
 		double minValue=0;
-		size_t minValueIndex=vertexToReach();
+		size_t minValueIndex=vertexToReach;
 
 		for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
 			//size_t desc=baseGraph.vertexFromVertex(currentNode,i);

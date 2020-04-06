@@ -41,6 +41,7 @@ namespace lifted_disjoint_paths {
 class LdpInstance {
 public:
 
+
 	LdpInstance(ConfigDisjoint<>& configParameters,char delim=',',CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 
