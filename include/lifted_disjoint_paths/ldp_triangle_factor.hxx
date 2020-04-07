@@ -19,7 +19,8 @@ class ldp_triangle_factor
 {
 public:
 
-	ldp_triangle_factor(size_t vu,size_t uw,size_t vw,bool vuBase=0,bool uwBase=0):
+	//By default, all edges are lifted. However vu or uw can be base too.
+	ldp_triangle_factor(size_t vu,size_t uw,size_t vw,bool vuBase=0,bool uwBase=0): //Maybe remember vertex indices instead of edge indices?
 		vuInd(vu),
 		uwInd(uw),
 		vwInd(vw)
@@ -80,7 +81,7 @@ public:
 		return min1-min0;
 	}
 
-	void updateCost(size_t edgeId,double update){  //update cost of one edge
+	void updateCost(size_t edgeId,double update){  //update cost of one edge, assumed indices 0-2
 		assert(edgeId<=2);
 		edgeCosts[edgeId]+=update;
 	}
