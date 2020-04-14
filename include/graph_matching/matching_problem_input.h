@@ -454,8 +454,8 @@ struct graph_matching_input : public linear_assignment_problem_input {
                 const std::size_t left_node_2 = this->assignments[a_2].left_node;
                 const std::size_t right_node_1 = this->assignments[a_1].left_node;
                 const std::size_t right_node_2 = this->assignments[a_2].left_node;
-                left_pairwise_potentials.insert({left_node_1, left_node_2});
-                right_pairwise_potentials.insert({left_node_1, left_node_2});
+                left_pairwise_potentials.insert({std::min(left_node_1, left_node_2), std::max(left_node_1, left_node_2)});
+                right_pairwise_potentials.insert({std::min(right_node_1, right_node_2), std::max(right_node_1, right_node_2)});
            }
 
            std::vector<std::vector<std::size_t>> left_labels(this->no_left_nodes);
@@ -465,12 +465,16 @@ struct graph_matching_input : public linear_assignment_problem_input {
                right_labels[a.right_node].push_back(a.left_node);
            }
 
-           for(const auto [l_1,l_2] : left_pairwise_potentials) {
-               for(const auto r_1 : left_labels[l_1]) {
-                   for(const auto r_2 : left_labels[l_2]) {
-                       s << " - " << quadratic_identifier({l_1,l_2}, {r_1,r_2});
-                   }
-                   s << " + " << this->linear_identifier(l_1,r_1) << " = 0\n";
+           for (const auto [l_1, l_2] : left_pairwise_potentials)
+           {
+              assert(l_1 != l_2);
+              for (const auto r_1 : left_labels[l_1])
+              {
+                 for (const auto r_2 : left_labels[l_2])
+                 {
+                    s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
+                 }
+                 s << " + " << this->linear_identifier(l_1, r_1) << " = 0\n";
                }
 
                for(const auto r_2 : left_labels[l_2]) {
@@ -481,6 +485,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
                }
            }
         }
+
     template<typename STREAM>
         void write_quadratic_variables(STREAM& s) const
         {
