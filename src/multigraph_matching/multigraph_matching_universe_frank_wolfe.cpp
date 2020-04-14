@@ -16,9 +16,10 @@ namespace LPMP {
     class multigraph_matching_frank_wolfe_universe {
         public:
             multigraph_matching_frank_wolfe_universe(const multigraph_matching_input& instance, const std::size_t universe_size = std::numeric_limits<std::size_t>::max());
+            multigraph_matching_frank_wolfe_universe(const multigraph_matching_input &instance, const multigraph_matching_input::labeling &l);
 
-            template<typename MATRIX>
-                bool feasible(const MATRIX& m) const;
+                template <typename MATRIX>
+                bool feasible(const MATRIX &m) const;
             bool feasible() const { return feasible(M); }
 
             template<typename MATRIX>
@@ -59,11 +60,11 @@ namespace LPMP {
     };
 
     multigraph_matching_frank_wolfe_universe::multigraph_matching_frank_wolfe_universe(const multigraph_matching_input& instance, const multigraph_matching_input::labeling& l)
+        : gs(instance),
+        instance_(instance)
     {
         // determine universe size from labeling and transform present labeling into universe one.
-        for
-
-
+        throw std::runtime_error("not implemented yet.");
     }
 
     multigraph_matching_frank_wolfe_universe::multigraph_matching_frank_wolfe_universe(const multigraph_matching_input& instance, const std::size_t universe_size)

@@ -1,5 +1,4 @@
-#ifndef LPMP_PARSE_RULES_HXX
-#define LPMP_PARSE_RULES_HXX
+#pragma once
 
 #include "pegtl.hh"
 
@@ -31,5 +30,3 @@ struct vector : pegtl::seq< pegtl::string<'['>, opt_whitespace, real_number, peg
 } // namespace LPMP
 
 // TODO: test the above definitions with unit testing whether they accept and reject what they are supposed to
-
-#endif// LPMP_PARSE_RULES_HXX 
