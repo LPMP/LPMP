@@ -20,7 +20,7 @@ class ldp_triangle_factor
 public:
 
 	//By default, all edges are lifted. However vu or uw can be base too.
-	ldp_triangle_factor(size_t vu,size_t uw,size_t vw,bool vuBase=0,bool uwBase=0): //Maybe remember vertex indices instead of edge indices?
+	ldp_triangle_factor(size_t vu,size_t uw,size_t vw,bool vuBase=0,bool uwBase=0): //TODO remember vertex indices instead of edge indices?
 		vuInd(vu),
 		uwInd(uw),
 		vwInd(vw)

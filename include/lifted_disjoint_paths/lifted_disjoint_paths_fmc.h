@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lifted_disjoint_paths_single_node_cut.hxx"
+#include <lifted_disjoint_paths/ldp_single_node_cut.hxx>
 #include "lifted_disjoint_paths_mcf.hxx"
 #include "lifted_disjoint_paths_constructor.hxx"
 

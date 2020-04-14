@@ -57,7 +57,7 @@ private:
     std::unordered_map<size_t,size_t> rightVertices;
     //std::vector<std::pair<size_t,size_t>> edges;
     std::vector<std::array<size_t,2>> edges;
-    std::vector<double> edgeCosts;
+    std::vector<double> edgeCosts;   //Ideally store edges and costs as node->(node,cost) in a map.
 
 };
 
