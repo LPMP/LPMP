@@ -1,0 +1,5 @@
+add_library(discrete_tomography_input discrete_tomography_input.cpp)
+target_link_libraries(discrete_tomography_input LPMP mrf_uai_input)
+
+add_executable(convert_discrete_tomography_to_lp convert_discrete_tomography_to_lp.cpp)
+target_link_libraries(convert_discrete_tomography_to_lp discrete_tomography_input LPMP)

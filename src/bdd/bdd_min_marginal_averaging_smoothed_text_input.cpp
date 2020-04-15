@@ -48,9 +48,9 @@ int main(int argc, char** argv)
     }
 
     solver.set_cost_scaling(1.0);
+    solver.backward_run();
     double orig_lb = solver.compute_lower_bound();
     std::cout << "original final lower bound = " << orig_lb << "\n";
-    solver.backward_run();
     for(std::size_t iter=0; iter<20; ++iter) {
         solver.iteration(); 
     }

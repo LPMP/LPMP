@@ -49,7 +49,7 @@ void test_problem_fixing(const std::string input_string, const double expected_l
     input.reorder_bfs();
     // input.reorder_Cuthill_McKee();
 
-    bdd_opt bdds;
+    bdd_mma_fixing bdds;
     bdds.init(input); 
 
     const double initial_lb = bdds.lower_bound();
@@ -63,7 +63,7 @@ void test_problem_fixing(const std::string input_string, const double expected_l
 
     for(std::size_t iter=0; iter<100; ++iter) {
         std::cout << "iteration " << iter << ": " << std::flush;
-        bdds.srmp_iteration();
+        bdds.iteration();
         new_lb = bdds.lower_bound();
         std::cout << "lower bound = " << new_lb << std::endl;
         // const double ub = bdds.compute_upper_bound();

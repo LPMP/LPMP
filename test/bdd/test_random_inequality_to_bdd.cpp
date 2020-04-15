@@ -195,9 +195,9 @@ void test_random_inequality_log_exp()
             std::cout << x << " ";
         std::cout << "\n"; 
         bdds.set_costs(costs.begin(), costs.end());
-        const double backward_lb = bdds.compute_lower_bound();
+        const double backward_lb = bdds.compute_smooth_lower_bound();
         bdds.forward_run();
-        const double forward_lb = bdds.compute_lower_bound_forward();
+        const double forward_lb = bdds.compute_smooth_lower_bound_forward();
         const double enumeration_lb = log_exp(coefficients.begin(), coefficients.end(), ineq, rhs, costs.begin(), costs.end());
         std::cout << "enumeration lb = " << enumeration_lb << ", backward lb = " << backward_lb << ", forward lb = " << forward_lb << "\n";
         test(std::abs(backward_lb - forward_lb) <= 1e-8);

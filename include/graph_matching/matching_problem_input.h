@@ -415,6 +415,8 @@ struct graph_matching_input : public linear_assignment_problem_input {
 
     std::string quadratic_identifier(const std::array<std::size_t,2> left_nodes, const std::array<std::size_t,2> right_nodes) const
     {
+       assert(left_nodes[0] != left_nodes[1]);
+       assert(right_nodes[0] != right_nodes[1]);
        if (left_nodes[0] < left_nodes[1])
           return std::string("q_") + std::to_string(left_nodes[0]) + "_" + std::to_string(left_nodes[1]) + "_" + std::to_string(right_nodes[0]) + "_" + std::to_string(right_nodes[1]);
        else
@@ -454,33 +456,66 @@ struct graph_matching_input : public linear_assignment_problem_input {
                 const std::size_t left_node_2 = this->assignments[a_2].left_node;
                 const std::size_t right_node_1 = this->assignments[a_1].left_node;
                 const std::size_t right_node_2 = this->assignments[a_2].left_node;
-                left_pairwise_potentials.insert({left_node_1, left_node_2});
-                right_pairwise_potentials.insert({left_node_1, left_node_2});
+                left_pairwise_potentials.insert({std::min(left_node_1, left_node_2), std::max(left_node_1, left_node_2)});
+                right_pairwise_potentials.insert({std::min(right_node_1, right_node_2), std::max(right_node_1, right_node_2)});
            }
 
            std::vector<std::vector<std::size_t>> left_labels(this->no_left_nodes);
            std::vector<std::vector<std::size_t>> right_labels(this->no_right_nodes);
            for(const auto& a : this->assignments) {
-               left_labels[a.left_node].push_back(a.right_node);
-               right_labels[a.right_node].push_back(a.left_node);
+              assert(a.left_node != graph_matching_input::no_assignment);
+              assert(a.right_node != graph_matching_input::no_assignment);
+              left_labels[a.left_node].push_back(a.right_node);
+              right_labels[a.right_node].push_back(a.left_node);
            }
 
-           for(const auto [l_1,l_2] : left_pairwise_potentials) {
-               for(const auto r_1 : left_labels[l_1]) {
-                   for(const auto r_2 : left_labels[l_2]) {
-                       s << " - " << quadratic_identifier({l_1,l_2}, {r_1,r_2});
-                   }
-                   s << " + " << this->linear_identifier(l_1,r_1) << " = 0\n";
+           for (const auto [l_1, l_2] : left_pairwise_potentials)
+           {
+              assert(l_1 != l_2);
+              for (const auto r_1 : left_labels[l_1])
+              {
+                 for (const auto r_2 : left_labels[l_2])
+                 {
+                    if (r_1 != r_2)
+                       s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
+                 }
+                 s << " + " << this->linear_identifier(l_1, r_1) << " = 0\n";
                }
 
                for(const auto r_2 : left_labels[l_2]) {
                    for(const auto r_1 : left_labels[l_1]) {
-                       s << " - " << quadratic_identifier({l_1,l_2}, {r_1,r_2});
+                      if (r_1 != r_2)
+                         s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
                    }
                    s << " + " << this->linear_identifier(l_2,r_2) << " = 0\n";
                }
            }
+
+           for(const auto [r_1, r_2] : right_pairwise_potentials)
+           {
+              assert(r_1 != r_2);
+              for (const auto l_1 : right_labels[r_1])
+              {
+                 for (const auto l_2 : right_labels[r_2])
+                 {
+                    if (l_1 != l_2)
+                       s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
+                 }
+                 s << " + " << this->linear_identifier(l_1, r_1) << " = 0\n";
+               }
+
+               for (const auto l_2 : right_labels[r_2])
+               {
+                  for (const auto l_1 : right_labels[r_1])
+                  {
+                     if (l_1 != l_2)
+                        s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
+                  }
+                  s << " + " << this->linear_identifier(l_2, r_2) << " = 0\n";
+               }
+           }
         }
+
     template<typename STREAM>
         void write_quadratic_variables(STREAM& s) const
         {
