@@ -1146,7 +1146,7 @@ namespace LPMP {
             void remove_outgoing_high_arc(bdd_branch_node_fix & bdd_node);
 
             std::vector<char> primal_solution_;
-            std::stack<log_entry, std::vector<log_entry>> log_;
+            std::stack<log_entry, std::deque<log_entry>> log_;
 
             // FOR INSPECTION
             ILP_input input_;
@@ -1430,12 +1430,13 @@ namespace LPMP {
             const char val_;
         };
 
-        std::stack<VarFix, std::vector<VarFix>> variable_fixes;
+        std::stack<VarFix, std::deque<VarFix>> variable_fixes;
         variable_fixes.emplace(log_.size(), 0, 1-values[0]);
         variable_fixes.emplace(log_.size(), 0, values[0]);
 
         size_t nfixes = 0;
         size_t max_fixes = nr_variables();
+        // size_t max_fixes = std::numeric_limits<size_t>::max();
         std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
 
         while (!variable_fixes.empty())
@@ -1488,7 +1489,6 @@ namespace LPMP {
     std::vector<double> bdd_mma_fixing::total_min_marginals()
     {
         std::vector<double> total_min_marginals;
-        size_t nr_conflicts = 0;
         for(std::size_t var=0; var<this->nr_variables(); ++var)
         {
             double total_min_marg = 0;
@@ -1523,6 +1523,7 @@ namespace LPMP {
             if (total_min_marginals[a] > eps && total_min_marginals[b] > eps)
                 return (total_min_marginals[a]) > (total_min_marginals[b]);
             return (total_min_marginals[a]) < (total_min_marginals[b]);
+            // return (std::abs(total_min_marginals[a]) > std::abs(total_min_marginals[b]));
         };
         std::sort(variables.begin(), variables.end(), order);
 
@@ -1540,59 +1541,6 @@ namespace LPMP {
     // {
     //     init_primal_solution();
     //     std::vector<double> total_min_marginals = this->total_min_marginals();
-
-    //     // struct VarFix
-    //     // {
-    //     //     VarFix(const size_t index, const double score, const size_t edition)
-    //     //     : index_(index), score_(score), edition_(edition) {}
-
-    //     //     const size_t index_;
-    //     //     const double score_;
-    //     //     const size_t edition_;
-
-    //     //     bool operator <(VarFix const & other) const
-    //     //     {
-    //     //         // TODO adjust
-    //     //         return score_ > other.score_;
-    //     //     }
-    //     // }
-
-    //     // std::priority_queue<VarFix> queue;
-    //     // std::vector<size_t> editions(nr_variables(), 0);
-    //     // for (size_t var = 0; var < nr_variables(); var++)
-    //     //     queue.emplace(var, total_min_marginals[var], 0);
-
-    //     // while (!queue.empty())
-    //     // {
-    //     //     const auto next = queue.top();
-    //     //     queue.pop();
-
-    //     //     const size_t var = next.index_;
-    //     //     const char val = (next.score_ < 0) ? 1 : 0;
-    //     //     const size_t edition = next.edition_;
-
-    //     //     if (bdd_fix_.is_fixed(var) || edition < editions[var])
-    //     //         continue;
-
-    //     //     const size_t log_size = bdd_fix_.log_size();
-    //     //     bool feasible = bdd_fix_.fix_variable(var, val);
-
-    //     //     if (feasible)
-    //     //     {
-    //     //         // update total min marginals
-    //     //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
-    //     //         bdd_mma_.set_cost(var, fixed_cost);
-    //     //         // TODO
-    //     //     }
-    //     //     else
-    //     //         // TODO enable backtracking
-    //     //         return false;
-
-    //     // }
-
-    //     // size_t nfixes = 0;
-    //     // size_t max_fixes = nr_variables();
-    //     // std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
 
     //     while (true)
     //     {
@@ -1620,15 +1568,23 @@ namespace LPMP {
 
     //         // total_min_marginals = this->total_min_marginals();
 
+    //         const double eps = 1e-12;
+
     //         double min_score = std::numeric_limits<double>::infinity();
     //         double max_score = -min_score;
     //         double prev_min_score = min_score;
     //         size_t min_var;
     //         size_t max_var;
+    //         size_t nconflicts = 0;
     //         for (size_t var = 0; var < nr_variables(); var++)
     //         {
     //             if (is_fixed(var))
+    //             {
+    //                 if (primal_solution_[var] == 1 && total_min_marginals[var] > eps ||
+    //                     primal_solution_[var] == 0 && total_min_marginals[var] < -eps)
+    //                     nconflicts++;
     //                 continue;
+    //             }
 
     //             if (total_min_marginals[var] < min_score)
     //             {
@@ -1651,15 +1607,16 @@ namespace LPMP {
     //         const size_t lsize = log_size();
     //         const double old_lb = lower_bound_;
 
-    //         const double eps = -std::numeric_limits<double>::epsilon();
-    //         const char val = (min_score < eps) ? 1 : 0;
-    //         const size_t best_var = (min_score < eps) ? min_var : max_var;
-    //         const double best_score = (min_score < eps) ? min_score : max_score;
+    //         const bool small_enough = min_score < -eps;
+            
+    //         const char val = small_enough ? 1 : 0;
+    //         const size_t best_var = small_enough ? min_var : max_var;
+    //         const double best_score = small_enough ? min_score : max_score;
 
     //         bool feasible = fix_variable(best_var, val);
     //         this->backward_run();
 
-    //         std::cout << "Fixed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) val << ". score = " << best_score << std::endl;
+    //         std::cout << "Marginal conflicts: " << nconflicts << ". Fixed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) val << ". score = " << best_score << std::endl;
 
     //         // TODO enable backtracking
     //         if (!feasible)
