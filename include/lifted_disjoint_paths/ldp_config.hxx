@@ -51,7 +51,7 @@ public:
 	}
 
 
-	ConfigDisjoint(std::string fileName,char delim='=');
+	ConfigDisjoint(std::string inputFileName,char delim='=');
 
 	const std::string& getGraphFileName() const {
 		return graphFileName;
@@ -69,17 +69,12 @@ public:
 		return maxTimeLifted;
 	}
 
-	const std::string& getOutputFileName() const {
-		return outputFileName;
-	}
+
 
 	const std::string& getTimeFileName() const {
 		return timeFileName;
 	}
 
-	bool isAutomaticLifted() const {
-		return automaticLifted;
-	}
 
 	double getBaseUpperThreshold() const {
 		return baseUpperThreshold;
@@ -109,9 +104,6 @@ public:
 		return positiveThresholdLifted;
 	}
 
-	bool isRepulsive() const {
-		return repulsive;
-	}
 
 	bool isRestrictFrames() const {
 		return restrictFrames;
@@ -129,70 +121,28 @@ public:
 		return sparsify;
 	}
 
-	size_t getSmallIntervals() const {
-		return smallIntervals;
-	}
-
-	double getGurobiRelativeGap() const {
-		return gurobiRelativeGap;
-	}
-
-	bool isRequireImproving() const {
-		return requireImproving;
-	}
-
-	double getGurobiRelGapTrackletG() const {
-		return gurobiRelGapTrackletG;
-	}
-
 	bool isDebugOutputFiles() const {
 		return debugOutputFiles;
 	}
 
-	bool isNewLifted() const {
-		return newLifted;
-	}
 
-	size_t getTrackletSize() const {
-		return trackletSize;
-	}
-
-	bool isDenseTracklets() const {
-		return denseTracklets;
-	}
 
 	void setMaxTimeLifted(size_t maxTimeLifted) {
 		this->maxTimeLifted = maxTimeLifted;
 	}
 
-	int getOverlappingIntervals() const {
-		return overlappingIntervals;
-	}
 
 	size_t getMaxTimeGapComplete() const {
 		return maxTimeGapComplete;
 	}
 
-//	void output(std::string toOutput){
-//		(*fileForGeneralOutputs)<<toOutput;
-//	}
 
 	std::ofstream& infoFile(){
 		std::ofstream & infoF=*pInfoFile;
 		return infoF;
 	}
 
-	bool isAllBaseTracklet() const {
-		return allBaseTracklet;
-	}
 
-	bool isOptimizePaths() const {
-		return optimizePaths;
-	}
-
-	size_t getRepulsiveTimeGap() const {
-		return repulsiveTimeGap;
-	}
 
 	//ConfigDisjoint<>& operator=(const ConfigDisjoint<>&);
 
@@ -200,129 +150,122 @@ public:
 private:
 	ConfigDisjoint<T>(const ConfigDisjoint<T>&);
 	ConfigDisjoint();
+
+	std::pair<std::string,std::string> parseLine(std::string line,char delim);
 	//std::ofstream * fileForGeneralOutputs;
     std::ofstream* pInfoFile;
-	std::string graphFileName;
-	std::string outputFileName;
-	std::string timeFileName;
-	std::string paramsFileName;
-	bool debugOutputFiles;
+    std::string inputFileName;  //file with 3 paths: graph, time information, parameters
+    std::string outputFileName;   //file (prefix) where outputs are going to be stored
 
-	double inputCost;
-	double outputCost;
+	std::string graphFileName;  //file with input graph structure
+	std::string timeFileName;  //file with input time frames information
 
-	bool sparsify;
-	bool restrictFrames;
-	size_t maxTimeFrame;
-	size_t smallIntervals;
+	std::string paramsFileName; //file where input parameters are saved for future reference
+	std::string inputParamsFileName; //file where input parameters are read
+	bool debugOutputFiles;  //use debugging output files
 
+	double inputCost;   //cost of input edges (starting a track)
+	double outputCost;  //cost of output edges (terminating a track)
 
-	size_t maxTimeBase;
-	double baseUpperThreshold;
-	size_t knnTimeGap;
-	size_t knnK;
-	bool requireImproving;
-
-	bool automaticLifted;
-	double negativeThresholdLifted;
-	double positiveThresholdLifted;
-	size_t maxTimeLifted;
-	size_t denseTimeLifted;
-	size_t longerIntervalLifted;
-	size_t repulsiveTimeGap;
-
-	size_t trackletSize;
-	bool denseTracklets;
-	int overlappingIntervals;
-	bool optimizePaths;
-	size_t maxTimeGapComplete;
-
-	bool allBaseTracklet;
-	bool newLifted;
-	double gurobiRelativeGap;
-	double gurobiRelGapTrackletG;
+	bool sparsify;     //use graph sparsification?
+	bool restrictFrames;  //is maximal number of frames given
+	size_t maxTimeFrame;   //maximal time frame to be used
+	//size_t smallIntervals;
 
 
+	size_t maxTimeBase;  //max timegap for base edges
+	double baseUpperThreshold;  //upper cost thereshold for base edges
+	size_t knnTimeGap;   //time gap for base edges to be added densely (all K best to every node in every layer)
+	size_t knnK;         //Parameter K for knn
 
-	bool repulsive;
+	//bool automaticLifted;
+	double negativeThresholdLifted;  //negative cost threshold for lifted edges (lifted edges with cost close to zero are not included)
+	double positiveThresholdLifted;  //positive cost threshold for lifted edges (lifted edges with cost close to zero are not included)
+	size_t maxTimeLifted;            //max time gap for lifted edges
+	size_t denseTimeLifted;          //timegap for lifted edges to be added densely
+	size_t longerIntervalLifted;    //time frame skip for adding lifted edges sparsely
+
+	size_t maxTimeGapComplete;     //max time gap of edges to read
+
 
 };
 
 template<class T>
-inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
+inline std::pair<std::string,std::string> ConfigDisjoint<T>::parseLine(std::string line,char delim){
+	std::vector<std::string> strings;
+	strings=split<>(line,delim);
+	std::string whitespaces (" ");
 
- 	std::ifstream data(fileName);
+	size_t foundLast = strings[0].find_last_not_of(whitespaces);
+	size_t foundFirst=strings[0].find_first_not_of(whitespaces);
+	std::string key=strings[0].substr(foundFirst,foundLast-foundFirst+1);
+
+	foundLast = strings[1].find_last_not_of(whitespaces);
+	foundFirst=strings[1].find_first_not_of(whitespaces);
+	std::string value=strings[1].substr(foundFirst,foundLast-foundFirst+1);
+
+	return std::pair<std::string,std::string>(key,value);
+}
+
+
+
+template<class T>
+inline ConfigDisjoint<T>::ConfigDisjoint(std::string inputFileName,char delim){
+
+ 	std::ifstream pathsData(inputFileName);
 	std::string line;
 	std::vector<std::string> strings;
-	std::map<std::string,std::string> parameters;
+	std::map<std::string,std::string> pathParameters;
 
-
-
-	size_t lineCounter=0;
-	std::vector<size_t> currentGroup;
-	bool solverPart=false;
-	while (!solverPart&&std::getline(data, line) ) {
+	while(std::getline(pathsData, line) ){
 		size_t commentPos=line.find_first_of('#');
 		if(commentPos<line.length()){
 			line.erase(commentPos);
 		}
-		if(!line.empty()&&line.find("[SOLVER]")!=line.npos){
-			solverPart=true;
-		}
-	}
-	if(!solverPart){
-		throw std::runtime_error("Config file does not contain \"[SOLVER]\".  ");
-	}
-	bool newSection=false;
-	while(!newSection&&std::getline(data, line)){
-		size_t commentPos=line.find_first_of('#');
-		if(commentPos<line.length()){
-			line.erase(commentPos);
-		}
-		if(line.find("[")==line.npos){
-			if(!line.empty()){ //TODO not split all delims, just the first occurence
-				strings=split<>(line,delim);
-				std::string whitespaces (" ");
-
-				size_t foundLast = strings[0].find_last_not_of(whitespaces);
-				size_t foundFirst=strings[0].find_first_not_of(whitespaces);
-				std::string key=strings[0].substr(foundFirst,foundLast-foundFirst+1);
-
-				foundLast = strings[1].find_last_not_of(whitespaces);
-				foundFirst=strings[1].find_first_not_of(whitespaces);
-				std::string value=strings[1].substr(foundFirst,foundLast-foundFirst+1);
-
-				parameters[key]=value;
-			}
-		}
-		else{
-			newSection=true;
+		if(!line.empty()){ //TODO not split all delims, just the first occurence
+			std::pair<std::string,std::string> parsed=parseLine(line,delim);
+			pathParameters[parsed.first]=parsed.second;
 		}
 	}
 
-	for(auto itMap=parameters.begin();itMap!=parameters.end();itMap++){
-		std::cout<<itMap->first<<"-"<<itMap->second<<"-"<<std::endl;
-	}
 
-	if(parameters.count("INPUT_GRAPH")>0){
-		graphFileName=parameters["INPUT_GRAPH"];
+	if(pathParameters.count("INPUT_FRAMES")>0){
+		timeFileName=pathParameters["INPUT_FRAMES"];
+	}
+	else{
+		timeFileName="problemDesc_frames";
+	}
+	std::cout<<"input frames "<<timeFileName<<std::endl;
+	//paramsFile<<"input frames "<<timeFileName<<std::endl;
+
+
+	if(pathParameters.count("INPUT_GRAPH")>0){
+		graphFileName=pathParameters["INPUT_GRAPH"];
 	}
 	else{
 		throw std::runtime_error("File with the input graph was not specified in the config file");
 	}
 	std::cout<<"input graph "<<graphFileName<<std::endl;
 
-	if(parameters.count("OUTPUT_PATH")==0){
-		parameters["OUTPUT_PATH"]=graphFileName.substr(0,graphFileName.find_last_of('/'));
+
+	if(pathParameters.count("INPUT_PARAMS")>0){
+		inputParamsFileName=pathParameters["INPUT_PARAMS"];
+	}
+	else{
+		inputParamsFileName="";
+	}
+	std::cout<<"input parameters file "<<inputParamsFileName<<std::endl;
+
+	if(pathParameters.count("OUTPUT_PATH")==0){
+		pathParameters["OUTPUT_PATH"]=graphFileName.substr(0,graphFileName.find_last_of('/'));
 	}
 
-	//TODO fix output prefix, it is surrounded by spaces!
-	if(parameters.count("OUTPUT_PREFIX")==0){
-		parameters["OUTPUT_PREFIX"]=parameters["OUTPUT_PATH"]+"_output";
+	if(pathParameters.count("OUTPUT_PREFIX")==0){
+		pathParameters["OUTPUT_PREFIX"]=pathParameters["OUTPUT_PATH"]+"_output";
 	}
 
 
-	outputFileName=parameters["OUTPUT_PATH"]+parameters["OUTPUT_PREFIX"];
+	outputFileName=pathParameters["OUTPUT_PATH"]+pathParameters["OUTPUT_PREFIX"];
 	paramsFileName=outputFileName+"-params.txt";
 	std::ofstream paramsFile(paramsFileName.data(),std::ofstream::out);
 
@@ -331,22 +274,52 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 	paramsFile<<"output files "<<outputFileName<<std::endl;
 
 	std::string infoFileName=outputFileName+"-info.txt";
-    pInfoFile=new std::ofstream(infoFileName.data(),std::ofstream::out);
-	//fileForGeneralOutputs=&paramsFile;
-
-	//TODO use params File name to output all params displayed here with cout
+	pInfoFile=new std::ofstream(infoFileName.data(),std::ofstream::out);
 
 	std::cout<<"output files "<<outputFileName<<std::endl;
 
-	if(parameters.count("INPUT_FRAMES")>0){
-		timeFileName=parameters["INPUT_FRAMES"];
-	}
-	else{
-		timeFileName="problemDesc_frames";
-	}
-	std::cout<<"input frames "<<timeFileName<<std::endl;
-	paramsFile<<"input frames "<<timeFileName<<std::endl;
 
+	std::map<std::string,std::string> parameters;
+
+	if(!inputParamsFileName.empty()){
+		std::ifstream data(inputParamsFileName);
+		size_t lineCounter=0;
+		std::vector<size_t> currentGroup;
+		bool solverPart=false;
+		while (!solverPart&&std::getline(data, line) ) {
+			size_t commentPos=line.find_first_of('#');
+			if(commentPos<line.length()){
+				line.erase(commentPos);
+			}
+			if(!line.empty()&&line.find("[SOLVER]")!=line.npos){
+				solverPart=true;
+			}
+		}
+		if(!solverPart){
+			throw std::runtime_error("Config file does not contain \"[SOLVER]\".  ");
+		}
+		bool newSection=false;
+		while(!newSection&&std::getline(data, line)){
+			size_t commentPos=line.find_first_of('#');
+			if(commentPos<line.length()){
+				line.erase(commentPos);
+			}
+			if(line.find("[")==line.npos){
+				if(!line.empty()){ //TODO not split all delims, just the first occurence
+					std::pair<std::string,std::string> parsed=parseLine(line,delim);
+					parameters[parsed.first]=parsed.second;
+				}
+			}
+			else{
+				newSection=true;
+			}
+		}
+
+		for(auto itMap=parameters.begin();itMap!=parameters.end();itMap++){
+			std::cout<<itMap->first<<"-"<<itMap->second<<"-"<<std::endl;
+		}
+
+	}
 
 	if(parameters.count("DEBUG_OUTPUT_FILES")>0){
 		debugOutputFiles=std::stoi(parameters["DEBUG_OUTPUT_FILES"]);
@@ -367,33 +340,23 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 	std::cout<<"sparsify "<<sparsify<<std::endl;
 	paramsFile<<"sparsify "<<sparsify<<std::endl;
 
-	//TODO Put some of the following parameters under if(sparsify){...
-	//TODO check for wrong input?
-	//TODO cout or write the params unto output file or both
-
-	if(parameters.count("RESTRICT_FRAMES")>0){
-		restrictFrames=std::stoi(parameters["RESTRICT_FRAMES"]);
-	}
-	else{
-		restrictFrames=1;
-	}
-	std::cout<<"restrict frames "<<restrictFrames<<std::endl;
-	paramsFile<<"restrict frames "<<restrictFrames<<std::endl;
 
 	if(parameters.count("MAX_TIMEGAP")>0){
 		maxTimeFrame=std::stoul(parameters["MAX_TIMEGAP"]);
+		restrictFrames=1;
 	}
 	else{
+		restrictFrames=0;
 		maxTimeFrame=std::numeric_limits<size_t>::max();
 	}
-	std::cout<<"max time gap "<<maxTimeFrame<<std::endl;
-	paramsFile<<"max time gap "<<maxTimeFrame<<std::endl;
+	std::cout<<"max time frame "<<maxTimeFrame<<std::endl;
+	paramsFile<<"max time frame "<<maxTimeFrame<<std::endl;
 
 	if(parameters.count("INPUT_COST")>0){
 		inputCost=std::stod(parameters["INPUT_COST"]);
 	}
 	else{
-		inputCost=2;
+		inputCost=0;
 	}
 	std::cout<<"input cost "<<inputCost<<std::endl;
 	paramsFile<<"input cost "<<inputCost<<std::endl;
@@ -402,7 +365,7 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 		outputCost=std::stod(parameters["OUTPUT_COST"]);
 	}
 	else{
-		outputCost=2;
+		outputCost=0;
 	}
 	std::cout<<"output cost "<<outputCost<<std::endl;
 	paramsFile<<"output cost "<<outputCost<<std::endl;
@@ -411,7 +374,7 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 		maxTimeBase=std::stoul(parameters["MAX_TIMEGAP_BASE"]);
 	}
 	else{
-		maxTimeBase=4;
+		maxTimeBase=60;
 	}
 	std::cout<<"max time gap base "<<maxTimeBase<<std::endl;
 	paramsFile<<"max time gap base "<<maxTimeBase<<std::endl;
@@ -443,29 +406,12 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 	std::cout<<"base upper threshold "<<baseUpperThreshold<<std::endl;
 	paramsFile<<"base upper threshold "<<baseUpperThreshold<<std::endl;
 
-	if(parameters.count("REQUIRE_IMPROVING")>0){
-		requireImproving=std::stoi(parameters["REQUIRE_IMPROVING"]);
-	}
-	else{
-		requireImproving=0;
-	}
-	std::cout<<"require improving "<<requireImproving<<std::endl;
-	paramsFile<<"require improving "<<requireImproving<<std::endl;
-
-	if(parameters.count("AUTOMATIC_LIFTED")>0){
-		automaticLifted=std::stoi(parameters["AUTOMATIC_LIFTED"]);
-	}
-	else{
-		automaticLifted=true;
-	}
-	std::cout<<"automatic lifted "<<automaticLifted<<std::endl;
-	paramsFile<<"automatic lifted "<<automaticLifted<<std::endl;
 
 	if(parameters.count("MAX_TIMEGAP_LIFTED")>0){
 		maxTimeLifted=std::stoul(parameters["MAX_TIMEGAP_LIFTED"]);
 	}
 	else{
-		maxTimeLifted=24;
+		maxTimeLifted=60;
 	}
 	std::cout<<"max time gap lifted "<<maxTimeLifted<<std::endl;
 	paramsFile<<"max time gap lifted "<<maxTimeLifted<<std::endl;
@@ -474,7 +420,7 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 		denseTimeLifted=std::stoul(parameters["DENSE_TIMEGAP_LIFTED"]);
 	}
 	else{
-		denseTimeLifted=4;
+		denseTimeLifted=20;
 	}
 	std::cout<<"dense time gap lifted "<<denseTimeLifted<<std::endl;
 	paramsFile<<"dense time gap lifted "<<denseTimeLifted<<std::endl;
@@ -507,83 +453,6 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 	paramsFile<<"longer interval lifted "<<longerIntervalLifted<<std::endl;
 
 
-	if(parameters.count("REPULSIVE_TIMEGAP")>0){
-		repulsiveTimeGap=std::stoul(parameters["REPULSIVE_TIMEGAP"]);
-	}
-	else{
-		repulsiveTimeGap=maxTimeLifted;
-	}
-	std::cout<<"repulsive time gap "<<repulsiveTimeGap<<std::endl;
-	paramsFile<<"repulsive time gap "<<repulsiveTimeGap<<std::endl;
-
-
-	if(parameters.count("NEW_LIFTED")>0){
-		newLifted=std::stoi(parameters["NEW_LIFTED"]);
-	}
-	else{
-		newLifted=false;
-	}
-	std::cout<<"new lifted sparse. strategy "<<newLifted<<std::endl;
-	paramsFile<<"new lifted sparse. strategy "<<newLifted<<std::endl;
-
-
-
-
-	if(parameters.count("SMALL_INTERVALS")>0){
-		smallIntervals=std::stoul(parameters["SMALL_INTERVALS"]);
-	}
-	else{
-		smallIntervals=50;
-	}
-	std::cout<<"small intervals "<<smallIntervals<<std::endl;
-	paramsFile<<"small intervals "<<smallIntervals<<std::endl;
-
-
-
-
-	if(parameters.count("TRACKLET_SIZE")>0){
-		trackletSize=std::stoul(parameters["TRACKLET_SIZE"]);
-		if(smallIntervals>0){
-			trackletSize=std::min(trackletSize,smallIntervals);
-		}
-	}
-	else{
-		trackletSize=smallIntervals;
-	}
-	std::cout<<"tracklet size "<<trackletSize<<std::endl;
-	paramsFile<<"tracklet size "<<trackletSize<<std::endl;
-
-	if(parameters.count("ALL_BASE_TRACKLET")>0){
-		allBaseTracklet=std::stoi(parameters["ALL_BASE_TRACKLET"]);
-
-	}
-	else{
-		allBaseTracklet=true;
-	}
-	std::cout<<"all base edges in tracklet graph "<<allBaseTracklet<<std::endl;
-	paramsFile<<"all base edges in tracklet graph "<<allBaseTracklet<<std::endl;
-
-
-
-	if(parameters.count("DENSE_TRACKLETS")>0){
-		denseTracklets=std::stoi(parameters["DENSE_TRACKLETS"]);
-	}
-	else{
-		denseTracklets=true;
-	}
-	std::cout<<"dense tracklets "<<denseTracklets<<std::endl;
-	paramsFile<<"dense tracklets "<<denseTracklets<<std::endl;
-
-
-	if(parameters.count("OPTIMIZE_PATHS")>0){
-		optimizePaths=std::stoi(parameters["OPTIMIZE_PATHS"]);
-	}
-	else{
-		optimizePaths=false;
-	}
-	std::cout<<"optimize paths "<<optimizePaths<<std::endl;
-	paramsFile<<"optimize paths "<<optimizePaths<<std::endl;
-
 	if(parameters.count("MAX_TIMEGAP_COMPLETE")>0){
 		maxTimeGapComplete=std::stoul(parameters["MAX_TIMEGAP_COMPLETE"]);
 	}
@@ -592,45 +461,6 @@ inline ConfigDisjoint<T>::ConfigDisjoint(std::string fileName,char delim){
 	}
 	std::cout<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
 	paramsFile<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
-
-	if(parameters.count("OVERLAP_INTERVALS")>0){
-		overlappingIntervals=std::stoi(parameters["OVERLAP_INTERVALS"]);
-		if(smallIntervals==0) overlappingIntervals=0;
-	}
-	else{
-		overlappingIntervals=0;
-	}
-	std::cout<<"overlapping intervals "<<overlappingIntervals<<std::endl;
-	paramsFile<<"overlapping intervals "<<overlappingIntervals<<std::endl;
-
-
-	if(parameters.count("REPULSIVE")>0){
-		repulsive=std::stoi(parameters["REPULSIVE"]);
-	}
-	else{
-		repulsive=0;
-	}
-	std::cout<<"use repulsive "<<repulsive<<std::endl;
-	paramsFile<<"use repulsive "<<repulsive<<std::endl;
-
-	if(parameters.count("GUROBI_REL_GAP")>0){
-		gurobiRelativeGap=std::stod(parameters["GUROBI_REL_GAP"]);
-	}
-	else{
-		gurobiRelativeGap=0;
-	}
-	std::cout<<"gurobi relative gap "<<gurobiRelativeGap<<std::endl;
-	paramsFile<<"gurobi relative gap "<<gurobiRelativeGap<<std::endl;
-
-
-	if(parameters.count("GUROBI_REL_GAP_TRACKLET")>0){
-		gurobiRelGapTrackletG=std::stod(parameters["GUROBI_REL_GAP_TRACKLET"]);
-	}
-	else{
-		gurobiRelGapTrackletG=0;
-	}
-	std::cout<<"gurobi relative gap for tracklet graph "<<gurobiRelGapTrackletG<<std::endl;
-	paramsFile<<"gurobi relative gap for tracklet graph "<<gurobiRelGapTrackletG<<std::endl;
 
 
 	paramsFile.close();

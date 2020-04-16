@@ -45,8 +45,11 @@ public:
 	}
 
 
-	double LowerBound();
-	double EvaluatePrimal() const {return solutionCosts[primal_]; }
+	double LowerBound() const;
+	double EvaluatePrimal() const{
+		double value=solutionCosts.at(primal_);
+		return value;
+	}
 	std::unordered_map<size_t,double> adjustCostsAndSendMessages();
 
 
@@ -196,6 +199,7 @@ template<class LDP_STRUCT>
 inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_STRUCT>::adjustCostsAndSendMessages(){
 
 	//Assuming that optimalSolution is up to date
+	if(!vsUpToDate) updateValues();
 	double minValue=solutionCosts[optimalSolution];
 	std::unordered_map<size_t,double> messages;
 	for (auto it=solutionCosts.begin();it!=solutionCosts.end();it++) {
@@ -224,25 +228,27 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCostSimple(const doubl
 
 
 template<class LDP_STRUCT>
-inline double ldp_single_node_cut_factor<LDP_STRUCT>::LowerBound() {//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
-		if(!vsUpToDate){
-			updateValues();
+inline double ldp_single_node_cut_factor<LDP_STRUCT>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
+//		if(!vsUpToDate){
+//			updateValues();
+//		}
+//		else{
+//			double minValue=solutionCosts[optimalSolution];
+	//			size_t minVertex=optimalSolution;
+	double minValue=solutionCosts.at(nodeNotActive);
+	size_t minVertex=nodeNotActive;
+	//for (std::pair<size_t,double> it=solutionCosts.begin();it!=solutionCosts.end();it++) {
+	for (std::pair<size_t,double> it :solutionCosts) {
+		if(it.second<minValue){
+			minValue=it.second;
+			minVertex=it.first;
 		}
-		else{
-			double minValue=solutionCosts[optimalSolution];
-			size_t minVertex=optimalSolution;
-			//for (std::pair<size_t,double> it=solutionCosts.begin();it!=solutionCosts.end();it++) {
-			for (std::pair<size_t,double> it :solutionCosts) {
-				if(it.second<minValue){
-					minValue=it.second;
-					minVertex=it.first;
-				}
-			}
-			optimalSolution=minVertex;
-
-		}
-		return solutionCosts[optimalSolution];
 	}
+	//optimalSolution=minVertex;
+
+	//}
+	return solutionCosts.at(minVertex);
+}
 
 
 template<class LDP_STRUCT>

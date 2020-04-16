@@ -11,7 +11,8 @@ LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteS
 	parameters.infoFile()<<"interval "<<minTime<<","<<maxTime<<std::endl;
 	parameters.infoFile().flush();
 
-	useTimeFrames=parameters.isRestrictFrames()||parameters.isSparsify();
+	useTimeFrames=true;
+	//useTimeFrames=parameters.isRestrictFrames()||parameters.isSparsify();
 	size_t maxVertex;
 	if(cs==0){
 		if(useTimeFrames){
@@ -23,38 +24,6 @@ LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteS
 		}
 		std::ifstream graphFile(parameters.getGraphFileName());
 		readGraph(graphFile,maxVertex,delim);
-		if(!parameters.isAutomaticLifted()){
-			//std::vector<std::vector<bool>> secOrderDesc=automaticLifted(graph_);
-			std::cout<<"Reading lifted edges from file."<<std::endl;
-			std::string line;
-			std::vector<std::string> strings;
-			while (std::getline(graphFile, line) && !line.empty()) {
-				strings = split(line, delim);
-				if (strings.size() < 3) {
-					throw std::runtime_error(
-							std::string("Edge vertices and score expected on every edge line "));
-				}
-
-				unsigned int v = std::stoul(strings[0]);
-				unsigned int w = std::stoul(strings[1]);
-				if(v>=graph_.numberOfVertices()-2||w>=graph_.numberOfVertices()-2) continue;
-				//if(isReachable(v,w)&&v!=s_&&w!=t_&&v!=t_&&w!=s_){
-				if(isReachable(v,w)&&v!=s_&&w!=t_&&v!=t_&&w!=s_){
-					double score = std::stod(strings[2]);
-					//if(secOrderDesc[v][w]){
-					auto edgeTest=graphLifted_.findEdge(v,w);
-					if(!edgeTest.first){
-						graphLifted_.insertEdge(v, w);
-						liftedEdgeScore.push_back(score);
-					}
-					else{
-						liftedEdgeScore[edgeTest.second]=score;
-					}
-
-				}
-			}
-
-		}
 		graphFile.close();
 	}
 	else{
@@ -63,31 +32,22 @@ LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteS
 	}
 
 
-	//desc=disjointPaths::initReachable(graph_);
+	std::cout<<"Adding automatic lifted edges"<<std::endl;
+	parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
+	parameters.infoFile().flush();
+	for (int i = 0; i < graph_.numberOfEdges(); ++i) {
+		size_t v0=graph_.vertexOfEdge(i,0);
+		size_t v1=graph_.vertexOfEdge(i,1);
+		if(v0!=s_&&v1!=t_){
+			//	if(secOrderDesc[v0][v1]){
+			graphLifted_.insertEdge(v0,v1);
+			liftedEdgeScore.push_back(edgeScore[i]);
 
-	//std::vector<std::vector<bool>> secOrderDesc=automaticLifted(graph_);
-
-	//TODO ensure that the lifted edges are added only if the reachability and non uniqueness is satisfied!
-
-	if(parameters.isAutomaticLifted()){
-		std::cout<<"Adding automatic lifted edges"<<std::endl;
-		parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
-		parameters.infoFile().flush();
-		for (int i = 0; i < graph_.numberOfEdges(); ++i) {
-			size_t v0=graph_.vertexOfEdge(i,0);
-			size_t v1=graph_.vertexOfEdge(i,1);
-			if(v0!=s_&&v1!=t_){
-				//	if(secOrderDesc[v0][v1]){
-				graphLifted_.insertEdge(v0,v1);
-				liftedEdgeScore.push_back(edgeScore[i]);
-
-			}
 		}
-		std::cout<<"done"<<std::endl;
-		parameters.infoFile()<<"done"<<std::endl;
-		parameters.infoFile().flush();
-
 	}
+	std::cout<<"done"<<std::endl;
+	parameters.infoFile()<<"done"<<std::endl;
+	parameters.infoFile().flush();
 
 
 	std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
@@ -100,7 +60,7 @@ LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteS
 	}
 	else{
 		//desc=initReachable(graph_,parameters);
-		reachable=initReachableSet(graph_);
+		reachable=initReachableSet(graph_,&vertexGroups);
 	}
 
 	numberOfVertices=graph_.numberOfVertices();
@@ -488,7 +448,7 @@ void LdpInstance::sparsifyBaseGraph(){
 			}
 		}
 
-		bool onlyImproving=parameters.isRequireImproving();
+
 		for (int gap =  parameters.getKnnTimeGap()+1;gap<=parameters.getMaxTimeBase(); ++gap) {
 			if(edgesToKeep.count(gap)>0){
 				auto& smallList=edgesToKeep[gap];
@@ -532,13 +492,7 @@ void LdpInstance::sparsifyBaseGraph(){
 		parameters.infoFile().flush();
 	}
 
-
-	if(parameters.getSmallIntervals()==0){
-		//desc=initReachable(graph_,parameters,&vertexGroups);
-		reachable=initReachableSet(graph_,&vertexGroups);
-	}
-	//desc=initReachable(graph_,parameters);
-	reachable=initReachableSet(graph_);
+	reachable=initReachableSet(graph_,&vertexGroups);
 
 
 	std::cout<<"Left "<<newBaseCosts.size()<<" base edges"<<std::endl;

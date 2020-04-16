@@ -7,8 +7,8 @@ namespace LPMP {
     class lifted_disjoint_paths_mcf_factor
     {
         public: 
-            double LowerBound() const;
-            double EvaluatePrimal() const;
+            double LowerBound() const{return 0;}
+            double EvaluatePrimal() const{return 0;}
 
             template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primal_); }
             template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
@@ -19,6 +19,7 @@ namespace LPMP {
 
         private:
 
+        size_t primal_;
     };
 
 }

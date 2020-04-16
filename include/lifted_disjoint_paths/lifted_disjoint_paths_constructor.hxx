@@ -7,7 +7,7 @@
 namespace LPMP {
 //namespace lifted_disjoint_paths{
 
-    template<class FACTOR_MESSAGE_CONNECTION, std::size_t MCF_FACTOR, std::size_t SINGLE_NODE_CUT_FACTOR, std::size_t MCF_SINGLE_NODE_CUT_MESSAGE> 
+    template<class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     class lifted_disjoint_paths_constructor
     {
         public:
@@ -26,17 +26,17 @@ namespace LPMP {
             LP<FMC>* lp_; 
     };
 
-    template<class FACTOR_MESSAGE_CONNECTION, std::size_t MCF_FACTOR, std::size_t SINGLE_NODE_CUT_FACTOR, std::size_t MCF_SINGLE_NODE_CUT_MESSAGE>
+    template<class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION,MCF_FACTOR,SINGLE_NODE_CUT_FACTOR,MCF_SINGLE_NODE_CUT_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance& i){
 
     }
 
-    template<class FACTOR_MESSAGE_CONNECTION, std::size_t MCF_FACTOR, std::size_t SINGLE_NODE_CUT_FACTOR, std::size_t MCF_SINGLE_NODE_CUT_MESSAGE>
+    template<class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION,MCF_FACTOR,SINGLE_NODE_CUT_FACTOR,MCF_SINGLE_NODE_CUT_MESSAGE>::ComputePrimal(){
 
     }
 
-    template<class FACTOR_MESSAGE_CONNECTION, std::size_t MCF_FACTOR, std::size_t SINGLE_NODE_CUT_FACTOR, std::size_t MCF_SINGLE_NODE_CUT_MESSAGE>
+    template<class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION,MCF_FACTOR,SINGLE_NODE_CUT_FACTOR,MCF_SINGLE_NODE_CUT_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add){
 
     }

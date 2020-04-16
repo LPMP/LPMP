@@ -44,12 +44,10 @@ public:
 
 	LdpInstance(ConfigDisjoint<>& configParameters,char delim=',',CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
-
-
 	bool isReachable(size_t i,size_t j) const{
 		if(i==t_||j==s_) return false;  //Assume no path from the terminal node
 		if(i==s_||j==t_) return true;
-		//if(reachable.size()==0) return true;
+		if(reachable.size()==0) return true;
 		return reachable[i].count(j)>0;
 	}
 
