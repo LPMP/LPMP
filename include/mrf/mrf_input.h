@@ -35,7 +35,11 @@ namespace LPMP {
        std::string pairwise_variable_identifier(const std::array<std::size_t,2> vars, const std::array<std::size_t,2> labels) const;
 
        bool unary_variable_active(const std::size_t i, const std::size_t j) const;
+       bool unary_variable_active(const std::size_t i) const;
        bool pairwise_variable_active(const std::size_t pairwise_index, const std::array<std::size_t, 2> labels) const;
+       bool pairwise_variable_active(const std::size_t pairwise_index) const;
+
+       void propagate();
    };
 
    inline std::string mrf_input::unary_variable_identifier(const std::size_t i, const std::size_t l) const
@@ -50,6 +54,18 @@ namespace LPMP {
        assert(i < no_variables());
        assert(j < cardinality(i));
        return unaries(i,j) < std::numeric_limits<double>::infinity();
+   }
+
+   inline bool mrf_input::unary_variable_active(const std::size_t i) const
+   {
+       std::size_t nr_active_labels = 0;
+       for (std::size_t l = 0; l < cardinality(i); ++l)
+       {
+           if (unary_variable_active(i, l))
+               ++nr_active_labels;
+       }
+       assert(nr_active_labels < cardinality(i));
+       return nr_active_labels + 1 == cardinality(i);
    }
 
    inline std::string mrf_input::pairwise_variable_identifier(const std::array<std::size_t, 2> vars, const std::array<std::size_t, 2> labels) const
@@ -72,17 +88,36 @@ namespace LPMP {
        return unary_variable_active(i, labels[0]) && unary_variable_active(j, labels[1]) && get_pairwise_potential(i)(labels[0], labels[1]) < std::numeric_limits<double>::infinity();
    }
 
+   inline bool mrf_input::pairwise_variable_active(const std::size_t pairwise_index) const
+   {
+       assert(pairwise_index < no_pairwise_factors());
+       const auto [i,j] = get_pairwise_variables(pairwise_index);
+       return unary_variable_active(i) && unary_variable_active(j);
+   }
+
+   inline void mrf_input::propagate()
+   {
+       throw std::runtime_error("not implemented yet.");
+       for(std::size_t i=0; i<no_variables(); ++i)
+       {
+
+       }
+   }
+
    template <typename STREAM>
    void mrf_input::write_to_lp_objective(STREAM &s) const
    {
        for (std::size_t i = 0; i < unaries.size(); ++i)
-           for (std::size_t l = 0; l < unaries[i].size(); ++l)
-               if (unary_variable_active(i, l))
-                   s << (unaries(i, l) >= 0 ? "+ " : "- ") << std::abs(unaries(i, l)) << " " << unary_variable_identifier(i, l) << "\n";
+           if (unary_variable_active(i))
+               for (std::size_t l = 0; l < unaries[i].size(); ++l)
+                   if (unary_variable_active(i, l))
+                       s << (unaries(i, l) >= 0 ? "+ " : "- ") << std::abs(unaries(i, l)) << " " << unary_variable_identifier(i, l) << "\n";
 
        assert(pairwise_indices.size() == pairwise_values.size());
        for (std::size_t pairwise_idx = 0; pairwise_idx < pairwise_indices.size(); ++pairwise_idx)
        {
+           if (!pairwise_variable_active(pairwise_idx))
+               continue;
            const auto [i, j] = pairwise_indices[pairwise_idx];
            assert(pairwise_values.dim2(pairwise_idx) == unaries[i].size());
            assert(pairwise_values.dim3(pairwise_idx) == unaries[j].size());
@@ -106,6 +141,8 @@ namespace LPMP {
        // simplex constraints
        for (std::size_t i = 0; i < unaries.size(); ++i)
        {
+           if (!unary_variable_active(i))
+               continue;
            bool variable_printed = false;
            for (std::size_t l = 0; l < unaries[i].size(); ++l)
            {
@@ -123,6 +160,8 @@ namespace LPMP {
 
        for (std::size_t pairwise_idx = 0; pairwise_idx < pairwise_indices.size(); ++pairwise_idx)
        {
+           if (!pairwise_variable_active(pairwise_idx))
+               continue;
            const auto [i, j] = pairwise_indices[pairwise_idx];
            assert(i < j);
            bool variable_printed = false;
@@ -146,6 +185,8 @@ namespace LPMP {
        // marginalization constraints
        for (std::size_t pairwise_idx = 0; pairwise_idx < pairwise_indices.size(); ++pairwise_idx)
        {
+           if(!pairwise_variable_active(pairwise_idx))
+               continue;
            const auto [i, j] = pairwise_indices[pairwise_idx];
            assert(i < j);
            for (std::size_t l_i = 0; l_i < unaries[i].size(); ++l_i)
@@ -178,13 +219,16 @@ namespace LPMP {
    void mrf_input::write_to_lp_variables(STREAM &s) const
    {
        for (std::size_t i = 0; i < unaries.size(); ++i)
-           for (std::size_t l = 0; l < unaries[i].size(); ++l)
-               if (unary_variable_active(i, l))
-                   s << unary_variable_identifier(i, l) << "\n";
+           if (unary_variable_active(i))
+               for (std::size_t l = 0; l < unaries[i].size(); ++l)
+                   if (unary_variable_active(i, l))
+                       s << unary_variable_identifier(i, l) << "\n";
 
        assert(pairwise_indices.size() == pairwise_values.size());
        for (std::size_t pairwise_idx = 0; pairwise_idx < pairwise_indices.size(); ++pairwise_idx)
        {
+           if(!pairwise_variable_active(pairwise_idx))
+               continue;
            const auto [i, j] = pairwise_indices[pairwise_idx];
            assert(pairwise_values.dim2(pairwise_idx) == unaries[i].size());
            assert(pairwise_values.dim3(pairwise_idx) == unaries[j].size());

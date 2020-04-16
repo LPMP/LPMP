@@ -144,11 +144,15 @@ namespace LPMP {
         std::vector<std::vector<std::size_t>> incoming_cell_divisions(cell_detections.size());
         for (std::size_t i = 0; i < cell_transitions.size(); ++i)
         {
+            assert(cell_transitions[i].outgoing_cell < cell_transitions[i].incoming_cell);
             outgoing_cell_transitions[cell_transitions[i].outgoing_cell].push_back(i);
-            outgoing_cell_transitions[cell_transitions[i].incoming_cell].push_back(i);
+            incoming_cell_transitions[cell_transitions[i].incoming_cell].push_back(i);
         }
         for (std::size_t i = 0; i < cell_divisions.size(); ++i)
         {
+            assert(cell_divisions[i].outgoing_cell < cell_divisions[i].incoming_cell_1);
+            assert(cell_divisions[i].outgoing_cell < cell_divisions[i].incoming_cell_2);
+            assert(cell_divisions[i].incoming_cell_1 != cell_divisions[i].incoming_cell_2);
             outgoing_cell_divisions[cell_divisions[i].outgoing_cell].push_back(i);
             incoming_cell_divisions[cell_divisions[i].incoming_cell_1].push_back(i);
             incoming_cell_divisions[cell_divisions[i].incoming_cell_2].push_back(i);
@@ -206,6 +210,6 @@ namespace LPMP {
             s << cell_division_identifier(d) << "\n";
 
         s << "End\n";
-        }
+    }
 
 } // namespace LPMP

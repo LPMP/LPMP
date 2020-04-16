@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
     input.reorder_bfs();
-    // input.reorder_Cuthill_McKee();
+    //input.reorder_Cuthill_McKee();
     //input.reorder_minimum_degree_averaging();
 
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
