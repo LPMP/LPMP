@@ -81,7 +81,7 @@ public:
 		return min1-min0;
 	}
 
-	std::unordered_map<std::pair<size_t,size_t>,double> adjustCostAndGetMessages(){
+	std::unordered_map<std::pair<size_t,size_t>,double> adjustCostAndGetMessages(){ //returns edge as pair of vertices and update cost
 		std::unordered_map<std::pair<size_t,size_t>,double> outputMap;
 		double d=delta(0);
 		edgeCosts[0]-=d;
@@ -98,17 +98,17 @@ public:
 		return outputMap;
 	}
 
-	void updateCost(size_t edgeId,double update){  //update cost of one edge, assumed indices 0-2
+	void updateCost(size_t edgeId,double update){  //update cost of one edge, assumed local edge ID: indices 0-2
 		assert(edgeId<=2);
 		edgeCosts[edgeId]+=update;
 	}
 
-	void updateCost(size_t v1, size_t v2,double update){
+	void updateCost(size_t v1, size_t v2,double update){ //assumes directed edge vertices
 		size_t e=getLocalEdgeID(v1,v2);
 		updateCost(e,update);
 	}
 
-	size_t getLocalEdgeID(size_t v1, size_t v2){ //assumes that v1<v2. If edge not present in the factor, returns 3.
+	size_t getLocalEdgeID(size_t v1, size_t v2){ //assumes directed edge vertices. If edge not present in the factor, returns 3.
 		if(v1==vInd){
 			if(v2==uInd){
 				return 0;
