@@ -63,6 +63,8 @@ public:
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
 
+	void updateValues();
+
 	const andres::graph::Digraph<>& getBaseGraph() const {
 		return baseGraph;
 	}
@@ -98,7 +100,7 @@ private:
 		}
 	}
 
-	void updateValues();
+
 
 	std::size_t primal_; // the incoming resp. outgoing edge that is active.
 	std::size_t optimalSolution;
@@ -197,8 +199,6 @@ private:
 
 template<class LDP_STRUCT>
 inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_STRUCT>::adjustCostsAndSendMessages(){
-
-	//Assuming that optimalSolution is up to date
 	if(!vsUpToDate) updateValues();
 	double minValue=solutionCosts[optimalSolution];
 	std::unordered_map<size_t,double> messages;
@@ -232,21 +232,15 @@ inline double ldp_single_node_cut_factor<LDP_STRUCT>::LowerBound() const{//TODO 
 //		if(!vsUpToDate){
 //			updateValues();
 //		}
-//		else{
-//			double minValue=solutionCosts[optimalSolution];
-	//			size_t minVertex=optimalSolution;
-	double minValue=solutionCosts.at(nodeNotActive);
-	size_t minVertex=nodeNotActive;
-	//for (std::pair<size_t,double> it=solutionCosts.begin();it!=solutionCosts.end();it++) {
+
+	double minValue=solutionCosts.at(optimalSolution);
+	size_t minVertex=optimalSolution;
 	for (std::pair<size_t,double> it :solutionCosts) {
 		if(it.second<minValue){
 			minValue=it.second;
 			minVertex=it.first;
 		}
 	}
-	//optimalSolution=minVertex;
-
-	//}
 	return solutionCosts.at(minVertex);
 }
 
