@@ -209,11 +209,6 @@ void bdd_branch_node_opt_smoothed_base<DERIVED>::smooth_backward_step()
     }
     //m = low_cost + high_cost;
 
-    if (!std::isfinite(this->m) || !(std::abs(this->m) < 10000.0))
-    {
-        std::cout << low_cost << "," << low_max << "\n";
-        std::cout << high_cost << "," << high_max << "\n";
-    }
     assert(std::isfinite(this->m));
     assert(std::abs(this->m) < 10000.0);
     assert(std::isfinite(current_max));
@@ -315,8 +310,6 @@ bdd_branch_node_exp_sum_entry bdd_branch_node_opt_smoothed_base<DERIVED>::exp_su
     assert(std::isfinite(e.sum[1]));
     assert(e.sum[0] >= 0.0);
     assert(e.sum[1] >= 0.0);
-    if(!(e.sum[0] > 0 || e.sum[1] > 0))
-        std::cout << e.sum[0] << ";" << e.sum[1] << "\n";
     assert(e.sum[0] > 0 || e.sum[1] > 0);
     if(this->low_outgoing != bdd_branch_node_opt_smoothed::terminal_0() && this->low_outgoing != bdd_branch_node_opt_smoothed::terminal_1())
     {
@@ -332,7 +325,6 @@ bdd_branch_node_exp_sum_entry bdd_branch_node_opt_smoothed_base<DERIVED>::exp_su
     assert(std::abs(e.sum[0]) < 10000.0);
     assert(std::abs(e.sum[1]) < 10000.0);
 
-    //std::cout << e.sum[0] << "," << e.sum[1] << " ; " << e.max[0] << "," << e.max[1] << "\n";
     return e;
 }
 

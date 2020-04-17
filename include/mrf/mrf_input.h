@@ -17,7 +17,8 @@ namespace LPMP {
        std::size_t no_pairwise_factors() const { return pairwise_indices.size(); }
        auto get_unary(const std::size_t i) const { assert(i<no_variables()); return unaries[i]; }
        std::array<std::size_t,2> get_pairwise_variables(const std::size_t i) const { assert(i<no_pairwise_factors()); return pairwise_indices[i]; }
-       auto get_pairwise_potential(const std::size_t i) const { assert(i<no_pairwise_factors()); return pairwise_values[i]; }
+       const auto get_pairwise_potential(const std::size_t i) const { assert(i<no_pairwise_factors()); return pairwise_values[i]; }
+       auto get_pairwise_potential(const std::size_t i) { assert(i<no_pairwise_factors()); return pairwise_values[i]; }
 
        template <typename STREAM>
        void write_to_lp_objective(STREAM &s) const;
@@ -36,6 +37,7 @@ namespace LPMP {
 
        bool unary_variable_active(const std::size_t i, const std::size_t j) const;
        bool unary_variable_active(const std::size_t i) const;
+       std::size_t forced_label(const std::size_t i) const;
        bool pairwise_variable_active(const std::size_t pairwise_index, const std::array<std::size_t, 2> labels) const;
        bool pairwise_variable_active(const std::size_t pairwise_index) const;
 
@@ -64,8 +66,18 @@ namespace LPMP {
            if (unary_variable_active(i, l))
                ++nr_active_labels;
        }
-       assert(nr_active_labels < cardinality(i));
-       return nr_active_labels + 1 == cardinality(i);
+       assert(nr_active_labels <= cardinality(i)); // or < ?
+       assert(nr_active_labels > 0);
+       return nr_active_labels > 1;
+   }
+
+   inline std::size_t mrf_input::forced_label(const std::size_t i) const
+   {
+       assert(!unary_variable_active(i));
+       for (std::size_t l = 0; l < cardinality(i); ++l)
+           if (unary_variable_active(i, l))
+               return l;
+       throw std::runtime_error("no label active");
    }
 
    inline std::string mrf_input::pairwise_variable_identifier(const std::array<std::size_t, 2> vars, const std::array<std::size_t, 2> labels) const
@@ -97,10 +109,33 @@ namespace LPMP {
 
    inline void mrf_input::propagate()
    {
-       throw std::runtime_error("not implemented yet.");
-       for(std::size_t i=0; i<no_variables(); ++i)
+       // if exactly one unary variable is active, incorporate pairwise costs into unary ones
+       for(std::size_t pairwise_idx = 0; pairwise_idx < no_pairwise_factors(); ++pairwise_idx)
        {
-
+           const auto [i, j] = get_pairwise_variables(pairwise_idx);
+           auto pot = get_pairwise_potential(pairwise_idx);
+           if(unary_variable_active(i) && !unary_variable_active(j))
+           {
+               const std::size_t l_j = forced_label(j);
+               for(std::size_t l_i = 0; l_i < cardinality(i); ++l_i)
+               {
+                   const double delta = pot(l_i, l_j);
+                   unaries(l_i, l_i) += delta;
+                   for (std::size_t ll_j = 0; ll_j < cardinality(j); ++ll_j)
+                       pot(l_i, ll_j) -= delta;
+               } 
+           }
+           if(!unary_variable_active(i) && unary_variable_active(j))
+           {
+               const std::size_t l_i = forced_label(i);
+               for(std::size_t l_j = 0; l_j < cardinality(j); ++l_j)
+               {
+                   const double delta = pot(l_i, l_j);
+                   unaries(l_i, l_i) += delta;
+                   for (std::size_t ll_i = 0; ll_i < cardinality(i); ++ll_i)
+                       pot(ll_i, l_j) -= delta;
+               } 
+           }
        }
    }
 

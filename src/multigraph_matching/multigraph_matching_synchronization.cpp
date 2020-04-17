@@ -111,14 +111,14 @@ namespace LPMP {
                         max_j_idx = j;
                         max_j_val = U(i,idx);
                      }
-                  } 
+                  }
                   if(max_j_val > rounding_th) {
                      Y[mgm_size.node_no(q, max_j_idx)] = c;
-                  } 
-               } 
-            } 
+                  }
+               }
+            }
             ++c;
-         } 
+         }
       }
 
       transform_universe_matching_to_multigraph_matching(mgm_size, Y, labeling);

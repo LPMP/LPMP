@@ -27,10 +27,14 @@ inline void discrete_tomography_instance::propagate_projection_costs()
 {
     // propagate all constraints that constrain variables to be zero
     for(std::size_t p=0; p<projection_costs.size(); ++p)
-        if (is_sum_constraint(p) && sum_constraint_value(p) == 0)
+        if (is_sum_constraint(p)) 
+        {
+            const std::size_t v = sum_constraint_value(p);
             for (const std::size_t i : projection_variables[p])
-                for (std::size_t l = 0; l < mrf.cardinality(i); ++l)
+                for (std::size_t l = v+1; l < mrf.cardinality(i); ++l)
                     mrf.unaries(i, l) = std::numeric_limits<double>::infinity();
+        }
+    mrf.propagate();
 }
 
 inline bool discrete_tomography_instance::is_sum_constraint(const std::size_t i) const
@@ -64,9 +68,15 @@ void discrete_tomography_instance::write_to_lp(STREAM &s) const
     {
         if(is_sum_constraint(p))
         {
+            std::size_t val = sum_constraint_value(p);
             bool variable_printed = false;
             for (const std::size_t i : projection_variables[p])
             {
+                if(!mrf.unary_variable_active(i))
+                {
+                    val -= mrf.forced_label(i);
+                    continue;
+                }
                 for (std::size_t l = 1; l < mrf.cardinality(i); ++l)
                 {
                     if(mrf.unary_variable_active(i, l))
@@ -79,7 +89,8 @@ void discrete_tomography_instance::write_to_lp(STREAM &s) const
                     }
                 }
             }
-            s << " = " << sum_constraint_value(p) << "\n";
+            if (variable_printed)
+                s << " = " << val << "\n";
         }
         else
         {
