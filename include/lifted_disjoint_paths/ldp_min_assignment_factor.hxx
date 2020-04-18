@@ -17,18 +17,28 @@
 #include <vector>
 #include <array>
 #include <unordered_map>
+#include <union_find.hxx>
 
 namespace LPMP {
 
-template<class GRAPH_STRUCT,class EDGE_ITERATOR>
+
 class ldp_min_assignment_factor
 {
 public:
 
 	//By default, all edges are lifted. However vu or uw can be base too.
-	ldp_min_assignment_factor(GRAPH_STRUCT inputGraph,EDGE_ITERATOR begin,EDGE_ITERATOR end); //Maybe remember vertex indices instead of edge indices?
+	ldp_min_assignment_factor(size_t minVertex1, size_t vertexNumber1,size_t minVertex2,size_t vertexNumber2):
+		minV1(minVertex1),
+		minV2(minVertex2),
+		vertexN1(vertexNumber1),
+		vertexN2(vertexNumber2),
+		unassigned(vertexNumber2+vertexNumber1),
+		uf(vertexNumber1+vertexNumber2)
+    {
+		edgeCosts=std::vector<std::unordered_map<size_t,double>>(vertexNumber1);
+    }
 
-	double LowerBound();
+	//double LowerBound() const;
 
 	double EvaluatePrimal() const{
 		double value=0;
@@ -38,12 +48,130 @@ public:
 		return value;
 	}
 
+	void updateCost(size_t v1,size_t v2,double value){
+		edgeCosts[v1-vertexN1][v2-vertexN2]+=value;
+	}
+
+
+	LPMP::linear_assignment_problem_input createLAStandard() const{
+		LPMP::linear_assignment_problem_input lapInput;
+		for (size_t i = 0; i < vertexN1; ++i) {
+			for(std::pair<size_t,double> e:edgeCosts.at(i)){
+				if(e.second<0){
+					lapInput.add_assignment(i,e.first,e.second);
+				}
+			}
+		}
+		return lapInput;
+	}
+
+	LPMP::linear_assignment_problem_input laExcludeEdge(size_t v1,size_t v2) const{
+		LPMP::linear_assignment_problem_input lapInput;
+		for (size_t i = 0; i < vertexN1; ++i) {
+			for(std::pair<size_t,double> e:edgeCosts.at(i)){
+				if(e.second<0&&(v1!=i||v2!=e.first)){
+					lapInput.add_assignment(i,e.first,e.second);
+				}
+			}
+		}
+		return lapInput;
+	}
+
+	LPMP::linear_assignment_problem_input laExcludeVertices(size_t v1,size_t v2) const{
+		LPMP::linear_assignment_problem_input lapInput;
+		for (size_t i = 0; i < vertexN1; ++i) {
+			if(i==v1) continue;
+			size_t vertex=i;
+			if(i>v1) vertex--;
+			for(std::pair<size_t,double> e:edgeCosts.at(i)){
+				if(e.second<0&&e.second!=v2){
+					size_t vertex2=e.second;
+					if(vertex2>v2) vertex2--;
+					lapInput.add_assignment(vertex,vertex2,e.second);
+				}
+			}
+		}
+		return lapInput;
+	}
+
+	std::vector<size_t> getLabeling(linear_assignment_problem_input& lapInput,size_t shift1=vertexN1,size_t shift2=vertexN2)const {
+		MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
+		lapInput.initialize_mcf(mcf);
+		double result=mcf.solve();
+
+		std::vector<size_t> labeling(vertexN1);
+		for (int i = 0; i < mcf.no_edges(); ++i) {
+			if(mcf.flow(i)>0.5){
+				int label=mcf.head(i);
+				if(label>shift2) label++;
+				int vertex=mcf.tail(i);
+				if(vertex>shift1) vertex++;
+				//	std::cout<<"label "<<label<<"vertex "<<vertex<<std::endl;
+				if(vertex<vertexN1&&label<vertexN2){
+					labeling[vertex]=label;
+				}
+			}
+		}
+		return labeling;
+	}
+
+	double evaluateLabeling(std::vector<size_t>& labeling)const {
+		double cost=0;
+		for (int i = 0; i < vertexN1; ++i) {
+			cost+=edgeCosts[i].at(labeling[i]);
+		}
+		return cost;
+	}
+
+	double LowerBound() const{
+		LPMP::linear_assignment_problem_input lapInput=createLAStandard();
+		std::vector<size_t> labeling=getLabeling(lapInput);
+		return evaluateLabeling(labeling);
+	}
+
+
+	bool notAllowed(size_t v1,size_t v2){  //TODO make this based on reachability
+		return false;
+	}
+
+	std::unordered_map<std::pair<size_t,size_t>,double> adjustCostAndGetMessages(){
+		LPMP::linear_assignment_problem_input lapInput=createLAStandard();
+		std::vector<size_t> labeling=getLabeling(lapInput);
+		double optimalValue= evaluateLabeling(labeling);
+		std::vector<std::unordered_set<size_t>> isNotOptZero;
+		std::vector<std::unordered_set<size_t>> isOptOne;
+		for (int vertex = 0; vertex < vertexN1; ++vertex) {
+			isOptOne[vertex].insert(labeling[vertex]);
+			isNotOptZero[vertex].insert(labeling[vertex]);
+		}
+		for (int v1 = 0; v1 < vertexN1; ++v1) {
+			for (int v2 = 0; v2 < vertexN2; ++v2) {
+				if(isOptOne[v1].count(v2)){ //has label 1 in optimum
+					if(isNotOptZero[v1].count(v2)==0){
+						//do nothing delta is zero
+					}
+					else{
+						linear_assignment_problem_input lapInput=laExcludeEdge(v1,v2);
+						labeling=getLabeling(lapInput);
+						double value=evaluateLabeling(labeling);
+						double delta=optimalValue-value;
+						//TODO update structures isOptOne and isNotOptZero
+					}
+
+				}
+			}
+		}
+
+	}
+
+
+
 	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primal_); }
 	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
 
 	auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }
 
-	void init_primal() { primal_ = std::vector<bool>(edges.size()); }
+	void init_primal() { primal_ = std::vector<size_t>(vertexN1,unassigned); }
 
 
 	void updateCost(size_t edgeId,double updateValue){  //update cost of one edge, assumed indices 0-2
@@ -51,80 +179,18 @@ public:
 	}
 
 private:
-    std::vector<bool> primal_;
-    GRAPH_STRUCT graph;
-    std::unordered_map<size_t,size_t> leftVertices;
-    std::unordered_map<size_t,size_t> rightVertices;
-    //std::vector<std::pair<size_t,size_t>> edges;
-    std::vector<std::array<size_t,2>> edges;
-    std::vector<double> edgeCosts;   //Ideally store edges and costs as node->(node,cost) in a map.
+    std::vector<size_t> primal_;
+    std::vector<std::unordered_map<size_t,double>> edgeCosts;   //Ideally store edges and costs as node->(node,cost) in a map.
+    size_t minV1,vertexN1,minV2, vertexN2,unassigned;
+
+    union_find uf;
 
 };
 
-template<class GRAPH_STRUCT,class EDGE_ITERATOR>
-inline ldp_min_assignment_factor<GRAPH_STRUCT,EDGE_ITERATOR>::ldp_min_assignment_factor(GRAPH_STRUCT inputGraph,EDGE_ITERATOR begin,EDGE_ITERATOR end): //Maybe remember vertex indices instead of edge indices?
-graph(inputGraph)
-{
-	EDGE_ITERATOR it=begin;
-	size_t leftCounter=0;
-	size_t rightCounter=0;
-	for(;it!=end;it++){
-		size_t v0=inputGraph.vertexOfEdge(*it,0);
-		size_t v1=inputGraph.vertexOfEdge(*it,1);
-		if(leftVertices.count(v0)==0){
-			leftVertices[v0]=leftCounter;
-			leftCounter++;
-		}
-		if(rightVertices.count(v1)==0){
-			leftVertices[v1]=rightCounter;
-			rightCounter++;
-		}
-		//edges.push_back(std::pair<size_t,size_t>(v0,v1));
-		edges.push_back({v0,v1});
-	}
-	edgeCosts=std::vector<double>(edges.size());
-}
 
 
 
-template<class GRAPH_STRUCT,class EDGE_ITERATOR>
-inline double ldp_min_assignment_factor<GRAPH_STRUCT,EDGE_ITERATOR>::LowerBound(){
-	double minValue=0;
-	LPMP::linear_assignment_problem_input lapInput;
-	for (int i = 0; i < edges.size(); ++i) {
-		if(edgeCosts[i]<0){
-			//lapInput.add_assignment(edges[i].first,edges[i].second,edgeCosts[i]);
-			lapInput.add_assignment(edges[i][0],edges[i][1],edgeCosts[i]);
-		}
-	}
-	MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
-	lapInput.initialize_mcf(mcf);
-	double result=mcf.solve();
 
-	std::vector<size_t> labeling(leftVertices.size());
-	for (int i = 0; i < mcf.no_edges(); ++i) {
-		if(mcf.flow(i)>0.5){
-			int label=mcf.head(i)-leftVertices.size();
-			int vertex=mcf.tail(i);
-			//	std::cout<<"label "<<label<<"vertex "<<vertex<<std::endl;
-			if(vertex<leftVertices.size()&&label<rightVertices.size()){
-				labeling[vertex]=label;
-			}
-		}
-	}
-	for (int i = 0; i < edges.size(); ++i) {
-		size_t v0=leftVertices[edges[i][0]];
-		size_t v1=rightVertices[edges[i][1]];
-		if(labeling[v0]==v1){
-			primal_[i]=1;
-			minValue+=edgeCosts[i];
-		}
-		else{
-			primal_[i]=0;
-		}
-	}
-	return minValue;
-}
 
 
 
