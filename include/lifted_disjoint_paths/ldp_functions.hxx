@@ -154,7 +154,7 @@ public:
 
 
 
-	size_t getGroupIndex(size_t v){
+	size_t getGroupIndex(size_t v) const{
 		return vToGroup[v];
 	}
 

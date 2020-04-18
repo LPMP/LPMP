@@ -118,6 +118,10 @@ public:
 		return &vertexGroups;
 	}
 
+	size_t getGroupIndex(size_t v)const {
+		return vertexGroups.getGroupIndex(v);
+	}
+
 
 	bool isTimeFramesEnabled(){
 		return useTimeFrames;

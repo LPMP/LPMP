@@ -63,7 +63,7 @@ public:
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
 
-	void updateValues();
+	void updateValues() const;
 
 	const andres::graph::Digraph<>& getBaseGraph() const {
 		return baseGraph;
@@ -75,7 +75,7 @@ public:
 
 private:
 
-	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex){
+	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex) const{
 		if(isOutFlow){
 			return baseGraph.vertexFromVertex(firstNode,neighborIndex);
 		}
@@ -83,7 +83,7 @@ private:
 			return baseGraph.vertexToVertex(firstNode,neighborIndex);
 		}
 	}
-	size_t numberOfNeighborsBase(size_t nodeIndex){
+	size_t numberOfNeighborsBase(size_t nodeIndex) const {
 		if(isOutFlow){
 			return baseGraph.numberOfEdgesFromVertex(nodeIndex);
 		}
@@ -91,7 +91,7 @@ private:
 			return baseGraph.numberOfEdgesToVertex(nodeIndex);
 		}
 	}
-	bool inInRange(size_t nodeIndex){
+	bool inInRange(size_t nodeIndex) const {
 		if(isOutFlow){
 			return ldpStructure.getGroupIndex(nodeIndex)<=maxLayer;
 		}
@@ -103,7 +103,7 @@ private:
 
 
 	std::size_t primal_; // the incoming resp. outgoing edge that is active.
-	std::size_t optimalSolution;
+	mutable std::size_t optimalSolution;
 
 	std::size_t minLayer;
 	std::size_t maxLayer;
@@ -115,13 +115,13 @@ private:
 	const LDP_STRUCT& ldpStructure;
 
 
-	std::unordered_map<size_t,double> baseCosts;
+	mutable std::unordered_map<size_t,double> baseCosts;
 	std::unordered_map<size_t,double> liftedCosts;
-	std::unordered_map<size_t,double> solutionCosts;
+	mutable std::unordered_map<size_t,double> solutionCosts;
 
-	std::unordered_map<size_t,double> valuesStructure;  //For DFS procedure
+	mutable std::unordered_map<size_t,double> valuesStructure;  //For DFS procedure
 
-	bool vsUpToDate;
+	mutable bool vsUpToDate;
 
 	//	 size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
 	//		 if(isOutFlow){
@@ -229,24 +229,27 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCostSimple(const doubl
 
 template<class LDP_STRUCT>
 inline double ldp_single_node_cut_factor<LDP_STRUCT>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
-//		if(!vsUpToDate){
-//			updateValues();
-//		}
-
-	double minValue=solutionCosts.at(optimalSolution);
-	size_t minVertex=optimalSolution;
-	for (std::pair<size_t,double> it :solutionCosts) {
-		if(it.second<minValue){
-			minValue=it.second;
-			minVertex=it.first;
-		}
+	if(!vsUpToDate){
+		updateValues();
+		return solutionCosts.at(optimalSolution);
 	}
-	return solutionCosts.at(minVertex);
+	else{
+		double minValue=solutionCosts.at(optimalSolution);
+		size_t minVertex=optimalSolution;
+		for (std::pair<size_t,double> it :solutionCosts) {
+			if(it.second<minValue){
+				minValue=it.second;
+				minVertex=it.first;
+			}
+		}
+		optimalSolution=minVertex;
+		return solutionCosts.at(optimalSolution);
+	}
 }
 
 
 template<class LDP_STRUCT>
-inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(){
+inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues() const{
 	//TODO probably switch from liftedEdgeID to the index of the max layer that has been changed
 	//std::unordered_map<size_t,size_t> indexStructure; //vertex->vertex. For reconstruction of opt. solution in lifted edges
 	std::unordered_set<size_t> closedVertices;
@@ -294,7 +297,7 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(){
 					}
 					else{
 						if(liftedCosts.count(vertex)>0){
-							valueToAdd=liftedCosts[vertex];
+							valueToAdd=liftedCosts.at(vertex);
 						}
 					}
 					solutionCosts[vertex]=baseCost+valueToAdd;
@@ -308,9 +311,9 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues(){
 			}
 			else{
 				if(liftedCosts.count(currentNode)>0){
-					minValue+=liftedCosts[currentNode];  //add lifted edge cost if the edge exists
+					minValue+=liftedCosts.at(currentNode);  //add lifted edge cost if the edge exists
 				}
-				if(minValue<0||(baseCosts.count(currentNode)>0&&minValue<liftedCosts[currentNode])){  //store only negative values or values needed to correct solutionCosts
+				if(minValue<0||(baseCosts.count(currentNode)>0&&minValue<liftedCosts.at(currentNode))){  //store only negative values or values needed to correct solutionCosts
 					valuesStructure[currentNode]=minValue;
 				}
 				else{
