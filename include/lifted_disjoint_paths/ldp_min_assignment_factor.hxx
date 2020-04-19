@@ -138,16 +138,16 @@ public:
 		LPMP::linear_assignment_problem_input lapInput=createLAStandard();
 		std::vector<size_t> labeling=getLabeling(lapInput);
 		double optimalValue= evaluateLabeling(labeling);
-		std::vector<std::unordered_set<size_t>> isNotOptZero;
+		std::vector<size_t> isNotOptZero; //enough to have single vertex instead of set.
 		std::vector<std::unordered_set<size_t>> isOptOne;
 		for (int vertex = 0; vertex < vertexN1; ++vertex) {
 			isOptOne[vertex].insert(labeling[vertex]);
-			isNotOptZero[vertex].insert(labeling[vertex]);
+			isNotOptZero[vertex]=labeling[vertex];
 		}
 		for (int v1 = 0; v1 < vertexN1; ++v1) {
 			for (int v2 = 0; v2 < vertexN2; ++v2) {
 				if(isOptOne[v1].count(v2)){ //has label 1 in optimum
-					if(isNotOptZero[v1].count(v2)==0){
+					if(isNotOptZero[v1]==v2){
 						//do nothing delta is zero
 					}
 					else{
@@ -155,6 +155,16 @@ public:
 						labeling=getLabeling(lapInput);
 						double value=evaluateLabeling(labeling);
 						double delta=optimalValue-value;
+						for (int vertex = 0; vertex < vertexN1; ++vertex) {
+							isOptOne[vertex].insert(labeling[vertex]);
+						}
+						for (int vertex = 0; vertex < vertexN1; ++vertex) {
+							size_t vertex2=isNotOptZero[vertex];
+							if(labeling[vertex]!=vertex2){
+								isNotOptZero=vertexN2;
+							}
+						}
+
 						//TODO update structures isOptOne and isNotOptZero
 					}
 
