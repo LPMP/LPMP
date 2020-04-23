@@ -7,6 +7,11 @@
 
 namespace LPMP {
 
+struct baseAndLiftedMessages{
+		std::unordered_map<size_t,double> baseMessages;
+		std::unordered_map<size_t,double> liftedMessages;
+	};
+
 template<class LDP_STRUCT>
 class ldp_single_node_cut_factor
 {
@@ -53,6 +58,10 @@ public:
 	std::unordered_map<size_t,double> adjustCostsAndSendMessages();
 
 
+
+	baseAndLiftedMessages adjustCostsAndSendMessagesLifted();
+
+
 	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primal_); }
 	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
 
@@ -91,7 +100,7 @@ private:
 			return baseGraph.numberOfEdgesToVertex(nodeIndex);
 		}
 	}
-	bool inInRange(size_t nodeIndex) const {
+	bool isInRange(size_t nodeIndex) const {
 		if(isOutFlow){
 			return ldpStructure.getGroupIndex(nodeIndex)<=maxLayer;
 		}
@@ -118,6 +127,7 @@ private:
 	mutable std::unordered_map<size_t,double> baseCosts;
 	std::unordered_map<size_t,double> liftedCosts;
 	mutable std::unordered_map<size_t,double> solutionCosts;
+	mutable std::unordered_map<size_t,std::unordered_set<size_t>> indexStructure;
 
 	mutable std::unordered_map<size_t,double> valuesStructure;  //For DFS procedure
 
@@ -197,6 +207,79 @@ private:
 
 };
 
+
+
+template<class LDP_STRUCT>
+inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_STRUCT>::adjustCostsAndSendMessagesLifted(){
+	std::unordered_map<size_t,double> baseMessages=adjustCostsAndSendMessages();
+	std::unordered_set<size_t> isNotZeroInOpt;
+	std::unordered_set<size_t> isOneInOpt;
+	//TODO try other starting points then optimalSolution
+	std::stack<size_t> myStack;
+	myStack.push(optimalSolution);
+	std::vector<size_t> path;
+	std::unordered_set<size_t> isOnPath;
+	std::unordered_map<size_t,size_t> predOnPath;
+	bool pathClosed=false;
+
+
+	size_t currentVertex=optimalSolution;
+	while(!pathClosed){
+		path.push_back(currentVertex);
+		isOnPath.insert(currentVertex);
+		isOneInOpt.insert(currentVertex);
+		isNotZeroInOpt.insert(currentVertex);
+		if(indexStructure.count(currentVertex)>0){
+			std::unordered_set<size_t>& myDesc=indexStructure[currentVertex];
+			if(myDesc.size()>1){
+				auto it=myDesc.begin();
+				it++;
+				for(;it!=myDesc.end();it++){
+					size_t sibling=*it;
+					myStack.push(sibling);
+					predOnPath[sibling]=currentVertex;
+				}
+			}
+			currentVertex=(*myDesc.begin());
+		}
+		else{
+			pathClosed=true;
+		}
+	}
+
+
+	size_t currentPathStart;  //does it need to be init?
+
+	while(!myStack.empty()){
+		size_t currentVertex=myStack.top();
+		myStack.pop();
+		if(predOnPath.count(currentVertex)>0){
+			currentPathStart=predOnPath[currentVertex];
+		}
+		bool hasDesc=indexStructure.count(currentVertex)>0;
+		if(isOnPath.count(currentVertex)>0||!hasDesc){
+			if(!hasDesc){
+				isOneInOpt.insert(currentVertex);
+			}
+			//TODO traverse path
+		}
+		else{
+			isOneInOpt.insert(currentVertex);
+			std::unordered_set<size_t>& myDesc=indexStructure[currentVertex];
+			for(auto it=myDesc.begin();it!=myDesc.end();it++){
+				size_t vertex=*it;
+				myStack.push(vertex);
+			}
+		}
+	}
+
+
+}
+
+
+
+
+
 template<class LDP_STRUCT>
 inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_STRUCT>::adjustCostsAndSendMessages(){
 	if(!vsUpToDate) updateValues();
@@ -250,9 +333,10 @@ inline double ldp_single_node_cut_factor<LDP_STRUCT>::LowerBound() const{//TODO 
 
 template<class LDP_STRUCT>
 inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues() const{
-	//TODO probably switch from liftedEdgeID to the index of the max layer that has been changed
-	//std::unordered_map<size_t,size_t> indexStructure; //vertex->vertex. For reconstruction of opt. solution in lifted edges
+	//TODO check if everything works fine for edge from v to t
 	std::unordered_set<size_t> closedVertices;
+	indexStructure=std::unordered_map<size_t,std::unordered_set<size_t>>();
+	valuesStructure=std::unordered_map<size_t,double>();
 	//size_t vertexToReach=getVertexToReach();
 
 	std::stack<size_t> nodeStack;
@@ -262,18 +346,18 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues() const{
 		size_t currentNode=nodeStack.top();
 		bool descClosed=true;
 		double minValue=0;
+		std::unordered_set<size_t> minValueIndices;
 		//size_t minValueIndex=vertexToReach;
 
 		for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
 			//size_t desc=baseGraph.vertexFromVertex(currentNode,i);
 			size_t desc=getNeighborBaseVertex(currentNode,i);
-			if(inInRange(desc)){
+			if(isInRange(desc)){
 				//if(indexStructure.count(desc)>0||(oneEdgeUpdate&&!reachable(currentNode,vertexToReach))){  //descendant closed
 			    if(closedVertices.count(desc)>0){  //descendant closed
 					if(descClosed&&valuesStructure.count(desc)>0){
-						if(minValue>valuesStructure[desc]){
+						if(minValue>=valuesStructure[desc]&&valuesStructure[desc]<0){
 							minValue=valuesStructure[desc];
-							//minValueIndex=desc;
 						}
 					}
 				}
@@ -310,6 +394,16 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues() const{
 
 			}
 			else{
+				if(minValue<0){
+					for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
+						size_t desc=getNeighborBaseVertex(currentNode,i);
+						if(isInRange(desc)){
+							if(valuesStructure.count(desc)>0&&valuesStructure[desc]==minValue){
+								indexStructure[currentNode].insert(desc);
+							}
+						}
+					}
+				}
 				if(liftedCosts.count(currentNode)>0){
 					minValue+=liftedCosts.at(currentNode);  //add lifted edge cost if the edge exists
 				}
