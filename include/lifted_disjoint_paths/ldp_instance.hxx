@@ -56,10 +56,10 @@ public:
 	}
 
 
-	const andres::graph::Digraph<>& getGraph()  {
+	const andres::graph::Digraph<>& getGraph() const  {
 		return graph_;
 	}
-	const andres::graph::Digraph<>& getGraphLifted()  {
+	const andres::graph::Digraph<>& getGraphLifted() const  {
 		return graphLifted_;
 	}
 
