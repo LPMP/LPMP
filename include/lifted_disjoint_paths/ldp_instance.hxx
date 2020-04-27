@@ -63,6 +63,10 @@ public:
 		return graphLifted_;
 	}
 
+	size_t getGapLifted(){
+		return parameters.getMaxTimeLifted();
+	}
+
 
 //	std::vector<std::unordered_set<size_t>>* getPReachableNew(){
 //		return &reachable;

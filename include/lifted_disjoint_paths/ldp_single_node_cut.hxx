@@ -12,18 +12,18 @@ struct baseAndLiftedMessages{
 	std::unordered_map<size_t,double> liftedMessages;
 };
 
-template<class LDP_STRUCT>
+template<class LDP_INSTANCE>
 class ldp_single_node_cut_factor
 {
 public:
 	//constexpr static std::size_t no_edge_active = std::numeric_limits<std::size_t>::infinity();
 
 	//template<class LPD_STRUCT> ldp_single_node_cut_factor(const LPD_STRUCT& ldpStruct);
-	ldp_single_node_cut_factor(const LDP_STRUCT& ldpStruct,size_t nID,bool isOut):
-		baseGraph(ldpStruct.getGraph()),
+	ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut):
+		baseGraph(ldpInst.getGraph()),
 		//liftedGraph(ldpStruct.getGraphLifted()),
 		nodeID(nID),
-		ldpStructure(ldpStruct),
+		ldpInstance(ldpInst),
 		isOutFlow(isOut),
 		nodeNotActive(nID)
 {
@@ -33,12 +33,12 @@ public:
 		optimalSolution=nodeNotActive;
 
 		if(isOutFlow){
-			minLayer=ldpStruct.getGroupIndex(nodeID);
-			maxLayer=minLayer+ldpStruct.getGapLifted(); //some method that returns max time gap lifted
+			minLayer=ldpInst.getGroupIndex(nodeID);
+			maxLayer=minLayer+ldpInst.getGapLifted(); //some method that returns max time gap lifted
 		}
 		else{
-			maxLayer=ldpStruct.getGroupIndex(nodeID);
-			minLayer=std::max(0,int(maxLayer)-int(ldpStruct.getGapLifted()));
+			maxLayer=ldpInst.getGroupIndex(nodeID);
+			minLayer=std::max(0,int(maxLayer)-int(ldpInst.getGapLifted()));
 		}
 
 		baseCosts=std::unordered_map<size_t,double>();  //TODO change to maps nodeID->cost. Should be easier for messages
@@ -104,10 +104,10 @@ private:
 	}
 	bool isInRange(size_t nodeIndex) const {
 		if(isOutFlow){
-			return ldpStructure.getGroupIndex(nodeIndex)<=maxLayer;
+			return ldpInstance.getGroupIndex(nodeIndex)<=maxLayer;
 		}
 		else{
-			return ldpStructure.getGroupIndex(nodeIndex)>=minLayer;
+			return ldpInstance.getGroupIndex(nodeIndex)>=minLayer;
 		}
 	}
 
@@ -123,7 +123,7 @@ private:
 
 	const andres::graph::Digraph<>& baseGraph;
 	//const andres::graph::Digraph<>& liftedGraph;
-	const LDP_STRUCT& ldpStructure;
+	const LDP_INSTANCE& ldpInstance;
 
 
 	mutable std::unordered_map<size_t,double> baseCosts;
@@ -200,10 +200,10 @@ private:
 
 		size_t getVertexToReach(){
 			if(isOutFlow){
-				return ldpStructure.getTerminalNode;
+				return ldpInstance.getTerminalNode;
 			}
 			else{
-				return ldpStructure.getSourceNode;
+				return ldpInstance.getSourceNode;
 			}
 		}
 
@@ -211,8 +211,8 @@ private:
 
 
 
-//template<class LDP_STRUCT>
-//inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_STRUCT>::adjustCostsAndSendMessagesLifted(){
+//template<class LDP_INSTANCE>
+//inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCostsAndSendMessagesLifted(){
 //	std::unordered_map<size_t,double> baseMessages=adjustCostsAndSendMessages();
 //	std::unordered_map<size_t,double> liftedMessages;
 //
@@ -432,8 +432,8 @@ private:
 //
 //}
 
-//template<class LDP_STRUCT>
-//inline std::unordered_map<size_t,std::unordered_set<size_t>> ldp_single_node_cut_factor<LDP_STRUCT>::initPredecessorsInIndexStr(){
+//template<class LDP_INSTANCE>
+//inline std::unordered_map<size_t,std::unordered_set<size_t>> ldp_single_node_cut_factor<LDP_INSTANCE>::initPredecessorsInIndexStr(){
 //	std::unordered_map<size_t,std::unordered_set<size_t>> reachable;
 //	std::unordered_map<size_t,std::unordered_set<size_t>> pred;
 //	//TODO DFS from all vertices
@@ -475,8 +475,8 @@ private:
 //}
 
 
-template<class LDP_STRUCT>
-inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_STRUCT>::adjustCostsAndSendMessages(){
+template<class LDP_INSTANCE>
+inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCostsAndSendMessages(){
 	if(!vsUpToDate) updateValues();
 	double minValue=solutionCosts[optimalSolution];
 	std::unordered_map<size_t,double> messages;
@@ -491,8 +491,8 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_STRUCT>:
 }
 
 
-template<class LDP_STRUCT>
-inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCostSimple(const double value,const size_t vertexIndex,bool isLifted){//Only cost change
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const double value,const size_t vertexIndex,bool isLifted){//Only cost change
 	if(!isLifted){ //update in base edge
 		baseCosts[vertexIndex]+=value;
 		solutionCosts[vertexIndex]+=value;
@@ -505,8 +505,8 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCostSimple(const doubl
 }
 
 
-template<class LDP_STRUCT>
-inline double ldp_single_node_cut_factor<LDP_STRUCT>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
+template<class LDP_INSTANCE>
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
 	if(!vsUpToDate){
 		updateValues();
 		return solutionCosts.at(optimalSolution);
@@ -526,8 +526,8 @@ inline double ldp_single_node_cut_factor<LDP_STRUCT>::LowerBound() const{//TODO 
 }
 
 
-template<class LDP_STRUCT>
-inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues() const{
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 	//TODO check if everything works fine for edge from v to t
 	std::unordered_set<size_t> closedVertices;
 	indexStructure=std::unordered_map<size_t,std::unordered_set<size_t>>();
@@ -630,8 +630,8 @@ inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateValues() const{
 
 
 
-//template<class LDP_STRUCT>
-//inline void ldp_single_node_cut_factor<LDP_STRUCT>::updateCostFull(const double value,const size_t index){//Includes DFS update
+//template<class LDP_INSTANCE>
+//inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostFull(const double value,const size_t index){//Includes DFS update
 //	size_t myIndex=decodeIndex(index);
 //	if(myIndex<numberOfEdges){ //update in base edge
 //		baseCosts[myIndex]+=value;
