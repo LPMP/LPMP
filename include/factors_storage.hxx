@@ -23,7 +23,7 @@ public:
    FactorTypeAdapter* get_factor(const std::size_t i) const { assert(i<number_of_factors()); return factors_[i]; }
 
    template<typename FACTOR_CONTAINER_TYPE, typename... ARGS>
-   FACTOR_CONTAINER_TYPE* add_factor(ARGS... args);
+   FACTOR_CONTAINER_TYPE* add_factor(ARGS&&... args);
 
    void add_factor_relation(FactorTypeAdapter* f1, FactorTypeAdapter* f2); // indicate that factor f1 comes before factor f2
    void add_forward_pass_factor_relation(FactorTypeAdapter* f1, FactorTypeAdapter* f2);
@@ -69,9 +69,9 @@ private:
 
 template<typename FMC>
 template<typename FACTOR_CONTAINER_TYPE, typename... ARGS>
-FACTOR_CONTAINER_TYPE* factors_storage<FMC>::add_factor(ARGS... args)
+FACTOR_CONTAINER_TYPE* factors_storage<FMC>::add_factor(ARGS&&... args)
 { 
-   auto* f = new FACTOR_CONTAINER_TYPE(args...);
+   auto* f = new FACTOR_CONTAINER_TYPE(std::forward<ARGS>(args)...);
    assert(factor_address_to_index_.size() == factors_.size());
    factors_.push_back(f);
 

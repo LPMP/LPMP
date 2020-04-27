@@ -1801,7 +1801,7 @@ public:
 
    // do zrobienia: templatize cosntructor to allow for more general initialization of reparametrization storage and factor
    template<typename ...ARGS>
-   FactorContainer(ARGS... args) : factor_(args...) {}
+   FactorContainer(ARGS&&... args) : factor_(std::forward<ARGS>(args)...) {}
 
    FactorContainer(const FactorType&& factor) : factor_(std::move(factor)) {
       //INDEX status;

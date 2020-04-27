@@ -53,10 +53,10 @@ public:
    void End() {};
 
    template<typename FACTOR_CONTAINER_TYPE, typename... ARGS>
-   FACTOR_CONTAINER_TYPE* add_factor(ARGS... args);
+   FACTOR_CONTAINER_TYPE* add_factor(ARGS&&... args);
 
    template<typename MESSAGE_CONTAINER_TYPE, typename LEFT_FACTOR, typename RIGHT_FACTOR, typename... ARGS>
-   MESSAGE_CONTAINER_TYPE* add_message(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS... args);
+   MESSAGE_CONTAINER_TYPE* add_message(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS&&... args);
 
    //void ComputeWeights(const lp_reparametrization_mode m);
    void set_reparametrization(const lp_reparametrization r) { repam_mode_ = r; }
@@ -212,16 +212,15 @@ inline void LP<FMC>::Begin()
 
 template<typename FMC>
 template<typename FACTOR_CONTAINER_TYPE, typename... ARGS>
-FACTOR_CONTAINER_TYPE* LP<FMC>::add_factor(ARGS... args)
+FACTOR_CONTAINER_TYPE* LP<FMC>::add_factor(ARGS&&... args)
 {
-   // this is not so nice: functions that change factors need to be
    message_passing_weights_.clear();
    return factors_storage<FMC>::template add_factor<FACTOR_CONTAINER_TYPE>(std::forward<ARGS>(args)...);
 }
 
 template<typename FMC>
 template<typename MESSAGE_CONTAINER_TYPE, typename LEFT_FACTOR, typename RIGHT_FACTOR, typename... ARGS>
-MESSAGE_CONTAINER_TYPE* LP<FMC>::add_message(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS... args)
+MESSAGE_CONTAINER_TYPE* LP<FMC>::add_message(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS&&... args)
 {
    message_passing_weights_.clear();
    return messages_storage<FMC>::template add_message<MESSAGE_CONTAINER_TYPE>(l,r, std::forward<ARGS>(args)...);

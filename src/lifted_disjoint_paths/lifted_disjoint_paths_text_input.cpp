@@ -9,7 +9,7 @@
 using namespace LPMP;
 
 int main(int argc, char** argv) {
-	Solver<LP<lifted_disjoint_paths_FMC>,StandardTighteningVisitor> solver(argc,argv);
+	ProblemConstructorRoundingSolver<Solver<LP<lifted_disjoint_paths_FMC>,StandardTighteningVisitor>> solver(argc,argv);
 	std::string inputFileName=solver.get_input_file();
 
 	lifted_disjoint_paths::LdpInstance input = lifted_disjoint_paths::parse_file(inputFileName);

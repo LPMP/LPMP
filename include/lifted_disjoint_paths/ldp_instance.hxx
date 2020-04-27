@@ -63,7 +63,7 @@ public:
 		return graphLifted_;
 	}
 
-	size_t getGapLifted(){
+	size_t getGapLifted() const {
 		return parameters.getMaxTimeLifted();
 	}
 

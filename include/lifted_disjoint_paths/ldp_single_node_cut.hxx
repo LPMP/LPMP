@@ -68,7 +68,8 @@ public:
 	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
 
 	//auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
-	auto export_variables() { return std::tie(solutionCosts); }//?What comes here?
+	double tmp_to_delete_val;
+	auto export_variables() { return std::tie(tmp_to_delete_val); } //?What comes here?
 
 	void init_primal() { primal_ = nodeNotActive; }
 
@@ -87,6 +88,7 @@ public:
 private:
 
 	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex) const{
+		assert(firstNode < baseGraph.numberOfVertices());
 		if(isOutFlow){
 			return baseGraph.vertexFromVertex(firstNode,neighborIndex);
 		}
@@ -94,7 +96,8 @@ private:
 			return baseGraph.vertexToVertex(firstNode,neighborIndex);
 		}
 	}
-	size_t numberOfNeighborsBase(size_t nodeIndex) const {
+	size_t numberOfNeighborsBase(const size_t nodeIndex) const {
+		assert(nodeIndex < baseGraph.numberOfVertices());
 		if(isOutFlow){
 			return baseGraph.numberOfEdgesFromVertex(nodeIndex);
 		}
@@ -102,7 +105,8 @@ private:
 			return baseGraph.numberOfEdgesToVertex(nodeIndex);
 		}
 	}
-	bool isInRange(size_t nodeIndex) const {
+	bool isInRange(const size_t nodeIndex) const {
+		assert(nodeIndex < baseGraph.numberOfVertices());
 		if(isOutFlow){
 			return ldpInstance.getGroupIndex(nodeIndex)<=maxLayer;
 		}

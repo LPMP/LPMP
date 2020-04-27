@@ -103,9 +103,23 @@ namespace LPMP {
     template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, MCF_FACTOR, SINGLE_NODE_CUT_FACTOR, MCF_SINGLE_NODE_CUT_MESSAGE>::prepare_mcf_costs()
     {
+       mcf_->reset_costs();
+
         for(std::size_t i=0; i<single_node_cut_factors_.size(); ++i)
         {
             auto *incoming_snc = single_node_cut_factors_[i][0];
+            const auto incoming_min_marg = incoming_snc->get_factor()->adjustCostsAndSendMessages();
+            std::cout << "incoming_min_marg size = " << incoming_min_marg.size() << "\n";
+            auto e = mcf_->first_outgoing_arc(i);
+            for (std::size_t l = 0; l < incoming_min_marg.size(); ++l, ++e)
+            {
+                const std::size_t start_node = mcf_->tail(e);
+                assert(mcf_->head(e) == i);
+                assert(mcf_->cost(e) == 0.0);
+                assert(incoming_min_marg.count(l) > 0);
+                mcf_->update_cost(e, incoming_min_marg.find(l)->second);
+            }
+
             auto *outgoing_snc = single_node_cut_factors_[i][1];
         }
     }
