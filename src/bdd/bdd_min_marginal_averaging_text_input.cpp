@@ -12,7 +12,7 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const double min_progress = 1e-06; // relative to objective function
-    const int max_iter = 1000;
+    const int max_iter = 10000;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
     input.reorder_bfs();
@@ -24,6 +24,9 @@ int main(int argc, char** argv)
     bdd_mma_fixing solver;
     solver.set_options(options);
     solver.init(input);
+
+    std::cout << "\#variables: " << solver.nr_variables() << std::endl;
+    std::cout << "\#constraints: " << solver.nr_bdds() << std::endl;
 
     std::cout << std::setprecision(10);
     const double initial_lb = solver.compute_lower_bound();
