@@ -21,7 +21,7 @@ public:
 	//template<class LPD_STRUCT> ldp_single_node_cut_factor(const LPD_STRUCT& ldpStruct);
 	ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut):
 		baseGraph(ldpInst.getGraph()),
-		//liftedGraph(ldpStruct.getGraphLifted()),
+		liftedGraph(ldpInst.getGraphLifted()),
 		nodeID(nID),
 		ldpInstance(ldpInst),
 		isOutFlow(isOut),
@@ -41,11 +41,14 @@ public:
 			minLayer=std::max(0,int(maxLayer)-int(ldpInst.getGapLifted()));
 		}
 
-		baseCosts=std::unordered_map<size_t,double>();  //TODO change to maps nodeID->cost. Should be easier for messages
-		liftedCosts=std::unordered_map<size_t,double>();
+		//baseCosts=std::unordered_map<size_t,double>();  //TODO change to maps nodeID->cost. Should be easier for messages
+		initBaseCosts(0);
+		//liftedCosts=std::unordered_map<size_t,double>();
+		initLiftedCosts(0);
 		solutionCosts=std::unordered_map<size_t,double>();
 		solutionCosts[nodeNotActive]=0;
 		vsUpToDate=false;
+
 
 }
 
@@ -75,11 +78,19 @@ public:
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
 
+	void addLiftedEdge(size_t node,double cost);
+
 	void updateValues() const;
+
+	void initBaseCosts(double fractionBase);
+
+	void initLiftedCosts(double fractionLifted);
 
 	const andres::graph::Digraph<>& getBaseGraph() const {
 		return baseGraph;
 	}
+
+
 
 	const std::size_t nodeID;
 	const size_t nodeNotActive;
@@ -126,7 +137,7 @@ private:
 	const bool isOutFlow;
 
 	const andres::graph::Digraph<>& baseGraph;
-	//const andres::graph::Digraph<>& liftedGraph;
+	const andres::graph::Digraph<>& liftedGraph;
 	const LDP_INSTANCE& ldpInstance;
 
 
@@ -139,48 +150,48 @@ private:
 
 	mutable bool vsUpToDate;
 
-	//	 size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
-	//		 if(isOutFlow){
-	//			 return baseGraph.edgeFromVertex(firstNode,neighborIndex);
-	//		 }
-	//		 else{
-	//			 return baseGraph.edgeToVertex(firstNode,neighborIndex);
-	//		 }
-	//	 }
-	//	 size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
-	//		 if(isOutFlow){
-	//			 return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
-	//		 }
-	//		 else{
-	//			 return liftedGraph.edgeToVertex(firstNode,neighborIndex);
-	//		 }
-	//	 }
-	//	 size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
-	//		 if(isOutFlow){
-	//			 return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
-	//		 }
-	//		 else{
-	//			 return liftedGraph.vertexToVertex(firstNode,neighborIndex);
-	//		 }
-	//	 }
+		 size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
+			 if(isOutFlow){
+				 return baseGraph.edgeFromVertex(firstNode,neighborIndex);
+			 }
+			 else{
+				 return baseGraph.edgeToVertex(firstNode,neighborIndex);
+			 }
+		 }
+		 size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
+			 if(isOutFlow){
+				 return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
+			 }
+			 else{
+				 return liftedGraph.edgeToVertex(firstNode,neighborIndex);
+			 }
+		 }
+		 size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
+			 if(isOutFlow){
+				 return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
+			 }
+			 else{
+				 return liftedGraph.vertexToVertex(firstNode,neighborIndex);
+			 }
+		 }
 
-	//	 size_t numberOfNeighborsLifted(size_t nodeIndex){
-	//		 if(isOutFlow){
-	//			 return liftedGraph.numberOfEdgesFromVertex(nodeIndex);
-	//		 }
-	//		 else{
-	//			 return liftedGraph.numberOfEdgesToVertex(nodeIndex);
-	//		 }
-	//	 }
+		 size_t numberOfNeighborsLifted(size_t nodeIndex){
+			 if(isOutFlow){
+				 return liftedGraph.numberOfEdgesFromVertex(nodeIndex);
+			 }
+			 else{
+				 return liftedGraph.numberOfEdgesToVertex(nodeIndex);
+			 }
+		 }
 
-	//	 bool reachable(size_t firstVertex,size_t secondVertex){
-	//		 if(isOutFlow){
-	//			 return ldpStructure.isReachable(firstVertex,secondVertex);
-	//		 }
-	//		 else{
-	//			 return ldpStructure.isReachable(secondVertex,firstVertex);
-	//		 }
-	//	 }
+		 bool reachable(size_t firstVertex,size_t secondVertex){
+			 if(isOutFlow){
+				 return ldpInstance.isReachable(firstVertex,secondVertex);
+			 }
+			 else{
+				 return ldpInstance.isReachable(secondVertex,firstVertex);
+			 }
+		 }
 
 
 	//	 std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
@@ -498,14 +509,61 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const double value,const size_t vertexIndex,bool isLifted){//Only cost change
 	if(!isLifted){ //update in base edge
+		assert(baseCosts.count(vertexIndex)>0);
 		baseCosts[vertexIndex]+=value;
 		solutionCosts[vertexIndex]+=value;
 	}
 	else{ //update in lifted edge
+		assert(liftedCosts.count(vertexIndex)>0);
 		liftedCosts[vertexIndex]+=value;
 		valuesStructure[vertexIndex]+=value;
 		vsUpToDate=false;
 	}
+}
+
+
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::addLiftedEdge(size_t node,double cost){
+    assert(reachable(nodeID,node));
+	liftedCosts[node]=cost;
+}
+
+
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fractionLifted){
+	for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+		size_t edgeID=getNeighborLiftedEdge(nodeID,i);
+		size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+		double cost=ldpInstance.getLiftedEdgeScore(edgeID);
+		liftedCosts[neighborID]=fractionLifted*cost;
+	}
+
+}
+
+
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fractionBase){
+	if(fractionBase==0){
+		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
+			size_t neighborID=getNeighborBaseVertex(nodeID,i);
+			baseCosts[neighborID]=0;
+		}
+	}
+	else{
+		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
+			size_t edgeID=getNeighborBaseEdge(nodeID,i);
+			size_t neighborID=getNeighborBaseVertex(nodeID,i);
+			double cost=ldpInstance.getEdgeScore(edgeID);
+			baseCosts[neighborID]=fractionBase*cost;
+		}
+	}
+//	for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+//		size_t edgeID=getNeighborLiftedEdge(nodeID,i);
+//		size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+//		double cost=ldpInstance.getLiftedEdgeScore(edgeID);
+//		liftedCosts[neighborID]=fractionLifted*cost;
+//	}
+
 }
 
 
