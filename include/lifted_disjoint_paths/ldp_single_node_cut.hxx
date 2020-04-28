@@ -41,12 +41,13 @@ public:
 			minLayer=std::max(0,int(maxLayer)-int(ldpInst.getGapLifted()));
 		}
 
-		//baseCosts=std::unordered_map<size_t,double>();  //TODO change to maps nodeID->cost. Should be easier for messages
+		//baseCosts=std::unordered_map<size_t,double>();
 		initBaseCosts(0);
 		//liftedCosts=std::unordered_map<size_t,double>();
 		initLiftedCosts(0);
-		solutionCosts=std::unordered_map<size_t,double>();
+		//solutionCosts=std::unordered_map<size_t,double>();
 		solutionCosts[nodeNotActive]=0;
+		baseCosts[nodeNotActive]=0;
 		vsUpToDate=false;
 
 
@@ -531,13 +532,20 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::addLiftedEdge(size_t node,
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fractionLifted){
-	for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
-		size_t edgeID=getNeighborLiftedEdge(nodeID,i);
-		size_t neighborID=getNeighborLiftedVertex(nodeID,i);
-		double cost=ldpInstance.getLiftedEdgeScore(edgeID);
-		liftedCosts[neighborID]=fractionLifted*cost;
+	if(fractionLifted==0){
+		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+			liftedCosts[neighborID]=0;
+		}
 	}
-
+	else{
+		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+			size_t edgeID=getNeighborLiftedEdge(nodeID,i);
+			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+			double cost=ldpInstance.getLiftedEdgeScore(edgeID);
+			liftedCosts[neighborID]=fractionLifted*cost;
+		}
+	}
 }
 
 
@@ -547,6 +555,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 			size_t neighborID=getNeighborBaseVertex(nodeID,i);
 			baseCosts[neighborID]=0;
+			solutionCosts[neighborID]=0;
 		}
 	}
 	else{
@@ -671,11 +680,12 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 //					}
 //				}
 				//}
+				double valueToStore=minValue;
 				if(liftedCosts.count(currentNode)>0){
-					minValue+=liftedCosts.at(currentNode);  //add lifted edge cost if the edge exists
+					valueToStore+=liftedCosts.at(currentNode);  //add lifted edge cost if the edge exists
 				}
-				if(minValue<0||(baseCosts.count(currentNode)>0&&minValue<liftedCosts.at(currentNode))){  //store only negative values or values needed to correct solutionCosts
-					valuesStructure[currentNode]=minValue;
+				if(valueToStore<0||(baseCosts.count(currentNode)>0&&minValue<0)){  //store only negative values or values needed to correct solutionCosts
+					valuesStructure[currentNode]=valueToStore;
 				}
 				else{
 					valuesStructure.erase(currentNode);
