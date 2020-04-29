@@ -397,12 +397,13 @@ namespace LPMP {
         size_t nfixes = 0;
         size_t max_fixes = nr_variables();
         // size_t max_fixes = std::numeric_limits<size_t>::max();
-        std::cout << "\nExpanded " << nfixes << " from a budget of " << max_fixes << " search tree nodes.." << std::flush;
+        std::cout << "Search tree node budget: " << max_fixes << std::endl;
+        std::cout << "Expanded: " << std::endl;
 
         while (!variable_fixes.empty())
         {
             nfixes++;
-            std::cout << "\rExpanded " << nfixes << " from a budget of " << max_fixes << " search tree nodes.." << std::flush;
+            std::cout << "\r" << nfixes << std::flush;
             if (nfixes > max_fixes)
                 return false;
 

@@ -456,6 +456,7 @@ namespace LPMP {
         bdd_min_marginal_averaging_options(int argc, char** argv);
         bdd_min_marginal_averaging_options() {}
         enum class averaging_type {classic, SRMP} averaging_type = averaging_type::classic;
+        enum class variable_order {input, bfs, cuthill, mindegree} variable_order = variable_order::input;
     };
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -524,18 +525,31 @@ namespace LPMP {
 
    bdd_min_marginal_averaging_options::bdd_min_marginal_averaging_options(int argc, char** argv)
         {
-            TCLAP::CmdLine cmd("Command line parser for bdd min marginal averation options", ' ', " ");
-            TCLAP::ValueArg<std::string> reweighting_arg("o","order","reweighting scheme",false,"","{classic|SRMP}");
-            cmd.add(reweighting_arg);
+            TCLAP::CmdLine cmd("Command line parser for bdd min marginal averaging options", ' ', " ");
+            TCLAP::ValueArg<std::string> averaging_arg("a","averaging","averaging type",false,"classic","{classic|SRMP}");
+            TCLAP::ValueArg<std::string> order_arg("o","order","variable order",false,"input","{input|bfs|cuthill|mindegree}");
+            cmd.add(averaging_arg);
+            cmd.add(order_arg);
 
             cmd.parse(argc, argv);
 
-            if(reweighting_arg.getValue() == "classic")
+            if(averaging_arg.getValue() == "classic")
                 averaging_type = bdd_min_marginal_averaging_options::averaging_type::classic;
-            else if(reweighting_arg.getValue() == "SRMP")
+            else if(averaging_arg.getValue() == "SRMP")
                 averaging_type = bdd_min_marginal_averaging_options::averaging_type::SRMP;
             else
-                throw std::runtime_error("direction not recognized");
+                throw std::runtime_error("averaging type not recognized");
+
+            if(order_arg.getValue() == "input")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::input;
+            else if(order_arg.getValue() == "bfs")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::bfs;
+            else if(order_arg.getValue() == "cuthill")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::cuthill;
+            else if(order_arg.getValue() == "mindegree")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::mindegree;
+            else
+                throw std::runtime_error("variable order not recognized");
         }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>

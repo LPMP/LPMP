@@ -1,4 +1,5 @@
 #include "bdd/bdd_min_marginal_averaging.h"
+#include "bdd/bdd_primal_fixing.h"
 #include "bdd/ILP_parser.h"
 #include "cuddObj.hh"
 
@@ -15,11 +16,14 @@ int main(int argc, char** argv)
     const int max_iter = 10000;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
-    input.reorder_bfs();
-    //input.reorder_Cuthill_McKee();
-    //input.reorder_minimum_degree_averaging();
-
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
+
+    if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::bfs)
+        input.reorder_bfs();
+    else if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::cuthill)
+        input.reorder_Cuthill_McKee();
+    else if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::mindegree)
+        input.reorder_minimum_degree_averaging();
 
     bdd_mma_fixing solver;
     solver.set_options(options);

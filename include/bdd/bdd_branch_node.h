@@ -638,32 +638,6 @@ namespace LPMP {
     // Variable Fixing Branch Node
     /////////////////////////////////
 
-    // template<typename DERIVED>
-    // class bdd_branch_node_fix_base : virtual public bdd_branch_node<DERIVED> {
-    //     public:
-    //         DERIVED* prev_low_incoming = nullptr;
-    //         DERIVED* prev_high_incoming = nullptr;
-
-    //         bdd_variable_fix* bdd_var;
-
-    //         // From C++20
-    //         friend bool operator==(const DERIVED& x, const DERIVED& y);
-
-    // };
-
-    // template<typename DERIVED>
-    // bool operator==(const DERIVED& x, const DERIVED& y)
-    // {
-    //     const bool equal = ((bdd_branch_node<DERIVED>) x == (bdd_branch_node<DERIVED>) y &&
-    //         x.prev_low_incoming == y.prev_low_incoming &&
-    //         x.prev_high_incoming == y.prev_high_incoming &&
-    //         x.bdd_var == y.bdd_var);
-    //     return equal;
-    // }
-
-    // class bdd_branch_node_fix : public bdd_branch_node_opt_base<bdd_branch_node_fix>, public bdd_branch_node_fix_base<bdd_branch_node_fix> {
-    // };
-
     class bdd_branch_node_fix : public bdd_branch_node_opt_smoothed_base<bdd_branch_node_fix> {
         public:
             bdd_branch_node_fix* prev_low_incoming = nullptr;
@@ -689,5 +663,31 @@ namespace LPMP {
             x.bdd_var == y.bdd_var);
         return equal;
     }
+
+    // template<typename DERIVED>
+    // class bdd_branch_node_fix_base : virtual public bdd_branch_node<DERIVED> {
+    //     public:
+    //         DERIVED* prev_low_incoming = nullptr;
+    //         DERIVED* prev_high_incoming = nullptr;
+
+    //         bdd_variable_fix* bdd_var;
+
+    //         // From C++20
+    //         friend bool operator==(const DERIVED& x, const DERIVED& y);
+
+    // };
+
+    // template<typename DERIVED>
+    // bool operator==(const DERIVED& x, const DERIVED& y)
+    // {
+    //     const bool equal = ((bdd_branch_node<DERIVED>) x == (bdd_branch_node<DERIVED>) y &&
+    //         x.prev_low_incoming == y.prev_low_incoming &&
+    //         x.prev_high_incoming == y.prev_high_incoming &&
+    //         x.bdd_var == y.bdd_var);
+    //     return equal;
+    // }
+
+    // class bdd_branch_node_fix : public bdd_branch_node_opt_base<bdd_branch_node_fix>, public bdd_branch_node_fix_base<bdd_branch_node_fix> {
+    // };
 }
 
