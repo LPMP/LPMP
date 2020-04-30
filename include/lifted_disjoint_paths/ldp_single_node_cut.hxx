@@ -63,7 +63,7 @@ public:
 
 
 
-	//baseAndLiftedMessages adjustCostsAndSendMessagesLifted();
+	baseAndLiftedMessages adjustCostsAndSendMessagesLifted();
 
 	//std::unordered_map<size_t,std::unordered_set<size_t>> initPredecessorsInIndexStr();
 
@@ -127,6 +127,16 @@ private:
 		}
 	}
 
+	bool isInRange(const size_t nodeIndex,const size_t boundLayer) const {
+		assert(nodeIndex < baseGraph.numberOfVertices());
+		if(isOutFlow){
+			return ldpInstance.getGroupIndex(nodeIndex)<=boundLayer;
+		}
+		else{
+			return ldpInstance.getGroupIndex(nodeIndex)>=boundLayer;
+		}
+	}
+
 
 
 	std::size_t primal_; // the incoming resp. outgoing edge that is active.
@@ -151,48 +161,48 @@ private:
 
 	mutable bool vsUpToDate;
 
-		 size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
-			 if(isOutFlow){
-				 return baseGraph.edgeFromVertex(firstNode,neighborIndex);
-			 }
-			 else{
-				 return baseGraph.edgeToVertex(firstNode,neighborIndex);
-			 }
-		 }
-		 size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
-			 if(isOutFlow){
-				 return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
-			 }
-			 else{
-				 return liftedGraph.edgeToVertex(firstNode,neighborIndex);
-			 }
-		 }
-		 size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
-			 if(isOutFlow){
-				 return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
-			 }
-			 else{
-				 return liftedGraph.vertexToVertex(firstNode,neighborIndex);
-			 }
-		 }
+	size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex){
+		if(isOutFlow){
+			return baseGraph.edgeFromVertex(firstNode,neighborIndex);
+		}
+		else{
+			return baseGraph.edgeToVertex(firstNode,neighborIndex);
+		}
+	}
+	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
+		if(isOutFlow){
+			return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
+		}
+		else{
+			return liftedGraph.edgeToVertex(firstNode,neighborIndex);
+		}
+	}
+	size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex){
+		if(isOutFlow){
+			return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
+		}
+		else{
+			return liftedGraph.vertexToVertex(firstNode,neighborIndex);
+		}
+	}
 
-		 size_t numberOfNeighborsLifted(size_t nodeIndex){
-			 if(isOutFlow){
-				 return liftedGraph.numberOfEdgesFromVertex(nodeIndex);
-			 }
-			 else{
-				 return liftedGraph.numberOfEdgesToVertex(nodeIndex);
-			 }
-		 }
+	size_t numberOfNeighborsLifted(size_t nodeIndex){
+		if(isOutFlow){
+			return liftedGraph.numberOfEdgesFromVertex(nodeIndex);
+		}
+		else{
+			return liftedGraph.numberOfEdgesToVertex(nodeIndex);
+		}
+	}
 
-		 bool reachable(size_t firstVertex,size_t secondVertex){
-			 if(isOutFlow){
-				 return ldpInstance.isReachable(firstVertex,secondVertex);
-			 }
-			 else{
-				 return ldpInstance.isReachable(secondVertex,firstVertex);
-			 }
-		 }
+	bool reachable(size_t firstVertex,size_t secondVertex){
+		if(isOutFlow){
+			return ldpInstance.isReachable(firstVertex,secondVertex);
+		}
+		else{
+			return ldpInstance.isReachable(secondVertex,firstVertex);
+		}
+	}
 
 
 	//	 std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
@@ -214,16 +224,174 @@ private:
 	//	 }
 
 
-		size_t getVertexToReach(){
-			if(isOutFlow){
-				return ldpInstance.getTerminalNode;
-			}
-			else{
-				return ldpInstance.getSourceNode;
-			}
+	size_t getVertexToReach(){
+		if(isOutFlow){
+			return ldpInstance.getTerminalNode;
 		}
+		else{
+			return ldpInstance.getSourceNode;
+		}
+	}
 
 };
+
+template<class LDP_INSTANCE>
+inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCostsAndSendMessagesLifted(){
+	std::unordered_map<size_t,double> baseMessages=adjustCostsAndSendMessages();
+	std::unordered_map<size_t,double> liftedMessages;
+
+	std::unordered_set<size_t> isNotZeroInOpt;
+	std::unordered_set<size_t> isOneInOpt;
+
+	updateValues();
+	std::list<size_t> openVertices;
+
+	size_t vertexInOptimalPath=nodeID;
+	openVertices.push_back(nodeID);
+	std::unordered_map<size_t,size_t> openBackward;
+	std::unordered_map<size_t,size_t> openForward;
+
+
+	while(indexStructure.count(vertexInOptimalPath)>0){
+		isOneInOpt.insert(vertexInOptimalPath);
+		isNotZeroInOpt.insert(vertexInOptimalPath);
+		openBackward[vertexInOptimalPath]=*openVertices.rbegin();
+		if(liftedCosts.count(vertexInOptimalPath)>0){
+			openVertices.push_back(vertexInOptimalPath);
+		}
+		size_t newVertex=indexStructure[vertexInOptimalPath];
+		vertexInOptimalPath=newVertex;
+	}
+
+	std::unordered_map<size_t,std::unordered_set<size_t>> candidateGraph;
+	for(auto it=valuesStructure.begin();it!=valuesStructure.end();it++){
+		size_t vertex=it->first;
+		for (int i = 0; i < numberOfNeighborsBase(vertex); ++i) {
+			size_t neighbor=getNeighborBaseVertex(vertex,i);
+			if(indexStructure.count(neighbor)>0){
+				candidateGraph[vertex].insert(neighbor);
+			}
+		}
+	}
+
+	size_t boundLayer=maxLayer;
+	if(!isOutFlow){
+		boundLayer=minLayer;
+	}
+	std::unordered_set<size_t> isProcessed;
+	while(openVertices.size()>0){
+		std::stack<size_t> myStack;
+		std::stack<size_t> newOptimaStack;
+		std::vector<std::pair<size_t,size_t>> intervalsToClose;
+		myStack.push(nodeID);
+		while(!myStack.empty()){
+			size_t vertex=myStack.top();
+			bool descClosed=true;
+			if(candidateGraph.count(vertex)>0){
+				for(size_t desc:candidateGraph[vertex]){
+					if(isInRange(desc,boundLayer)){
+						if(isProcessed.count(desc)==0){
+							myStack.push(desc);
+							descClosed=false;
+						}
+					}
+				}
+
+				if(descClosed){
+					myStack.pop();
+					double bestValue=0;
+					std::unordered_set<size_t> bestNeighbors;
+					for(size_t desc:candidateGraph[vertex]){
+						//TODO also fill openForward!
+						if(valuesStructure[desc]<bestValue){ //TODO is contained in ValuesStr?
+							bestValue=valuesStructure;
+							bestNeighbors.clear();
+							bestNeighbors.insert(desc);
+						}
+						else if(valuesStructure[desc]==bestValue&&bestValue<0){
+							bestNeighbors.insert(desc);
+						}
+					}
+
+					if(isOneInOpt.count(vertex)>0){
+						for(size_t v:indexStructure[vertex]){
+							assert(bestNeighbors.count(v)>0);
+						}
+						for(size_t v:bestNeighbors){
+							if(indexStructure.count(v)==0){
+								newOptimaStack.push(v);
+								indexStructure[vertex].insert(v);
+								size_t obv=openBackward[vertex];
+								size_t ofv=openForward[v];
+								if(obv<ofv){
+									intervalsToClose.push_back({obv,ofv});
+								}
+								openBackward[v]=obv;
+								openForward.erase(v);
+								isOneInOpt.insert(v);
+
+							}
+						}
+					}
+					else{
+						size_t ofVertex=0;
+						for(size_t desc:bestNeighbors){
+							size_t descOf;
+							if(isOneInOpt.count(desc)>0){
+								descOf=openBackward[desc];
+							}
+							else{
+								descOf=openForward[desc];
+							}
+							if(descOf>ofVertex){
+								ofVertex=descOf;
+							}
+						}
+						openForward[vertex]=ofVertex;
+						indexStructure[vertex]=bestNeighbors;
+					}
+
+					//valuesStructure[vertex]=bestValue;
+					if(liftedCosts.count(vertex)>0){
+						bestValue+=liftedCosts[vertex];
+					}
+					valuesStructure[vertex]=bestValue; //TODO eventually delete bad values in valuesStructure and hence in candidateGraph
+				}
+			}
+
+		}
+
+		//Add all newly found optimal solutions
+		while(!newOptimaStack.empty()){
+			size_t newOptVertex=newOptimaStack.top();
+			newOptimaStack.pop();
+			isOneInOpt.insert(newOptVertex);
+			if(indexStructure.count(newOptVertex)>0){
+				for(size_t desc:indexStructure[newOptVertex]){
+					if(isOneInOpt.count(desc)==0){
+						openBackward[desc]=openBackward[newOptVertex];
+						openForward.erase(desc);
+						isOneInOpt.insert(desc);
+					}
+				}
+			}
+
+		}
+
+	}
+
+	//TODO close open vertices according to intervals to close
+	//TODO for all optimal vertices transform openBackward according to closed intervals
+	//TODO find candidates: for all optimal vertices, check their neighbors in candidateGraph (not optimal)
+	//TODO for found candidate, change open vertices in the identified interval, store messages
+
+
+
+	baseAndLiftedMessages messages={baseMessages,liftedMessages};
+	return messages;
+}
+
+
 
 
 
@@ -525,7 +693,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::addLiftedEdge(size_t node,double cost){
-    assert(reachable(nodeID,node));
+	assert(reachable(nodeID,node));
 	liftedCosts[node]=cost;
 }
 
@@ -566,12 +734,12 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 			baseCosts[neighborID]=fractionBase*cost;
 		}
 	}
-//	for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
-//		size_t edgeID=getNeighborLiftedEdge(nodeID,i);
-//		size_t neighborID=getNeighborLiftedVertex(nodeID,i);
-//		double cost=ldpInstance.getLiftedEdgeScore(edgeID);
-//		liftedCosts[neighborID]=fractionLifted*cost;
-//	}
+	//	for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+	//		size_t edgeID=getNeighborLiftedEdge(nodeID,i);
+	//		size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+	//		double cost=ldpInstance.getLiftedEdgeScore(edgeID);
+	//		liftedCosts[neighborID]=fractionLifted*cost;
+	//	}
 
 }
 
@@ -613,7 +781,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 		bool descClosed=true;
 		double minValue=0;
 		std::unordered_set<size_t> minValueIndices;
-		//size_t minValueIndex=vertexToReach;
+		size_t minValueIndex=nodeNotActive;
 
 		for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
 			//size_t desc=baseGraph.vertexFromVertex(currentNode,i);
@@ -624,6 +792,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 					if(descClosed&&valuesStructure.count(desc)>0){
 						if(minValue>=valuesStructure[desc]&&valuesStructure[desc]<0){
 							minValue=valuesStructure[desc];
+							minValueIndex=desc;
 						}
 					}
 				}
@@ -657,28 +826,29 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 					}
 				}
 				optimalSolution=bestVertex;
-//				for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {//Only for index structure
-//					size_t desc=getNeighborBaseVertex(nodeID,i);
-//					if(isInRange(desc)){
-//						if(solutionCosts[desc]==bestValue){
-//							indexStructure[nodeID].insert(desc);
-//						}
-//					}
-//				}
+				indexStructure[nodeID]=optimalSolution;
+				//				for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {//Only for index structure
+				//					size_t desc=getNeighborBaseVertex(nodeID,i);
+				//					if(isInRange(desc)){
+				//						if(solutionCosts[desc]==bestValue){
+				//							indexStructure[nodeID].insert(desc);
+				//						}
+				//					}
+				//				}
 
 			}
 			else{
 				//if(minValue<0){//This for cycle is only for index structure creation
-//				for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
-//					size_t desc=getNeighborBaseVertex(currentNode,i);
-//					if(isInRange(desc)){
-//						if(isInRange(desc)){
-//							if(valuesStructure.count(desc)>0&&valuesStructure[desc]==minValue){
-//								indexStructure[currentNode].insert(desc);
-//							}
-//						}
-//					}
-//				}
+				//				for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
+				//					size_t desc=getNeighborBaseVertex(currentNode,i);
+				//					if(isInRange(desc)){
+				//						if(isInRange(desc)){
+				//							if(valuesStructure.count(desc)>0&&valuesStructure[desc]==minValue){
+				//								indexStructure[currentNode].insert(desc);
+				//							}
+				//						}
+				//					}
+				//				}
 				//}
 				double valueToStore=minValue;
 				if(liftedCosts.count(currentNode)>0){
@@ -686,6 +856,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 				}
 				if(valueToStore<0||(baseCosts.count(currentNode)>0&&minValue<0)){  //store only negative values or values needed to correct solutionCosts
 					valuesStructure[currentNode]=valueToStore;
+					indexStructure[currentNode]=minValueIndex;
 				}
 				else{
 					valuesStructure.erase(currentNode);
