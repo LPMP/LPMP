@@ -82,6 +82,7 @@ namespace LPMP {
             bool is_fixed(const size_t var) const;
 
             std::vector<double> total_min_marginals();
+            std::vector<double> search_space_reduction_coeffs();
 
             void min_marginal_averaging_forward();
             void min_marginal_averaging_backward();
@@ -467,9 +468,46 @@ namespace LPMP {
         return total_min_marginals;
     }
 
+    std::vector<double> bdd_mma_fixing::search_space_reduction_coeffs()
+    {
+        std::vector<double> coeffs;
+        // solution count backward run
+        for (ptrdiff_t var = this->nr_variables()-1; var >= 0; --var)
+        {
+            for (size_t bdd_index=0; bdd_index<this->nr_bdds(var); bdd_index++)
+            {
+                auto & bdd_var = bdd_variables_(var, bdd_index);
+                for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
+                {
+                    auto & bdd_node = bdd_branch_nodes_[node_index];
+                    bdd_node.count_backward_step();
+                }
+            }
+        }
+        // solution count forward run
+        for (size_t var = 0; var < this->nr_variables(); var++)
+        {
+            double coeff = 0;
+            for (size_t bdd_index=0; bdd_index<this->nr_bdds(var); bdd_index++)
+            {
+                auto & bdd_var = bdd_variables_(var, bdd_index);
+                for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
+                {
+                    auto & bdd_node = bdd_branch_nodes_[node_index];
+                    bdd_node.count_forward_step();
+                    coeff += bdd_node.count_high() - bdd_node.count_low();
+                }
+            }
+            coeffs.push_back(coeff);
+        }
+        return coeffs;
+    }
+
     bool bdd_mma_fixing::fix_variables()
     {
+        std::vector<double> reduction_coeffs = search_space_reduction_coeffs();
         // additional MMA iteration increases chance of finding a feasible solution
+        this->backward_run();
         min_marginal_averaging_iteration();
         std::vector<double> total_min_marginals = this->total_min_marginals();
         std::vector<size_t> variables;
@@ -478,13 +516,19 @@ namespace LPMP {
 
         const double eps = -std::numeric_limits<double>::epsilon();
 
-        // TODO change to more sensible ordering
+        auto sign = [](const double val) -> double
+        {
+            if (val < 0)
+                return -1.0;
+            else if (val > 0)
+                return 1.0;
+            else
+                return 0.0;
+        };
+
         auto order = [&](const size_t a, const size_t b)
         {
-            // if (total_min_marginals[a] > eps && total_min_marginals[b] > eps)
-            //     return (total_min_marginals[a]) > (total_min_marginals[b]);
-            return (total_min_marginals[a]) < (total_min_marginals[b]);
-            // return (std::abs(total_min_marginals[a]) > std::abs(total_min_marginals[b]));
+            return sign(reduction_coeffs[a]) * total_min_marginals[a] > sign(reduction_coeffs[b]) * total_min_marginals[b];
         };
         std::sort(variables.begin(), variables.end(), order);
 

@@ -648,6 +648,11 @@ namespace LPMP {
             // From C++20
             friend bool operator==(const bdd_branch_node_fix& x, const bdd_branch_node_fix& y);
 
+            void count_forward_step();
+            void count_backward_step();
+
+            double count_low();
+            double count_high();
     };
 
     bool operator==(const bdd_branch_node_fix& x, const bdd_branch_node_fix& y)
@@ -689,5 +694,81 @@ namespace LPMP {
 
     // class bdd_branch_node_fix : public bdd_branch_node_opt_base<bdd_branch_node_fix>, public bdd_branch_node_fix_base<bdd_branch_node_fix> {
     // };
+
+    void bdd_branch_node_fix::count_forward_step()
+    {
+        if(this->is_first()) {
+            m = 1.0;
+            return;
+        }
+
+        m = 0.0;
+
+        // iterate over all incoming low edges 
+        {
+            auto* cur = this->first_low_incoming;
+            while(cur != nullptr) {
+                m += cur->m;
+                cur = cur->next_low_incoming;
+            }
+        }
+
+        // iterate over all incoming high edges 
+        {
+            auto* cur = this->first_high_incoming;
+            while(cur != nullptr) {
+                m += cur->m;
+                cur = cur->next_high_incoming;
+            }
+        }
+    }
+
+    void bdd_branch_node_fix::count_backward_step()
+    {
+        // low edge
+        const double low_count = [&]() {
+            if(this->low_outgoing == bdd_branch_node_fix::terminal_0()) {
+                return 0.0;
+            } else if(this->low_outgoing == bdd_branch_node_fix::terminal_1()) {
+                return 1.0;
+            } else {
+                return this->low_outgoing->m;
+            }
+        }();
+
+        // high edge
+        const double high_count = [&]() {
+            if(this->high_outgoing == bdd_branch_node_fix::terminal_0()) {
+                return 0.0; 
+            } else if(this->high_outgoing == bdd_branch_node_fix::terminal_1()) {
+                return 1.0; 
+            } else {
+                return this->high_outgoing->m;
+            }
+        }();
+
+        m = low_count + high_count;
+    }
+
+    double bdd_branch_node_fix::count_low()
+    {
+        if (this->low_outgoing == bdd_branch_node_fix::terminal_0())
+            return 0.0;
+        else if (this->low_outgoing == bdd_branch_node_fix::terminal_1())
+            return m;
+        else
+            return m * this->low_outgoing->m;
+    }
+
+    double bdd_branch_node_fix::count_high()
+    {
+        if (this->high_outgoing == bdd_branch_node_fix::terminal_0())
+            return 0.0;
+        else if (this->high_outgoing == bdd_branch_node_fix::terminal_1())
+            return m;
+        else
+            return m * this->high_outgoing->m;
+    }
+
 }
 
