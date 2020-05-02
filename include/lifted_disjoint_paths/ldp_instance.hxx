@@ -144,6 +144,10 @@ public:
 		return vertexIndex;
 	}
 
+//	std::vector<bool>& getBaseEdgeLabels()  {
+//		return baseEdgeLabels;
+//	}
+
 	template<typename EDGE_LABEL_ITERATOR>
 	bool check_feasiblity(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
 	template<typename EDGE_LABEL_ITERATOR>
@@ -169,6 +173,8 @@ private:
 
 	andres::graph::Digraph<> graph_;
 	andres::graph::Digraph<> graphLifted_;
+
+	std::vector<bool> baseEdgeLabels;
 
 	size_t numberOfVertices;
 	size_t numberOfEdges;

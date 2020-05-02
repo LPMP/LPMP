@@ -66,6 +66,7 @@ LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteS
 	numberOfVertices=graph_.numberOfVertices();
 	numberOfEdges=graph_.numberOfEdges();
 	numberOfLiftedEdges=graphLifted_.numberOfEdges();
+	//baseEdgeLabels=std::vector<bool>(numberOfEdges);
 }
 
 void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs){
