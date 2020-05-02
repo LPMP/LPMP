@@ -248,8 +248,8 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 }
 
 
-template<typename EDGE_LABEL_ITERATOR>
-bool LdpInstance::check_feasiblity(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const{
+template<typename LABEL_ITERATOR>
+bool LdpInstance::check_feasiblity(LABEL_ITERATOR begin, LABEL_ITERATOR end) const{
 
 
 	//Labels into vector

@@ -31,7 +31,7 @@ public:
 {
 
 
-		//primal_=nodeNotActive;  //corresponds to no edge active
+		primal_=nodeNotActive;  //corresponds to no edge active
 		optimalSolution=nodeNotActive;
 
 		if(isOutFlow){

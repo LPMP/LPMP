@@ -148,8 +148,8 @@ public:
 //		return baseEdgeLabels;
 //	}
 
-	template<typename EDGE_LABEL_ITERATOR>
-	bool check_feasiblity(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
+	template<typename LABEL_ITERATOR>
+	bool check_feasiblity(LABEL_ITERATOR begin, LABEL_ITERATOR end) const;
 	template<typename EDGE_LABEL_ITERATOR>
 	double evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
 
