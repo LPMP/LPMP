@@ -31,7 +31,7 @@ public:
 {
 
 
-		primal_=nodeNotActive;  //corresponds to no edge active
+		primalBase_=nodeNotActive;  //corresponds to no edge active
 		optimalSolution=nodeNotActive;
 
 		if(isOutFlow){
@@ -60,10 +60,16 @@ public:
 	double LowerBound() const;
 	double EvaluatePrimal() const;
 	std::unordered_map<size_t,double> adjustCostsAndSendMessages();
+	void setPrimalLifted();
 
-	void setBaseEdgeLabel(size_t vertex,bool value);
+	const std::unordered_set<size_t>& getPrimalLifted() const {
+			return primalLifted_;
+		}
+
+
+	//void setBaseEdgeLabel(size_t vertex,bool value);
 	void setBaseEdgeActive(size_t vertex);
-	void setBaseEdgeInactive(size_t vertex);
+	void setNoBaseEdgeActive(size_t vertex);
 
 	double getBaseEdgeMinMarginal(size_t vertex);
 	std::unordered_map<size_t,double> getAllBaseMinMarginals();
@@ -75,7 +81,7 @@ public:
 	//std::unordered_map<size_t,std::unordered_set<size_t>> initPredecessorsInIndexStr();
 
 
-	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primalVector_); }
+	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primalBaseComplete_); }
 	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
 
 	//auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
@@ -94,15 +100,15 @@ public:
 	//	}
 
 	static void init_primal_vector(andres::graph::Digraph<> graph) {
-		primalVector_=std::vector<bool>(graph.numberOfEdges(),0);
+		primalBaseComplete_=std::vector<bool>(graph.numberOfEdges(),0);
 	}
 
 	static void init_primal_vector(size_t numberOfEdges) {
-		primalVector_=std::vector<bool>(numberOfEdges,0);
+		primalBaseComplete_=std::vector<bool>(numberOfEdges,0);
 	}
 
 	void init_primal(){
-		primal_=nodeNotActive;
+		primalBase_=nodeNotActive;
 	}
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
@@ -121,11 +127,10 @@ public:
 
 
 
-
-
 	const std::size_t nodeID;
 	const size_t nodeNotActive;
-	size_t primal_;
+	size_t primalBase_;
+	std::unordered_set<size_t> primalLifted_;
 
 
 private:
@@ -235,7 +240,7 @@ private:
 	}
 
 	//std::vector<bool>& primal_; // the incoming resp. outgoing edge that is active.
-	static std::vector<bool>& primalVector_; // the incoming resp. outgoing edge that is active.
+	static std::vector<bool>& primalBaseComplete_; // the incoming resp. outgoing edge that is active.
 	mutable std::size_t optimalSolution;
 
 	std::size_t minLayer;
@@ -290,84 +295,81 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 	}
 }
 
+
+
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted() {
+	double value=0;
+	//bool search=true;
+	primalLifted_.clear();
+	if(primalBase_!=nodeNotActive){
+		size_t currentVertex=primalBase_;
+		if(liftedCosts.count(primalBase_)>0){
+			primalLifted_.insert(primalBase_);
+		}
+		bool search=isInThisFactorRange(currentVertex)&&currentVertex!=getVertexToReach();
+		while(search){
+			size_t numberOfNeighbors=numberOfNeighborsBase(currentVertex);
+			for (size_t i = 0; i < numberOfNeighbors; ++i) {
+				size_t edgeId=getNeighborBaseEdge(currentVertex,i);
+				if(primalBaseComplete_[edgeId]==1){
+					currentVertex=getNeighborBaseVertex(currentVertex,i);
+					if(liftedCosts.count(currentVertex)>0){
+						primalLifted_.insert(currentVertex);
+					}
+					break;
+				}
+			}
+			if(!isInThisFactorRange(currentVertex)||currentVertex==getVertexToReach()){
+				search=false;
+			}
+		}
+	}
+
+}
+
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
 	double value=0;
-	//bool search=true;
-	size_t currentVertex=nodeID;
-	if(primal_!=nodeNotActive){
-		value+=baseCosts[primal_];
-		if(liftedCosts.count(primal_)>0){
-			value+=liftedCosts.at(primal_);
-		}
-		currentVertex=primal_;
-	}
-	else{
-		return 0;
-	}
-//	for (size_t i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
-//		size_t edgeId=getNeighborBaseEdge(currentVertex,i);
-//		if(primalVector_[edgeId]==1){
-//			currentVertex=getNeighborBaseVertex(currentVertex,i);
-//			value+=baseCosts[currentVertex];
-//			if(liftedCosts.count(currentVertex)>0){
-//				value+=liftedCosts.at(currentVertex);
-//			}
-//			break;
-//		}
-//	}
-	//if(currentVertex==nodeID) return 0;
-	bool search=isInThisFactorRange(currentVertex)&&currentVertex!=getVertexToReach();
-	while(search){
-		size_t numberOfNeighbors=numberOfNeighborsBase(currentVertex);
-		for (size_t i = 0; i < numberOfNeighbors; ++i) {
-			size_t edgeId=getNeighborBaseEdge(currentVertex,i);
-			if(primalVector_[edgeId]==1){
-				currentVertex=getNeighborBaseVertex(currentVertex,i);
-				if(liftedCosts.count(currentVertex)>0){
-					value+=liftedCosts.at(currentVertex);
-				}
-				break;
-			}
-		}
-		if(!isInThisFactorRange(currentVertex)||currentVertex==getVertexToReach()){
-			search=false;
-		}
+	value+=baseCosts[primalBase_];
+	for(size_t node:primalLifted_){
+		value+=liftedCosts.at(node);
 	}
 	return value;
 }
 
 
-template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeLabel(size_t vertex,bool value){
-	if(value){
-		setBaseEdgeActive(vertex);
-	}
-	else{
-		setBaseEdgeInactive(vertex);
-	}
-}
+//template<class LDP_INSTANCE>
+//inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeLabel(size_t vertex,bool value){
+//	if(value){
+//		setBaseEdgeActive(vertex);
+//	}
+//	else{
+//		setBaseEdgeInactive(vertex);
+//	}
+//}
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeActive(size_t vertex){
 	assert(vertex!=nodeID&&baseCosts.count(vertex)>0);
-	primal_=vertex;
+	primalBase_=vertex;
 	for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 		size_t edgeIndex=getNeighborBaseEdge(nodeID,i);
-		primalVector_[edgeIndex]=0;
+		primalBaseComplete_[edgeIndex]=0;
 	}
 	auto fe=findEdgeBase(nodeID,vertex);
 	size_t edgeIndex=fe.second;
-	primalVector_[edgeIndex]=1;
+	primalBaseComplete_[edgeIndex]=1;
 }
 
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeInactive(size_t vertex){
-	auto fe=findEdgeBase(nodeID,vertex);
-	size_t edgeIndex=fe.second;
-	primalVector_[edgeIndex]=0;
-	if(primal_==vertex) primal_=nodeNotActive;
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setNoBaseEdgeActive(size_t vertex){
+	for (int i = 0; i < baseCosts.size()-1; ++i) {
+		size_t edgeID=getNeighborBaseEdge(nodeID,i);
+		primalBaseComplete_[edgeID]=0;
+	}
+	primalBase_=nodeNotActive;
 }
 
 
