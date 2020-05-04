@@ -4,6 +4,7 @@
 #include "solver.hxx"
 #include "lifted_disjoint_paths/ldp_instance.hxx"
 #include "MCF-SSP/mcf_ssp.hxx"
+#include <unordered_map>
 
 #include <memory>
 
@@ -36,12 +37,61 @@ namespace LPMP {
             std::size_t base_graph_source_node() const { return nr_nodes() + 1; }
             std::size_t base_graph_terminal_node() const { return nr_nodes() + 2; }
 
+            void adjustLiftedLabels();
+
             LP<FMC> *lp_;
             using mcf_solver_type = MCF::SSP<long, double>;
             std::unique_ptr<mcf_solver_type> mcf_; // minimum cost flow factor for base edges
             std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>> single_node_cut_factors_;
+
     };
 
+
+    template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
+    void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, MCF_FACTOR, SINGLE_NODE_CUT_FACTOR, MCF_SINGLE_NODE_CUT_MESSAGE>::adjustLiftedLabels(){
+
+    	for (int vertex = 0; vertex < nr_nodes(); ++vertex) {
+    		SINGLE_NODE_CUT_FACTOR& snc=single_node_cut_factors_[vertex,1];
+    		if(snc.getPrimalBase()==base_graph_terminal_node()){
+
+    			std::vector<bool> isOnPath(nr_nodes(),0);
+    			isOnPath[vertex]=1;
+    			std::list<size_t> path;
+    			path.push_front(vertex);
+
+    			while(vertex!=base_graph_source_node()){
+    				SINGLE_NODE_CUT_FACTOR& sncFactorOut=single_node_cut_factors_[vertex,1];
+    				std::unordered_set<size_t> activeEndpoints;
+    				const std::unordered_map<size_t,double>& liftedCosts= sncFactorOut.getLiftedCosts();
+    				for(auto pair:liftedCosts){
+    					size_t vertex2=pair.first;
+    					if(isOnPath[vertex2]){
+    						activeEndpoints.insert(vertex2);
+    					}
+       				}
+    				sncFactorOut.setPrimalLifted(activeEndpoints);
+    				isOnPath[vertex]=1;
+    				path.push_front(vertex);
+    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=single_node_cut_factors_[vertex,0];
+    				vertex=sncFactorIn.getPrimalBase();
+    			}
+    			for(size_t activeVertex:path){
+    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=single_node_cut_factors_[vertex,0];
+    				std::unordered_set<size_t> activeEndpoints;
+    				const std::unordered_map<size_t,double>& liftedCosts= sncFactorIn.getLiftedCosts();
+    				for(auto pair:liftedCosts){
+    					size_t vertex2=pair.first;
+    					if(isOnPath[vertex2]){
+    						activeEndpoints.insert(vertex2);
+    					}
+    				}
+    				sncFactorIn.setPrimalLifted(activeEndpoints);
+    			}
+    		}
+
+
+    	}
+    }
 
     template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, MCF_FACTOR, SINGLE_NODE_CUT_FACTOR, MCF_SINGLE_NODE_CUT_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
