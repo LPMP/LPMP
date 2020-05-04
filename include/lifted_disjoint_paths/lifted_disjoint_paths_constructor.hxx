@@ -39,6 +39,8 @@ namespace LPMP {
 
             void adjustLiftedLabels();
 
+            bool checkFeasibilityInSnc();
+
             LP<FMC> *lp_;
             using mcf_solver_type = MCF::SSP<long, double>;
             std::unique_ptr<mcf_solver_type> mcf_; // minimum cost flow factor for base edges
@@ -48,9 +50,105 @@ namespace LPMP {
 
 
     template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
+    bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, MCF_FACTOR, SINGLE_NODE_CUT_FACTOR, MCF_SINGLE_NODE_CUT_MESSAGE>::checkFeasibilityInSnc(){
+
+    	//Check flow conservation
+    	bool isFeasible=true;
+    	std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
+    	for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
+    		SINGLE_NODE_CUT_FACTOR& sncFactorIn=single_node_cut_factors_[i][0];
+    		SINGLE_NODE_CUT_FACTOR& sncFactorOut=single_node_cut_factors_[i][1];
+
+    		if(sncFactorIn.isNodeActive()!=sncFactorOut.isNodeActive()){
+    			isFeasible=false;
+
+    		}
+    		else if(sncFactorIn.isNodeActive()&&sncFactorOut.isNodeActive()){
+    			size_t inputNode=sncFactorIn.getPrimalBase();
+    			if(inputNode!=base_graph_source_node()){
+    				SINGLE_NODE_CUT_FACTOR& sncFactorInputNodeOut=single_node_cut_factors_[inputNode][1];
+    				if(sncFactorInputNodeOut.getPrimalBase()!=i){
+    					isFeasible=false;
+
+    				}
+    			}
+
+    			size_t outputNode=sncFactorOut.getPrimalBase();
+    			if(outputNode!=base_graph_terminal_node()){
+    				SINGLE_NODE_CUT_FACTOR& sncFactorOuputNodeIn=single_node_cut_factors_[outputNode][0];
+    				if(sncFactorOuputNodeIn.getPrimalBase()!=i){
+    					isFeasible=false;
+
+    				}
+    			}
+    		}
+    	}
+
+    	if(isFeasible){
+    		for (int i = 0; i < nr_nodes(); ++i) {
+    			size_t vertex=i;
+    			SINGLE_NODE_CUT_FACTOR& snc=single_node_cut_factors_[vertex,1];
+    			if(snc.getPrimalBase()==base_graph_terminal_node()){
+
+    				std::vector<bool> isOnPath(nr_nodes(),0);
+    				isOnPath[vertex]=1;
+    				std::list<size_t> path;
+    				path.push_front(vertex);
+
+    				while(vertex!=base_graph_source_node()){
+    					SINGLE_NODE_CUT_FACTOR& sncFactorOut=single_node_cut_factors_[vertex,1];
+    					const std::unordered_set<size_t>& activeEndpoints=sncFactorOut.getPrimalLifted();
+    					const std::unordered_map<size_t,double>& liftedCosts= sncFactorOut.getLiftedCosts();
+    					for(auto pair:liftedCosts){
+    						size_t vertex2=pair.first;
+    						if(isOnPath[vertex2]&&activeEndpoints.count(vertex2)==0){
+    							isFeasible=false;
+    							break;
+    						}
+    					}
+    					for(size_t vertex2:activeEndpoints){
+    						if(!isOnPath[vertex2]){
+    							isFeasible=false;
+    							break;
+    						}
+    					}
+    					isOnPath[vertex]=1;
+    					path.push_front(vertex);
+    					SINGLE_NODE_CUT_FACTOR& sncFactorIn=single_node_cut_factors_[vertex,0];
+    					vertex=sncFactorIn.getPrimalBase();
+    				}
+    				for(size_t activeVertex:path){
+    					SINGLE_NODE_CUT_FACTOR& sncFactorIn=single_node_cut_factors_[activeVertex,0];
+    					const std::unordered_set<size_t>& activeEndpoints=sncFactorIn.getPrimalLifted();
+    					const std::unordered_map<size_t,double>& liftedCosts= sncFactorIn.getLiftedCosts();
+    					for(auto pair:liftedCosts){
+    						size_t vertex2=pair.first;
+    						if(isOnPath[vertex2]&&activeEndpoints.count(vertex2)==0){
+    							isFeasible=false;
+    							break;
+    						}
+    					}
+    					for(size_t vertex2:activeEndpoints){
+    						if(!isOnPath[vertex2]){
+    							isFeasible=false;
+    							break;
+    						}
+    					}
+    				}
+    			}
+    		}
+    	}
+
+    	return isFeasible;
+    }
+
+
+
+    template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, MCF_FACTOR, SINGLE_NODE_CUT_FACTOR, MCF_SINGLE_NODE_CUT_MESSAGE>::adjustLiftedLabels(){
 
-    	for (int vertex = 0; vertex < nr_nodes(); ++vertex) {
+    	for (int i = 0; i < nr_nodes(); ++i) {
+    		size_t vertex=i;
     		SINGLE_NODE_CUT_FACTOR& snc=single_node_cut_factors_[vertex,1];
     		if(snc.getPrimalBase()==base_graph_terminal_node()){
 
@@ -76,7 +174,7 @@ namespace LPMP {
     				vertex=sncFactorIn.getPrimalBase();
     			}
     			for(size_t activeVertex:path){
-    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=single_node_cut_factors_[vertex,0];
+    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=single_node_cut_factors_[activeVertex,0];
     				std::unordered_set<size_t> activeEndpoints;
     				const std::unordered_map<size_t,double>& liftedCosts= sncFactorIn.getLiftedCosts();
     				for(auto pair:liftedCosts){
@@ -88,8 +186,6 @@ namespace LPMP {
     				sncFactorIn.setPrimalLifted(activeEndpoints);
     			}
     		}
-
-
     	}
     }
 

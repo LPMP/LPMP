@@ -20,65 +20,49 @@ public:
 	//constexpr static std::size_t no_edge_active = std::numeric_limits<std::size_t>::infinity();
 
 	//template<class LPD_STRUCT> ldp_single_node_cut_factor(const LPD_STRUCT& ldpStruct);
-	ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut):
-		baseGraph(ldpInst.getGraph()),
-		liftedGraph(ldpInst.getGraphLifted()),
-		nodeID(nID),
-		ldpInstance(ldpInst),
-		isOutFlow(isOut),
-		nodeNotActive(nID)
-//primal_(ldpInst.getBaseEdgeLabels())
-{
+	ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut);
 
+	void initBaseCosts(double fractionBase);
 
-		primalBase_=nodeNotActive;  //corresponds to no edge active
-		optimalSolution=nodeNotActive;
+	void initLiftedCosts(double fractionLifted);
 
-		if(isOutFlow){
-			minLayer=ldpInst.getGroupIndex(nodeID);
-			maxLayer=minLayer+ldpInst.getGapLifted(); //some method that returns max time gap lifted
-		}
-		else{
-			maxLayer=ldpInst.getGroupIndex(nodeID);
-			minLayer=std::max(0,int(maxLayer)-int(ldpInst.getGapLifted()));
-		}
+	void addLiftedEdge(size_t node,double cost);
 
-		//baseCosts=std::unordered_map<size_t,double>();
-		initBaseCosts(0);
-		//liftedCosts=std::unordered_map<size_t,double>();
-		initLiftedCosts(0);
-		//solutionCosts=std::unordered_map<size_t,double>();
-		solutionCosts[nodeNotActive]=0;
-		baseCosts[nodeNotActive]=0;
-		vsUpToDate=false;
-		optUpToDate=false;
-
-
-}
-
-
-	double LowerBound() const;
-	double EvaluatePrimal() const;
-	std::unordered_map<size_t,double> adjustCostsAndSendMessages();
-	void setPrimalLifted(std::unordered_set<size_t>& verticesOfActiveEdges);
-
-	const std::unordered_set<size_t>& getPrimalLifted() const {
-			return primalLifted_;
+	const andres::graph::Digraph<>& getBaseGraph() const {
+		return baseGraph;
 	}
 
+	const std::unordered_map<size_t, double>& getLiftedCosts() const {
+		return liftedCosts;
+	}
 
-	//void setBaseEdgeLabel(size_t vertex,bool value);
+	bool hasLiftedEdgeToNode(size_t vertex){
+		return liftedCosts.count(vertex)>0;
+	}
+
+	double LowerBound() const;
+
+
+	double EvaluatePrimal() const;
+
+	void init_primal(){
+		primalBase_=nodeNotActive;
+	}
+
 	void setBaseEdgeActive(size_t vertex);
 	void setNoBaseEdgeActive(size_t vertex);
 
-	double getBaseEdgeMinMarginal(size_t vertex);
-	std::unordered_map<size_t,double> getAllBaseMinMarginals();
-	//	double getLiftedEdgeMinMarginal();
+	void setPrimalLifted(std::unordered_set<size_t>& verticesOfActiveEdges);
 
+	bool isNodeActive(){ return primalBase_!=nodeNotActive;}
 
-	//baseAndLiftedMessages adjustCostsAndSendMessagesLifted();
+	size_t getPrimalBase() const {
+		return primalBase_;
+	}
 
-	//std::unordered_map<size_t,std::unordered_set<size_t>> initPredecessorsInIndexStr();
+	const std::unordered_set<size_t>& getPrimalLifted() const {
+		return primalLifted_;
+	}
 
 
 	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primalBaseComplete_); }
@@ -87,6 +71,19 @@ public:
 	//auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
 	double tmp_to_delete_val;
 	auto export_variables() { return std::tie(tmp_to_delete_val); } //?What comes here?
+
+	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
+	double getBaseEdgeMinMarginal(size_t vertex);
+	std::unordered_map<size_t,double> getAllBaseMinMarginals();
+	void updateValues() const;
+	//std::unordered_map<size_t,double> adjustCostsAndSendMessages();
+
+
+
+	const std::size_t nodeID;
+	const size_t nodeNotActive;
+	size_t primalBase_;
+	std::unordered_set<size_t> primalLifted_;
 
 	//	void init_primal() {
 	//		for(auto pair:baseCosts){
@@ -107,40 +104,14 @@ public:
 //		primalBaseComplete_=std::vector<bool>(numberOfEdges,0);
 //	}
 
-	void init_primal(){
-		primalBase_=nodeNotActive;
-	}
 
-	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
+	//	double getLiftedEdgeMinMarginal();
 
-	void addLiftedEdge(size_t node,double cost);
 
-	void updateValues() const;
+	//baseAndLiftedMessages adjustCostsAndSendMessagesLifted();
 
-	void initBaseCosts(double fractionBase);
+	//std::unordered_map<size_t,std::unordered_set<size_t>> initPredecessorsInIndexStr();
 
-	void initLiftedCosts(double fractionLifted);
-
-	const andres::graph::Digraph<>& getBaseGraph() const {
-		return baseGraph;
-	}
-
-	const std::unordered_map<size_t, double>& getLiftedCosts() const {
-		return liftedCosts;
-	}
-
-	bool hasLiftedToNode(size_t vertex){
-		return liftedCosts.count(vertex)>0;
-	}
-
-	size_t getPrimalBase() const {
-		return primalBase_;
-	}
-
-	const std::size_t nodeID;
-	const size_t nodeNotActive;
-	size_t primalBase_;
-	std::unordered_set<size_t> primalLifted_;
 
 
 private:
@@ -249,8 +220,7 @@ private:
 		}
 	}
 
-	//std::vector<bool>& primal_; // the incoming resp. outgoing edge that is active.
-//	static std::vector<bool>& primalBaseComplete_; // the incoming resp. outgoing edge that is active.
+
 	mutable std::size_t optimalSolution;
 
 	std::size_t minLayer;
@@ -286,6 +256,39 @@ private:
 
 
 };
+
+template<class LDP_INSTANCE>
+inline  ldp_single_node_cut_factor<LDP_INSTANCE>::ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut):
+baseGraph(ldpInst.getGraph()),
+liftedGraph(ldpInst.getGraphLifted()),
+nodeID(nID),
+ldpInstance(ldpInst),
+isOutFlow(isOut),
+nodeNotActive(nID)
+{
+	primalBase_=nodeNotActive;  //corresponds to no edge active
+	optimalSolution=nodeNotActive;
+
+	if(isOutFlow){
+		minLayer=ldpInst.getGroupIndex(nodeID);
+		maxLayer=minLayer+ldpInst.getGapLifted(); //some method that returns max time gap lifted
+	}
+	else{
+		maxLayer=ldpInst.getGroupIndex(nodeID);
+		minLayer=std::max(0,int(maxLayer)-int(ldpInst.getGapLifted()));
+	}
+
+	//baseCosts=std::unordered_map<size_t,double>();
+	initBaseCosts(0);
+	//liftedCosts=std::unordered_map<size_t,double>();
+	initLiftedCosts(0);
+	//solutionCosts=std::unordered_map<size_t,double>();
+	solutionCosts[nodeNotActive]=0;
+	baseCosts[nodeNotActive]=0;
+	vsUpToDate=false;
+	optUpToDate=false;
+
+}
 
 
 template<class LDP_INSTANCE>
@@ -414,19 +417,32 @@ template<class LDP_INSTANCE>
 inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals(){
 	updateOptimal();
 	std::unordered_map<size_t,double> minMarginals;
-	double secondBest=std::numeric_limits<double>::infinity();
-	double optValue=solutionCosts[optimalSolution];
-	for (auto it=solutionCosts.begin();it!=solutionCosts.end();it++) {
-		if(it->first==optimalSolution) continue;
-		double value=it->second;
-		if(value<secondBest){
-			secondBest=value;
-		}
-		if(it->first!=nodeNotActive){
-			minMarginals[it->first]=value-optValue;
+	if(optimalSolution==nodeNotActive){
+		double value=solutionCosts.at(nodeNotActive);
+		for(auto pair:solutionCosts){
+			if(pair.first!=nodeNotActive){
+				minMarginals[pair.first]=pair.second-value;
+			}
 		}
 	}
-	minMarginals[optimalSolution]=optValue-secondBest;
+	else{
+		double secondBest=std::numeric_limits<double>::infinity();
+		double optValue=solutionCosts[optimalSolution];
+		for (auto it=solutionCosts.begin();it!=solutionCosts.end();it++) {
+			if(it->first==optimalSolution) continue;
+			double value=it->second;
+			if(value<secondBest){
+				secondBest=value;
+			}
+		}
+
+		for (auto it=solutionCosts.begin();it!=solutionCosts.end();it++) {
+			double value=it->second;
+			if(it->first!=nodeNotActive){
+				minMarginals[it->first]=value-secondBest;
+			}
+		}
+	}
 	return minMarginals;
 }
 //
@@ -459,20 +475,20 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 
 
-template<class LDP_INSTANCE>
-inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCostsAndSendMessages(){
-	updateOptimal();
-	double minValue=solutionCosts[optimalSolution];
-	std::unordered_map<size_t,double> messages;
-	for (auto it=solutionCosts.begin();it!=solutionCosts.end();it++) {
-		if(it->first==optimalSolution) continue;
-		double delta=it->second-minValue;
-		messages[it->first]=delta;
-		baseCosts[it->first]-=delta;
-		it->second=minValue;
-	}
-	return messages;
-}
+//template<class LDP_INSTANCE>
+//inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCostsAndSendMessages(){
+//	updateOptimal();
+//	double minValue=solutionCosts[optimalSolution];
+//	std::unordered_map<size_t,double> messages;
+//	for (auto it=solutionCosts.begin();it!=solutionCosts.end();it++) {
+//		if(it->first==optimalSolution) continue;
+//		double delta=it->second-minValue;
+//		messages[it->first]=delta;
+//		baseCosts[it->first]-=delta;
+//		it->second=minValue;
+//	}
+//	return messages;
+//}
 
 
 template<class LDP_INSTANCE>
