@@ -22,11 +22,13 @@ struct StrForUpdateValues{
 	std::unordered_set<size_t> relevantVertices;
 	bool useAllVertices;
 	double optValue;
+	size_t nodeID;
 	//size_t optimalSolution;
-	StrForUpdateValues(const std::unordered_map<size_t,double>& bCosts,const std::unordered_map<size_t,double>& lCosts):
+	StrForUpdateValues(const std::unordered_map<size_t,double>& bCosts,const std::unordered_map<size_t,double>& lCosts,size_t centralNode):
 	baseCosts(bCosts),
 	liftedCosts(lCosts),
-	optValue(0)
+	optValue(0),
+	nodeID(centralNode)
 	{
 		useAllVertices=true;
 		solutionCosts=baseCosts;
@@ -39,6 +41,15 @@ struct StrForUpdateValues{
 
 	void setUseAllVertices(bool value){
 		useAllVertices=value;
+	}
+	double getOptimalValue(){
+		auto it=indexStructure.find(nodeID);
+		if(it!=indexStructure.end()){
+			return solutionCosts.at(it->second);
+		}
+		else{
+			return 0;
+		}
 	}
 };
 
@@ -137,7 +148,7 @@ public:
 	//	double getLiftedEdgeMinMarginal();
 
 
-	baseAndLiftedMessages adjustCostsAndSendMessagesLifted();
+	std::unordered_map<size_t,double> minMarginalsLifted();
 
 	//std::unordered_map<size_t,std::unordered_set<size_t>> initPredecessorsInIndexStr();
 
@@ -629,7 +640,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TOD
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 
-	StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts);
+	StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,nodeID);
 	updateValues(strForUpdateValues);
 
 	solutionCosts=strForUpdateValues.solutionCosts;
@@ -886,14 +897,14 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 	double optValue=solutionCosts[optimalSolutionBase];
 	if(optimalSolutionLifted.count(vertexOfLiftedEdge)>0){
 
-		StrForUpdateValues myStr(baseCosts,liftedCosts);
+		StrForUpdateValues myStr(baseCosts,liftedCosts,nodeID);
 		updateValues(myStr,vertexOfLiftedEdge);
 		//size_t restrictedOptimalSolution=myStr.indexStructure[nodeID];
 		double restrictedOptValue=myStr.optValue;
 		return optValue-restrictedOptValue;
 	}
 	else{
-		StrForUpdateValues myStr(baseCosts,liftedCosts);
+		StrForUpdateValues myStr(baseCosts,liftedCosts,nodeID);
 		updateValues(myStr);
 		std::unordered_map<size_t,double> message=bottomUpUpdate(myStr,vertexOfLiftedEdge);
 		return *(message.begin());
@@ -976,9 +987,10 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 }
 
 template<class LDP_INSTANCE>
-inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCostsAndSendMessagesLifted(){
+inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::minMarginalsLifted(){
 
-	std::unordered_map<size_t,double> baseMessages=getAllBaseMinMarginals();
+	//std::unordered_map<size_t,double> baseMessages=getAllBaseMinMarginals();
+	updateOptimal();
 	std::unordered_map<size_t,double> liftedMessages;
 
 	std::unordered_set<size_t> isNotZeroInOpt;
@@ -987,12 +999,12 @@ inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCos
 	std::unordered_map<size_t,double> localSolutionCosts=solutionCosts;
 	std::unordered_map<size_t,double> localLiftedCosts=liftedCosts;
 	std::unordered_map<size_t,double> localBaseCosts=baseCosts;
-	for(auto pair:baseMessages){
-		localBaseCosts[pair.first]-=pair.second;
-		localSolutionCosts[pair.first]-=pair.second;
-	}
+//	for(auto pair:baseMessages){
+//		localBaseCosts[pair.first]-=pair.second;
+//		localSolutionCosts[pair.first]-=pair.second;
+//	}
 
-	StrForUpdateValues strForUpdateValues(localBaseCosts,localLiftedCosts);
+	StrForUpdateValues strForUpdateValues(localBaseCosts,localLiftedCosts,nodeID);
 	strForUpdateValues.solutionCosts=localSolutionCosts;
 
 	double currentOptValue=strForUpdateValues.solutionCosts[optimalSolutionBase];
@@ -1052,12 +1064,22 @@ inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCos
 			isNotZeroInOpt.erase(vertexToClose);
 		}
 	}
+	updateValues(strForUpdateValues);
+	std::unordered_map<size_t,double> buValuesStructure;
+	std::unordered_set<size_t> closedVertices;
+	for(size_t optVertex:isOneInOpt){
+		buValuesStructure[optVertex]=currentOptValue-strForUpdateValues.valuesStructure[optVertex]+localLiftedCosts[optVertex];
+		closedVertices.insert(optVertex);
+	}
+	for(auto pair:liftedCosts){
+		if(closedVertices.count(pair.first)==0){
+			std::unordered_map<size_t,double> newMessages=bottomUpUpdate(strForUpdateValues,pair.first,&closedVertices,&buValuesStructure);
+			liftedMessages.insert(newMessages.begin(),newMessages.end());
+		}
+	}
 
 
-
-
-	baseAndLiftedMessages messages={baseMessages,liftedMessages};
-	return messages;
+	return liftedMessages;
 }
 
 
