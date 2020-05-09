@@ -21,10 +21,12 @@ struct StrForUpdateValues{
 	const std::unordered_map<size_t,double>& liftedCosts;
 	std::unordered_set<size_t> relevantVertices;
 	bool useAllVertices;
+	double optValue;
 	//size_t optimalSolution;
 	StrForUpdateValues(const std::unordered_map<size_t,double>& bCosts,const std::unordered_map<size_t,double>& lCosts):
 	baseCosts(bCosts),
-	liftedCosts(lCosts)
+	liftedCosts(lCosts),
+	optValue(0)
 	{
 		useAllVertices=true;
 		solutionCosts=baseCosts;
@@ -143,8 +145,12 @@ public:
 
 private:
 	void updateValues() const;
-	void updateValues(StrForUpdateValues& myStr,size_t lastLayer=0) const;
+	void updateValues(StrForUpdateValues& myStr,size_t vertexToClose=nodeID) const;
+	std::unordered_map<size_t,double> bottomUpUpdate(StrForUpdateValues& myStr,size_t vertex,std::unordered_set<size_t>* pClosedVert=0,std::unordered_map<size_t,double>* pBUValuesStr=0);
 	void updateOptimal() const;
+	double oneLiftedMinMarginal(size_t vertexOfLiftedEdge);
+
+
 	void findAllOptimal(std::unordered_set<size_t>& isNotZeroInOpt,std::unordered_set<size_t>& isOneInOpt,std::unordered_map<size_t,std::unordered_set<size_t>>& candidateGraph,StrForUpdateValues& strForUpdateValues);
 
 	size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex) const{
@@ -159,6 +165,15 @@ private:
 	size_t numberOfNeighborsBase(const size_t nodeIndex) const {
 		assert(nodeIndex < baseGraph.numberOfVertices());
 		if(isOutFlow){
+			return baseGraph.numberOfEdgesFromVertex(nodeIndex);
+		}
+		else{
+			return baseGraph.numberOfEdgesToVertex(nodeIndex);
+		}
+	}
+	size_t numberOfNeighborsBaseRev(const size_t nodeIndex) const {
+		assert(nodeIndex < baseGraph.numberOfVertices());
+		if(!isOutFlow){
 			return baseGraph.numberOfEdgesFromVertex(nodeIndex);
 		}
 		else{
@@ -193,6 +208,15 @@ private:
 		}
 		else{
 			return baseGraph.edgeToVertex(firstNode,neighborIndex);
+		}
+	}
+
+	size_t getNeighborBaseVertexRev(size_t firstNode,size_t neighborIndex)const{
+		if(!isOutFlow){
+			return baseGraph.vertexFromVertex(firstNode,neighborIndex);
+		}
+		else{
+			return baseGraph.vertexToVertex(firstNode,neighborIndex);
 		}
 	}
 	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex){
@@ -272,7 +296,7 @@ private:
 
 	//mutable std::unordered_map<size_t,double> valuesStructure;  //For DFS procedure
 
-	mutable bool vsUpToDate;
+	mutable bool solCostsUpToDate;
 	mutable bool optUpToDate;
 
 
@@ -317,7 +341,7 @@ nodeNotActive(nID)
 	//solutionCosts=std::unordered_map<size_t,double>();
 	solutionCosts[nodeNotActive]=0;
 	baseCosts[nodeNotActive]=0;
-	vsUpToDate=false;
+	solCostsUpToDate=false;
 	optUpToDate=false;
 
 }
@@ -325,7 +349,7 @@ nodeNotActive(nID)
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
-	if(!vsUpToDate) updateValues();
+	if(!solCostsUpToDate) updateValues();
 	else if(!optUpToDate){
 		optimalSolutionBase=nodeNotActive;
 		double minValue=solutionCosts[nodeNotActive];
@@ -535,7 +559,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 		assert(liftedCosts.count(vertexIndex)>0);
 		liftedCosts[vertexIndex]+=value;
 		//valuesStructure[vertexIndex]+=value;
-		vsUpToDate=false;
+		solCostsUpToDate=false;
 		optUpToDate=false;
 	}
 }
@@ -626,17 +650,23 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 	}
 
 
-	vsUpToDate=true;
+	solCostsUpToDate=true;
 	optUpToDate=true;
 }
 
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr,size_t lastLayer) const{
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr,size_t vertexToClose) const{
 
 	std::unordered_set<size_t> closedVertices;
 
-	bool lastLayerSet=lastLayer!=0;
+	bool lastLayerSet=false;
+	size_t lastLayer=0;
+	if(vertexToClose!=nodeID){
+		lastLayerSet=true;
+		lastLayer=ldpInstance.getGroupIndex(vertexToClose);
+	}
+
 
 	std::stack<size_t> nodeStack;
 	nodeStack.push(nodeID);
@@ -650,6 +680,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 		for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
 			size_t desc=getNeighborBaseVertex(currentNode,i);
+			if(desc==vertexToClose) continue;
 			if((!lastLayerSet&&isInThisFactorRange(desc))||(lastLayerSet&&isInGivenRange(desc,lastLayer))){
 				if(myStr.useVertex(desc)){
 					if(closedVertices.count(desc)>0){  //descendant closed
@@ -693,6 +724,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 				}
 				//optimalSolution=bestVertex;
 				myStr.indexStructure[nodeID]=bestVertex;
+				myStr.optValue=myStr.solutionCosts[bestVertex];
 			}
 			else{
 
@@ -847,6 +879,101 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::findAllOptimal(std::unorde
 }
 
 
+
+template<class LDP_INSTANCE>
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(size_t vertexOfLiftedEdge){
+	updateOptimal();
+	double optValue=solutionCosts[optimalSolutionBase];
+	if(optimalSolutionLifted.count(vertexOfLiftedEdge)>0){
+
+		StrForUpdateValues myStr(baseCosts,liftedCosts);
+		updateValues(myStr,vertexOfLiftedEdge);
+		//size_t restrictedOptimalSolution=myStr.indexStructure[nodeID];
+		double restrictedOptValue=myStr.optValue;
+		return optValue-restrictedOptValue;
+	}
+	else{
+		StrForUpdateValues myStr(baseCosts,liftedCosts);
+		updateValues(myStr);
+		std::unordered_map<size_t,double> message=bottomUpUpdate(myStr,vertexOfLiftedEdge);
+		return *(message.begin());
+	}
+
+}
+
+
+template<class LDP_INSTANCE>
+inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(StrForUpdateValues& myStr,size_t vertex,std::unordered_set<size_t>* pClosedVert,std::unordered_map<size_t,double>* pBUValuesStr){
+	bool onlyOne=pClosedVert==0;
+
+	std::unordered_map<size_t,double> messages;
+	if(onlyOne){
+		pClosedVert=new std::unordered_set<size_t> ();
+		pBUValuesStr=new std::unordered_map<size_t,double>();
+	}
+	std::unordered_set<size_t> closedVertices=*pClosedVert;
+	std::unordered_map<size_t,double> buValuesStr=*pBUValuesStr;
+
+	std::stack<size_t> myStack;
+	myStack.push(vertex);
+	while(!myStack.empty()){
+		size_t currentVertex=myStack.top();
+		bool predClosed=true;
+		for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) {
+			size_t pred=getNeighborBaseVertexRev(currentVertex,i);
+			if(pred==nodeID) continue;
+			if(reachable(nodeID,pred)&&closedVertices.count(pred)==0){
+				predClosed=false;
+				myStack.push(pred);
+			}
+		}
+		if(predClosed){
+			double bestValue=std::numeric_limits<double>::infinity();
+			auto baseIt=myStr.baseCosts.find(currentVertex);
+			if(baseIt!=myStr.baseCosts.end()){
+				bestValue=baseIt->second;
+			}
+			for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) {
+				size_t pred=getNeighborBaseVertexRev(currentVertex,i);
+				if(pred==nodeID) continue;
+				auto valuesIt=buValuesStr.find(pred);
+				if(valuesIt!=buValuesStr.end()){
+					double value=valuesIt->second;
+					if(value<bestValue){
+						bestValue=value;
+					}
+				}
+			}
+			auto liftedIt=myStr.liftedCosts.find(currentVertex);
+			if(liftedIt!=myStr.liftedCosts.end()){
+				double topDownValue=0;
+				auto valuesIt=myStr.valuesStructure.find(currentVertex);
+				if(valuesIt!=myStr.valuesStructure.end()){
+					topDownValue=valuesIt->second;
+				}
+				double restrictedOpt=topDownValue+bestValue;
+				bestValue+=liftedIt->second;
+				if(!onlyOne||currentVertex==vertex){
+					double delta=restrictedOpt-myStr.optValue;
+					messages[currentVertex]=delta;
+				    bestValue-=delta;
+					//myStr.liftedCosts-=delta;
+				}
+			}
+			closedVertices.insert(currentVertex);
+			buValuesStr[currentVertex]=bestValue;
+
+		}
+
+	}
+	if(onlyOne){
+		delete(pClosedVert);
+		pClosedVert=0;
+	}
+	return messages;
+
+
+}
 
 template<class LDP_INSTANCE>
 inline baseAndLiftedMessages ldp_single_node_cut_factor<LDP_INSTANCE>::adjustCostsAndSendMessagesLifted(){
