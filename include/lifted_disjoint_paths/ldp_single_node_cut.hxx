@@ -118,7 +118,7 @@ public:
 	auto export_variables() { return std::tie(tmp_to_delete_val); } //?What comes here?
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
-	double getBaseEdgeMinMarginal(size_t vertex);
+	double getOneBaseEdgeMinMarginal(size_t vertex);
 	std::unordered_map<size_t,double> getAllBaseMinMarginals();
 
 	//std::unordered_map<size_t,double> adjustCostsAndSendMessages();
@@ -153,7 +153,7 @@ public:
 	//	double getLiftedEdgeMinMarginal();
 
 
-	std::unordered_map<size_t,double> minMarginalsLifted();
+	std::unordered_map<size_t,double> getAllLiftedMinMarginals();
 
 	//std::unordered_map<size_t,std::unordered_set<size_t>> initPredecessorsInIndexStr();
 
@@ -473,7 +473,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setNoBaseEdgeActive(size_t
 
 
 template<class LDP_INSTANCE>
-inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getBaseEdgeMinMarginal(size_t vertex){
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMarginal(size_t vertex){
 	assert(vertex!=nodeID&&baseCosts.count(vertex)>0);
 	updateOptimal();
 	if(optimalSolutionBase!=vertex){
@@ -1013,7 +1013,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 }
 
 template<class LDP_INSTANCE>
-inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::minMarginalsLifted(){
+inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(){
 
 	//std::unordered_map<size_t,double> baseMessages=getAllBaseMinMarginals();
 	updateOptimal();
