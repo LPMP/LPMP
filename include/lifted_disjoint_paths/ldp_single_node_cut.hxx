@@ -304,10 +304,10 @@ private:
 	const LDP_INSTANCE& ldpInstance;
 
 
-	mutable std::unordered_map<size_t,double> baseCosts;
+	std::unordered_map<size_t,double> baseCosts;
 	std::unordered_map<size_t,double> liftedCosts;
 	mutable std::unordered_map<size_t,double> solutionCosts;
-	mutable std::unordered_map<size_t,size_t> indexStructure;
+//	mutable std::unordered_map<size_t,size_t> indexStructure;
 	//mutable std::unordered_map<size_t,std::unordered_set<size_t>> indexStructure;
 
 	//mutable std::unordered_map<size_t,double> valuesStructure;  //For DFS procedure
@@ -429,7 +429,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::unord
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
 	double value=0;
-	value+=baseCosts[primalBase_];
+	value+=baseCosts.at(primalBase_);
 	for(size_t node:primalLifted_){
 		value+=liftedCosts.at(node);
 	}
@@ -1074,8 +1074,8 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 	strForUpdateValues.setUseAllVertices(false);
 
 
-	for (int i = 0; i < openVertices.size(); ++i) {
-		size_t vertexToClose=openVertices[i];
+	for (auto listIt=openVertices.begin();listIt!=openVertices.end();listIt++) {
+		size_t vertexToClose=*listIt;
 		if(isNotZeroInOpt.count(vertexToClose)>0){
 
 			updateValues(strForUpdateValues,vertexToClose);
