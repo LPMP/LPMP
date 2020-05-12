@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <stack>
 #include <array>
+#include <list>
 
 
 namespace LPMP {
@@ -385,7 +386,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 		}
 		optBaseUpToDate=true;
 	}
-	optValue=solutionCosts[optimalSolutionBase];
+	optValue=solutionCosts.at(optimalSolutionBase);
 }
 
 
@@ -507,7 +508,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 	}
 	else{
 		double secondBest=std::numeric_limits<double>::infinity();
-		double optValue=solutionCosts[optimalSolutionBase];
+		double optValue=solutionCosts.at(optimalSolutionBase);
 		for (auto it=solutionCosts.begin();it!=solutionCosts.end();it++) {
 			if(it->first==optimalSolutionBase) continue;
 			double value=it->second;
@@ -654,14 +655,20 @@ template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 
 	//StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID);
+	strForUpdateValues.indexStructure.clear();
+	strForUpdateValues.solutionCosts.clear();
+	strForUpdateValues.valuesStructure.clear();
+
 	updateValues(strForUpdateValues);
 
+	//std::cout<<"values updated"<<std::endl;
 	optimalSolutionBase=strForUpdateValues.indexStructure[nodeID];
 
 	size_t vertexInOptimalPath=strForUpdateValues.indexStructure[nodeID];
 	optimalSolutionLifted.clear();
 	bool hasOptDescendant=vertexInOptimalPath!=nodeNotActive;
 	while(hasOptDescendant){
+		//std::cout<<"opt vertex "<<vertexInOptimalPath<<std::endl;
 		if(liftedCosts.count(vertexInOptimalPath)>0){
 			optimalSolutionLifted.insert(vertexInOptimalPath);
 		}
@@ -681,7 +688,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr,size_t vertexToIgnore) const{
 
+	//std::cout<<"update values in node "<<nodeID<<std::endl;
 	std::unordered_set<size_t> closedVertices;
+
 
 	bool lastLayerSet=false;
 	size_t lastLayer=0;
@@ -696,10 +705,11 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 	while(!nodeStack.empty()){
 		size_t currentNode=nodeStack.top();
+		//std::cout<<"current node "<<currentNode<<std::endl;
 		bool descClosed=true;
 		double minValue=0;
 		//std::unordered_set<size_t> minValueIndices;
-		size_t minValueIndex=nodeNotActive;
+		size_t minValueIndex=getVertexToReach();
 
 		for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
 			size_t desc=getNeighborBaseVertex(currentNode,i);
@@ -725,10 +735,12 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 		}
 		if(descClosed){ //Close node if all descendants are closed
+		//	std::cout<<"desc closed"<<std::endl;
 			if(currentNode==nodeID){  //all nodes closed, compute solution values
 				double bestValue=0;
 				size_t bestVertex=nodeNotActive;
-				for (auto it=myStr.baseCosts.begin();it!=myStr.baseCosts.end();it++) {
+				for (auto it=myStr.baseCosts.begin();it!=myStr.baseCosts.end();++it) {
+				//	std::cout<<"base edge "<<it->first<<std::endl;
 					size_t vertex=it->first;
 					double baseCost=it->second;
 					double valueToAdd=0;
@@ -748,7 +760,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 						bestValue=value;
 						bestVertex=vertex;
 					}
+					//std::cout<<"end for"<<std::endl;
 				}
+				//std::cout<<"after for"<<std::endl;
 				//optimalSolution=bestVertex;
 				myStr.indexStructure[nodeID]=bestVertex;
 				myStr.optValue=bestValue;
@@ -767,10 +781,12 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 				}
 				else{
 					myStr.valuesStructure.erase(currentNode);
+					myStr.indexStructure.erase(currentNode);
 				}
 				closedVertices.insert(currentNode); //marking the node as closed.
 			}
 			nodeStack.pop();
+			//std::cout<<"pop from node stack"<<std::endl;
 		}
 	}
 
