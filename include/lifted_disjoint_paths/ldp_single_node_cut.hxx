@@ -21,7 +21,7 @@ struct StrForUpdateValues{
 	const std::unordered_map<size_t,double>& baseCosts;
 	const std::unordered_map<size_t,double>& liftedCosts;
 
-	std::unordered_set<size_t> relevantVertices;
+	//std::unordered_set<size_t> relevantVertices;
 	bool useAllVertices;
 	double optValue;
 	const size_t nodeID;
@@ -39,7 +39,8 @@ struct StrForUpdateValues{
 	}
 	bool useVertex(size_t vertex){
 		if(useAllVertices) return true;
-		return relevantVertices.count(vertex)>0;
+		//return relevantVertices.count(vertex)>0;
+		return valuesStructure.count(vertex)>0;
 	}
 
 	void setUseAllVertices(bool value){
@@ -274,7 +275,7 @@ private:
 
 	std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
 		if(isOutFlow){
-			return baseGraph.findEdge(firstNode,secondNode);
+			return baseGraph.findEdge(firstNode,secondNode);isInGivenRange
 		}
 		else{
 			return baseGraph.findEdge(secondNode,firstNode);
@@ -779,10 +780,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 					myStr.valuesStructure[currentNode]=valueToStore;
 					myStr.indexStructure[currentNode]=minValueIndex;
 				}
-				else{
-					myStr.valuesStructure.erase(currentNode);
-					myStr.indexStructure.erase(currentNode);
-				}
+//				else{
+//					myStr.valuesStructure.erase(currentNode);
+//					myStr.indexStructure.erase(currentNode);
+//				}
 				closedVertices.insert(currentNode); //marking the node as closed.
 			}
 			nodeStack.pop();
@@ -928,6 +929,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::findAllOptimal(std::unorde
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(size_t vertexOfLiftedEdge){
 	updateOptimal();
+	//TODO run findAllOptimal. Some nodes can be active and inactive in opt solution
 	if(optimalSolutionLifted.count(vertexOfLiftedEdge)>0){
 
 		std::unordered_map<size_t,double> localSolutionCosts;
@@ -1076,7 +1078,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 	std::unordered_map<size_t,std::unordered_set<size_t>> candidateGraph;
 	for(auto it=strForUpdateValues.valuesStructure.begin();it!=strForUpdateValues.valuesStructure.end();it++){
 		size_t vertex=it->first;
-		strForUpdateValues.relevantVertices.insert(vertex);
+		//strForUpdateValues.relevantVertices.insert(vertex);
 		for (int i = 0; i < numberOfNeighborsBase(vertex); ++i) {
 			size_t neighbor=getNeighborBaseVertex(vertex,i);
 			if(strForUpdateValues.valuesStructure.count(neighbor)>0){
