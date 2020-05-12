@@ -714,22 +714,22 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 		for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
 			size_t desc=getNeighborBaseVertex(currentNode,i);
 			if(desc==vertexToIgnore) continue;
-			if((!lastLayerSet&&isInThisFactorRange(desc))||(lastLayerSet&&isInGivenRange(desc,lastLayer))){
-				if(myStr.useVertex(desc)){
-					if(closedVertices.count(desc)>0){  //descendant closed
+			if(isInThisFactorRange(desc)&&myStr.useVertex(desc)){
+				if(closedVertices.count(desc)>0||(lastLayerSet&&!isInGivenRange(desc,lastLayer))){  //descendant closed
+					if(descClosed){
 						auto it=myStr.valuesStructure.find(desc);
-						if(descClosed&&it!=myStr.valuesStructure.end()){
+						if(it!=myStr.valuesStructure.end()){
 							if(minValue>it->second){
 								minValue=it->second;
 								minValueIndex=desc;
 							}
 						}
 					}
-					else{  //descendant not closed
-						nodeStack.push(desc);
-						descClosed=false;
+				}
+				else {  //descendant not closed
+					nodeStack.push(desc);
+					descClosed=false;
 
-					}
 				}
 			}
 
