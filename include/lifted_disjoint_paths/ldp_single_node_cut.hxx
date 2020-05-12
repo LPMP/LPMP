@@ -685,7 +685,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 	bool lastLayerSet=false;
 	size_t lastLayer=0;
-	if(vertexToIgnore!=nodeID){
+	if(liftedCosts.count(vertexToIgnore)>0){
 		lastLayerSet=true;
 		lastLayer=ldpInstance.getGroupIndex(vertexToIgnore);
 	}
