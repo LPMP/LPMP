@@ -275,7 +275,7 @@ private:
 
 	std::pair<bool,size_t> findEdgeBase(size_t firstNode,size_t secondNode){
 		if(isOutFlow){
-			return baseGraph.findEdge(firstNode,secondNode);isInGivenRange
+			return baseGraph.findEdge(firstNode,secondNode);
 		}
 		else{
 			return baseGraph.findEdge(secondNode,firstNode);
@@ -865,23 +865,24 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::findAllOptimal(std::unorde
 	myStack.push(nodeID);
 	parentStack.push_back(nodeID);
 
-	std::unordered_set<size_t> descendants;
-	double bestValue=0;
+	//std::unordered_set<size_t> descendants;
+	double bestValue=strForUpdateValues.optValue;
 	for(auto pair:strForUpdateValues.solutionCosts){
 		size_t desc=pair.first;
-		double value=strForUpdateValues.valuesStructure[desc];
-		if(value<bestValue){
-			descendants.clear();
-			descendants.insert(desc);
-			bestValue=value;
-		}
-		else if(value==bestValue){
-			descendants.insert(desc);
+		double value=pair.second;
+		if(value==bestValue){
+			//descendants.insert(desc);
+			if(desc!=nodeNotActive&&desc!=getVertexToReach()){
+				myStack.push(desc);
+			}
+			else{
+				isNotZeroInOpt.clear();//TODO find out if this is necessary
+			}
 		}
 	}
-	for(size_t desc:strForUpdateValues.solutionCosts){
-		myStack.push(desc);
-	}
+//	for(size_t desc:strForUpdateValues.solutionCosts){
+//		myStack.push(desc);
+//	}
 	while(!myStack.empty()){
 		isOneInOpt.insert(myStack.top());
 		if(*(parentStack.rbegin())==myStack.top()){
@@ -890,14 +891,15 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::findAllOptimal(std::unorde
 		}
 		else{
 			size_t currentVertex=myStack.top();
-			double bestValue=0;
+			double bestValue=0; //TODO best value can be read from valuesStructure[indexStructure[currentVertex]]
 			std::unordered_set<size_t> descendants;
 			parentStack.push_back(currentVertex);
 			std::unordered_set<size_t>& candidates=candidateGraph[currentVertex];
 			if(!candidates.empty()){
 				for(size_t desc:candidates){
+
 					double value=strForUpdateValues.valuesStructure[desc];
-					if(value<bestValue){
+					if(value<bestValue){//if best value is set as written in todo above, remove this block
 						descendants.clear();
 						descendants.insert(desc);
 						bestValue=value;
@@ -1063,9 +1065,10 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 	bool hasOptDescendant=vertexInOptimalPath!=nodeNotActive;
 	while(hasOptDescendant){
 		isOneInOpt.insert(vertexInOptimalPath);  //Probably not necessary?
-		isNotZeroInOpt.insert(vertexInOptimalPath);
+		//isNotZeroInOpt.insert(vertexInOptimalPath);
 		if(liftedCosts.count(vertexInOptimalPath)>0){
 			openVertices.push_back(vertexInOptimalPath);
+			isNotZeroInOpt.insert(vertexInOptimalPath);
 		}
 		auto it=strForUpdateValues.indexStructure.find(vertexInOptimalPath);
 		hasOptDescendant=it!=strForUpdateValues.indexStructure.end();
