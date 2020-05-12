@@ -110,7 +110,7 @@ public:
 	}
 
 
-	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primalBaseComplete_); }
+	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
 	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
 
 	//auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
@@ -1540,5 +1540,44 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 //	}
 //	return pred;
 //}
+
+
+
+class ldp_mcf_single_node_cut_base_edge_message
+{
+	template<typename SINGLE_NODE_CUT_FACTOR>
+	void RepamLeft(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
+	{
+		assert(msg_dim == 0);
+		r.updateCostSimple(msg,right_node);
+	}
+
+	template<typename SINGLE_NODE_CUT_FACTOR>
+	void RepamRight(SINGLE_NODE_CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
+	{
+		assert(msg_dim == 0);
+		l.updateCostSimple(msg,left_node);
+	}
+
+	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
+	void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
+	{
+	}
+
+	template<typename MCF_FACTOR, typename MSG_ARRAY>
+	static void SendMessagesToRight(const MCF_FACTOR& leftRepam, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+	{
+	}
+
+	template<typename SINGLE_NODE_CUT_FACTOR>
+	bool check_primal_consistency(const SINGLE_NODE_CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
+	{
+
+	}
+
+private:
+	std::size_t left_node;
+	std::size_t right_node;
+};
 
 }

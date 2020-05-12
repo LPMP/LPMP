@@ -34,8 +34,8 @@ namespace LPMP {
             std::size_t outgoing_mcf_node(const std::size_t i) const { assert(i < nr_nodes()); return i*2+1; }
             std::size_t mcf_source_node() const { return mcf_->no_nodes()-2; }
             std::size_t mcf_terminal_node() const { return mcf_->no_nodes()-1; }
-            std::size_t base_graph_source_node() const { return nr_nodes() + 1; }
-            std::size_t base_graph_terminal_node() const { return nr_nodes() + 2; }
+            std::size_t base_graph_source_node() const { return nr_nodes(); }
+            std::size_t base_graph_terminal_node() const { return nr_nodes() + 1; }
 
             void adjustLiftedLabels();
 
@@ -213,6 +213,7 @@ namespace LPMP {
         const std::size_t nr_base_graph_nodes = instance.getGraph().numberOfVertices() - 2;
         const std::size_t base_graph_source = instance.getSourceNode();
         const std::size_t base_graph_terminal = instance.getTerminalNode();
+        std::cout << "source = " << base_graph_source << ", terminal = " << base_graph_terminal << "\n";
 
         const std::size_t nr_mcf_nodes = 2*nr_base_graph_nodes + 2; // source/terminal vertex + 2*ordinary vertices to ensure unit capacity vertices
         const std::size_t nr_mcf_edges = 3*nr_base_graph_nodes + instance.getGraph().numberOfEdges() + 1; // appearance/disappearance/uniqueness edge + connection edges + source/terminal edge
@@ -257,9 +258,18 @@ namespace LPMP {
         for(std::size_t i=0; i<nr_base_graph_nodes; ++i)
         {
             auto* incoming_snc = lp_->template add_factor<SINGLE_NODE_CUT_FACTOR>(instance, i, false);
+            incoming_snc->get_factor()->initBaseCosts(0.5);
+            incoming_snc->get_factor()->initLiftedCosts(0.5);
             auto* outgoing_snc = lp_->template add_factor<SINGLE_NODE_CUT_FACTOR>(instance, i, true);
+            outgoing_snc->get_factor()->initBaseCosts(0.5);
+            outgoing_snc->get_factor()->initLiftedCosts(0.5);
             single_node_cut_factors_.push_back({incoming_snc, outgoing_snc});
         }
+
+        assert(base_graph_source == this->base_graph_source_node());
+        assert(base_graph_terminal == this->base_graph_terminal_node());
+        assert(mcf_source_node == this->mcf_source_node());
+        assert(mcf_terminal_node == this->mcf_terminal_node());
     }
 
     template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
@@ -296,40 +306,65 @@ namespace LPMP {
 
         for(std::size_t i=0; i<nr_nodes(); ++i)
         {
-            auto *incoming_snc = single_node_cut_factors_[i][0];
-            const auto incoming_min_marg = incoming_snc->get_factor()->adjustCostsAndSendMessages();
-            std::cout << "incoming_min_marg size = " << incoming_min_marg.size() << "\n";
-            //for (std::size_t l = 0; l < incoming_min_marg.size(); ++l, ++e)
-            //{
-            //    const std::size_t start_node = mcf_->tail(e);
-            //    assert(mcf_->tail(e) == i);
-            //    assert(mcf_->cost(e) == 0.0);
-            //    assert(incoming_min_marg.count(l) > 0);
-            //    mcf_->update_cost(e, incoming_min_marg.find(l)->second);
-            //}
-            std::vector<std::tuple<std::size_t,double>> incoming_min_margs_sorted;
-            for(const auto [node,m] : incoming_min_marg)
-                incoming_min_margs_sorted.push_back({node, m});
-            std::sort(incoming_min_margs_sorted.begin(), incoming_min_margs_sorted.end(), [](const auto a, const auto b) { return std::get<0>(a) < std::get<0>(b); });
-            std::size_t e = mcf_->first_outgoing_arc(incoming_mcf_node(i));
-            assert(incoming_min_margs_sorted.size() <= mcf_->no_outgoing_arcs(i));
-            for (std::size_t l = 0; l < incoming_min_margs_sorted.size(); ++l)
             {
-                std::cout << "incoming min marginal edge " << i << "," << std::get<0>(incoming_min_margs_sorted[l]) << "\n";
-                while (mcf_node_to_graph_node(mcf_->head(e)) != std::get<0>(incoming_min_margs_sorted[l]))
+                auto *incoming_snc = single_node_cut_factors_[i][0];
+                const auto incoming_min_marg = incoming_snc->get_factor()->getAllBaseMinMarginals();
+                std::cout << "incoming_min_marg size = " << incoming_min_marg.size() << "\n";
+                std::vector<std::tuple<std::size_t, double>> incoming_min_margs_sorted;
+                for (const auto [node, m] : incoming_min_marg)
+                    incoming_min_margs_sorted.push_back({node, m});
+                std::sort(incoming_min_margs_sorted.begin(), incoming_min_margs_sorted.end(), [](const auto a, const auto b) { return std::get<0>(a) < std::get<0>(b); });
+                std::size_t e = mcf_->first_outgoing_arc(incoming_mcf_node(i));
+                assert(incoming_min_margs_sorted.size() <= mcf_->no_outgoing_arcs(incoming_mcf_node(i)));
+                for (std::size_t l = 0; l < incoming_min_margs_sorted.size(); ++l)
                 {
-                    assert(mcf_->tail(e) == i);
-                    assert(mcf_->cost(e) == 0.0);
-                    ++e;
+                    const std::size_t j = std::get<0>(incoming_min_margs_sorted[l]);
+                    assert(j != base_graph_terminal_node());
+                    std::cout << "incoming min marginal edge " << i << "," << j << "\n";
+                    while (mcf_node_to_graph_node(mcf_->head(e)) != j)
+                    {
+                        std::cout << "mcf edge " << e << ": " << mcf_->tail(e) << "," << mcf_->head(e) << "; base edge: " << mcf_node_to_graph_node(mcf_->tail(e)) << "," << mcf_node_to_graph_node(mcf_->head(e)) << "\n";
+                        assert(mcf_->tail(e) == incoming_mcf_node(i));
+                        ++e;
+                    }
+                    const std::size_t start_node = mcf_->tail(e);
+                    assert(mcf_->tail(e) == incoming_mcf_node(i));
+                    const double m = std::get<1>(incoming_min_margs_sorted[l]);
+                    if (j != base_graph_source_node())
+                        mcf_->update_cost(e, -m);
+                    else
+                        mcf_->update_cost(e, m);
+                        std::cout << "updates mcf edge " << e << ", reverse edge = " << mcf_->sister(e) << "\n";
                 }
-                const std::size_t start_node = mcf_->tail(e);
-                assert(mcf_->tail(e) == i);
-                assert(mcf_->cost(e) == 0.0);
             }
 
-            auto *outgoing_snc = single_node_cut_factors_[i][1];
-            const auto outgoing_min_marg = outgoing_snc->get_factor()->adjustCostsAndSendMessages();
-            std::cout << "outgoing_min_marg size = " << outgoing_min_marg.size() << "\n";
+            {
+                auto *outgoing_snc = single_node_cut_factors_[i][1];
+                const auto outgoing_min_marg = outgoing_snc->get_factor()->getAllBaseMinMarginals();
+                std::cout << "outgoing_min_marg size = " << outgoing_min_marg.size() << "\n";
+                std::vector<std::tuple<std::size_t, double>> outgoing_min_margs_sorted;
+                for (const auto [node, m] : outgoing_min_marg)
+                    outgoing_min_margs_sorted.push_back({node, m});
+                std::sort(outgoing_min_margs_sorted.begin(), outgoing_min_margs_sorted.end(), [](const auto a, const auto b) { return std::get<0>(a) < std::get<0>(b); });
+                std::size_t e = mcf_->first_outgoing_arc(outgoing_mcf_node(i));
+                assert(outgoing_min_margs_sorted.size() <= mcf_->no_outgoing_arcs(outgoing_mcf_node(i)));
+                for (std::size_t l = 0; l < outgoing_min_margs_sorted.size(); ++l)
+                {
+                    const std::size_t j = std::get<0>(outgoing_min_margs_sorted[l]);
+                    assert(j != base_graph_source_node());
+                    std::cout << "outgoing min marginal edge " << i << "," << std::get<0>(outgoing_min_margs_sorted[l]) << "\n";
+                    while (mcf_node_to_graph_node(mcf_->head(e)) != std::get<0>(outgoing_min_margs_sorted[l]))
+                    {
+                        std::cout << "mcf edge: " << mcf_->tail(e) << "," << mcf_->head(e) << "; base edge: " << mcf_node_to_graph_node(mcf_->tail(e)) << "," << mcf_node_to_graph_node(mcf_->head(e)) << "\n";
+                        assert(mcf_->tail(e) == outgoing_mcf_node(i));
+                        ++e;
+                    }
+                    const std::size_t start_node = mcf_->tail(e);
+                    assert(mcf_->tail(e) == outgoing_mcf_node(i));
+                    std::cout << "outgoing updates mcf edge " << e << ", reverse edge = " << mcf_->sister(e) << "\n";
+                    mcf_->update_cost(e, std::get<1>(outgoing_min_margs_sorted[l]));
+                }
+            }
         }
     }
 
