@@ -729,11 +729,11 @@ namespace LPMP {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward();
         const auto after_forward = std::chrono::steady_clock::now();
-        std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
+        // std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
         const auto before_backward = std::chrono::steady_clock::now();
         min_marginal_averaging_backward();
         const auto end_time = std::chrono::steady_clock::now();
-        std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
+        // std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -934,11 +934,11 @@ namespace LPMP {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward_SRMP();
         const auto after_forward = std::chrono::steady_clock::now();
-        std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
+        // std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
         const auto before_backward = std::chrono::steady_clock::now();
         min_marginal_averaging_backward_SRMP();
         const auto end_time = std::chrono::steady_clock::now();
-        std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
+        // std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
 
 

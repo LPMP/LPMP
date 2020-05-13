@@ -15,6 +15,8 @@ int main(int argc, char** argv)
     const double min_progress = 1e-06; // relative to objective function
     const int max_iter = 10000;
 
+    const auto start_time = std::chrono::steady_clock::now();
+
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
 
@@ -34,7 +36,9 @@ int main(int argc, char** argv)
 
     std::cout << std::setprecision(10);
     const double initial_lb = solver.compute_lower_bound();
-    std::cout << "initial lower bound = " << initial_lb << "\n";
+    std::cout << "initial lower bound = " << initial_lb << std::flush;
+    auto time = std::chrono::steady_clock::now();
+    std::cout << ", time = " << (double) std::chrono::duration_cast<std::chrono::milliseconds>(time - start_time).count() / 1000 << " s" << std::endl;
 
     double old_lb = initial_lb;
     double new_lb = old_lb;
@@ -43,7 +47,9 @@ int main(int argc, char** argv)
         std::cout << "iteration " << iter << ": " << std::flush;
         solver.iteration();
         const double new_lb = solver.lower_bound();
-        std::cout << "lower bound = " << new_lb << "\n";
+        std::cout << "lower bound = " << new_lb << std::flush;
+        time = std::chrono::steady_clock::now();
+        std::cout << ", time = " << (double) std::chrono::duration_cast<std::chrono::milliseconds>(time - start_time).count() / 1000 << " s" << std::endl;
         if (std::abs((new_lb - old_lb) / old_lb) < min_progress)
         {
             std::cout << "Improvement less than " << min_progress*100 << "\%." << std::endl;
@@ -53,12 +59,14 @@ int main(int argc, char** argv)
         if (iter+1==max_iter)
             std::cout << "Maximum number of iterations reached." << std::endl;
     }
+    std::cout << "Final lower bound: " << solver.lower_bound() << std::endl;
     double ub = std::numeric_limits<double>::infinity();
-    std::cout << "Rounding.. " << std::endl;
+    std::cout << "Primal heuristic.. " << std::endl;
     if (solver.fix_variables()) {
         ub = solver.compute_upper_bound();
-        std::cout << "\nPrimal solution value: " << ub << std::endl;
+        std::cout << "\nPrimal solution value: " << ub << std::flush;
     } else
-        std::cout << "\nNo primal solution found." << std::endl;
-
+        std::cout << "\nNo primal solution found." << std::flush;
+    time = std::chrono::steady_clock::now();
+    std::cout << ", time = " << (double) std::chrono::duration_cast<std::chrono::milliseconds>(time - start_time).count() / 1000 << " s" << std::endl;
 }
