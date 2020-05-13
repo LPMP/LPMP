@@ -1,0 +1,21 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+from data_mrf import *
+import BDD_evaluate_log
+
+# BDD_evaluate_log.run_experiments(protein_folding_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names)
+BDD_evaluate_log.run_experiments(object_seg_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names)
+# BDD_evaluate_log.run_experiments(photomontage_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names) 
+BDD_evaluate_log.run_experiments(color_seg_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names) 
+BDD_evaluate_log.run_experiments(color_seg_n4_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names) 
+BDD_evaluate_log.run_experiments(color_seg_n8_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names)
+
+# GUROBI
+
+# BDD_evaluate_log.run_experiments_gurobi(protein_folding_instance_list, instance_dir, output_dir)
+# BDD_evaluate_log.run_experiments_gurobi(object_seg_instance_list, instance_dir, output_dir)
+# BDD_evaluate_log.run_experiments_gurobi(photomontage_instance_list, instance_dir, output_dir)
+# BDD_evaluate_log.run_experiments_gurobi(color_seg_instance_list, instance_dir, output_dir)
+# BDD_evaluate_log.run_experiments_gurobi(color_seg_n4_instance_list, instance_dir, output_dir)
+# BDD_evaluate_log.run_experiments_gurobi(color_seg_n8_instance_list, instance_dir, output_dir)

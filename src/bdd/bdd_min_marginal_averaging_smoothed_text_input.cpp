@@ -15,12 +15,12 @@ int main(int argc, char** argv)
         throw std::runtime_error("input filename must be present as argument");
 
     const double min_progress = 1e-01;
-    const int max_iter = 200;
+    const int max_iter = 1000;
 
     ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
-    //input.reorder_bfs();
+    input.reorder_bfs();
     //input.reorder_Cuthill_McKee();
-    input.reorder_minimum_degree_averaging();
+    // input.reorder_minimum_degree_averaging();
 
     bdd_min_marginal_averaging_smoothed solver;
     solver.init(input);
