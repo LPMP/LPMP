@@ -294,11 +294,20 @@ struct linear_assignment_problem_input {
       return cost;
    }
 
+   std::string variable_identifier(const std::size_t v) const
+   {
+      if(v != no_assignment)
+         return std::to_string(v);
+      else
+         return "no_assignment"; 
+   }
+
    std::string linear_identifier(const std::size_t l, const std::size_t r) const
    {
-       assert(l < no_left_nodes);
-       assert(r < no_right_nodes);
-       return std::string("x_") + std::to_string(l) + "_" + std::to_string(r);
+       assert(l < no_left_nodes || l == no_assignment);
+       assert(r < no_right_nodes || r == no_assignment);
+       assert(l != no_assignment || r != no_assignment);
+       return std::string("x_") + variable_identifier(l) + "_" + variable_identifier(r);
    }
 
    template<typename STREAM>
@@ -316,21 +325,29 @@ struct linear_assignment_problem_input {
                left[a.left_node].push_back(a.right_node);
                right[a.right_node].push_back(a.left_node);
            }
+
            for(std::size_t i=0; i<no_left_nodes; ++i) {
-               if(left[i].size() > 0) {
-                   for(const std::size_t j : left[i]) {
-                       s << "+ " << linear_identifier(i,j) << " ";
-                   }
-                   s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
+              std::sort(left[i].begin(), left[i].end());
+              if (left[i].size() > 0)
+              {
+                 for (const std::size_t j : left[i])
+                    s << "+ " << linear_identifier(i, j) << " ";
+                 if (left[i].back() != no_assignment)
+                    s << " + " << linear_identifier(i, no_assignment);
+                 s << " = 1\n"; //"x_" << i << "_no_assignment = 1\n"; 
                }
            }
+
            for(std::size_t j=0; j<no_right_nodes; ++j) {
-               if(right[j].size() > 0) {
-                   for(const std::size_t i : right[j]) {
-                       s << "+ " << linear_identifier(i,j) << " ";
-                   }
-                   s << " <= 1\n";//"x_" << i << "_no_assignment = 1\n"; 
-               }
+              std::sort(right[j].begin(), right[j].end());
+              if (right[j].size() > 0)
+              {
+                 for (const std::size_t i : right[j])
+                    s << "+ " << linear_identifier(i, j) << " ";
+                 if (right[j].back() != no_assignment)
+                    s << " + " << linear_identifier(no_assignment, j);
+                 s << " = 1\n"; //"x_" << i << "_no_assignment = 1\n";
+              }
            }
        }
    template<typename STREAM>
@@ -415,10 +432,10 @@ struct graph_matching_input : public linear_assignment_problem_input {
 
     std::string quadratic_identifier(const std::array<std::size_t,2> left_nodes, const std::array<std::size_t,2> right_nodes) const
     {
-       assert(left_nodes[0] != left_nodes[1]);
-       assert(right_nodes[0] != right_nodes[1]);
-       if (left_nodes[0] < left_nodes[1])
-          return std::string("q_") + std::to_string(left_nodes[0]) + "_" + std::to_string(left_nodes[1]) + "_" + std::to_string(right_nodes[0]) + "_" + std::to_string(right_nodes[1]);
+       assert(left_nodes[0] != left_nodes[1] || left_nodes[0] == no_assignment);
+       assert(right_nodes[0] != right_nodes[1] || right_nodes[0] == no_assignment);
+       if (left_nodes[0] < left_nodes[1] || left_nodes[0] == graph_matching_input::no_assignment)
+          return std::string("q_") + this->variable_identifier(left_nodes[0]) + "_" + this->variable_identifier(left_nodes[1]) + "_" + this->variable_identifier(right_nodes[0]) + "_" + this->variable_identifier(right_nodes[1]);
        else
           return quadratic_identifier({left_nodes[1], left_nodes[0]}, {right_nodes[1], right_nodes[0]});
     }
@@ -469,6 +486,19 @@ struct graph_matching_input : public linear_assignment_problem_input {
               right_labels[a.right_node].push_back(a.left_node);
            }
 
+           for(auto& l : left_labels)
+           {
+              std::sort(l.begin(), l.end());
+              if(l.size() == 0 || l.back() != graph_matching_input::no_assignment)
+                 l.push_back(graph_matching_input::no_assignment);
+           }
+           for(auto& r : right_labels)
+           {
+              std::sort(r.begin(), r.end());
+              if(r.size() == 0 || r.back() != graph_matching_input::no_assignment)
+                 r.push_back(graph_matching_input::no_assignment);
+           }
+
            for (const auto [l_1, l_2] : left_pairwise_potentials)
            {
               assert(l_1 != l_2);
@@ -476,7 +506,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
               {
                  for (const auto r_2 : left_labels[l_2])
                  {
-                    if (r_1 != r_2)
+                    if (r_1 != r_2 || r_1 == graph_matching_input::no_assignment)
                        s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
                  }
                  s << " + " << this->linear_identifier(l_1, r_1) << " = 0\n";
@@ -484,7 +514,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
 
                for(const auto r_2 : left_labels[l_2]) {
                    for(const auto r_1 : left_labels[l_1]) {
-                      if (r_1 != r_2)
+                      if (r_1 != r_2 || r_1 == graph_matching_input::no_assignment)
                          s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
                    }
                    s << " + " << this->linear_identifier(l_2,r_2) << " = 0\n";
@@ -498,7 +528,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
               {
                  for (const auto l_2 : right_labels[r_2])
                  {
-                    if (l_1 != l_2)
+                    if (l_1 != l_2 || l_1 == graph_matching_input::no_assignment)
                        s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
                  }
                  s << " + " << this->linear_identifier(l_1, r_1) << " = 0\n";
@@ -508,7 +538,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
                {
                   for (const auto l_1 : right_labels[r_1])
                   {
-                     if (l_1 != l_2)
+                     if (l_1 != l_2 || l_1 == graph_matching_input::no_assignment)
                         s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
                   }
                   s << " + " << this->linear_identifier(l_2, r_2) << " = 0\n";
