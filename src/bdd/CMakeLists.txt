@@ -1,3 +1,5 @@
+add_subdirectory(eval)
+
 add_library(ILP_parser ILP_parser.cpp)
 target_link_libraries(ILP_parser LPMP)
 
