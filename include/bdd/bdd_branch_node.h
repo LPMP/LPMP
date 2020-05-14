@@ -369,6 +369,8 @@ namespace LPMP {
         double smooth_cost_from_terminal() const;
 
         bdd_branch_node_exp_sum_entry exp_sums() const;
+        template <typename BDD_BRANCH_NODE_ITERATOR>
+        static bdd_branch_node_exp_sum_entry exp_sums(BDD_BRANCH_NODE_ITERATOR bdd_node_begin, BDD_BRANCH_NODE_ITERATOR bdd_node_end);
     };
 
     class bdd_branch_node_opt_smoothed : public bdd_branch_node_opt_smoothed_base<bdd_branch_node_opt_smoothed>
@@ -604,6 +606,58 @@ namespace LPMP {
 
         return e;
     }
+
+template<typename DERIVED>
+template<typename BDD_BRANCH_NODE_ITERATOR>
+bdd_branch_node_exp_sum_entry bdd_branch_node_opt_smoothed_base<DERIVED>::exp_sums(BDD_BRANCH_NODE_ITERATOR bdd_node_begin, BDD_BRANCH_NODE_ITERATOR bdd_node_end)
+{
+    bdd_branch_node_exp_sum_entry e;
+    e.sum = {0.0, 0.0};
+    e.max = {-std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
+    std::array<double, 2> s = {0.0, 0.0};
+    std::array<double, 2> current_max = {-std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
+    for(auto bdd_node_it = bdd_node_begin; bdd_node_it != bdd_node_end; ++bdd_node_it)
+    {
+        const auto &bdd = *bdd_node_it;
+        const auto bdd_exp_sums = bdd.exp_sums();
+        //std::cout << "var" << var << ", bdd index = " << bdd_index << ": " << "\n";
+        //std::cout << bdd_exp_sums.sum[0] << "," << bdd_exp_sums.sum[1] << ";" << bdd_exp_sums.max[0] << "," << bdd_exp_sums.max[1] << "\n";
+
+        if (bdd_exp_sums.sum[0] > 0)
+        {
+            if (current_max[0] > bdd_exp_sums.max[0])
+            {
+                s[0] += bdd_exp_sums.sum[0] * std::exp(bdd_exp_sums.max[0] - current_max[0]);
+            }
+            else
+            {
+                s[0] *= std::exp(current_max[0] - bdd_exp_sums.max[0]);
+                s[0] += bdd_exp_sums.sum[0];
+                current_max[0] = bdd_exp_sums.max[0];
+            }
+        }
+
+        if (bdd_exp_sums.sum[1] > 0)
+        {
+            if (current_max[1] > bdd_exp_sums.max[1])
+            {
+                s[1] += bdd_exp_sums.sum[1] * std::exp(bdd_exp_sums.max[1] - current_max[1]);
+            }
+            else
+            {
+                s[1] *= std::exp(current_max[1] - bdd_exp_sums.max[1]);
+                s[1] += bdd_exp_sums.sum[1];
+                current_max[1] = bdd_exp_sums.max[1];
+            }
+        }
+        assert(std::isfinite(s[0]));
+        assert(std::isfinite(s[1]));
+    }
+    //std::cout << s[0] << "," << s[1] << ";" << current_max[0] << "," << current_max[1] << "\n";
+    assert(s[0] > 0);
+    assert(s[1] > 0);
+    return {s, current_max};
+}
 
     /*
     std::array<double, 2> bdd_branch_node_opt_smoothed::min_marginal_debug() const

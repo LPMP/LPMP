@@ -34,6 +34,7 @@ namespace LPMP {
 
        std::string unary_variable_identifier(const std::size_t i, const std::size_t l) const;
        std::string pairwise_variable_identifier(const std::array<std::size_t,2> vars, const std::array<std::size_t,2> labels) const;
+       std::string Potts_pairwise_variable_identifier(const std::size_t i, const std::size_t j) const;
 
        bool unary_variable_active(const std::size_t i, const std::size_t j) const;
        bool unary_variable_active(const std::size_t i) const;
@@ -42,6 +43,9 @@ namespace LPMP {
        bool pairwise_variable_active(const std::size_t pairwise_index) const;
 
        void propagate();
+
+       bool is_Potts(const std::size_t pairwise_idx) const;
+       double Potts_strength(const std::size_t pairwise_index) const;
    };
 
    inline std::string mrf_input::unary_variable_identifier(const std::size_t i, const std::size_t l) const
@@ -107,6 +111,13 @@ namespace LPMP {
        return unary_variable_active(i) && unary_variable_active(j);
    }
 
+   inline std::string mrf_input::Potts_pairwise_variable_identifier(const std::size_t i, const std::size_t j) const
+   {
+       assert(i < no_variables());
+       assert(j < no_variables());
+       return "y_" + std::to_string(i) + "_" + std::to_string(j);
+   }
+
    inline void mrf_input::propagate()
    {
        // if exactly one unary variable is active, incorporate pairwise costs into unary ones
@@ -139,6 +150,47 @@ namespace LPMP {
        }
    }
 
+   inline bool mrf_input::is_Potts(const std::size_t pairwise_idx) const
+   {
+       assert(pairwise_idx < no_pairwise_factors());
+
+       const auto [i, j] = get_pairwise_variables(pairwise_idx);
+
+       for(std::size_t l=0; l<cardinality(i); ++l)
+           if (!unary_variable_active(i, l))
+               return false;
+
+       for(std::size_t l=0; l<cardinality(j); ++l)
+           if (!unary_variable_active(j, l))
+               return false;
+
+       if (cardinality(i) != cardinality(j))
+           return false;
+       auto pot = get_pairwise_potential(pairwise_idx);
+       assert(cardinality(i) > 1);
+       const double diagonal = pot(0, 0);
+       if(diagonal != 0.0)
+           return false;
+       const double off_diagonal = pot(0, 1);
+       if(off_diagonal < 0.0)
+           return false;
+       for (std::size_t l_i = 0; l_i < cardinality(i); ++l_i)
+           for (std::size_t l_j = 0; l_j < cardinality(j); ++l_j)
+               if (l_i != l_j && pot(l_i, l_j) != off_diagonal)
+                   return false;
+       for (std::size_t l = 0; l < cardinality(i); ++l)
+           if (pot(l, l) != diagonal)
+               return false;
+       return true;
+   }
+
+   inline double mrf_input::Potts_strength(const std::size_t pairwise_idx) const
+   {
+       assert(is_Potts(pairwise_idx));
+       auto pot = get_pairwise_potential(pairwise_idx);
+       return pot(0,1);
+   }
+
    template <typename STREAM>
    void mrf_input::write_to_lp_objective(STREAM &s) const
    {
@@ -151,19 +203,26 @@ namespace LPMP {
        assert(pairwise_indices.size() == pairwise_values.size());
        for (std::size_t pairwise_idx = 0; pairwise_idx < pairwise_indices.size(); ++pairwise_idx)
        {
+           const auto [i, j] = pairwise_indices[pairwise_idx];
            if (!pairwise_variable_active(pairwise_idx))
                continue;
-           const auto [i, j] = pairwise_indices[pairwise_idx];
-           assert(pairwise_values.dim2(pairwise_idx) == unaries[i].size());
-           assert(pairwise_values.dim3(pairwise_idx) == unaries[j].size());
-           for (std::size_t l_i = 0; l_i < pairwise_values.dim2(pairwise_idx); ++l_i)
+           if (is_Potts(pairwise_idx))
            {
-               for (std::size_t l_j = 0; l_j < pairwise_values.dim3(pairwise_idx); ++l_j)
+               s << " + " << Potts_strength(pairwise_idx) << " " << Potts_pairwise_variable_identifier(i, j) << "\n";
+           }
+           else
+           {
+               assert(pairwise_values.dim2(pairwise_idx) == unaries[i].size());
+               assert(pairwise_values.dim3(pairwise_idx) == unaries[j].size());
+               for (std::size_t l_i = 0; l_i < pairwise_values.dim2(pairwise_idx); ++l_i)
                {
-                   if(pairwise_variable_active(pairwise_idx, {l_i, l_j}))
+                   for (std::size_t l_j = 0; l_j < pairwise_values.dim3(pairwise_idx); ++l_j)
                    {
-                       const double val = pairwise_values(pairwise_idx, l_i, l_j);
-                       s << (val >= 0.0 ? "+ " : "- ") << std::abs(val) << " " << pairwise_variable_identifier({i, j}, {l_i, l_j}) << "\n";
+                       if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
+                       {
+                           const double val = pairwise_values(pairwise_idx, l_i, l_j);
+                           s << (val >= 0.0 ? "+ " : "- ") << std::abs(val) << " " << pairwise_variable_identifier({i, j}, {l_i, l_j}) << "\n";
+                       }
                    }
                }
            }
@@ -199,22 +258,29 @@ namespace LPMP {
                continue;
            const auto [i, j] = pairwise_indices[pairwise_idx];
            assert(i < j);
-           bool variable_printed = false;
-           for (std::size_t l_i = 0; l_i < pairwise_values.dim2(pairwise_idx); ++l_i)
+           if(is_Potts(pairwise_idx))
            {
-               for (std::size_t l_j = 0; l_j < pairwise_values.dim3(pairwise_idx); ++l_j)
+               // no constraints since only single variable is here. Difference constraints are below
+           }
+           else
+           {
+               bool variable_printed = false;
+               for (std::size_t l_i = 0; l_i < pairwise_values.dim2(pairwise_idx); ++l_i)
                {
-                   if(pairwise_variable_active(pairwise_idx, {l_i, l_j}))
+                   for (std::size_t l_j = 0; l_j < pairwise_values.dim3(pairwise_idx); ++l_j)
                    {
-                       if (variable_printed)
-                           s << " + ";
-                       else
-                           variable_printed = true;
-                       s << pairwise_variable_identifier({i, j}, {l_i, l_j});
+                       if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
+                       {
+                           if (variable_printed)
+                               s << " + ";
+                           else
+                               variable_printed = true;
+                           s << pairwise_variable_identifier({i, j}, {l_i, l_j});
+                       }
                    }
                }
+               s << " = 1\n";
            }
-           s << " = 1\n";
        }
 
        // marginalization constraints
@@ -224,27 +290,38 @@ namespace LPMP {
                continue;
            const auto [i, j] = pairwise_indices[pairwise_idx];
            assert(i < j);
-           for (std::size_t l_i = 0; l_i < unaries[i].size(); ++l_i)
+           if(is_Potts(pairwise_idx))
            {
-               if(unary_variable_active(i, l_i))
+               for (std::size_t l = 0; l < unaries[i].size(); ++l)
                {
-                   s << unary_variable_identifier(i, l_i);
-                   for (std::size_t l_j = 0; l_j < unaries[j].size(); ++l_j)
-                       if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
-                           s << " - " << pairwise_variable_identifier({i, j}, {l_i, l_j});
-                   s << " = 0\n";
+                   s << Potts_pairwise_variable_identifier(i, j) << " - " << unary_variable_identifier(i, l) << " + " << unary_variable_identifier(j, l) << " >= 0\n";
+                   s << Potts_pairwise_variable_identifier(i, j) << " - " << unary_variable_identifier(j, l) << " + " << unary_variable_identifier(i, l) << " >= 0\n";
                }
            }
-
-           for (std::size_t l_j = 0; l_j < unaries[j].size(); ++l_j)
+           else
            {
-               if(unary_variable_active(j, l_j))
-               {
-               s << unary_variable_identifier(j, l_j);
                for (std::size_t l_i = 0; l_i < unaries[i].size(); ++l_i)
-                   if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
-                       s << " - " << pairwise_variable_identifier({i, j}, {l_i, l_j});
-               s << " = 0\n";
+               {
+                   if (unary_variable_active(i, l_i))
+                   {
+                       s << unary_variable_identifier(i, l_i);
+                       for (std::size_t l_j = 0; l_j < unaries[j].size(); ++l_j)
+                           if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
+                               s << " - " << pairwise_variable_identifier({i, j}, {l_i, l_j});
+                       s << " = 0\n";
+                   }
+               }
+
+               for (std::size_t l_j = 0; l_j < unaries[j].size(); ++l_j)
+               {
+                   if (unary_variable_active(j, l_j))
+                   {
+                       s << unary_variable_identifier(j, l_j);
+                       for (std::size_t l_i = 0; l_i < unaries[i].size(); ++l_i)
+                           if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
+                               s << " - " << pairwise_variable_identifier({i, j}, {l_i, l_j});
+                       s << " = 0\n";
+                   }
                }
            }
        }
@@ -267,10 +344,17 @@ namespace LPMP {
            const auto [i, j] = pairwise_indices[pairwise_idx];
            assert(pairwise_values.dim2(pairwise_idx) == unaries[i].size());
            assert(pairwise_values.dim3(pairwise_idx) == unaries[j].size());
-           for (std::size_t l_i = 0; l_i < pairwise_values.dim2(pairwise_idx); ++l_i)
-               for (std::size_t l_j = 0; l_j < pairwise_values.dim3(pairwise_idx); ++l_j)
-                   if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
-                       s << pairwise_variable_identifier({i, j}, {l_i, l_j}) << "\n";
+           if(is_Potts(pairwise_idx))
+           {
+               s << Potts_pairwise_variable_identifier(i, j) << "\n";
+           }
+           else
+           {
+               for (std::size_t l_i = 0; l_i < pairwise_values.dim2(pairwise_idx); ++l_i)
+                   for (std::size_t l_j = 0; l_j < pairwise_values.dim3(pairwise_idx); ++l_j)
+                       if (pairwise_variable_active(pairwise_idx, {l_i, l_j}))
+                           s << pairwise_variable_identifier({i, j}, {l_i, l_j}) << "\n";
+           }
        } 
    }
 

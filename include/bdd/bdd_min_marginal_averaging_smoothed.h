@@ -1,6 +1,8 @@
 #pragma once
 
 #include "bdd_min_marginal_averaging.h"
+#include "bdd/ILP_parser.h"
+#include "cuddObj.hh"
 #include <array>
 #include <vector>
 
@@ -244,53 +246,10 @@ bdd_branch_node_exp_sum_entry bdd_min_marginal_averaging_smoothed_base<BDD_VARIA
 {
     assert(var < this->nr_variables());
     assert(bdd_index < this->nr_bdds(var));
-    bdd_branch_node_exp_sum_entry e;
-    e.sum = {0.0, 0.0};
-    e.max = {-std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
-    std::array<double, 2> s = {0.0, 0.0};
-    std::array<double, 2> current_max = {-std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
     const auto &bdd_var = this->bdd_variables_(var, bdd_index);
-    for (std::size_t bdd_node_index = bdd_var.first_node_index; bdd_node_index < bdd_var.last_node_index; ++bdd_node_index)
-    {
-        const auto &bdd = this->bdd_branch_nodes_[bdd_node_index];
-        const auto bdd_exp_sums = bdd.exp_sums();
-        //std::cout << "var" << var << ", bdd index = " << bdd_index << ": " << "\n";
-        //std::cout << bdd_exp_sums.sum[0] << "," << bdd_exp_sums.sum[1] << ";" << bdd_exp_sums.max[0] << "," << bdd_exp_sums.max[1] << "\n";
-
-        if (bdd_exp_sums.sum[0] > 0)
-        {
-            if (current_max[0] > bdd_exp_sums.max[0])
-            {
-                s[0] += bdd_exp_sums.sum[0] * std::exp(bdd_exp_sums.max[0] - current_max[0]);
-            }
-            else
-            {
-                s[0] *= std::exp(current_max[0] - bdd_exp_sums.max[0]);
-                s[0] += bdd_exp_sums.sum[0];
-                current_max[0] = bdd_exp_sums.max[0];
-            }
-        }
-
-        if (bdd_exp_sums.sum[1] > 0)
-        {
-            if (current_max[1] > bdd_exp_sums.max[1])
-            {
-                s[1] += bdd_exp_sums.sum[1] * std::exp(bdd_exp_sums.max[1] - current_max[1]);
-            }
-            else
-            {
-                s[1] *= std::exp(current_max[1] - bdd_exp_sums.max[1]);
-                s[1] += bdd_exp_sums.sum[1];
-                current_max[1] = bdd_exp_sums.max[1];
-            }
-        }
-        assert(std::isfinite(s[0]));
-        assert(std::isfinite(s[1]));
-    }
-    //std::cout << s[0] << "," << s[1] << ";" << current_max[0] << "," << current_max[1] << "\n";
-    assert(s[0] > 0);
-    assert(s[1] > 0);
-    return {s, current_max};
+    auto first_bdd_it = this->bdd_branch_nodes_.begin() + bdd_var.first_node_index;
+    auto last_bdd_it = this->bdd_branch_nodes_.begin() + bdd_var.last_node_index;
+    return BDD_BRANCH_NODE::exp_sums(first_bdd_it, last_bdd_it);
 }
 
 template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>

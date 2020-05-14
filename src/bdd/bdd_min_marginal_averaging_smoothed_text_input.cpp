@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 
     bdd_min_marginal_averaging_smoothed solver;
     solver.init(input);
-    solver.set_cost_scaling(0.01);
+    solver.set_cost_scaling(1.0);
 
     solver.smooth_forward_run();
     const double initial_lb_forward = solver.compute_smooth_lower_bound_forward();
