@@ -334,7 +334,7 @@ namespace LPMP {
                         mcf_->update_cost(e, -m);
                     else
                         mcf_->update_cost(e, m);
-                        std::cout << "updates mcf edge " << e << ", reverse edge = " << mcf_->sister(e) << "\n";
+                        //std::cout << "updates mcf edge " << e << ", reverse edge = " << mcf_->sister(e) << "\n";
                 }
             }
 
@@ -361,7 +361,7 @@ namespace LPMP {
                     }
                     const std::size_t start_node = mcf_->tail(e);
                     assert(mcf_->tail(e) == outgoing_mcf_node(i));
-                    std::cout << "outgoing updates mcf edge " << e << ", reverse edge = " << mcf_->sister(e) << "\n";
+                   // std::cout << "outgoing updates mcf edge " << e << ", reverse edge = " << mcf_->sister(e) << "\n";
                     mcf_->update_cost(e, std::get<1>(outgoing_min_margs_sorted[l]));
                 }
             }
