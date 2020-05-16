@@ -277,8 +277,8 @@ namespace LPMP {
         assert(mcf_terminal_node == this->mcf_terminal_node());
 
 
-        size_t nodeId=10;
-        sncDebug(nodeId,1);
+        size_t nodeId=200;
+        sncDebug(nodeId,0);
         //checkFeasibilityBaseInSnc();
 
     }
@@ -289,7 +289,7 @@ namespace LPMP {
     {
     	std::cout<<"print node "<<vertex<<std::endl;
     	auto sncFactor=single_node_cut_factors_[vertex][isOut]->get_factor();
-    	const std::unordered_map<size_t, double>& baseCosts=sncFactor->getLiftedCosts();
+    	const std::unordered_map<size_t, double>& baseCosts=sncFactor->getBaseCosts();
     	const std::unordered_map<size_t, double>& liftedCosts=sncFactor->getLiftedCosts();
 
     	std::cout<<"base costs"<<std::endl;
@@ -305,6 +305,21 @@ namespace LPMP {
     		std::cout<<pair.second;
     		std::cout<<std::endl;
     	}
+
+
+    	sncFactor->getAllBaseMinMarginals();
+    	std::cout<<"isolated min marginals "<<std::endl;
+    	for(const auto pair:baseCosts){
+    		if(pair.first!=sncFactor->nodeID){
+
+    			double value=sncFactor->getOneBaseEdgeMinMarginal(pair.first);
+    			std::cout<<pair.first<<": "<<value<<std::endl;
+    		}
+    	}
+
+    	double value=sncFactor->oneLiftedMinMarginal(157);
+    	std::cout<<"lifted min marginal "<<value<<std::endl;
+
     }
 
 
