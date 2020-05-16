@@ -22,6 +22,9 @@ namespace LPMP {
 
         //using problem_constructor = lifted_disjoint_paths_constructor<lifted_disjoint_paths_FMC, mcf_factor_container, single_node_cut_factor_container, mcf_single_node_cut_message_container>;
         using problem_constructor = lifted_disjoint_paths_constructor<lifted_disjoint_paths_FMC, mcf_factor_container, single_node_cut_factor_container, single_node_cut_factor_container>;
+       // using problem_constructor = lifted_disjoint_paths_constructor<lifted_disjoint_paths_FMC, lifted_disjoint_paths_mcf_factor, ldp_single_node_cut_factor<lifted_disjoint_paths::LdpInstance>, ldp_mcf_single_node_cut_message>;
+
+
     };
 
 }

@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
 
 	lifted_disjoint_paths::LdpInstance input = lifted_disjoint_paths::parse_file(inputFileName);
 	solver.GetProblemConstructor().construct(input);
-	return solver.Solve();
+	//return solver.Solve();
 
 //    const andres::graph::Digraph<>& graph=input.getGraph();
 //    std::cout<<"base graph"<<std::endl;

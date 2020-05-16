@@ -83,6 +83,11 @@ public:
 		return liftedCosts;
 	}
 
+	const std::unordered_map<size_t, double>& getBaseCosts() const {
+		return baseCosts;
+	}
+
+
 	bool hasLiftedEdgeToNode(size_t vertex){
 		return liftedCosts.count(vertex)>0;
 	}

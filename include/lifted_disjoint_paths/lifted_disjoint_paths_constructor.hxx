@@ -43,6 +43,8 @@ namespace LPMP {
             bool checkFeasibilityLiftedInSnc();
 			bool checkFeasibilityBaseInSnc();
 
+			void sncDebug(size_t vertex,bool isOut);
+
             LP<FMC> *lp_;
             using mcf_solver_type = MCF::SSP<long, double>;
             std::unique_ptr<mcf_solver_type> mcf_; // minimum cost flow factor for base edges
@@ -65,7 +67,7 @@ namespace LPMP {
     	bool isFeasible=true;
     	for (int i = 0; i < nr_nodes(); ++i) {
     		size_t vertex=i;
-    		SINGLE_NODE_CUT_FACTOR& snc=*single_node_cut_factors_[vertex,1];
+    		const auto& snc=single_node_cut_factors_[vertex][1]->get_factor();
     		if(snc.getPrimalBase()==base_graph_terminal_node()){
 
     			std::vector<bool> isOnPath(nr_nodes(),0);
@@ -74,7 +76,7 @@ namespace LPMP {
     			path.push_front(vertex);
 
     			while(vertex!=base_graph_source_node()){
-    				SINGLE_NODE_CUT_FACTOR& sncFactorOut=*single_node_cut_factors_[vertex,1];
+    				const auto& sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
     				const std::unordered_set<size_t>& activeEndpoints=sncFactorOut.getPrimalLifted();
     				const std::unordered_map<size_t,double>& liftedCosts= sncFactorOut.getLiftedCosts();
     				for(auto pair:liftedCosts){
@@ -92,11 +94,11 @@ namespace LPMP {
     				}
     				isOnPath[vertex]=1;
     				path.push_front(vertex);
-    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=*single_node_cut_factors_[vertex,0];
+    				auto& sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
     				vertex=sncFactorIn.getPrimalBase();
     			}
     			for(size_t activeVertex:path){
-    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=*single_node_cut_factors_[activeVertex,0];
+    				auto& sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
     				const std::unordered_set<size_t>& activeEndpoints=sncFactorIn.getPrimalLifted();
     				const std::unordered_map<size_t,double>& liftedCosts= sncFactorIn.getLiftedCosts();
     				for(auto pair:liftedCosts){
@@ -127,8 +129,11 @@ namespace LPMP {
     	bool isFeasible=true;
     	std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
     	for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
-    		SINGLE_NODE_CUT_FACTOR& sncFactorIn=*single_node_cut_factors_[i][0];
-    		SINGLE_NODE_CUT_FACTOR& sncFactorOut=*single_node_cut_factors_[i][1];
+    		auto *incoming_snc = single_node_cut_factors_[i][0]->get_factor();
+    		const auto incoming_min_marg = incoming_snc->get_factor()->getAllBaseMinMarginals();
+
+    		const auto sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
+    		const auto sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
 
     		if(sncFactorIn.isNodeActive()!=sncFactorOut.isNodeActive()){
     			isFeasible=false;
@@ -137,7 +142,7 @@ namespace LPMP {
     		else if(sncFactorIn.isNodeActive()&&sncFactorOut.isNodeActive()){
     			size_t inputNode=sncFactorIn.getPrimalBase();
     			if(inputNode!=base_graph_source_node()){
-    				SINGLE_NODE_CUT_FACTOR& sncFactorInputNodeOut=*single_node_cut_factors_[inputNode][1];
+    				auto& sncFactorInputNodeOut=single_node_cut_factors_[inputNode][1]->get_factor();
     				if(sncFactorInputNodeOut.getPrimalBase()!=i){
     					isFeasible=false;
 
@@ -146,7 +151,7 @@ namespace LPMP {
 
     			size_t outputNode=sncFactorOut.getPrimalBase();
     			if(outputNode!=base_graph_terminal_node()){
-    				SINGLE_NODE_CUT_FACTOR& sncFactorOuputNodeIn=*single_node_cut_factors_[outputNode][0];
+    				auto& sncFactorOuputNodeIn=single_node_cut_factors_[outputNode][0]->get_factor();
     				if(sncFactorOuputNodeIn.getPrimalBase()!=i){
     					isFeasible=false;
 
@@ -166,7 +171,7 @@ namespace LPMP {
 
     	for (int i = 0; i < nr_nodes(); ++i) {
     		size_t vertex=i;
-    		SINGLE_NODE_CUT_FACTOR& snc=*single_node_cut_factors_[vertex,1];
+    		auto& snc=single_node_cut_factors_[vertex][1]->get_factor();
     		if(snc.getPrimalBase()==base_graph_terminal_node()){
 
     			std::vector<bool> isOnPath(nr_nodes(),0);
@@ -175,7 +180,7 @@ namespace LPMP {
     			path.push_front(vertex);
 
     			while(vertex!=base_graph_source_node()){
-    				SINGLE_NODE_CUT_FACTOR& sncFactorOut=*single_node_cut_factors_[vertex,1];
+    				auto& sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
     				std::unordered_set<size_t> activeEndpoints;
     				const std::unordered_map<size_t,double>& liftedCosts= sncFactorOut.getLiftedCosts();
     				for(auto pair:liftedCosts){
@@ -187,11 +192,11 @@ namespace LPMP {
     				sncFactorOut.setPrimalLifted(activeEndpoints);
     				isOnPath[vertex]=1;
     				path.push_front(vertex);
-    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=*single_node_cut_factors_[vertex,0];
+    				auto& sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
     				vertex=sncFactorIn.getPrimalBase();
     			}
     			for(size_t activeVertex:path){
-    				SINGLE_NODE_CUT_FACTOR& sncFactorIn=*single_node_cut_factors_[activeVertex,0];
+    				auto& sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
     				std::unordered_set<size_t> activeEndpoints;
     				const std::unordered_map<size_t,double>& liftedCosts= sncFactorIn.getLiftedCosts();
     				for(auto pair:liftedCosts){
@@ -270,7 +275,38 @@ namespace LPMP {
         assert(base_graph_terminal == this->base_graph_terminal_node());
         assert(mcf_source_node == this->mcf_source_node());
         assert(mcf_terminal_node == this->mcf_terminal_node());
+
+
+        size_t nodeId=10;
+        sncDebug(nodeId,1);
+        //checkFeasibilityBaseInSnc();
+
     }
+
+
+    template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
+    void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, MCF_FACTOR, SINGLE_NODE_CUT_FACTOR, MCF_SINGLE_NODE_CUT_MESSAGE>::sncDebug(size_t vertex,bool isOut)
+    {
+    	std::cout<<"print node "<<vertex<<std::endl;
+    	auto sncFactor=single_node_cut_factors_[vertex][isOut]->get_factor();
+    	const std::unordered_map<size_t, double>& baseCosts=sncFactor->getLiftedCosts();
+    	const std::unordered_map<size_t, double>& liftedCosts=sncFactor->getLiftedCosts();
+
+    	std::cout<<"base costs"<<std::endl;
+    	for(const auto pair:baseCosts){
+    		std::cout<<pair.first<<": ";
+    		std::cout<<pair.second;
+    		std::cout<<std::endl;
+    	}
+
+    	std::cout<<"lifted costs"<<std::endl;
+    	for(const auto pair:liftedCosts){
+    		std::cout<<pair.first<<": ";
+    		std::cout<<pair.second;
+    		std::cout<<std::endl;
+    	}
+    }
+
 
     template <class FACTOR_MESSAGE_CONNECTION, class MCF_FACTOR, class SINGLE_NODE_CUT_FACTOR, class MCF_SINGLE_NODE_CUT_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, MCF_FACTOR, SINGLE_NODE_CUT_FACTOR, MCF_SINGLE_NODE_CUT_MESSAGE>::ComputePrimal()
