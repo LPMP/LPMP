@@ -317,7 +317,8 @@ namespace LPMP {
     		}
     	}
 
-    	double value=sncFactor->oneLiftedMinMarginal(157);
+    	std::cout<<"computing lifted min marginal "<<std::endl;
+    	double value=sncFactor->oneLiftedMinMarginal(147);
     	std::cout<<"lifted min marginal "<<value<<std::endl;
 
     }
