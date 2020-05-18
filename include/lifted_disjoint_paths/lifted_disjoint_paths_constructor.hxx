@@ -278,7 +278,7 @@ namespace LPMP {
 
 
         size_t nodeId=200;
-       // sncDebug(nodeId,0);
+      //  sncDebug(nodeId,1);
         //checkFeasibilityBaseInSnc();
 
     }
@@ -317,9 +317,9 @@ namespace LPMP {
     		}
     	}
 
-    	std::cout<<"computing lifted min marginal "<<std::endl;
-    	double value=sncFactor->oneLiftedMinMarginal(171);
-    	std::cout<<"lifted min marginal "<<value<<std::endl;
+    //	std::cout<<"computing lifted min marginal "<<std::endl;
+    	//double value=sncFactor->oneLiftedMinMarginal(171);
+    	//std::cout<<"lifted min marginal "<<value<<std::endl;
     	sncFactor->getAllLiftedMinMarginals();
 
     }
