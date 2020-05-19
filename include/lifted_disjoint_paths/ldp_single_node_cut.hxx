@@ -391,7 +391,7 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 			vertexInOptimalPath=it->second;
 		}
 	}
-	assert(optValueComputed==myStr.optValue);
+	assert(std::abs(optValueComputed - myStr.optValue) <= 1e-8);
 //	std::cout<<"opt value "<<optValueComputed<<std::endl;
 //	std::cout<<"opt value in class "<<myStr.optValue<<std::endl;
 
