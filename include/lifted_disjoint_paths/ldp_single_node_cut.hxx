@@ -1253,9 +1253,4 @@ private:
 	std::size_t right_node;
 };
 
-
-
-
-
-
 }
