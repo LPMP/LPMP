@@ -1204,36 +1204,47 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 
 
-class ldp_mcf_single_node_cut_base_edge_message
+class ldp_snc_lifted_message
 {
+	ldp_snc_lifted_message(const std::size_t _left_node, const std::size_t _right_node)
+	: left_node(_left_node),
+	  right_node(_right_node)
+	{}
+
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamLeft(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
 	{
 		assert(msg_dim == 0);
-		r.updateCostSimple(msg,right_node);
+		r.updateCostSimple(msg,right_node,true);
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamRight(SINGLE_NODE_CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
 	{
 		assert(msg_dim == 0);
-		l.updateCostSimple(msg,left_node);
+		l.updateCostSimple(msg,left_node,true);
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
 	void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
 	{
+		const double delta = r.getOneLiftedEdgeMinMarginal(left_node);
+		msg[0] -= omega * delta;
 	}
 
-	template<typename MCF_FACTOR, typename MSG_ARRAY>
-	static void SendMessagesToRight(const MCF_FACTOR& leftRepam, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
+	static void send_message_to_right(const SINGLE_NODE_CUT_FACTOR& l, MSG& msg, const double omega)
 	{
+		const double delta = l.getOneLiftedEdgeMinMarginal(right_node);
+		msg[0] -= omega * delta;
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	bool check_primal_consistency(const SINGLE_NODE_CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
 	{
-
+		const bool left_snc_edge = l.getPrimalLifted(right_node);
+		const bool right_snc_edge = r.getPrimalLifted(left_node);
+		return left_snc_edge == right_snc_edge;
 	}
 
 private:
