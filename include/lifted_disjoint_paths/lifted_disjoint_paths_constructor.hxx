@@ -28,6 +28,8 @@ namespace LPMP {
         private:
             std::size_t mcf_node_to_graph_node(std::size_t i) const;
             void prepare_mcf_costs();
+            void write_back_mcf_costs();
+            void reparametrize_snc_factors();
 
             std::size_t nr_nodes() const { assert(single_node_cut_factors_.size() == (mcf_->no_nodes() - 2) / 2); return single_node_cut_factors_.size(); }
             std::size_t incoming_mcf_node(const std::size_t i) const { assert(i < nr_nodes()); return i*2; }
@@ -286,19 +288,16 @@ namespace LPMP {
         //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, left_node, right_node);
 
         for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
-        	auto left_snc=single_node_cut_factors_[i][0]->get_factor();
-        	for(auto pair:left_snc->getLiftedCosts()){
+        	auto* left_snc=single_node_cut_factors_[i][0];
+        	for(const auto pair:left_snc->get_factor()->getLiftedCosts()){
         		size_t j=pair.first;
         		auto right_snc=single_node_cut_factors_[j][1];
-        	//	this->lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
-        		//lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
 
-        		auto* message_snc = lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+        		lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
 
-        		            single_node_cut_messages_.push_back(message_snc);
-        	}
 
 		}
+        }
 
     }
 
@@ -374,7 +373,7 @@ namespace LPMP {
     template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE>::prepare_mcf_costs()
     {
-       mcf_->reset_costs();
+        mcf_->reset_costs();
 
         for(std::size_t i=0; i<nr_nodes(); ++i)
         {
@@ -440,5 +439,23 @@ namespace LPMP {
         }
     }
 
+    template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE>
+    void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE>::write_back_mcf_costs()
+    {
+        for(std::size_t i=0; i<nr_nodes(); ++i)
+        {
+            {
+                auto *incoming_snc = single_node_cut_factors_[i][0]->get_factor();
+            }
+        } 
+    }
+
+    template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE>
+    void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE>::reparametrize_snc_factors()
+    {
+        prepare_mcf_costs();
+        mcf_->solve();
+        write_back_mcf_costs();
+    } 
 
 }

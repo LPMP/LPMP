@@ -116,7 +116,7 @@ public:
 		return primalLifted_;
 	}
 
-	const std::unordered_set<size_t>& isActiveInPrimalLifted(size_t vertex) const {
+	const bool isActiveInPrimalLifted(size_t vertex) const {
 		return primalLifted_.count(vertex)>0;
 	}
 
@@ -1255,10 +1255,5 @@ private:
 	std::size_t left_node;
 	std::size_t right_node;
 };
-
-
-
-
-
 
 }
