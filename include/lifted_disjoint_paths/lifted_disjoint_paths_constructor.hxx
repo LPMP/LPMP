@@ -277,9 +277,23 @@ namespace LPMP {
         assert(mcf_terminal_node == this->mcf_terminal_node());
 
 
-        size_t nodeId=200;
-      //  sncDebug(nodeId,1);
-        //checkFeasibilityBaseInSnc();
+        // add messages between lifted edges of snc factors
+        // for all lifted messages
+        // get outgoing factor container -> left_snc, left_node
+        // get incoming factor container -> right_snc, right_node
+        //I switch left and right!
+        //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, left_node, right_node);
+
+        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
+        	auto left_snc=single_node_cut_factors_[i][0]->get_factor();
+        	for(auto pair:left_snc->getLiftedCosts()){
+        		size_t j=pair.first;
+        		auto right_snc=single_node_cut_factors_[j][1];
+        		lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+
+        	}
+
+		}
 
     }
 

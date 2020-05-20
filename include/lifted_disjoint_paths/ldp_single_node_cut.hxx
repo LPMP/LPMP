@@ -130,7 +130,7 @@ public:
 
 	std::unordered_map<size_t,double> getAllLiftedMinMarginals();
 
-	double oneLiftedMinMarginal(size_t vertexOfLiftedEdge);
+	double oneLiftedMinMarginal(size_t vertexOfLiftedEdge)const;
 
 
 
@@ -145,7 +145,7 @@ public:
 private:
 	void updateValues() const;
 	void updateValues(StrForUpdateValues& myStr,size_t vertexToIgnore=std::numeric_limits<size_t>::max()) const;
-	std::unordered_map<size_t,double> bottomUpUpdate(StrForUpdateValues& myStr,size_t vertex,std::unordered_set<size_t>& isOneInOpt,std::unordered_set<size_t>* pClosedVert=0,std::unordered_map<size_t,double>* pBUValuesStr=0);
+	std::unordered_map<size_t,double> bottomUpUpdate(StrForUpdateValues& myStr,size_t vertex,std::unordered_set<size_t>& isOneInOpt,std::unordered_set<size_t>* pClosedVert=0,std::unordered_map<size_t,double>* pBUValuesStr=0) const;
 	void updateOptimal() const;
 
 	std::list<size_t> getOptLiftedFromIndexStr(StrForUpdateValues& myStr)const;
@@ -256,7 +256,7 @@ private:
 		}
 	}
 
-	bool reachable(size_t firstVertex,size_t secondVertex){
+	bool reachable(size_t firstVertex,size_t secondVertex)const{
 		if(isOutFlow){
 			return ldpInstance.isReachable(firstVertex,secondVertex);
 		}
@@ -885,7 +885,7 @@ class ldp_mcf_single_node_cut_message
 
 
 template<class LDP_INSTANCE>
-inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(size_t vertexOfLiftedEdge){
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(size_t vertexOfLiftedEdge)const{
 	updateOptimal();
 
 	std::unordered_set<size_t> isOneInOpt(optimalSolutionLifted.begin(),optimalSolutionLifted.end());
@@ -925,7 +925,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
 
 template<class LDP_INSTANCE>
-inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(StrForUpdateValues& myStr,size_t vertex,std::unordered_set<size_t>& isOneInOpt,std::unordered_set<size_t>* pClosedVert,std::unordered_map<size_t,double>* pBUValuesStr){
+inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(StrForUpdateValues& myStr,size_t vertex,std::unordered_set<size_t>& isOneInOpt,std::unordered_set<size_t>* pClosedVert,std::unordered_map<size_t,double>* pBUValuesStr)const{
 	bool onlyOne=pClosedVert==0;
 
 	std::unordered_map<size_t,double> messages;
@@ -1206,6 +1206,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 class ldp_snc_lifted_message
 {
+public:
 	ldp_snc_lifted_message(const std::size_t _left_node, const std::size_t _right_node)
 	: left_node(_left_node),
 	  right_node(_right_node)
@@ -1228,14 +1229,14 @@ class ldp_snc_lifted_message
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
 	void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
 	{
-		const double delta = r.getOneLiftedEdgeMinMarginal(left_node);
+		const double delta = r.oneLiftedMinMarginal(left_node);
 		msg[0] -= omega * delta;
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
-	static void send_message_to_right(const SINGLE_NODE_CUT_FACTOR& l, MSG& msg, const double omega)
+	void send_message_to_right(const SINGLE_NODE_CUT_FACTOR& l, MSG& msg, const double omega)
 	{
-		const double delta = l.getOneLiftedEdgeMinMarginal(right_node);
+		const double delta = l.oneLiftedMinMarginal(right_node);
 		msg[0] -= omega * delta;
 	}
 
