@@ -49,6 +49,7 @@ namespace LPMP {
             using mcf_solver_type = MCF::SSP<long, double>;
             std::unique_ptr<mcf_solver_type> mcf_; // minimum cost flow factor for base edges
             std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>> single_node_cut_factors_;
+            std::vector<SINGLE_NODE_CUT_LIFTED_MESSAGE*> single_node_cut_messages_;
 
     };
 
@@ -289,8 +290,12 @@ namespace LPMP {
         	for(auto pair:left_snc->getLiftedCosts()){
         		size_t j=pair.first;
         		auto right_snc=single_node_cut_factors_[j][1];
-        		lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+        	//	this->lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+        		//lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
 
+        		auto* message_snc = lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+
+        		            single_node_cut_messages_.push_back(message_snc);
         	}
 
 		}

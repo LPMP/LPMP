@@ -116,6 +116,9 @@ public:
 		return primalLifted_;
 	}
 
+	const std::unordered_set<size_t>& isActiveInPrimalLifted(size_t vertex) const {
+		return primalLifted_.count(vertex)>0;
+	}
 
 	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
 	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
@@ -1243,8 +1246,8 @@ public:
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	bool check_primal_consistency(const SINGLE_NODE_CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
 	{
-		const bool left_snc_edge = l.getPrimalLifted(right_node);
-		const bool right_snc_edge = r.getPrimalLifted(left_node);
+		const bool left_snc_edge = l.isActiveInPrimalLifted(right_node);
+		const bool right_snc_edge = r.isActiveInPrimalLifted(left_node);
 		return left_snc_edge == right_snc_edge;
 	}
 
