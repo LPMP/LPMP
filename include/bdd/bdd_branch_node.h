@@ -392,7 +392,7 @@ namespace LPMP {
 
         // iterate over all incoming low edges
         {
-            for(bdd_branch_node_opt_smoothed *cur = this->first_low_incoming; cur != nullptr; cur = cur->next_low_incoming)
+            for(auto *cur = this->first_low_incoming; cur != nullptr; cur = cur->next_low_incoming)
             {
                 if(cur->current_max < current_max)
                 {
@@ -410,7 +410,7 @@ namespace LPMP {
 
         // iterate over all incoming high edges
         {
-            for(bdd_branch_node_opt_smoothed *cur = this->first_high_incoming; cur != nullptr; cur = cur->next_high_incoming)
+            for(auto *cur = this->first_high_incoming; cur != nullptr; cur = cur->next_high_incoming)
             {
                 if(cur->current_max -*cur->variable_cost < current_max)
                 {
@@ -440,9 +440,9 @@ namespace LPMP {
 
         // low edge
         const auto [low_cost, low_max] = [&]() -> std::array<double,2> {
-            if (this->low_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
                 return {0.0, -std::numeric_limits<double>::infinity()};
-            else if (this->low_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+            else if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
                 return {std::exp(0.0), 0.0};
             else
                 return {this->low_outgoing->m, this->low_outgoing->current_max};
@@ -456,9 +456,9 @@ namespace LPMP {
             //    return {std::exp(-*variable_cost - low_max)), -*variable_cost};
             //else
             //    return {std::exp(-*variable_cost) * high_outgoing->m, -*variable_cost + high_outgoing->current_max};
-            if (this->high_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
                 return {0.0, -std::numeric_limits<double>::infinity()};
-            else if (this->high_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+            else if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
                 return {std::exp(0.0), 0.0};
             else
                 return {this->high_outgoing->m, this->high_outgoing->current_max};
@@ -505,11 +505,11 @@ namespace LPMP {
             return 0.0;
 
         // iterate over all incoming low edges
-        for (bdd_branch_node_opt_smoothed *cur = this->first_low_incoming; cur != nullptr; cur = cur->next_low_incoming)
+        for (auto *cur = this->first_low_incoming; cur != nullptr; cur = cur->next_low_incoming)
             c += cur->smooth_cost_from_first();
 
         // iterate over all incoming high edges
-        for (bdd_branch_node_opt_smoothed *cur = this->first_high_incoming; cur != nullptr; cur = cur->next_high_incoming)
+        for (auto *cur = this->first_high_incoming; cur != nullptr; cur = cur->next_high_incoming)
             c += std::exp(-*cur->variable_cost) * cur->smooth_cost_from_first(); // ??
 
         return c;
@@ -521,9 +521,9 @@ namespace LPMP {
         // TODO: only works if no bdd nodes skips variables
         // low edge
         const double low_cost = [&]() {
-            if (this->low_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
                 return 0.0;
-            else if (this->low_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+            else if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
                 return 1.0;
             else
                 return this->low_outgoing->smooth_cost_from_terminal();
@@ -531,9 +531,9 @@ namespace LPMP {
 
         // high edge
         const double high_cost = [&]() {
-            if (this->high_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
                 return 0.0;
-            else if (this->high_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+            else if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
                 return std::exp(-*this->variable_cost);
             else
                 return this->high_outgoing->smooth_cost_from_terminal() + std::exp(-*this->variable_cost);
@@ -548,11 +548,11 @@ namespace LPMP {
         check_bdd_branch_node(*this);
 
         // assert(std::abs(m - cost_from_first()) <= 1e-8);
-        if (!bdd_branch_node_opt_smoothed::is_terminal(this->low_outgoing))
+        if (!bdd_branch_node_opt_smoothed_base<DERIVED>::is_terminal(this->low_outgoing))
         {
             //assert(std::abs(low_outgoing->m - low_outgoing->cost_from_terminal()) <= 1e-8);
         }
-        if (!bdd_branch_node_opt_smoothed::is_terminal(this->high_outgoing))
+        if (!bdd_branch_node_opt_smoothed_base<DERIVED>::is_terminal(this->high_outgoing))
         {
             //assert(std::abs(high_outgoing->m - high_outgoing->cost_from_terminal()) <= 1e-8);
         }
@@ -560,18 +560,18 @@ namespace LPMP {
         bdd_branch_node_exp_sum_entry e;
 
         std::tie(e.sum[0], e.max[0]) = [&]() -> std::tuple<double, double> {
-            if (this->low_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
                 return {0.0, -std::numeric_limits<double>::infinity()};
-            if (this->low_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
                 return {this->m, current_max};
             else
                 return {this->m * this->low_outgoing->m, current_max + this->low_outgoing->current_max};
         }();
 
         std::tie(e.sum[1], e.max[1]) = [&]() -> std::tuple<double, double> {
-            if (this->high_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
                 return {0.0, -std::numeric_limits<double>::infinity()};
-            if (this->high_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
             {
                 //const double new_max = std::max(this->current_max, this->current_max - *this->variable_cost);
                 //return {this->m * std::exp(-*this->variable_cost + this->current_max - new_max), new_max};
@@ -590,12 +590,12 @@ namespace LPMP {
         assert(e.sum[0] >= 0.0);
         assert(e.sum[1] >= 0.0);
         assert(e.sum[0] > 0 || e.sum[1] > 0);
-        if(this->low_outgoing != bdd_branch_node_opt_smoothed::terminal_0() && this->low_outgoing != bdd_branch_node_opt_smoothed::terminal_1())
+        if(this->low_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0() && this->low_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
         {
             assert(e.sum[0] > 0);
             assert(std::isfinite(e.max[0]));
         }
-        if (this->high_outgoing != bdd_branch_node_opt_smoothed::terminal_0() && this->high_outgoing != bdd_branch_node_opt_smoothed::terminal_1())
+        if (this->high_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0() && this->high_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
         {
             assert(e.sum[1] > 0);
             assert(std::isfinite(e.max[1]));

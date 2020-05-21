@@ -50,7 +50,6 @@ private:
 
     void update_Lagrange_multiplier(const std::size_t var, const std::size_t bdd_index, const bdd_branch_node_exp_sum_entry exp_sums, const double average_exp_sums);
 
-    double lower_bound_ = -std::numeric_limits<double>::infinity();
     double cost_scaling_ = 1.0;
 };
 
@@ -346,7 +345,7 @@ void bdd_min_marginal_averaging_smoothed_base<BDD_VARIABLE, BDD_BRANCH_NODE>::sm
         }
     }
 
-    lower_bound_ = lb;
+    this->lower_bound_ = lb;
 }
 
 } // namespace LPMP

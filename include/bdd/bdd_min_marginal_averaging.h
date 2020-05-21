@@ -100,7 +100,8 @@ namespace LPMP {
     void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init(const ILP_input& input)
     {
         Cudd bdd_mgr;
-        bdd_storage_ = bdd_storage(input, bdd_mgr);
+        // last parameter for recording primal fixations
+        bdd_storage_ = bdd_storage(input, bdd_mgr, false);
         init_branch_nodes();
     }
 

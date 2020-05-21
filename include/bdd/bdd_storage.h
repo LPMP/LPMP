@@ -328,10 +328,10 @@ namespace LPMP {
         {
             BDD bdd_i = bdd_mgr.bddVar(i);
             BDD bdd_0 = bdd * (!bdd_i);
-            record_primal_fixations(bdd_0, i, 0);
+            record_primal_fixations(bdd_0, i, 1);
 
             BDD bdd_1 = bdd * bdd_i;
-            record_primal_fixations(bdd_1, i, 1);
+            record_primal_fixations(bdd_1, i, 0);
         }
     }
 

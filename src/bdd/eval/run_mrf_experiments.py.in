@@ -14,8 +14,8 @@ BDD_evaluate_log.run_experiments(color_seg_n8_instance_list, algorithms, executa
 # GUROBI
 
 # BDD_evaluate_log.run_experiments_gurobi(protein_folding_instance_list, instance_dir, output_dir)
-# BDD_evaluate_log.run_experiments_gurobi(object_seg_instance_list, instance_dir, output_dir)
+BDD_evaluate_log.run_experiments_gurobi(object_seg_instance_list, instance_dir, output_dir)
 # BDD_evaluate_log.run_experiments_gurobi(photomontage_instance_list, instance_dir, output_dir)
-# BDD_evaluate_log.run_experiments_gurobi(color_seg_instance_list, instance_dir, output_dir)
-# BDD_evaluate_log.run_experiments_gurobi(color_seg_n4_instance_list, instance_dir, output_dir)
-# BDD_evaluate_log.run_experiments_gurobi(color_seg_n8_instance_list, instance_dir, output_dir)
+BDD_evaluate_log.run_experiments_gurobi(color_seg_instance_list, instance_dir, output_dir)
+BDD_evaluate_log.run_experiments_gurobi(color_seg_n4_instance_list, instance_dir, output_dir)
+BDD_evaluate_log.run_experiments_gurobi(color_seg_n8_instance_list, instance_dir, output_dir)

@@ -264,11 +264,18 @@ solver_options = [
    "-a classic -o input",
    "-a classic -o cuthill",
    "-a classic -o bfs",
-   "-a classic -o mindegree"
+   "-a SRMP -o input",
+   "-a SRMP -o cuthill",
+   "-a SRMP -o bfs"
 ]
 
 opts_names = [
    "classic_input",
+   "classic_cuthill",
+   "classic_bfs",
+   "srmp_input",
+   "srmp_cuthill",
+   "srmp_bfs"
 ]
 
 executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")

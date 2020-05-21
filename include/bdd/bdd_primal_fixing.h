@@ -73,7 +73,7 @@ namespace LPMP {
         }
     }
 
-    class bdd_mma_fixing : public bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix> {
+    class bdd_mma_fixing : public bdd_min_marginal_averaging_smoothed_base<bdd_variable_fix, bdd_branch_node_fix> {
         public:
             bool fix_variables();
 
@@ -83,6 +83,9 @@ namespace LPMP {
 
             std::vector<double> total_min_marginals();
             std::vector<double> search_space_reduction_coeffs();
+
+            void count_forward_run(size_t last_var);
+            void count_backward_run(ptrdiff_t first_var);
 
             void min_marginal_averaging_forward();
             void min_marginal_averaging_backward();
@@ -468,11 +471,10 @@ namespace LPMP {
         return total_min_marginals;
     }
 
-    std::vector<double> bdd_mma_fixing::search_space_reduction_coeffs()
+    void bdd_mma_fixing::count_backward_run(ptrdiff_t first_var)
     {
-        std::vector<double> coeffs;
-        // solution count backward run
-        for (ptrdiff_t var = this->nr_variables()-1; var >= 0; --var)
+        assert(first_var >= 0 && first_var < this->nr_variables());
+        for (ptrdiff_t var = this->nr_variables()-1; var >= first_var; --var)
         {
             for (size_t bdd_index=0; bdd_index<this->nr_bdds(var); bdd_index++)
             {
@@ -483,7 +485,31 @@ namespace LPMP {
                     bdd_node.count_backward_step();
                 }
             }
+        } 
+    }
+
+    void bdd_mma_fixing::count_forward_run(size_t last_var)
+    {
+        assert(last_var >= 0 && last_var < this->nr_variables());
+        for (size_t var = 0; var <= last_var; var++)
+        {
+            for (size_t bdd_index=0; bdd_index<this->nr_bdds(var); bdd_index++)
+            {
+                auto & bdd_var = bdd_variables_(var, bdd_index);
+                for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
+                {
+                    auto & bdd_node = bdd_branch_nodes_[node_index];
+                    bdd_node.count_forward_step();
+                }
+            }
         }
+    }
+
+    std::vector<double> bdd_mma_fixing::search_space_reduction_coeffs()
+    {
+        std::vector<double> r_coeffs;
+        // solution count backward run
+        count_backward_run(0);
         // solution count forward run
         for (size_t var = 0; var < this->nr_variables(); var++)
         {
@@ -498,23 +524,24 @@ namespace LPMP {
                     coeff += bdd_node.count_high() - bdd_node.count_low();
                 }
             }
-            coeffs.push_back(coeff);
+            r_coeffs.push_back(coeff);
         }
-        return coeffs;
+
+        return r_coeffs;
     }
 
     bool bdd_mma_fixing::fix_variables()
     {
         std::vector<double> reduction_coeffs = search_space_reduction_coeffs();
-        // additional MMA iteration increases chance of finding a feasible solution
         this->backward_run();
+        // additional MMA iteration increases chance of finding a feasible solution
         min_marginal_averaging_iteration();
         std::vector<double> total_min_marginals = this->total_min_marginals();
         std::vector<size_t> variables;
         for (size_t i = 0; i < nr_variables(); i++)
             variables.push_back(i);
 
-        const double eps = -std::numeric_limits<double>::epsilon();
+        const double eps = std::numeric_limits<double>::epsilon();
 
         auto sign = [](const double val) -> double
         {
@@ -526,11 +553,41 @@ namespace LPMP {
                 return 0.0;
         };
 
-        auto order = [&](const size_t a, const size_t b)
+        auto order_reduction_marg = [&](const size_t a, const size_t b)
         {
             return sign(reduction_coeffs[a]) * total_min_marginals[a] > sign(reduction_coeffs[b]) * total_min_marginals[b];
         };
-        std::sort(variables.begin(), variables.end(), order);
+
+        auto order_marg_abs = [&](const size_t a, const size_t b)
+        {
+            return std::abs(total_min_marginals[a]) > std::abs(total_min_marginals[b]);
+        };
+
+        auto order_marg_up = [&](const size_t a, const size_t b)
+        {
+            return total_min_marginals[a] < total_min_marginals[b];
+        };
+
+        auto order_marg_up_down = [&](const size_t a, const size_t b)
+        {
+            if (total_min_marginals[a] > eps && total_min_marginals[b] > eps)
+                return total_min_marginals[a] > total_min_marginals[b];
+            return total_min_marginals[a] < total_min_marginals[b];
+        };
+
+        auto order_marg_down_up = [&](const size_t a, const size_t b)
+        {
+            if (total_min_marginals[a] < -eps && total_min_marginals[b] < -eps)
+                return total_min_marginals[a] < total_min_marginals[b];
+            return total_min_marginals[a] > total_min_marginals[b];
+        };
+
+        auto order_abs_down = [&](const size_t a, const size_t b)
+        {
+            return total_min_marginals[a] > total_min_marginals[b];
+        };
+
+        std::sort(variables.begin(), variables.end(), order_marg_up);
 
         std::vector<char> values;
         for (size_t i = 0; i < variables.size(); i++)

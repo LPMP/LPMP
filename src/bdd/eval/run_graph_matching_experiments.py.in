@@ -6,7 +6,7 @@ import BDD_evaluate_log
 
 BDD_evaluate_log.run_experiments(hotel_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names)
 BDD_evaluate_log.run_experiments(house_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names)
-# BDD_evaluate_log.run_experiments(worms_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names)
+BDD_evaluate_log.run_experiments(worms_instance_list, algorithms, executable_dir, instance_dir, output_dir, solver_options, opts_names)
 
 # GUROBI
 

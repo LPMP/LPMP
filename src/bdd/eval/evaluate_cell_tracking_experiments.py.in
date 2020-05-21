@@ -4,4 +4,5 @@ sys.path.append('@EVAL_MODULE_PATH@')
 from data_cell_tracking import *
 import BDD_evaluate_log
   
-BDD_evaluate_log.evaluate_experiments(cell_tracking_instance_list, algorithms, opts_names, output_dir, 'aistats')
+BDD_evaluate_log.evaluate_experiments(cell_tracking_small_instance_list, algorithms, opts_names, output_dir, 'aistats-small')
+BDD_evaluate_log.evaluate_experiments(cell_tracking_large_instance_list, algorithms, opts_names, output_dir, 'aistats-large')

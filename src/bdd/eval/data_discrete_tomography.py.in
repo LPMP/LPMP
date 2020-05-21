@@ -2713,15 +2713,27 @@ logan_instance_list = [
 ]
 
 algorithms = [
+   'bdd_min_marginal_averaging_smoothed_text_input',
+   'bdd_min_marginal_averaging_smoothed_text_input',
+   'bdd_min_marginal_averaging_smoothed_text_input',
+   'bdd_min_marginal_averaging_smoothed_text_input',
+   'bdd_min_marginal_averaging_smoothed_text_input',
+   'bdd_min_marginal_averaging_smoothed_text_input',
+   'bdd_min_marginal_averaging_smoothed_text_input',
    'bdd_min_marginal_averaging_smoothed_text_input'
 ]
 
 solver_options = [
-   "-a classic -o input"
+   "-a classic -o input",
 ]
 
 opts_names = [
    "classic_input",
+   "classic_cuthill",
+   "classic_bfs",
+   "srmp_input",
+   "srmp_cuthill",
+   "srmp_bfs"
 ]
 
 executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")

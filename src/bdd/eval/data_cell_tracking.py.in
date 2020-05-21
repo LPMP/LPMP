@@ -1,6 +1,6 @@
 import os
 
-cell_tracking_instance_list = [
+cell_tracking_small_instance_list = [
    'cell-tracking-AISTATS-2020/DIC-C2DH-HeLA.lp',
    'cell-tracking-AISTATS-2020/drosophila.lp',
    'cell-tracking-AISTATS-2020/Fluo-C2DL-MSC_01.lp',
@@ -8,12 +8,15 @@ cell_tracking_instance_list = [
    'cell-tracking-AISTATS-2020/Fluo-N2DH-GOWT1_01.lp',
    'cell-tracking-AISTATS-2020/Fluo-N2DH-GOWT1_02.lp',
    'cell-tracking-AISTATS-2020/Fluo-N2DL-HELA.lp',
-   'cell-tracking-AISTATS-2020/flywing_100_1.lp',
-   'cell-tracking-AISTATS-2020/flywing_100_2.lp',
    'cell-tracking-AISTATS-2020/flywing_11.lp',
-   'cell-tracking-AISTATS-2020/flywing_245.lp',
    'cell-tracking-AISTATS-2020/PhC-C2DH-U373_01.lp',
    'cell-tracking-AISTATS-2020/PhC-C2DH-U373_02.lp',
+]
+
+cell_tracking_large_instance_list = [
+   'cell-tracking-AISTATS-2020/flywing_100_1.lp',
+   'cell-tracking-AISTATS-2020/flywing_100_2.lp',
+   'cell-tracking-AISTATS-2020/flywing_245.lp',
    'cell-tracking-AISTATS-2020/PhC-C2DL-PSC_01.lp',
    'cell-tracking-AISTATS-2020/PhC-C2DL-PSC_02.lp'
 ]

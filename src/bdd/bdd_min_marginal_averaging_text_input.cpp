@@ -60,6 +60,8 @@ int main(int argc, char** argv)
             std::cout << "Maximum number of iterations reached." << std::endl;
     }
     std::cout << "Final lower bound: " << solver.lower_bound() << std::endl;
+
+    // Primal heuristic
     double ub = std::numeric_limits<double>::infinity();
     std::cout << "Primal heuristic.. " << std::endl;
     if (solver.fix_variables()) {
