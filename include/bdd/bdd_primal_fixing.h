@@ -553,46 +553,65 @@ namespace LPMP {
                 return 0.0;
         };
 
-        auto order_reduction_marg = [&](const size_t a, const size_t b)
+        auto order_reduction = [&](const size_t a, const size_t b)
         {
             return sign(reduction_coeffs[a]) * total_min_marginals[a] > sign(reduction_coeffs[b]) * total_min_marginals[b];
         };
 
-        auto order_marg_abs = [&](const size_t a, const size_t b)
+        auto order_abs = [&](const size_t a, const size_t b)
         {
             return std::abs(total_min_marginals[a]) > std::abs(total_min_marginals[b]);
         };
 
-        auto order_marg_up = [&](const size_t a, const size_t b)
+        auto order_up = [&](const size_t a, const size_t b)
         {
             return total_min_marginals[a] < total_min_marginals[b];
         };
 
-        auto order_marg_up_down = [&](const size_t a, const size_t b)
+        auto order_up_down = [&](const size_t a, const size_t b)
         {
             if (total_min_marginals[a] > eps && total_min_marginals[b] > eps)
                 return total_min_marginals[a] > total_min_marginals[b];
             return total_min_marginals[a] < total_min_marginals[b];
         };
 
-        auto order_marg_down_up = [&](const size_t a, const size_t b)
+        auto order_down_up = [&](const size_t a, const size_t b)
         {
             if (total_min_marginals[a] < -eps && total_min_marginals[b] < -eps)
                 return total_min_marginals[a] < total_min_marginals[b];
             return total_min_marginals[a] > total_min_marginals[b];
         };
 
-        auto order_abs_down = [&](const size_t a, const size_t b)
+        auto order_down = [&](const size_t a, const size_t b)
         {
             return total_min_marginals[a] > total_min_marginals[b];
         };
 
-        std::sort(variables.begin(), variables.end(), order_marg_up);
+        if (options.fixing_order == bdd_min_marginal_averaging_options::fixing_order::marginals_absolute)
+            std::sort(variables.begin(), variables.end(), order_abs);
+        else if (options.fixing_order == bdd_min_marginal_averaging_options::fixing_order::marginals_up)
+            std::sort(variables.begin(), variables.end(), order_up);
+        else if (options.fixing_order == bdd_min_marginal_averaging_options::fixing_order::marginals_down)
+            std::sort(variables.begin(), variables.end(), order_down);
+        else if (options.fixing_order == bdd_min_marginal_averaging_options::fixing_order::marginals_reduction)
+            std::sort(variables.begin(), variables.end(), order_reduction);
+        else
+            std::sort(variables.begin(), variables.end(), order_up);
 
         std::vector<char> values;
         for (size_t i = 0; i < variables.size(); i++)
         {
-            const char val = (total_min_marginals[variables[i]] < eps) ? 1 : 0;
+            char val;
+            if (options.fixing_value == bdd_min_marginal_averaging_options::fixing_value::marginal)
+                val = (total_min_marginals[variables[i]] < eps) ? 1 : 0;
+            else if (options.fixing_value == bdd_min_marginal_averaging_options::fixing_value::reduction)
+                val = (sign(reduction_coeffs[i]) < 0) ? 1 : 0;
+            else if (options.fixing_value == bdd_min_marginal_averaging_options::fixing_value::one)
+                val = 1;
+            else if (options.fixing_value == bdd_min_marginal_averaging_options::fixing_value::zero)
+                val = 0;
+            else
+                val = (total_min_marginals[variables[i]] < eps) ? 1 : 0;
             values.push_back(val);
         }
 

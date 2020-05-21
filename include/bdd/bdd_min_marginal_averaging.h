@@ -458,6 +458,8 @@ namespace LPMP {
         bdd_min_marginal_averaging_options() {}
         enum class averaging_type {classic, SRMP} averaging_type = averaging_type::classic;
         enum class variable_order {input, bfs, cuthill, mindegree} variable_order = variable_order::input;
+        enum class fixing_order {marginals_absolute, marginals_up, marginals_down, marginals_reduction} fixing_order = fixing_order::marginals_up;
+        enum class fixing_value {marginal, reduction, one, zero} fixing_value = fixing_value::marginal;
     };
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -529,8 +531,12 @@ namespace LPMP {
             TCLAP::CmdLine cmd("Command line parser for bdd min marginal averaging options", ' ', " ");
             TCLAP::ValueArg<std::string> averaging_arg("a","averaging","averaging type",false,"classic","{classic|SRMP}");
             TCLAP::ValueArg<std::string> order_arg("o","order","variable order",false,"input","{input|bfs|cuthill|mindegree}");
+            TCLAP::ValueArg<std::string> fixing_order_arg("f","fixing","variable fixing order",false,"up","{abs|up|down|reduction}");
+            TCLAP::ValueArg<std::string> fixing_value_arg("v","value","variable fixing preferred value",false,"marginal","{marginal|reduction|one|zero}");
             cmd.add(averaging_arg);
             cmd.add(order_arg);
+            cmd.add(fixing_order_arg);
+            cmd.add(fixing_value_arg);
 
             cmd.parse(argc, argv);
 
@@ -551,6 +557,28 @@ namespace LPMP {
                 variable_order = bdd_min_marginal_averaging_options::variable_order::mindegree;
             else
                 throw std::runtime_error("variable order not recognized");
+
+            if(fixing_order_arg.getValue() == "abs")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_absolute;
+            else if(fixing_order_arg.getValue() == "up")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_up;
+            else if(fixing_order_arg.getValue() == "down")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_down;
+            else if(fixing_order_arg.getValue() == "reduction")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_reduction;
+            else
+                throw std::runtime_error("variable fixing order not recognized");
+
+            if(fixing_value_arg.getValue() == "marginal")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::marginal;
+            else if(fixing_value_arg.getValue() == "reduction")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::reduction;
+            else if(fixing_value_arg.getValue() == "one")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::one;
+            else if(fixing_value_arg.getValue() == "zero")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::zero;
+            else
+                throw std::runtime_error("variable fixing preferred value not recognized");
         }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
