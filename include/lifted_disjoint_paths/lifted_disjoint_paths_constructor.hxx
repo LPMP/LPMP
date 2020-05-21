@@ -133,29 +133,29 @@ namespace LPMP {
     	std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
     	for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
     		auto *incoming_snc = single_node_cut_factors_[i][0]->get_factor();
-    		const auto incoming_min_marg = incoming_snc->get_factor()->getAllBaseMinMarginals();
+    		const auto incoming_min_marg = incoming_snc->getAllBaseMinMarginals();
 
     		const auto sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
     		const auto sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
 
-    		if(sncFactorIn.isNodeActive()!=sncFactorOut.isNodeActive()){
+    		if(sncFactorIn->isNodeActive()!=sncFactorOut->isNodeActive()){
     			isFeasible=false;
 
     		}
-    		else if(sncFactorIn.isNodeActive()&&sncFactorOut.isNodeActive()){
-    			size_t inputNode=sncFactorIn.getPrimalBase();
+    		else if(sncFactorIn->isNodeActive()&&sncFactorOut->isNodeActive()){
+    			size_t inputNode=sncFactorIn->getPrimalBase();
     			if(inputNode!=base_graph_source_node()){
-    				auto& sncFactorInputNodeOut=single_node_cut_factors_[inputNode][1]->get_factor();
-    				if(sncFactorInputNodeOut.getPrimalBase()!=i){
+    				auto sncFactorInputNodeOut=single_node_cut_factors_[inputNode][1]->get_factor();
+    				if(sncFactorInputNodeOut->getPrimalBase()!=i){
     					isFeasible=false;
 
     				}
     			}
 
-    			size_t outputNode=sncFactorOut.getPrimalBase();
+    			size_t outputNode=sncFactorOut->getPrimalBase();
     			if(outputNode!=base_graph_terminal_node()){
-    				auto& sncFactorOuputNodeIn=single_node_cut_factors_[outputNode][0]->get_factor();
-    				if(sncFactorOuputNodeIn.getPrimalBase()!=i){
+    				auto sncFactorOuputNodeIn=single_node_cut_factors_[outputNode][0]->get_factor();
+    				if(sncFactorOuputNodeIn->getPrimalBase()!=i){
     					isFeasible=false;
 
     				}
@@ -348,6 +348,47 @@ namespace LPMP {
     {
         prepare_mcf_costs();
         mcf_->solve();
+        double primalValue=0;
+        for (int i = 0; i < mcf_->no_nodes(); ++i) {
+			std::size_t first_out=mcf_->first_outgoing_arc(i);
+			std::size_t graphNode=this->mcf_node_to_graph_node(i);
+			bool foundOutput=false;
+			for (int j = 0; j < mcf_->no_outgoing_arcs(i); ++j) {
+				std::size_t edgeId=j+first_out;
+				auto flow=mcf_->flow(edgeId);
+				if(flow>0.5){
+					foundOutput=true;
+
+					std::size_t node=mcf_->head(edgeId);
+					std::size_t graphNode2=mcf_node_to_graph_node(node);
+					std::cout<<"active edge "<<graphNode<<", "<<graphNode2<<std::endl;
+					if(graphNode!=graphNode2){
+						if(i!=this->mcf_source_node()){
+							auto pSNC=single_node_cut_factors_[graphNode][1]->get_factor();
+							pSNC->setBaseEdgeActive(graphNode2);
+							primalValue+=pSNC->EvaluatePrimal();
+						}
+						if(node!=this->mcf_terminal_node()){
+							auto pSNC=single_node_cut_factors_[graphNode2][0]->get_factor();
+							pSNC->setBaseEdgeActive(graphNode);
+							primalValue+=pSNC->EvaluatePrimal();
+						}
+					}
+				}
+
+			}
+			if(!foundOutput&&i!=mcf_terminal_node()&&i!=mcf_source_node()){
+				std::cout<<"inactive node "<<graphNode<<std::endl;
+				single_node_cut_factors_[graphNode][1]->get_factor()->setNoBaseEdgeActive();
+				single_node_cut_factors_[graphNode][0]->get_factor()->setNoBaseEdgeActive();
+			}
+		}
+        bool isFeasible=this->checkFeasibilityBaseInSnc();
+        std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
+        assert(isFeasible);
+        std::cout<<"primal value: "<<primalValue<<std::endl;
+
+
 
         // propagate base solution to single node cut factors
     }
@@ -401,10 +442,12 @@ namespace LPMP {
                     const std::size_t start_node = mcf_->tail(e);
                     assert(mcf_->tail(e) == incoming_mcf_node(i));
                     const double m = std::get<1>(incoming_min_margs_sorted[l]);
-                    if (j != base_graph_source_node())
-                        mcf_->update_cost(e, -m);
-                    else
-                        mcf_->update_cost(e, m);
+                    if (j != base_graph_source_node()){
+                    	mcf_->update_cost(e, -m);
+                    }
+                    else{
+                    	mcf_->update_cost(e, m);
+                    }
                         //std::cout << "updates mcf edge " << e << ", reverse edge = " << mcf_->sister(e) << "\n";
                 }
             }
