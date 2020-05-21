@@ -1,5 +1,0 @@
-#!/usr/bin/sh
-
-#python @CMAKE_CURRENT_SOURCE_DIR@/evaluate_log.py @CMAKE_CURRENT_BINARY_DIR@/hotel_house_with_unaries/hotel
-
-python @CMAKE_CURRENT_SOURCE_DIR@/BDD_evaluate_log.py /BS/discrete_opt/nobackup/bdd_experiments/graph_matching/hotel
