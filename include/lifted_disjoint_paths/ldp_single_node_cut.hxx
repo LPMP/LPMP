@@ -421,6 +421,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 				optimalSolutionBase=it->first;
 			}
 		}
+		strForUpdateValues.indexStructure[nodeID]=optimalSolutionBase;
+		strForUpdateValues.optValue=minValue;
+		optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
 		optBaseUpToDate=true;
 	}
 	optValue=solutionCosts.at(optimalSolutionBase);
@@ -472,6 +475,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setNoBaseEdgeActive(){
 
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getNodeMinMarginal()const{
+	std::cout<<"node min marginal "<<nodeID<<" "<<isOutFlow<<std::endl;
 	updateOptimal();
 	if(optimalSolutionBase!=nodeNotActive){
 		return optValue-solutionCosts.at(nodeNotActive);
@@ -547,7 +551,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateNodeCost(const double value){
-	//std::cout<<"Update node cost node: "<<nodeID<<" value "<<value<<std::endl;
+	std::cout<<"Update node cost node: "<<nodeID<<" value "<<value<<std::endl;
 	//double lbBefore=LowerBound();
 	//std::cout<<"lb before"<<lbBefore<<std::endl;
 	nodeCost+=value;
@@ -572,11 +576,24 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 		optBaseUpToDate=false;
 	}
 	else{ //update in lifted edge
+		bool isOpt=false;
+		for(size_t v:optimalSolutionLifted){
+			if(v==vertexIndex){
+				isOpt=true;
+				break;
+			}
+		}
+		std::cout<<"Update lifted cost "<<nodeID<<" "<<vertexIndex<<" value "<<value<<"optimal "<<isOpt<<std::endl;
+		//double lbBefore=LowerBound();
+		//std::cout<<"lb before"<<lbBefore<<std::endl;
 		assert(liftedCosts.count(vertexIndex)>0);
 		liftedCosts[vertexIndex]+=value;
 		//valuesStructure[vertexIndex]+=value;
 		optLiftedUpToDate=false;
 		optBaseUpToDate=false;
+
+	//	double lbAfter=LowerBound();
+		//std::cout<<"lb after"<<lbAfter<<std::endl;
 	}
 }
 
@@ -946,8 +963,11 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
 
 
+	std::cout<<"lilfted marginal "<<nodeID<<" "<<vertexOfLiftedEdge<<std::endl;
 
 	if(isOptimal){
+		//double lbBefore=LowerBound();
+		//std::cout<<"OPTIMAL"<<std::endl;
 
 		std::unordered_map<size_t,double> localSolutionCosts;
 		StrForUpdateValues myStr(baseCosts,liftedCosts,localSolutionCosts,nodeID);
@@ -963,8 +983,14 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		//size_t restrictedOptimalSolution=myStr.indexStructure[nodeID];
 		double restrictedOptValue=myStr.optValue;
 
-		return optValue-restrictedOptValue;
+		double valueToReturn=optValue-restrictedOptValue;
+		if(valueToReturn>1e-8){
+			std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", opt vertex but positive value "<<valueToReturn<<std::endl;
+		}
 
+
+		//std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
+		return valueToReturn;
 
 
 //		std::unordered_map<size_t,double> localSolutionCosts;
@@ -978,10 +1004,19 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
 	}
 	else{
+
 		std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,vertexOfLiftedEdge,isOneInOpt);
 		auto it =message.begin();
 	//	std::cout<<"min marginal "<<it->first<<": "<<it->second<<std::endl;
+		//std::cout<<"not optimal"<<std::endl;
 
+
+		double lbAfter=LowerBound();
+		//std::cout<<"marginal value "<<it->second<<", node cost "<<nodeCost<<std::endl;
+		double valueToReturn=it->second;
+		if(valueToReturn<-(1e-8)){
+			std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", not opt vertex but negative value "<<valueToReturn<<std::endl;
+		}
 		return it->second;
 	}
 
