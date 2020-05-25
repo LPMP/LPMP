@@ -525,11 +525,8 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 		for(auto pair:solutionCosts){
 			if(pair.first!=nodeNotActive){
 				minMarginals[pair.first]=pair.second-value;
-<<<<<<< HEAD
 				//std::cout<<pair.first<<": "<<(pair.second-value)<<std::endl;
-=======
-			//	std::cout<<pair.first<<": "<<(pair.second-value)<<std::endl;
->>>>>>> 98689e137963a08f510337848867099c9592a965
+
 			}
 		}
 	}
@@ -1014,11 +1011,10 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,vertexOfLiftedEdge,isOneInOpt);
 		auto it =message.begin();
 	//	std::cout<<"min marginal "<<it->first<<": "<<it->second<<std::endl;
-<<<<<<< HEAD
-=======
+
 		//std::cout<<"not optimal"<<std::endl;
 
->>>>>>> 98689e137963a08f510337848867099c9592a965
+
 
 		double lbAfter=LowerBound();
 		//std::cout<<"marginal value "<<it->second<<", node cost "<<nodeCost<<std::endl;
@@ -1089,11 +1085,9 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 						auto bestTdIt=myStr.indexStructure.find(currentVertex);
 						size_t bestTd=bestTdIt->second;
 						if(liftedCosts.count(bestTd)>0&&isOneInOpt.count(bestTd)==0){
-<<<<<<< HEAD
+
 							//std::cout<<"new optimal vertex "<<bestTd<<std::endl;
-=======
-						//	std::cout<<"new optimal vertex "<<bestTd<<std::endl;
->>>>>>> 98689e137963a08f510337848867099c9592a965
+
 						}
 						if(bestTd!=getVertexToReach()){
 							topDownValue=myStr.valuesStructure.at(bestTd);
@@ -1107,11 +1101,9 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 
 						double delta=restrictedOpt-myStr.optValue;
-<<<<<<< HEAD
+
 						//std::cout<<"message "<<currentVertex<<": "<<delta<<std::endl;
-=======
-					//	std::cout<<"message "<<currentVertex<<": "<<delta<<std::endl;
->>>>>>> 98689e137963a08f510337848867099c9592a965
+
 						messages[currentVertex]=delta;
 						bestValue-=delta;
 
