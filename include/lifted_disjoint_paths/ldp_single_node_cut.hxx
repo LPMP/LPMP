@@ -785,7 +785,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 							bestVertex=vertex;
 							//std::cout<<"best vertex"<<std::endl;
 						}
-						//std::cout<<"end for"<<std::endl;
+						//std::cout<<"end for"<<std::endl;liftedCosts
 					}
 					//std::cout<<"after for"<<std::endl;
 					//optimalSolution=bestVertex;
@@ -1013,49 +1013,74 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 	}
 	else{
 
+		updateValues(strForUpdateValues);
 		std::unordered_map<size_t,size_t> indexStr;
 		std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,vertexOfLiftedEdge,indexStr);
 
 		auto it =message.begin();
+        double messValue=it->second;
 
 		std::unordered_map<size_t,double> localLiftedCosts(liftedCosts);
 		std::unordered_map<size_t,double> localSolCosts;
-		double messValue=it->second;
+
 		localLiftedCosts[vertexOfLiftedEdge]-=messValue;
 
 		StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolCosts,nodeID);
 		updateValues(myStr);
+
 		double newOptimal=myStr.optValue;
 		double eps=1e-8;
 		if(LPMP::debug()){
 			if(newOptimal+eps<optValue){
+				double assumedOptValue=nodeCost;
+				double actualOptValue=nodeCost;
 
 				double newEdgeCost=localLiftedCosts[vertexOfLiftedEdge];
 				double oldLiftedEdgeCost=liftedCosts.at(vertexOfLiftedEdge);
-				std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", not opt vertex, too high value of message: "<<(messValue)<<std::endl;
+				std::cout<<"wrong min marginal: "<<nodeID<<", "<<vertexOfLiftedEdge<<", not opt vertex, too high value of message: "<<(messValue)<<std::endl;
 				std::cout<<"new optimal "<<newOptimal<<", old optimal "<<optValue<<", new l. edge cost "<<newEdgeCost<<", old edge cost: "<<oldLiftedEdgeCost<<std::endl;
-				size_t v=indexStr[vertexOfLiftedEdge];
+				size_t v=vertexOfLiftedEdge;
 				std::cout<<"opt sol. vertices from bottom up :";
 				do{
 					std::cout<<v<<", ";
-					std::cout<<v<<", ";
+					auto liftIt=liftedCosts.find(v);
+					if(liftIt!=liftedCosts.end()){
+						assumedOptValue+=liftIt->second;
+					}
 					auto it=indexStr.find(v);
+
 					if(it!=indexStr.end()){
+						if(it->second==nodeID){
+							assumedOptValue+=baseCosts.at(v);
+						}
 						v=it->second;
 					}
 					else break;
 				}while(v!=nodeID);
+				if(v!=nodeID){
+					std::cout<<"last vertex is not "<<nodeID<<std::endl;
+				}
+
+
 				std::cout<<std::endl;
 				v=strForUpdateValues.indexStructure[vertexOfLiftedEdge];
 				do{
 					std::cout<<v<<", ";
+					auto liftIt=liftedCosts.find(v);
+					if(liftIt!=liftedCosts.end()){
+						assumedOptValue+=liftIt->second;
+					}
 					auto it=strForUpdateValues.indexStructure.find(v);
 					if(it!=strForUpdateValues.indexStructure.end()){
+
 						v=it->second;
 					}
 					else break;
 				}while(v!=getVertexToReach());
+				assumedOptValue-=messValue;
+
 				std::cout<<std::endl;
+				std::cout<<"assumed opt value "<<assumedOptValue<<std::endl;
 				std::cout<<"opt from new opt run: ";
 				v=myStr.indexStructure[nodeID];
 				do{
@@ -1066,7 +1091,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 					}
 					else break;
 				}while(v!=getVertexToReach());
-				std::cout<<std::endl;
+				std::cout<<std::endl<<std::endl;;
 
 			}
 
@@ -1131,7 +1156,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 					}
 				}
 				std::unordered_map<size_t,double>::const_iterator liftedIt=myStr.liftedCosts.find(currentVertex);
-				indexStr[currentVertex]=bestValue;
+				indexStr[currentVertex]=bestIndex;
 				if(liftedIt!=myStr.liftedCosts.end()){
 					if(onlyOne&&currentVertex!=vertex){
 						bestValue+=liftedIt->second;
