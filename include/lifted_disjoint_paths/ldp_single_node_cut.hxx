@@ -83,7 +83,6 @@ public:
 	}
 
 	double LowerBound() const;
-git revert uncommitted changes
 
 	double EvaluatePrimal() const;
 
