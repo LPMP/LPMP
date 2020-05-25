@@ -6,6 +6,7 @@
 #include <array>
 #include <list>
 #include <set>
+#include <config.hxx>
 
 namespace LPMP {
 
@@ -480,7 +481,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setNoBaseEdgeActive(){
 
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getNodeMinMarginal()const{
-	std::cout<<"node min marginal "<<nodeID<<" "<<isOutFlow<<std::endl;
+	//std::cout<<"node min marginal "<<nodeID<<" "<<isOutFlow<<std::endl;
 	updateOptimal();
 	if(optimalSolutionBase!=nodeNotActive){
 		return optValue-solutionCosts.at(nodeNotActive);
@@ -557,7 +558,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateNodeCost(const double value){
-	std::cout<<"Update node cost node: "<<nodeID<<" value "<<value<<std::endl;
+	//std::cout<<"Update node cost node: "<<nodeID<<" value "<<value<<std::endl;
 	//double lbBefore=LowerBound();
 	//std::cout<<"lb before"<<lbBefore<<std::endl;
 	nodeCost+=value;
@@ -1026,51 +1027,54 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		updateValues(myStr);
 		double newOptimal=myStr.optValue;
 		double eps=1e-8;
-		if(newOptimal+eps<optValue){
+		if(LPMP::debug()){
+			if(newOptimal+eps<optValue){
 
-			double newEdgeCost=localLiftedCosts[vertexOfLiftedEdge];
-			double oldLiftedEdgeCost=liftedCosts.at(vertexOfLiftedEdge);
-			std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", not opt vertex, too high value of message: "<<(messValue)<<std::endl;
-			std::cout<<"new optimal "<<newOptimal<<", old optimal "<<optValue<<", new l. edge cost "<<newEdgeCost<<", old edge cost: "<<oldLiftedEdgeCost<<std::endl;
-			size_t v=indexStr[vertexOfLiftedEdge];
-			std::cout<<"opt sol. vertices from bottom up :";
-			do{
-				std::cout<<v<<", ";
-				std::cout<<v<<", ";
-				auto it=indexStr.find(v);
-				if(it!=indexStr.end()){
-					v=it->second;
-				}
-				else break;
-			}while(v!=nodeID);
-			std::cout<<std::endl;
-			v=strForUpdateValues.indexStructure[vertexOfLiftedEdge];
-			do{
-				std::cout<<v<<", ";
-				auto it=strForUpdateValues.indexStructure.find(v);
-				if(it!=strForUpdateValues.indexStructure.end()){
-					v=it->second;
-				}
-				else break;
-			}while(v!=getVertexToReach());
-			std::cout<<std::endl;
-			std::cout<<"opt from new opt run: ";
-			v=myStr.indexStructure[nodeID];
-			do{
-				std::cout<<v<<", ";
-				auto it=myStr.indexStructure.find(v);
-				if(it!=myStr.indexStructure.end()){
-					v=it->second;
-				}
-				else break;
-			}while(v!=getVertexToReach());
-			std::cout<<std::endl;
+				double newEdgeCost=localLiftedCosts[vertexOfLiftedEdge];
+				double oldLiftedEdgeCost=liftedCosts.at(vertexOfLiftedEdge);
+				std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", not opt vertex, too high value of message: "<<(messValue)<<std::endl;
+				std::cout<<"new optimal "<<newOptimal<<", old optimal "<<optValue<<", new l. edge cost "<<newEdgeCost<<", old edge cost: "<<oldLiftedEdgeCost<<std::endl;
+				size_t v=indexStr[vertexOfLiftedEdge];
+				std::cout<<"opt sol. vertices from bottom up :";
+				do{
+					std::cout<<v<<", ";
+					std::cout<<v<<", ";
+					auto it=indexStr.find(v);
+					if(it!=indexStr.end()){
+						v=it->second;
+					}
+					else break;
+				}while(v!=nodeID);
+				std::cout<<std::endl;
+				v=strForUpdateValues.indexStructure[vertexOfLiftedEdge];
+				do{
+					std::cout<<v<<", ";
+					auto it=strForUpdateValues.indexStructure.find(v);
+					if(it!=strForUpdateValues.indexStructure.end()){
+						v=it->second;
+					}
+					else break;
+				}while(v!=getVertexToReach());
+				std::cout<<std::endl;
+				std::cout<<"opt from new opt run: ";
+				v=myStr.indexStructure[nodeID];
+				do{
+					std::cout<<v<<", ";
+					auto it=myStr.indexStructure.find(v);
+					if(it!=myStr.indexStructure.end()){
+						v=it->second;
+					}
+					else break;
+				}while(v!=getVertexToReach());
+				std::cout<<std::endl;
 
-		}
+			}
 
 
-		if(messValue<-eps){
-			std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", not opt vertex but negative value "<<messValue<<std::endl;
+
+			if(messValue<-eps){
+				std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", not opt vertex but negative value "<<messValue<<std::endl;
+			}
 		}
 		return messValue;
 	}
