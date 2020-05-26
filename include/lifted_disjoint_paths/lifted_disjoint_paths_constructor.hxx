@@ -300,13 +300,13 @@ namespace LPMP {
 
         	}
         }
-        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
-        	if(i==this->base_graph_source_node()||i==this->base_graph_terminal_node()) continue;
-        	auto left_snc=single_node_cut_factors_[i][0];
-        	auto right_snc=single_node_cut_factors_[i][1];
-        	auto * message=lp_->template add_message<SNC_NODE_MESSAGE>(left_snc, right_snc, i);
-        	snc_node_messages_.push_back(message);
-        }
+//        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
+//        	if(i==this->base_graph_source_node()||i==this->base_graph_terminal_node()) continue;
+//        	auto left_snc=single_node_cut_factors_[i][0];
+//        	auto right_snc=single_node_cut_factors_[i][1];
+//        	auto * message=lp_->template add_message<SNC_NODE_MESSAGE>(left_snc, right_snc, i);
+//        	snc_node_messages_.push_back(message);
+//        }
 
     }
 
