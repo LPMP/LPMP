@@ -66,6 +66,7 @@ public:
 
 	//template<class LPD_STRUCT> ldp_single_node_cut_factor(const LPD_STRUCT& ldpStruct);
 	ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut);
+	ldp_single_node_cut_factor(const ldp_single_node_cut_factor&);
 
 	void initBaseCosts(double fractionBase);
 
@@ -339,6 +340,40 @@ private:
 
 
 };
+
+
+template<class LDP_INSTANCE>
+inline  ldp_single_node_cut_factor<LDP_INSTANCE>::ldp_single_node_cut_factor(const ldp_single_node_cut_factor& sncFactor):
+baseGraph(sncFactor.baseGraph),
+liftedGraph(sncFactor.liftedGraph),
+nodeID(sncFactor.nodeID),
+ldpInstance(sncFactor.ldpInstance),
+isOutFlow(sncFactor.isOutFlow),
+baseCosts(sncFactor.baseCosts),
+liftedCosts(sncFactor.liftedCosts),
+solutionCosts(sncFactor.solutionCosts),
+strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
+{
+
+
+	primalBase_=sncFactor.primalBase_;
+	optimalSolutionBase=sncFactor.optimalSolutionBase;
+	minLayer=sncFactor.minLayer;
+	maxLayer=sncFactor.maxLayer;
+
+	nodeCost=sncFactor.nodeCost;
+	optValue=sncFactor.optValue;
+
+	strForUpdateValues.copyFromOther(sncFactor.strForUpdateValues);
+
+
+	optLiftedUpToDate=sncFactor.optLiftedUpToDate;
+	optBaseUpToDate=sncFactor.optBaseUpToDate;
+
+	tmp_to_delete_val=sncFactor.tmp_to_delete_val;
+
+}
+
 
 template<class LDP_INSTANCE>
 inline  ldp_single_node_cut_factor<LDP_INSTANCE>::ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut):
@@ -920,16 +955,21 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 	}
 	else{
 
-		std::unordered_map<size_t,double> localLiftedCosts=liftedCosts;
-		std::unordered_map<size_t,double> localSolCosts;
-		std::unordered_map<size_t,double> localBaseCosts=baseCosts;
-		StrForUpdateValues myStr(localBaseCosts,localLiftedCosts,localSolCosts,nodeID);
-
-		updateValues(myStr);
+//		std::unordered_map<size_t,double> localLiftedCosts=liftedCosts;
+//		std::unordered_map<size_t,double> localSolCosts;
+//		std::unordered_map<size_t,double> localBaseCosts=baseCosts;
+//		StrForUpdateValues myStr(localBaseCosts,localLiftedCosts,localSolCosts,nodeID);
+//
+//		updateValues(myStr);
+		for(auto pair:strForUpdateValues.liftedCosts){
+			size_t v=pair.first;
+			double value=liftedCosts.at(v);
+			assert(std::abs(value-pair.second)<eps);
+		}
 
 		//TODO:ideally just use global structure strForUpdateValues in bottomUpUpdate
 		std::unordered_map<size_t,size_t> indexStr;
-		std::unordered_map<size_t,double> message=bottomUpUpdate(myStr,vertexOfLiftedEdge,indexStr);
+		std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,vertexOfLiftedEdge,indexStr);
 
 		auto it =message.begin();
 		double messValue=it->second;
