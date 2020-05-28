@@ -29,7 +29,7 @@ struct StrForUpdateValues{
 	double optValue;
 	const size_t nodeID;
 	//size_t optimalSolution;
-	StrForUpdateValues(const std::unordered_map<size_t,double>& bCosts,const std::unordered_map<size_t,double>& lCosts,std::unordered_map<size_t,double>& solCosts,const size_t centralNode):
+	StrForUpdateValues(const std::vector<double>& bCosts,const std::vector<double>& lCosts,std::vector<double>& solCosts,const size_t centralNode):
 	baseCosts(bCosts),
 	liftedCosts(lCosts),
 	solutionCosts(solCosts),
@@ -80,11 +80,11 @@ public:
 		return baseGraph;
 	}
 
-	const std::unordered_map<size_t, double>& getLiftedCosts() const {
+	const std::vector<double>& getLiftedCosts() const {
 		return liftedCosts;
 	}
 
-	const std::unordered_map<size_t, double>& getBaseCosts() const {
+	const std::vector<double>& getBaseCosts() const {
 		return baseCosts;
 	}
 
@@ -101,7 +101,7 @@ public:
 		primalBase_=nodeNotActive;
 	}
 
-	void setBaseEdgeActive(size_t vertex);
+	void setBaseEdgeActive(size_t index);
 	void setNoBaseEdgeActive();
 
 	void setPrimalLifted(std::unordered_set<size_t>& verticesOfActiveEdges);
@@ -111,17 +111,25 @@ public:
 		return primalBase_!=nodeNotActive;
 	}
 
-	size_t getPrimalBase() const {
+	size_t getPrimalBaseIndex() const {
 		return primalBase_;
 	}
 
-	const std::vector<bool>& getPrimalLifted() const {
+	size_t getPrimalBaseVertexID() const {
+		return baseIDs[primalBase_];
+	}
+
+	const std::unordered_set<size_t>& getPrimalLiftedIndices() const {
 		return primalLifted_;
 	}
 
 	const bool isActiveInPrimalLifted(size_t vertex) const {
 		return primalLifted_.count(vertex)>0;
 		//return primalLifted_.at(vertex);
+	}
+
+	const size_t getLiftedOrderToID(size_t vertexID) const{
+		return liftedIDToOrder.at(vertexID);
 	}
 
 	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
@@ -136,10 +144,10 @@ public:
 	double getOneBaseEdgeMinMarginal(size_t vertex);
 	std::unordered_map<size_t,double> getAllBaseMinMarginals();
 
-	std::unordered_map<size_t,double> getAllLiftedMinMarginals();
+	std::vector<double> getAllLiftedMinMarginals();
 
 	double getNodeMinMarginal()const;
-	double oneLiftedMinMarginal(size_t vertexOfLiftedEdge)const;
+	double oneLiftedMinMarginal(size_t indexOfLiftedEdge)const;
 
 
 
@@ -158,7 +166,8 @@ public:
 
 private:
 	void updateValues() const;
-	void updateValues(StrForUpdateValues& myStr,size_t vertexToIgnore=nodeNotActive) const;
+	void updateValues(StrForUpdateValues& myStr,size_t vertexIDToIgnore) const;
+	void updateValues(StrForUpdateValues& myStr) const;
 	std::unordered_map<size_t,double> bottomUpUpdate(const StrForUpdateValues& myStr,size_t vertex,std::unordered_map<size_t,size_t>& indexStr,std::unordered_set<size_t>* pClosedVert=0,std::unordered_map<size_t,double>* pBUValuesStr=0) const;
 	void updateOptimal() const;
 
@@ -329,6 +338,7 @@ private:
 	std::vector<size_t> baseIDs;
 	std::vector<size_t> liftedIDs;
 
+	std::unordered_map<size_t,size_t> baseIDToOrder;
 	std::unordered_map<size_t,size_t> liftedIDToOrder;
 
 //	mutable std::unordered_map<size_t,size_t> indexStructure;
@@ -518,7 +528,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 		//std::cout<<"updating base str."<<std::endl;
 		optimalSolutionBase=nodeNotActive;
 		double minValue=0;
-		for (int i = 0; i < solutionCosts.end()-1; ++i) {
+		for (int i = 0; i < solutionCosts.size()-1; ++i) {
 			double value=solutionCosts[i];
 			if(value<minValue){
 				minValue=value;
@@ -565,9 +575,9 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
 
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeActive(size_t vertex){
-	assert(vertex!=nodeID&&baseCosts.count(vertex)>0);
-	primalBase_=vertex;
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeActive(size_t index){
+	assert(index<baseCosts.size());
+	primalBase_=index;
 
 }
 
@@ -599,11 +609,11 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getNodeMinMarginal()cons
 }
 
 template<class LDP_INSTANCE>
-inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMarginal(size_t vertex){
-	assert(vertex!=nodeNotActive&&baseCosts.count(vertex)>0);
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMarginal(size_t index){
+	assert(index<baseCosts.size());
 	updateOptimal();
-	if(optimalSolutionBase!=vertex){
-		return solutionCosts[vertex]-solutionCosts[optimalSolutionBase];
+	if(optimalSolutionBase!=index){
+		return solutionCosts[index]-solutionCosts[optimalSolutionBase];
 	}
 	else{
 		double secondBest=std::numeric_limits<double>::max();
@@ -613,7 +623,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMargina
 				secondBest=solutionCosts[i];
 			}
 		}
-		return solutionCosts[vertex]-secondBest;
+		return solutionCosts[index]-secondBest;
 	}
 }
 
@@ -655,43 +665,30 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateNodeCost(const doubl
 	nodeCost+=value;
 	//baseCosts[nodeNotActive]-=value;
 	//solutionCosts[nodeNotActive]-=value;
-	for(std::unordered_map<size_t,double>::iterator it=solutionCosts.begin();it!=solutionCosts.end();it++){
-		if(it->first!=nodeNotActive){
-		    it->second+=value;
-		}
+	for (int i = 0; i < solutionCosts.size()-1; ++i) {
+		(solutionCosts[i]+=value);
 	}
-	//double lbAfter=LowerBound();
-//	std::cout<<"lb after"<<lbAfter<<std::endl;
+
 	optBaseUpToDate=false;
 }
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const double value,const size_t vertexIndex,bool isLifted){//Only cost change
 	if(!isLifted){ //update in base edge
-		assert(baseCosts.count(vertexIndex)>0);
+		assert(vertexIndex<baseCosts.size());
 		baseCosts[vertexIndex]+=value;
 		solutionCosts[vertexIndex]+=value;
 		optBaseUpToDate=false;
 	}
 	else{ //update in lifted edge
-		bool isOpt=false;
-		for(size_t v:optimalSolutionLifted){
-			if(v==vertexIndex){
-				isOpt=true;
-				break;
-			}
-		}
-	//	std::cout<<"Update lifted cost "<<nodeID<<" "<<vertexIndex<<" value "<<value<<"optimal "<<isOpt<<std::endl;
-		//double lbBefore=LowerBound();
-		//std::cout<<"lb before"<<lbBefore<<std::endl;
-		assert(liftedCosts.count(vertexIndex)>0);
+
+		assert(vertexIndex<liftedCosts.size());
 		liftedCosts[vertexIndex]+=value;
-		//valuesStructure[vertexIndex]+=value;
+
 		optLiftedUpToDate=false;
 		optBaseUpToDate=false;
 
-	//	double lbAfter=LowerBound();
-		//std::cout<<"lb after"<<lbAfter<<std::endl;
+
 	}
 }
 
@@ -793,9 +790,15 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 	optBaseUpToDate=true;
 }
 
+//TODO make this separate from standard update
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr) const{
+	updateValues(myStr,nodeNotActive);
+}
+
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr,size_t vertexToIgnore) const{
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr,size_t vertexIDToIgnore) const{
 
 	//std::cout<<"update values in node "<<nodeID<<std::endl;
 	std::unordered_set<size_t> closedVertices;
@@ -805,9 +808,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 	bool lastLayerSet=false;
 	size_t lastLayer=0;
-	if(vertexToIgnore!=nodeNotActive){
+	if(vertexIDToIgnore!=nodeNotActive){
 		lastLayerSet=true;
-		lastLayer=ldpInstance.getGroupIndex(vertexToIgnore);
+		lastLayer=ldpInstance.getGroupIndex(vertexIDToIgnore);
 	}
 
 
@@ -816,7 +819,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 			if(isInGivenRange(it->first,lastLayer)) it->second=0;
 		}
 	}
-	for (int i = 0; i < liftedIDs; ++i) {
+	for (int i = 0; i < liftedIDs.size(); ++i) {
 		if(!lastLayerSet||isInGivenRange(liftedIDs[i],lastLayer)){
 			myStr.valuesStructure[liftedIDs[i]]=liftedCosts[i];
 		}
@@ -842,7 +845,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 			//std::cout<<"descendants: ";
 			for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
 				size_t desc=getNeighborBaseVertex(currentNode,i);
-				if(desc==vertexToIgnore||desc==getVertexToReach()) continue;
+				if(desc==vertexIDToIgnore||desc==getVertexToReach()) continue;
 				//std::cout<<desc;
 				if(isInThisFactorRange(desc)&&myStr.useVertex(desc)){
 					if(closedVertices.count(desc)>0||(lastLayerSet&&!isInGivenRange(desc,lastLayer))){  //descendant closed
@@ -962,20 +965,13 @@ class ldp_mcf_single_node_cut_message
 
 
 template<class LDP_INSTANCE>
-inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(size_t vertexOfLiftedEdge)const{
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(size_t indexOfLiftedEdge)const{
 	updateOptimal();
 
-
-	bool hasEdge=liftedCosts.count(vertexOfLiftedEdge);
-//	std::list<size_t> isNotZeroInOpt(optimalSolutionLifted.begin(),optimalSolutionLifted.end());
-//	std::unordered_map<size_t,std::unordered_set<size_t>> candidateGraph=createCandidateGraph(strForUpdateValues);
-//	findAllOptimal(isNotZeroInOpt,isOneInOpt,candidateGraph,strForUpdateValues);
-
-
-	assert(hasEdge);
+	assert(indexOfLiftedEdge<liftedCosts.size());
 	bool isOptimal=false;
 	for(size_t optVertex:optimalSolutionLifted){
-		if(optVertex==vertexOfLiftedEdge){
+		if(optVertex==liftedIDs[indexOfLiftedEdge]){
 			isOptimal=true;
 			break;
 		}
@@ -989,19 +985,19 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		//double lbBefore=LowerBound();
 		//std::cout<<"OPTIMAL"<<std::endl;
 
-		std::unordered_map<size_t,double> localSolutionCosts;
+		std::vector<double> localSolutionCosts;
 		StrForUpdateValues myStr(baseCosts,liftedCosts,localSolutionCosts,nodeID);
 		myStr.copyFromOther(strForUpdateValues);
 
 		myStr.setUseAllVertices(false);
 
-		updateValues(myStr,vertexOfLiftedEdge);
+		updateValues(myStr,liftedIDs[indexOfLiftedEdge]);
 		//size_t restrictedOptimalSolution=myStr.indexStructure[nodeID];
 		double restrictedOptValue=myStr.optValue;
 
 		double valueToReturn=optValue-restrictedOptValue;
 		if(valueToReturn>1e-8){
-			std::cout<<"wrong min marginal"<<nodeID<<", "<<vertexOfLiftedEdge<<", opt vertex but positive value "<<valueToReturn<<std::endl;
+			std::cout<<"wrong min marginal"<<nodeID<<", "<<indexOfLiftedEdge<<", opt vertex but positive value "<<valueToReturn<<std::endl;
 		}
 
 
@@ -1013,21 +1009,15 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 	}
 	else{
 
-//		std::unordered_map<size_t,double> localLiftedCosts=liftedCosts;
-//		std::unordered_map<size_t,double> localSolCosts;
-//		std::unordered_map<size_t,double> localBaseCosts=baseCosts;
-//		StrForUpdateValues myStr(localBaseCosts,localLiftedCosts,localSolCosts,nodeID);
-//
-//		updateValues(myStr);
-		for(auto pair:strForUpdateValues.liftedCosts){
-			size_t v=pair.first;
-			double value=liftedCosts.at(v);
-			assert(std::abs(value-pair.second)<eps);
-		}
 
-		//TODO:ideally just use global structure strForUpdateValues in bottomUpUpdate
+//		for(auto pair:strForUpdateValues.liftedCosts){
+//			size_t v=pair.first;
+//			double value=liftedCosts.at(v);
+//			assert(std::abs(value-pair.second)<eps);
+//		}
+
 		std::unordered_map<size_t,size_t> indexStr;
-		std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,vertexOfLiftedEdge,indexStr);
+		std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,liftedIDs[indexOfLiftedEdge],indexStr);
 
 		auto it =message.begin();
 		double messValue=it->second;
@@ -1047,9 +1037,17 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 	if(onlyOne){
 		pClosedVert=new std::unordered_set<size_t> ();
 		pBUValuesStr=new std::unordered_map<size_t,double>();
+//		for (int i = 0; i < liftedIDs.size(); ++i) {
+//			size_t liftedVertexID=liftedIDs[i];
+//			double liftedVertexCost=liftedCosts[i];
+//			(*pBUValuesStr)[liftedVertexID]=liftedVertexCost;
+//		}
 	}
+
 	std::unordered_set<size_t>& closedVertices=*pClosedVert;
 	std::unordered_map<size_t,double>& buValuesStr=*pBUValuesStr;
+
+
 
 	std::stack<size_t> myStack;
 	myStack.push(vertex);
@@ -1071,9 +1069,10 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 			if(predClosed){
 				size_t bestIndex=nodeID;
 				double bestValue=std::numeric_limits<double>::infinity();
-				auto baseIt=myStr.baseCosts.find(currentVertex);
-				if(baseIt!=myStr.baseCosts.end()){
-					bestValue=(baseIt->second)+nodeCost;
+				auto baseIt=baseIDToOrder.find(currentVertex);
+				if(baseIt!=baseIDToOrder.end()){
+					double bCost=baseCosts[baseIt->second];
+					bestValue=bCost+nodeCost;
 				}
 				for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) {
 					size_t pred=getNeighborBaseVertexRev(currentVertex,i);
@@ -1087,11 +1086,12 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 						}
 					}
 				}
-				std::unordered_map<size_t,double>::const_iterator liftedIt=myStr.liftedCosts.find(currentVertex);
+				auto liftedIt=liftedIDToOrder.find(currentVertex);
+				//Assume that open vertex has an entry iff it is lifted
 				indexStr[currentVertex]=bestIndex;
-				if(liftedIt!=myStr.liftedCosts.end()){
+				if(liftedIt!=liftedIDToOrder.end()){
 					if(onlyOne&&currentVertex!=vertex){
-						bestValue+=liftedIt->second;
+						bestValue+=liftedCosts[liftedIt->second];
 					}
 					else{
 						bestValue+=liftedIt->second;
@@ -1141,85 +1141,85 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 
 }
-
-template<class LDP_INSTANCE>
-inline std::unordered_map<size_t,std::unordered_set<size_t>> ldp_single_node_cut_factor<LDP_INSTANCE>::createCandidateGraph(const StrForUpdateValues& myStr){
-	std::unordered_map<size_t,std::unordered_set<size_t>> candidateGraph;
-	std::unordered_set<size_t> isClosed;
-	for(auto it=myStr.valuesStructure.begin();it!=myStr.valuesStructure.end();++it){
-		size_t vertex=it->first;
-		if(liftedCosts.count(vertex)==0&&isClosed.count(vertex)==0){
-			std::stack<size_t> nodeStack;
-			nodeStack.push(vertex);
-			while(!nodeStack.empty()){
-				size_t currentVertex=nodeStack.top();
-				bool descClosed=true;
-				std::unordered_set<size_t> onlyLiftedDesc;
-				for (int i = 0; i < numberOfNeighborsBase(currentVertex); ++i) {
-					size_t neighbor=getNeighborBaseVertex(currentVertex,i);
-					if(myStr.valuesStructure.count(neighbor)>0){
-						if(liftedCosts.count(neighbor)==0){
-							if(isClosed.count(neighbor)==0){
-								descClosed=false;
-								nodeStack.push(neighbor);
-
-							}
-							else if(descClosed){
-								std::unordered_set<size_t> &neighborLiftedDesc=candidateGraph[neighbor];
-								onlyLiftedDesc.insert(neighborLiftedDesc.begin(),neighborLiftedDesc.end());
-							}
-						}
-						else if(descClosed){
-							onlyLiftedDesc.insert(neighbor);
-						}
-					}
-				}
-				if(descClosed){
-					candidateGraph[currentVertex]=onlyLiftedDesc;
-					nodeStack.pop();
-					isClosed.insert(currentVertex);
-				}
-			}
-		}
-	}
-
-	std::unordered_map<size_t,std::unordered_set<size_t>> finalCandidateGraph;
-
-	for(auto it=myStr.valuesStructure.begin();it!=myStr.valuesStructure.end();++it){
-		size_t vertex=it->first;
-		if(liftedCosts.count(vertex)>0){
-			for (int i = 0; i < numberOfNeighborsBase(vertex); ++i) {
-				size_t neighbor=getNeighborBaseVertex(vertex,i);
-				if(myStr.valuesStructure.count(neighbor)>0){
-					if(liftedCosts.count(neighbor)>0){
-						finalCandidateGraph[vertex].insert(neighbor);
-					}
-					else{
-						std::unordered_set<size_t>& neighborsDesc=candidateGraph[neighbor];
-						finalCandidateGraph[vertex].insert(neighborsDesc.begin(),neighborsDesc.end());
-					}
-				}
-			}
-		}
-	}
-
-//		for(auto it=myStr.valuesStructure.begin();it!=myStr.valuesStructure.end();++it){
-//			size_t vertex=it->first;
-//			//strForUpdateValues.relevantVertices.insert(vertex);
 //
-//			for (int i = 0; i < numberOfNeighborsBase(vertex); ++i) {
-//				size_t neighbor=getNeighborBaseVertex(vertex,i);
-//				if(myStr.valuesStructure.count(neighbor)>0){
-//					candidateGraph[vertex].insert(neighbor);
+//template<class LDP_INSTANCE>
+//inline std::unordered_map<size_t,std::unordered_set<size_t>> ldp_single_node_cut_factor<LDP_INSTANCE>::createCandidateGraph(const StrForUpdateValues& myStr){
+//	std::unordered_map<size_t,std::unordered_set<size_t>> candidateGraph;
+//	std::unordered_set<size_t> isClosed;
+//	for(auto it=myStr.valuesStructure.begin();it!=myStr.valuesStructure.end();++it){
+//		size_t vertex=it->first;
+//		if(liftedCosts.count(vertex)==0&&isClosed.count(vertex)==0){
+//			std::stack<size_t> nodeStack;
+//			nodeStack.push(vertex);
+//			while(!nodeStack.empty()){
+//				size_t currentVertex=nodeStack.top();
+//				bool descClosed=true;
+//				std::unordered_set<size_t> onlyLiftedDesc;
+//				for (int i = 0; i < numberOfNeighborsBase(currentVertex); ++i) {
+//					size_t neighbor=getNeighborBaseVertex(currentVertex,i);
+//					if(myStr.valuesStructure.count(neighbor)>0){
+//						if(liftedCosts.count(neighbor)==0){
+//							if(isClosed.count(neighbor)==0){
+//								descClosed=false;
+//								nodeStack.push(neighbor);
+//
+//							}
+//							else if(descClosed){
+//								std::unordered_set<size_t> &neighborLiftedDesc=candidateGraph[neighbor];
+//								onlyLiftedDesc.insert(neighborLiftedDesc.begin(),neighborLiftedDesc.end());
+//							}
+//						}
+//						else if(descClosed){
+//							onlyLiftedDesc.insert(neighbor);
+//						}
+//					}
+//				}
+//				if(descClosed){
+//					candidateGraph[currentVertex]=onlyLiftedDesc;
+//					nodeStack.pop();
+//					isClosed.insert(currentVertex);
 //				}
 //			}
 //		}
-
-		return finalCandidateGraph;
-}
+//	}
+//
+//	std::unordered_map<size_t,std::unordered_set<size_t>> finalCandidateGraph;
+//
+//	for(auto it=myStr.valuesStructure.begin();it!=myStr.valuesStructure.end();++it){
+//		size_t vertex=it->first;
+//		if(liftedCosts.count(vertex)>0){
+//			for (int i = 0; i < numberOfNeighborsBase(vertex); ++i) {
+//				size_t neighbor=getNeighborBaseVertex(vertex,i);
+//				if(myStr.valuesStructure.count(neighbor)>0){
+//					if(liftedCosts.count(neighbor)>0){
+//						finalCandidateGraph[vertex].insert(neighbor);
+//					}
+//					else{
+//						std::unordered_set<size_t>& neighborsDesc=candidateGraph[neighbor];
+//						finalCandidateGraph[vertex].insert(neighborsDesc.begin(),neighborsDesc.end());
+//					}
+//				}
+//			}
+//		}
+//	}
+//
+////		for(auto it=myStr.valuesStructure.begin();it!=myStr.valuesStructure.end();++it){
+////			size_t vertex=it->first;
+////			//strForUpdateValues.relevantVertices.insert(vertex);
+////
+////			for (int i = 0; i < numberOfNeighborsBase(vertex); ++i) {
+////				size_t neighbor=getNeighborBaseVertex(vertex,i);
+////				if(myStr.valuesStructure.count(neighbor)>0){
+////					candidateGraph[vertex].insert(neighbor);
+////				}
+////			}
+////		}
+//
+//		return finalCandidateGraph;
+//}
 
 template<class LDP_INSTANCE>
-inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(){
+inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(){
 
 
 	updateOptimal();
@@ -1230,9 +1230,9 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 	std::list<size_t> isNotZeroInOpt=optimalSolutionLifted;
 	std::unordered_set<size_t> isOneInOpt(isNotZeroInOpt.begin(),isNotZeroInOpt.end());
 
-	std::unordered_map<size_t,double> localSolutionCosts=solutionCosts;
-	std::unordered_map<size_t,double> localLiftedCosts=liftedCosts;
-	std::unordered_map<size_t,double> localBaseCosts=baseCosts;
+	std::vector<double> localSolutionCosts=solutionCosts;
+	std::vector<double> localLiftedCosts=liftedCosts;
+	std::vector<double> localBaseCosts=baseCosts;
 
 	StrForUpdateValues myStr(localBaseCosts,localLiftedCosts,localSolutionCosts,nodeID);
 	myStr.copyFromOther(strForUpdateValues);
@@ -1303,16 +1303,20 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 		closedVertices.insert(optVertex);
 	}
 	std::unordered_map<size_t,size_t> indexStr;
-	for(auto pair:liftedCosts){
-		if(closedVertices.count(pair.first)==0){
+	for(size_t vertexID:liftedIDs){
+		if(closedVertices.count(vertexID)==0){
 
-			std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,pair.first,indexStr,&closedVertices,&buValuesStructure);
+			std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,vertexID,indexStr,&closedVertices,&buValuesStructure);
 			liftedMessages.insert(newMessages.begin(),newMessages.end());
 		}
 	}
 
 
-	return liftedMessages;
+	std::vector<double> messagesToOutput=std::vector<double>(liftedCosts.size());
+	for (int i = 0; i < messagesToOutput.size(); ++i) {
+		messagesToOutput[i]=liftedMessages[liftedIDs[i]];
+	}
+	return messagesToOutput;
 }
 
 

@@ -67,12 +67,13 @@ namespace LPMP {
 
 
     template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-        bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::checkFeasibilityLiftedInSnc(){
+    bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::checkFeasibilityLiftedInSnc(){
     	bool isFeasible=true;
-    	for (int i = 0; i < nr_nodes(); ++i) {
+    	for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
     		size_t vertex=i;
-    		const auto& snc=single_node_cut_factors_[vertex][1]->get_factor();
-    		if(snc.getPrimalBase()==base_graph_terminal_node()){
+    		const auto snc=single_node_cut_factors_[vertex][1]->get_factor();
+    		size_t primalBaseIndex=snc->getPrimalBase();
+    		if(snc->baseIDs[primalBaseIndex]==base_graph_terminal_node()){
 
     			std::vector<bool> isOnPath(nr_nodes(),0);
     			isOnPath[vertex]=1;
@@ -81,42 +82,49 @@ namespace LPMP {
 
     			while(vertex!=base_graph_source_node()){
     				const auto& sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
-    				const std::unordered_set<size_t>& activeEndpoints=sncFactorOut.getPrimalLifted();
-    				const std::unordered_map<size_t,double>& liftedCosts= sncFactorOut.getLiftedCosts();
-    				for(auto pair:liftedCosts){
-    					size_t vertex2=pair.first;
-    					if(isOnPath[vertex2]&&activeEndpoints.count(vertex2)==0){
+    				const std::unordered_set<size_t>& indicesOfActiveEndpoints=sncFactorOut.getPrimalLiftedIndices();
+    				std::vector<bool> activeVector(sncFactorOut.getLiftedCosts().size());
+    				for(size_t v:indicesOfActiveEndpoints){
+    					activeVector[v]=1;
+    				}
+    				for (int j = 0; j < activeVector.size(); ++j) {
+    					size_t vertex2=sncFactorOut->liftedIDs[j];
+    					if(activeVector[j]!=isOnPath[vertex2]){
     						isFeasible=false;
     						break;
     					}
+
     				}
-    				for(size_t vertex2:activeEndpoints){
-    					if(!isOnPath[vertex2]){
-    						isFeasible=false;
-    						break;
-    					}
-    				}
+
+    				if(!isFeasible) break;
+
+
     				isOnPath[vertex]=1;
     				path.push_front(vertex);
     				auto& sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
-    				vertex=sncFactorIn.getPrimalBase();
+    				size_t ind=sncFactorIn.getPrimalBase();
+    				vertex=sncFactorIn.baseIDs[ind];
+
     			}
-    			for(size_t activeVertex:path){
-    				auto& sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
-    				const std::unordered_set<size_t>& activeEndpoints=sncFactorIn.getPrimalLifted();
-    				const std::unordered_map<size_t,double>& liftedCosts= sncFactorIn.getLiftedCosts();
-    				for(auto pair:liftedCosts){
-    					size_t vertex2=pair.first;
-    					if(isOnPath[vertex2]&&activeEndpoints.count(vertex2)==0){
-    						isFeasible=false;
-    						break;
+    			if(isFeasible){
+    				for(size_t activeVertex:path){
+    					auto& sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
+
+
+    					const std::unordered_set<size_t>& indicesOfActiveEndpoints=sncFactorIn.getPrimalLiftedIndices();
+    					std::vector<bool> activeVector(sncFactorIn.getLiftedCosts().size());
+    					for(size_t v:indicesOfActiveEndpoints){
+    						activeVector[v]=1;
     					}
-    				}
-    				for(size_t vertex2:activeEndpoints){
-    					if(!isOnPath[vertex2]){
-    						isFeasible=false;
-    						break;
+    					for (int j = 0; j < activeVector.size(); ++j) {
+    						size_t vertex2=sncFactorIn->liftedIDs[j];
+    						if(activeVector[j]!=isOnPath[vertex2]){
+    							isFeasible=false;
+    							break;
+    						}
+
     					}
+
     				}
     			}
     		}
@@ -144,19 +152,19 @@ namespace LPMP {
 
     		}
     		else if(sncFactorIn->isNodeActive()&&sncFactorOut->isNodeActive()){
-    			size_t inputNode=sncFactorIn->getPrimalBase();
+    			size_t inputNode=sncFactorIn->getPrimalBaseVertexID();
     			if(inputNode!=base_graph_source_node()){
     				auto sncFactorInputNodeOut=single_node_cut_factors_[inputNode][1]->get_factor();
-    				if(sncFactorInputNodeOut->getPrimalBase()!=i){
+    				if(sncFactorInputNodeOut->getPrimalBaseVertexID()!=i){
     					isFeasible=false;
 
     				}
     			}
 
-    			size_t outputNode=sncFactorOut->getPrimalBase();
+    			size_t outputNode=sncFactorOut->getPrimalBaseVertexID();
     			if(outputNode!=base_graph_terminal_node()){
     				auto sncFactorOuputNodeIn=single_node_cut_factors_[outputNode][0]->get_factor();
-    				if(sncFactorOuputNodeIn->getPrimalBase()!=i){
+    				if(sncFactorOuputNodeIn->getPrimalBaseVertexID()!=i){
     					isFeasible=false;
 
     				}
@@ -176,7 +184,7 @@ namespace LPMP {
     	for (int i = 0; i < nr_nodes(); ++i) {
     		size_t vertex=i;
     		auto& snc=single_node_cut_factors_[vertex][1]->get_factor();
-    		if(snc.getPrimalBase()==base_graph_terminal_node()){
+    		if(snc.getPrimalBaseVertexID()==base_graph_terminal_node()){
 
     			std::vector<bool> isOnPath(nr_nodes(),0);
     			isOnPath[vertex]=1;
@@ -185,31 +193,26 @@ namespace LPMP {
 
     			while(vertex!=base_graph_source_node()){
     				auto& sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
-    				std::unordered_set<size_t> activeEndpoints;
-    				const std::unordered_map<size_t,double>& liftedCosts= sncFactorOut.getLiftedCosts();
-    				for(auto pair:liftedCosts){
-    					size_t vertex2=pair.first;
-    					if(isOnPath[vertex2]){
-    						activeEndpoints.insert(vertex2);
-    					}
-       				}
-    				sncFactorOut.setPrimalLifted(activeEndpoints);
+    				std::unordered_set<size_t> activeEndpointIndices;
+    				const std::vector<size_t>& liftedIDs= sncFactorOut->liftedIDs;
+    				for (int i = 0; i < liftedIDs.size(); ++i) {
+    					if(isOnPath[liftedIDs[i]]) activeEndpointIndices.insert(i);
+					}
+
+    				sncFactorOut.setPrimalLifted(activeEndpointIndices);
     				isOnPath[vertex]=1;
     				path.push_front(vertex);
     				auto& sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
-    				vertex=sncFactorIn.getPrimalBase();
+    				vertex=sncFactorIn.getPrimalBaseVertexID();
     			}
     			for(size_t activeVertex:path){
     				auto& sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
-    				std::unordered_set<size_t> activeEndpoints;
-    				const std::unordered_map<size_t,double>& liftedCosts= sncFactorIn.getLiftedCosts();
-    				for(auto pair:liftedCosts){
-    					size_t vertex2=pair.first;
-    					if(isOnPath[vertex2]){
-    						activeEndpoints.insert(vertex2);
-    					}
+    				std::unordered_set<size_t> activeEndpointIndices;
+    				const std::vector<size_t>& liftedIDs= sncFactorIn->liftedIDs;
+    				for (int i = 0; i < liftedIDs.size(); ++i) {
+    					if(isOnPath[liftedIDs[i]]) activeEndpointIndices.insert(i);
     				}
-    				sncFactorIn.setPrimalLifted(activeEndpoints);
+    				sncFactorIn.setPrimalLifted(activeEndpointIndices);
     			}
     		}
     	}
@@ -288,18 +291,32 @@ namespace LPMP {
         //I switch left and right!
         //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>(left_snc, right_snc, left_node, right_node);
 
-        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
-        	auto left_snc=single_node_cut_factors_[i][0];
-        	for(const auto pair:left_snc->get_factor()->getLiftedCosts()){
-        		size_t j=pair.first;
-        		auto right_snc=single_node_cut_factors_[j][1];
-
+        for (int vertex1 = 0; vertex1 < instance.getGraph().numberOfVertices(); ++vertex1) {
+        	auto left_snc=single_node_cut_factors_[vertex1][0];
+        	for (int j = 0; j < instance.getGraph().numberOfEdgesFromVertex(vertex1); ++j) {
+        		size_t vertex2=instance.getGraph().vertexFromVertex(vertex1,j);
+        		auto right_snc=single_node_cut_factors_[vertex2][1];
+        		size_t i=right_snc->get_factor()->getLiftedOrderToID(vertex1);
         		auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
         		snc_lifted_messages_.push_back(message);
 
 
-        	}
-        }
+			}
+		}
+
+
+//        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
+//        	auto left_snc=single_node_cut_factors_[i][0];
+//        	for(const auto pair:left_snc->get_factor()->getLiftedCosts()){
+//        		size_t j=pair.first;
+//        		auto right_snc=single_node_cut_factors_[j][1];
+//
+//        		auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+//        		snc_lifted_messages_.push_back(message);
+//
+//
+//        	}
+//        }
 //        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
 //        	if(i==this->base_graph_source_node()||i==this->base_graph_terminal_node()) continue;
 //        	auto left_snc=single_node_cut_factors_[i][0];
