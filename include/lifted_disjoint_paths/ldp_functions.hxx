@@ -76,7 +76,7 @@ public:
 		maxTime=0;
 	}
 
-	VertexGroups(ConfigDisjoint<>& parameters,char delim){
+	VertexGroups(const ConfigDisjoint<>& parameters,char delim){
 		//std::vector<std::vector<size_t>> groups;
 
 		std::string line;

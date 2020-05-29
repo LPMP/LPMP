@@ -42,7 +42,7 @@ class LdpInstance {
 public:
 
 
-	LdpInstance(ConfigDisjoint<>& configParameters,char delim=',',CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
+	LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
 		if(i==t_||j==s_) return false;  //Assume no path from the terminal node
@@ -51,8 +51,8 @@ public:
 		return reachable[i].count(j)>0;
 	}
 
-	const std::unordered_set<size_t>& reachableFromVertex(size_t v){
-		return reachable[v];
+	const std::unordered_set<size_t>& reachableFromVertex(size_t v)const{
+		return reachable.at(v);
 	}
 
 
@@ -100,7 +100,7 @@ public:
 
 
 
-	const std::vector<double>& getVerticesScore() {
+	const std::vector<double>& getVerticesScore() const{
 		return vertexScore;
 	}
 
@@ -118,7 +118,7 @@ public:
 		return vertexScore[v];
 	}
 
-	VertexGroups<size_t>* getPVertexGroups(){
+	const VertexGroups<size_t>* getPVertexGroups()const {
 		return &vertexGroups;
 	}
 
@@ -127,7 +127,7 @@ public:
 	}
 
 
-	bool isTimeFramesEnabled(){
+	bool isTimeFramesEnabled()const {
 		return useTimeFrames;
 	}
 
@@ -154,13 +154,15 @@ public:
 	double evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
 
 
-	ConfigDisjoint<>& parameters;
+	const ConfigDisjoint<>& parameters;
 	VertexGroups<size_t> vertexGroups;
 	size_t minV=0;
 	size_t maxV=0;
 
 
 private:
+
+	//LdpInstance(const LdpInstance& ldpI);
 
 	size_t s_;
 	size_t t_;

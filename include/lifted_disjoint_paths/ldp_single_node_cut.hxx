@@ -463,17 +463,18 @@ template<class LDP_INSTANCE>
 inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedFromIndexStr(const StrForUpdateValues& myStr) const{
 
 	std::list<size_t> optLifted;
-   if(debug())	std::cout<<"opt lifted: "<<std::endl;
+   if(debug())	std::cout<<"opt lifted: "<<nodeID<<std::endl;
 	double optValueComputed=0;
 	if(myStr.optBase!=nodeNotActive){
 		optValueComputed=myStr.baseCosts.at(myStr.optBase);
 		optValueComputed+=nodeCost;
 
 		bool hasOptDescendant=true;
-		size_t vertexInOptimalPath=myStr.vertexIDStructure.at(baseIDs[myStr.optBase]);
+		size_t vertexInOptimalPath=baseIDs[myStr.optBase];
+		//size_t vertexInOptimalPath=myStr.vertexIDStructure.at(baseIDs[myStr.optBase]);
 
 		while(hasOptDescendant){
-			if(debug())	std::cout<<vertexInOptimalPath<<","<<std::endl;
+			if(debug())	std::cout<<"vertex in opt path "<<vertexInOptimalPath<<","<<std::endl;
 
 			if(liftedIDToOrder.count(vertexInOptimalPath)>0){
 				//	std::cout<<"is lifted "<<std::endl;
@@ -486,6 +487,9 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 				vertexInOptimalPath=it->second;
 			}
 		}
+	}
+	else{
+		if(debug()) std::cout<<"node not active "<<std::endl;
 	}
 	if(debug())	assert(std::abs(optValueComputed - myStr.optValue) <= 1e-8);
 //	std::cout<<"opt value "<<optValueComputed<<std::endl;
@@ -722,6 +726,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fractionLifted){
 	liftedCosts=std::vector<double>();
+	liftedIDs=std::vector<size_t>();
 	if(fractionLifted==0){
 		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
 			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
@@ -747,6 +752,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fractionBase){
 	baseCosts=std::vector<double>();
+	baseIDs=std::vector<size_t>();
 	if(fractionBase==0){
 		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 			size_t neighborID=getNeighborBaseVertex(nodeID,i);
@@ -846,8 +852,15 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 	for (int i = 0; i < liftedIDs.size(); ++i) {
 		if(!lastLayerSet||isInGivenRange(liftedIDs[i],lastLayer)){
 			myStr.valuesStructure[liftedIDs[i]]=liftedCosts[i];
+
 		}
 	}
+
+//	std::cout<<"print values str. "<<std::endl;
+//	for(auto pair:myStr.valuesStructure){
+//		std::cout<<pair.first<<": "<<pair.second<<std::endl;
+//
+//	}
 
 	std::stack<size_t> nodeStack;
 	nodeStack.push(nodeID);
@@ -938,10 +951,18 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 					double valueToStore=minValue;
 
 					myStr.vertexIDStructure[currentNode]=minValueVertexID;
-					if(debug())std::cout<<currentNode<<"->"<<minValueVertexID<<", value: "<<valueToStore<<std::endl;
+					//if(debug())std::cout<<currentNode<<"->"<<minValueVertexID<<", value: "<<valueToStore<<std::endl;
 
-					if((myStr.valuesStructure.count(currentNode)>0)||valueToStore<0){  //store only negative values or values needed to correct solutionCosts
-						myStr.valuesStructure[currentNode]+=minValue;
+					auto it=myStr.valuesStructure.find(currentNode);
+					bool exists=it!=myStr.valuesStructure.end();
+					if(exists||valueToStore<0){  //store only negative values or values needed to correct solutionCosts
+						if(!exists){
+							myStr.valuesStructure[currentNode]=minValue;
+						}
+						else{
+							myStr.valuesStructure[currentNode]+=minValue;
+						}
+					//	if(debug()) std::cout<<"val. str. "<<currentNode<<": "<<myStr.valuesStructure[currentNode]<<std::endl;
 
 					}
 

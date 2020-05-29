@@ -3,7 +3,7 @@
 namespace LPMP{
 namespace lifted_disjoint_paths {
 
-LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteStructure<>* cs,size_t minTime,size_t maxTime):
+LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,CompleteStructure<>* cs,size_t minTime,size_t maxTime):
 		parameters(configParameters)
 {
 
@@ -16,7 +16,7 @@ LdpInstance::LdpInstance(ConfigDisjoint<>& configParameters,char delim,CompleteS
 	size_t maxVertex;
 	if(cs==0){
 		if(useTimeFrames){
-			vertexGroups=VertexGroups<size_t>(configParameters,delim);
+			vertexGroups=VertexGroups<size_t>(parameters,delim);
 			maxVertex=vertexGroups.getMaxVertex();
 		}
 		else{

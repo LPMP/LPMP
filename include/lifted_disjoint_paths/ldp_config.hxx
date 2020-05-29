@@ -138,7 +138,7 @@ public:
 	}
 
 
-	std::ofstream& infoFile(){
+	std::ofstream& infoFile() const {
 		std::ofstream & infoF=*pInfoFile;
 		return infoF;
 	}
@@ -154,7 +154,7 @@ private:
 
 	std::pair<std::string,std::string> parseLine(std::string line,char delim);
 	//std::ofstream * fileForGeneralOutputs;
-    std::ofstream* pInfoFile;
+    mutable std::ofstream* pInfoFile;
     std::string inputFileName;  //file with 3 paths: graph, time information, parameters
     std::string outputFileName;   //file (prefix) where outputs are going to be stored
 
