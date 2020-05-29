@@ -65,7 +65,8 @@ public:
 		return maxTimeFrame;
 	}
 
-	size_t getMaxTimeLifted() const {
+	const size_t getMaxTimeLifted() const {
+		//std::cout<<"getting max time lifted "<<maxTimeLifted<<std::endl;
 		return maxTimeLifted;
 	}
 
@@ -127,9 +128,9 @@ public:
 
 
 
-	void setMaxTimeLifted(size_t maxTimeLifted) {
-		this->maxTimeLifted = maxTimeLifted;
-	}
+//	void setMaxTimeLifted(size_t maxTimeLifted) {
+//		this->maxTimeLifted = maxTimeLifted;
+//	}
 
 
 	size_t getMaxTimeGapComplete() const {

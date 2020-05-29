@@ -18,7 +18,8 @@ namespace LPMP {
 struct StrForUpdateValues{
 	std::vector<double>& solutionCosts;
 	std::unordered_map<size_t,double> valuesStructure;
-	std::unordered_map<size_t,size_t> indexStructure;
+	std::unordered_map<size_t,size_t> vertexIDStructure;
+	size_t optBase;
 	const std::vector<double>& baseCosts;
 	const std::vector<double>& liftedCosts;
 
@@ -37,6 +38,7 @@ struct StrForUpdateValues{
 	nodeID(centralNode)
 	{
 		useAllVertices=true;
+		optBase=0;
 
 	}
 	bool useVertex(size_t vertex){
@@ -52,7 +54,7 @@ struct StrForUpdateValues{
 	}
 
 	void copyFromOther(StrForUpdateValues& str){
-		indexStructure=str.indexStructure;
+		vertexIDStructure=str.vertexIDStructure;
 		valuesStructure=str.valuesStructure;
 		solutionCosts=str.solutionCosts;
 		optValue=str.optValue;
@@ -159,6 +161,8 @@ public:
 	//TODO use this
 	//std::vector<bool> primalLifted_;
 
+	std::vector<size_t> baseIDs;
+    std::vector<size_t> liftedIDs;
 	size_t nodeNotActive;
 
 
@@ -214,15 +218,16 @@ private:
 			return baseGraph.numberOfEdgesToVertex(nodeIndex);
 		}
 	}
-	bool isInThisFactorRange(const size_t nodeIndex) const {
-		assert(nodeIndex < baseGraph.numberOfVertices());
+	bool isInThisFactorRange(const size_t vertexID) const {
+		assert(vertexID < baseGraph.numberOfVertices());
 		if(isOutFlow){
-			if(nodeIndex==ldpInstance.getTerminalNode()) return true;
-			else return ldpInstance.getGroupIndex(nodeIndex)<=maxLayer;
+			//if(debug()) std::cout<<"vertex: "<<vertexID<<", max l. "<<maxLayer<<", layer of vertex "<<ldpInstance.getGroupIndex(vertexID);
+			if(vertexID==ldpInstance.getTerminalNode()) return true;
+			else return ldpInstance.getGroupIndex(vertexID)<=maxLayer;
 		}
 		else{
-			if(nodeIndex==ldpInstance.getSourceNode()) return true;
-			else return ldpInstance.getGroupIndex(nodeIndex)>=minLayer;
+			if(vertexID==ldpInstance.getSourceNode()) return true;
+			else return ldpInstance.getGroupIndex(vertexID)>=minLayer;
 		}
 	}
 
@@ -325,6 +330,7 @@ private:
 	const andres::graph::Digraph<>& baseGraph;
 	const andres::graph::Digraph<>& liftedGraph;
 	const LDP_INSTANCE& ldpInstance;
+	size_t nodeNotActiveForStructures;
 
 
 //	std::unordered_map<size_t,double> baseCosts;
@@ -335,8 +341,7 @@ private:
     double nodeCost;
 	mutable std::vector<double> solutionCosts;
 
-	std::vector<size_t> baseIDs;
-	std::vector<size_t> liftedIDs;
+
 
 	std::unordered_map<size_t,size_t> baseIDToOrder;
 	std::unordered_map<size_t,size_t> liftedIDToOrder;
@@ -399,6 +404,7 @@ nodeNotActive(sncFactor.nodeNotActive)
 	optBaseUpToDate=sncFactor.optBaseUpToDate;
 
 	tmp_to_delete_val=sncFactor.tmp_to_delete_val;
+	nodeNotActiveForStructures=sncFactor.nodeNotActiveForStructures;
 
 }
 
@@ -413,31 +419,40 @@ isOutFlow(isOut),
 strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 //nodeNotActive(nID),strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 {
-	primalBase_=nodeNotActive;  //corresponds to no edge active
-	optimalSolutionBase=nodeNotActive;
+	//if(debug()) std::cout<<" snc factor "<<nodeID<<", "<<isOut<<std::endl;
+
 
 	if(isOutFlow){
 		minLayer=ldpInst.getGroupIndex(nodeID);
+		//if(debug()) std::cout<<"gap lifted "<<ldpInst.getGapLifted()<<std::endl;
 		maxLayer=minLayer+ldpInst.getGapLifted(); //some method that returns max time gap lifted
+		//if(debug()) std::cout<<"max layer "<<maxLayer<<std::endl;
 	}
 	else{
 		maxLayer=ldpInst.getGroupIndex(nodeID);
 		minLayer=std::max(0,int(maxLayer)-int(ldpInst.getGapLifted()));
 	}
 
+//	if(debug()) std::cout<<"min and max layers set "<<std::endl;
 	//baseCosts=std::unordered_map<size_t,double>();
 	initBaseCosts(0);
+	//if(debug()) std::cout<<"base costs set "<<std::endl;
 	//liftedCosts=std::unordered_map<size_t,double>();
 	initLiftedCosts(0);
+	//if(debug()) std::cout<<"lifted costs set "<<std::endl;
 	nodeNotActive=baseCosts.size();
 	//solutionCosts=std::unordered_map<size_t,double>();
-	solutionCosts[nodeNotActive]=0;
+	//solutionCosts[nodeNotActive]=0;
 //	baseCosts[nodeNotActive]=0;
 	optLiftedUpToDate=false;
 	optBaseUpToDate=false;
 
+	primalBase_=nodeNotActive;  //corresponds to no edge active
+	optimalSolutionBase=nodeNotActive;
 	nodeCost=0;
 	optValue=0;
+	nodeNotActiveForStructures=nodeID;
+
 
 
 
@@ -446,32 +461,33 @@ strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 
 template<class LDP_INSTANCE>
 inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedFromIndexStr(const StrForUpdateValues& myStr) const{
-	size_t vertexInOptimalPath=myStr.indexStructure.at(nodeID);
 
 	std::list<size_t> optLifted;
-//	std::cout<<"opt lifted: "<<std::endl;
+   if(debug())	std::cout<<"opt lifted: "<<std::endl;
 	double optValueComputed=0;
-	if(vertexInOptimalPath!=nodeNotActive){
-		optValueComputed=myStr.baseCosts.at(vertexInOptimalPath);
-	}
+	if(myStr.optBase!=nodeNotActive){
+		optValueComputed=myStr.baseCosts.at(myStr.optBase);
+		optValueComputed+=nodeCost;
 
-	bool hasOptDescendant=vertexInOptimalPath!=nodeNotActive;
-	if(hasOptDescendant) optValueComputed+=nodeCost;
-	while(hasOptDescendant){
-	//	std::cout<<vertexInOptimalPath<<","<<std::endl;
+		bool hasOptDescendant=true;
+		size_t vertexInOptimalPath=myStr.vertexIDStructure.at(baseIDs[myStr.optBase]);
 
-		if(liftedIDToOrder.count(vertexInOptimalPath)>0){
-		//	std::cout<<"is lifted "<<std::endl;
-			optLifted.push_back(vertexInOptimalPath);
-			optValueComputed+=myStr.liftedCosts.at(vertexInOptimalPath);
-		}
-		auto it=myStr.indexStructure.find(vertexInOptimalPath);
-		hasOptDescendant=it!=myStr.indexStructure.end();
-		if(hasOptDescendant){
-			vertexInOptimalPath=it->second;
+		while(hasOptDescendant){
+			if(debug())	std::cout<<vertexInOptimalPath<<","<<std::endl;
+
+			if(liftedIDToOrder.count(vertexInOptimalPath)>0){
+				//	std::cout<<"is lifted "<<std::endl;
+				optLifted.push_back(vertexInOptimalPath);
+				if(debug()) optValueComputed+=myStr.liftedCosts[liftedIDToOrder.at(vertexInOptimalPath)];
+			}
+			auto it=myStr.vertexIDStructure.find(vertexInOptimalPath);
+			hasOptDescendant=it!=myStr.vertexIDStructure.end();
+			if(hasOptDescendant){
+				vertexInOptimalPath=it->second;
+			}
 		}
 	}
-	assert(std::abs(optValueComputed - myStr.optValue) <= 1e-8);
+	if(debug())	assert(std::abs(optValueComputed - myStr.optValue) <= 1e-8);
 //	std::cout<<"opt value "<<optValueComputed<<std::endl;
 //	std::cout<<"opt value in class "<<myStr.optValue<<std::endl;
 
@@ -537,7 +553,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 		}
 
 
-		strForUpdateValues.indexStructure[nodeID]=optimalSolutionBase;
+		if(optimalSolutionBase)
+		strForUpdateValues.optBase=optimalSolutionBase;
 		strForUpdateValues.optValue=minValue;
 		optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
 		optBaseUpToDate=true;
@@ -631,11 +648,12 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMargina
 template<class LDP_INSTANCE>
 inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals(){
 	updateOptimal();
-	//std::cout<<"output min marginals"<<std::endl;
+	if(debug()) std::cout<<"output min marginals"<<std::endl;
 	std::unordered_map<size_t,double> minMarginals;
 	if(optimalSolutionBase==nodeNotActive){
 		for (int i = 0; i < solutionCosts.size()-1; ++i) {
 			minMarginals[i]=solutionCosts[i];
+			if(debug()) std::cout<<i<<" "<<minMarginals[i]<<std::endl;
 
 		}
 	}
@@ -651,6 +669,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 		}
 		for (int i = 0; i < solutionCosts.size()-1; ++i) {
 			minMarginals[i]=solutionCosts[i]-secondBest;
+			if(debug()) std::cout<<i<<" "<<minMarginals[i]<<std::endl;
 		}
 
 	}
@@ -702,12 +721,13 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fractionLifted){
+	liftedCosts=std::vector<double>();
 	if(fractionLifted==0){
 		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
 			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
 			//liftedCosts[neighborID]=0;
 			liftedCosts.push_back(0);
-			liftedIDs[i]=neighborID;
+			liftedIDs.push_back(neighborID);
 			liftedIDToOrder[neighborID]=i;
 		}
 	}
@@ -726,11 +746,13 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fractionBase){
+	baseCosts=std::vector<double>();
 	if(fractionBase==0){
 		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 			size_t neighborID=getNeighborBaseVertex(nodeID,i);
 			baseCosts.push_back(0);
 			baseIDs.push_back(neighborID);
+			baseIDToOrder[neighborID]=i;
 			//solutionCosts.push_back(0);
 //			baseCosts[neighborID]=0;
 //			solutionCosts[neighborID]=0;
@@ -744,6 +766,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 			//baseCosts[neighborID]=fractionBase*cost;
 			baseCosts.push_back(fractionBase*cost);
 			baseIDs.push_back(neighborID);
+			baseIDToOrder[neighborID]=i;
 
 		}
 		solutionCosts=std::vector<double>(baseCosts.size()+1);
@@ -768,18 +791,19 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TOD
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
-	//std::cout<<"update values run"<<std::endl;
+	if(debug())std::cout<<"update values run"<<std::endl;
 
 	//StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID);
-	strForUpdateValues.indexStructure.clear();
-	strForUpdateValues.solutionCosts.clear();
+	strForUpdateValues.vertexIDStructure.clear();
+
 	strForUpdateValues.valuesStructure.clear();
 	strForUpdateValues.setUseAllVertices(true);
 
 	updateValues(strForUpdateValues);
 
 	//std::cout<<"values updated"<<std::endl;
-	optimalSolutionBase=strForUpdateValues.indexStructure[nodeID];
+
+	optimalSolutionBase=strForUpdateValues.optBase;
 	optValue=solutionCosts[optimalSolutionBase];
 	//std::cout<<"opt base: "<<optimalSolutionBase<<std::endl;
 
@@ -793,7 +817,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 //TODO make this separate from standard update
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr) const{
-	updateValues(myStr,nodeNotActive);
+	updateValues(myStr,nodeNotActiveForStructures);
 }
 
 
@@ -808,7 +832,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 	bool lastLayerSet=false;
 	size_t lastLayer=0;
-	if(vertexIDToIgnore!=nodeNotActive){
+	if(vertexIDToIgnore!=nodeNotActiveForStructures){
 		lastLayerSet=true;
 		lastLayer=ldpInstance.getGroupIndex(vertexIDToIgnore);
 	}
@@ -840,7 +864,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 			bool descClosed=true;
 			double minValue=0;
 			//std::unordered_set<size_t> minValueIndices;
-			size_t minValueIndex=getVertexToReach();
+			size_t minValueVertexID=getVertexToReach();
 
 			//std::cout<<"descendants: ";
 			for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
@@ -856,7 +880,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 								double value=it->second;
 								if(minValue>value){
 									minValue=value;
-									minValueIndex=desc;
+									minValueVertexID=desc;
 								}
 							}
 						}
@@ -880,7 +904,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 				//	std::cout<<"desc closed"<<std::endl;
 				if(currentNode==nodeID){  //all nodes closed, compute solution values
 					double bestValue=0;
-					size_t bestVertex=nodeNotActive;
+					size_t bestIndex=nodeNotActive;
+
 					myStr.solutionCosts[nodeNotActive]=0;
 					for (int i = 0; i < baseCosts.size(); ++i) {
 
@@ -897,13 +922,14 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 						myStr.solutionCosts[i]=value;
 						if(value<bestValue){
 							bestValue=value;
-							bestVertex=i;
+							bestIndex=i;
+
 							//std::cout<<"best vertex"<<std::endl;
 						}
 						//std::cout<<"end for"<<std::endl;liftedCosts
 					}
 
-					myStr.indexStructure[nodeID]=bestVertex;
+					myStr.optBase=bestIndex;
 
 					myStr.optValue=bestValue;
 				}
@@ -911,8 +937,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 					double valueToStore=minValue;
 
-					myStr.indexStructure[currentNode]=minValueIndex;
-					//std::cout<<currentNode<<"->"<<minValueIndex<<", value: "<<valueToStore<<std::endl;
+					myStr.vertexIDStructure[currentNode]=minValueVertexID;
+					if(debug())std::cout<<currentNode<<"->"<<minValueVertexID<<", value: "<<valueToStore<<std::endl;
 
 					if((myStr.valuesStructure.count(currentNode)>0)||valueToStore<0){  //store only negative values or values needed to correct solutionCosts
 						myStr.valuesStructure[currentNode]+=minValue;
@@ -985,6 +1011,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		//double lbBefore=LowerBound();
 		//std::cout<<"OPTIMAL"<<std::endl;
 
+
 		std::vector<double> localSolutionCosts;
 		StrForUpdateValues myStr(baseCosts,liftedCosts,localSolutionCosts,nodeID);
 		myStr.copyFromOther(strForUpdateValues);
@@ -999,6 +1026,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		if(valueToReturn>1e-8){
 			std::cout<<"wrong min marginal"<<nodeID<<", "<<indexOfLiftedEdge<<", opt vertex but positive value "<<valueToReturn<<std::endl;
 		}
+		if(debug()) std::cout<<"optimal "<<valueToReturn<<std::endl;
 
 
 		//std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
@@ -1022,6 +1050,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		auto it =message.begin();
 		double messValue=it->second;
 
+		if(debug()) std::cout<<"not optimal "<<messValue<<std::endl;
 
 		return messValue;
 	}
@@ -1096,7 +1125,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 					else{
 						bestValue+=liftedIt->second;
 						double topDownValue=0;
-						auto bestTdIt=myStr.indexStructure.find(currentVertex);
+						auto bestTdIt=myStr.vertexIDStructure.find(currentVertex);
 						size_t bestTd=bestTdIt->second;
 //						if(liftedCosts.count(bestTd)>0&&isOneInOpt.count(bestTd)==0){
 //

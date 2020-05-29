@@ -221,21 +221,28 @@ namespace LPMP {
     template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
     {
+    	std::cout<<"GAP LIFTED first "<<instance.getGapLifted()<<std::endl;
         // first construct minimum cost flow factor for base edges
         const std::size_t nr_base_graph_nodes = instance.getGraph().numberOfVertices() - 2;
         const std::size_t base_graph_source = instance.getSourceNode();
         const std::size_t base_graph_terminal = instance.getTerminalNode();
         std::cout << "source = " << base_graph_source << ", terminal = " << base_graph_terminal << "\n";
 
+        std::cout<<"GAP LIFTED 2: "<<instance.getGapLifted()<<std::endl;
         const std::size_t nr_mcf_nodes = 2*nr_base_graph_nodes + 2; // source/terminal vertex + 2*ordinary vertices to ensure unit capacity vertices
         const std::size_t nr_mcf_edges = 3*nr_base_graph_nodes + instance.getGraph().numberOfEdges() + 1; // appearance/disappearance/uniqueness edge + connection edges + source/terminal edge
         mcf_ = std::make_unique<mcf_solver_type>(nr_mcf_nodes, nr_mcf_edges);
-        
-        const std::size_t mcf_source_node = nr_mcf_nodes - 2;
-        const std::size_t mcf_terminal_node = nr_mcf_nodes - 1;
-        auto incoming_edge = [](const std::size_t i) { return 2*i; };
-        auto outgoing_edge = [](const std::size_t i) { return 2*i+1; };
+        std::cout<<"GAP LIFTED 3: "<<instance.getGapLifted()<<std::endl;
 
+
+        const std::size_t mcf_source_node = nr_mcf_nodes - 2;
+        std::cout<<"GAP LIFTED 3b: "<<instance.getGapLifted()<<std::endl;
+        const std::size_t mcf_terminal_node = nr_mcf_nodes - 1;
+        std::cout<<"GAP LIFTED 3c: "<<instance.getGapLifted()<<std::endl;
+        auto incoming_edge = [](const std::size_t i) { return 2*i; };
+        std::cout<<"GAP LIFTED 3d: "<<instance.getGapLifted()<<std::endl;
+        auto outgoing_edge = [](const std::size_t i) { return 2*i+1; };
+        std::cout<<"GAP LIFTED 4: "<<instance.getGapLifted()<<std::endl;
         mcf_->add_edge(mcf_source_node, mcf_terminal_node, 0, nr_base_graph_nodes, 0.0);
 
         // ensure unit capacity on vertices, appearance and disappearance edges
@@ -246,13 +253,14 @@ namespace LPMP {
             mcf_->add_edge(outgoing_edge(i), mcf_terminal_node, 0, 1, 0.0);
         }
 
+        std::cout<<"GAP LIFTED 5: "<<instance.getGapLifted()<<std::endl;
         for(std::size_t i=0; i<nr_base_graph_nodes; ++i)
         {
             for (std::size_t ne = 0; ne < instance.getGraph().numberOfEdgesFromVertex(i); ++ne)
             {
                 const std::size_t e = instance.getGraph().edgeFromVertex(i, ne);
                 const std::size_t j = instance.getGraph().vertexFromVertex(i, ne);
-                std::cout << "base graph edge " << i << "," << j << "\n";
+               // std::cout << "base graph edge " << i << "," << j << "\n";
                 if (j != base_graph_source && j != base_graph_terminal)
                 {
                     assert(i<j);
@@ -264,6 +272,8 @@ namespace LPMP {
         }
 
         mcf_->order();
+
+        std::cout<<"GAP LIFTED "<<instance.getGapLifted()<<std::endl;
 
         // next add all single node cut factors
         single_node_cut_factors_.reserve(instance.getGraph().numberOfVertices());
@@ -283,6 +293,7 @@ namespace LPMP {
         assert(mcf_source_node == this->mcf_source_node());
         assert(mcf_terminal_node == this->mcf_terminal_node());
 
+        if(debug()) std::cout<<"factors created "<<std::endl;
 
         // add messages between lifted edges of snc factors
         // for all lifted messages
@@ -291,19 +302,20 @@ namespace LPMP {
         //I switch left and right!
         //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>(left_snc, right_snc, left_node, right_node);
 
-        for (int vertex1 = 0; vertex1 < instance.getGraph().numberOfVertices(); ++vertex1) {
-        	auto left_snc=single_node_cut_factors_[vertex1][0];
-        	for (int j = 0; j < instance.getGraph().numberOfEdgesFromVertex(vertex1); ++j) {
-        		size_t vertex2=instance.getGraph().vertexFromVertex(vertex1,j);
-        		auto right_snc=single_node_cut_factors_[vertex2][1];
-        		size_t i=right_snc->get_factor()->getLiftedOrderToID(vertex1);
-        		auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
-        		snc_lifted_messages_.push_back(message);
+//        for (int vertex1 = 0; vertex1 < instance.getGraph().numberOfVertices(); ++vertex1) {
+//        	auto left_snc=single_node_cut_factors_[vertex1][0];
+//        	for (int j = 0; j < instance.getGraph().numberOfEdgesFromVertex(vertex1); ++j) {
+//        		size_t vertex2=instance.getGraph().vertexFromVertex(vertex1,j);
+//        		auto right_snc=single_node_cut_factors_[vertex2][1];
+//        		size_t i=right_snc->get_factor()->getLiftedOrderToID(vertex1);
+//        		auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+//        		snc_lifted_messages_.push_back(message);
+//
+//
+//			}
+//		}
 
-
-			}
-		}
-
+        if(debug()) std::cout<<"messages added"<<std::endl;
 
 //        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
 //        	auto left_snc=single_node_cut_factors_[i][0];
@@ -325,6 +337,8 @@ namespace LPMP {
 //        	snc_node_messages_.push_back(message);
 //        }
 
+       // sncDebug(20,1);
+
     }
 
 
@@ -333,38 +347,42 @@ namespace LPMP {
     {
     	std::cout<<"print node "<<vertex<<std::endl;
     	auto sncFactor=single_node_cut_factors_[vertex][isOut]->get_factor();
-    	const std::unordered_map<size_t, double>& baseCosts=sncFactor->getBaseCosts();
-    	const std::unordered_map<size_t, double>& liftedCosts=sncFactor->getLiftedCosts();
+    	const std::vector<double>& baseCosts=sncFactor->getBaseCosts();
+    	const std::vector<double>& liftedCosts=sncFactor->getLiftedCosts();
 
     	std::cout<<"base costs"<<std::endl;
-    	for(const auto pair:baseCosts){
-    		std::cout<<pair.first<<": ";
-    		std::cout<<pair.second;
-    		std::cout<<std::endl;
-    	}
 
+    	for (int i = 0; i < baseCosts.size(); ++i) {
+    		std::cout<<i<<": ";
+    		std::cout<<(sncFactor->baseIDs[i])<<": "<<baseCosts[i];
+    		std::cout<<std::endl;
+		}
+
+    	std::cout<<std::endl;
     	std::cout<<"lifted costs"<<std::endl;
-    	for(const auto pair:liftedCosts){
-    		std::cout<<pair.first<<": ";
-    		std::cout<<pair.second;
+    	for (int i = 0; i < liftedCosts.size(); ++i) {
+    		std::cout<<i<<": "<<(sncFactor->liftedIDs[i])<<": ";
+    		std::cout<<liftedCosts[i];
     		std::cout<<std::endl;
     	}
 
+
+
+    	std::cout<<"getting all base min marginals"<<std::endl;
 
     	sncFactor->getAllBaseMinMarginals();
     	std::cout<<"isolated min marginals "<<std::endl;
-    	for(const auto pair:baseCosts){
-    		if(pair.first!=sncFactor->nodeID){
+    	for (int i = 0; i < baseCosts.size(); ++i) {
+    		double value=sncFactor->getOneBaseEdgeMinMarginal(i);
+    		std::cout<<i<<": "<<"("<<(sncFactor->baseIDs[i])<<")"<<value<<std::endl;
+		}
 
-    			double value=sncFactor->getOneBaseEdgeMinMarginal(pair.first);
-    			std::cout<<pair.first<<": "<<value<<std::endl;
-    		}
-    	}
 
-    //	std::cout<<"computing lifted min marginal "<<std::endl;
-    	//double value=sncFactor->oneLiftedMinMarginal(171);
+
+    	std::cout<<"computing lifted min marginal "<<std::endl;
+    	double value=sncFactor->oneLiftedMinMarginal(1);
     	//std::cout<<"lifted min marginal "<<value<<std::endl;
-    	sncFactor->getAllLiftedMinMarginals();
+    //	sncFactor->getAllLiftedMinMarginals();
 
     }
 
