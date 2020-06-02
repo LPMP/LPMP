@@ -1074,11 +1074,11 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 	//if(debug())std::cout<<"lilfted marginal "<<nodeID<<" "<<indexOfLiftedEdge<<", optimal "<<isOptimal<<std::endl;
 
 	if(isOptimal){
-		double lbBefore=0;
-	    lbBefore=LowerBound();
+		//double lbBefore=0;
+	   // lbBefore=LowerBound();
 	//	if(debug())std::cout<<"OPTIMAL"<<std::endl;
 		//std::cout<<"lb before "<<lbBefore<<std::endl;
-		getOptLiftedFromIndexStr(strForUpdateValues);
+	//	getOptLiftedFromIndexStr(strForUpdateValues);
 
 
 		std::vector<double> localSolutionCosts;
@@ -1096,19 +1096,19 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		if(debug()&&valueToReturn>1e-8){
 			std::cout<<"wrong min marginal"<<nodeID<<", "<<indexOfLiftedEdge<<", opt vertex but positive value "<<valueToReturn<<std::endl;
 		}
-		getOptLiftedFromIndexStr(myStr);
-		localLiftedCosts[indexOfLiftedEdge]-=valueToReturn;
-
-		myStr.useAllVertices=true;
-	    updateValues(myStr);
-	    double testRestrictedValue=myStr.optValue;
-
-	    getOptLiftedFromIndexStr(myStr);
-	    if(std::abs(testRestrictedValue-restrictedOptValue)>eps){
-	    	std::cout<<"Wrong min marginal "<<nodeID<<", "<<liftedIDs[indexOfLiftedEdge]<<". Too small value: "<<valueToReturn<<std::endl;
-	    	std::cout<<"assumed "<<restrictedOptValue<<", got "<<testRestrictedValue<<std::endl;
-	    	assert(false);
-	    }
+//		getOptLiftedFromIndexStr(myStr);
+//		localLiftedCosts[indexOfLiftedEdge]-=valueToReturn;
+//
+//		myStr.useAllVertices=true;
+//	    updateValues(myStr);
+//	    double testRestrictedValue=myStr.optValue;
+//
+//	    getOptLiftedFromIndexStr(myStr);
+//	    if(std::abs(testRestrictedValue-restrictedOptValue)>eps){
+//	    	std::cout<<"Wrong min marginal "<<nodeID<<", "<<liftedIDs[indexOfLiftedEdge]<<". Too small value: "<<valueToReturn<<std::endl;
+//	    	std::cout<<"assumed "<<restrictedOptValue<<", got "<<testRestrictedValue<<std::endl;
+//	    	assert(false);
+//	    }
 
 		//if(debug()) std::cout<<"optimal "<<valueToReturn<<std::endl;
 
@@ -1141,9 +1141,9 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 //		}
 		//std::cout<<" v init "<<v<<std::endl;
 
-		std::vector<double> localSolutionCosts=std::vector<double>(solutionCosts.size());
-		std::vector<double> localLiftedCosts=liftedCosts;
-		StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolutionCosts,nodeID);
+//		std::vector<double> localSolutionCosts=std::vector<double>(solutionCosts.size());
+//		std::vector<double> localLiftedCosts=liftedCosts;
+//		StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolutionCosts,nodeID);
 		//myStr.copyFromOther(strForUpdateValues);
 
 
@@ -1158,13 +1158,13 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 			}
 		}
 
-		localLiftedCosts[indexOfLiftedEdge]-=messValue;
-		updateValues(myStr);
-		if(std::abs(myStr.optValue-strForUpdateValues.optValue)>eps){
-			std::cout<<"Wrong min marginal "<<nodeID<<", "<<liftedIDs[indexOfLiftedEdge]<<". Too large value: "<<messValue<<std::endl;
-			std::cout<<"assumed "<<strForUpdateValues.optValue<<", got "<<myStr.optValue<<std::endl;
-			assert(false);
-		}
+//		localLiftedCosts[indexOfLiftedEdge]-=messValue;
+//		updateValues(myStr);
+//		if(std::abs(myStr.optValue-strForUpdateValues.optValue)>eps){
+//			std::cout<<"Wrong min marginal "<<nodeID<<", "<<liftedIDs[indexOfLiftedEdge]<<". Too large value: "<<messValue<<std::endl;
+//			std::cout<<"assumed "<<strForUpdateValues.optValue<<", got "<<myStr.optValue<<std::endl;
+//			assert(false);
+//		}
 
 		//if(debug()) std::cout<<messValue<<std::endl;
 
