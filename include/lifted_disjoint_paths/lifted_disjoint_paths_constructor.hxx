@@ -88,7 +88,7 @@ namespace LPMP {
     					activeVector[v]=1;
     				}
     				for (int j = 0; j < activeVector.size(); ++j) {
-    					size_t vertex2=sncFactorOut->liftedIDs[j];
+    					size_t vertex2=sncFactorOut->getLiftedIDs()[j];
     					if(activeVector[j]!=isOnPath[vertex2]){
     						isFeasible=false;
     						break;
@@ -117,7 +117,7 @@ namespace LPMP {
     						activeVector[v]=1;
     					}
     					for (int j = 0; j < activeVector.size(); ++j) {
-    						size_t vertex2=sncFactorIn->liftedIDs[j];
+    						size_t vertex2=sncFactorIn->getLiftedIDs()[j];
     						if(activeVector[j]!=isOnPath[vertex2]){
     							isFeasible=false;
     							break;
@@ -194,7 +194,7 @@ namespace LPMP {
     			while(vertex!=base_graph_source_node()){
     				auto& sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
     				std::unordered_set<size_t> activeEndpointIndices;
-    				const std::vector<size_t>& liftedIDs= sncFactorOut->liftedIDs;
+    				const std::vector<size_t>& liftedIDs= sncFactorOut->getLiftedIDs();
     				for (int i = 0; i < liftedIDs.size(); ++i) {
     					if(isOnPath[liftedIDs[i]]) activeEndpointIndices.insert(i);
 					}
@@ -300,13 +300,14 @@ namespace LPMP {
            	auto left_snc=single_node_cut_factors_[vertex1][1];
            	auto left_snc_factor=left_snc->get_factor();
            //	std::cout<<"vertex 1 "<<vertex1<<std::endl;
-           	for (int j = 0; j < left_snc_factor->liftedIDs.size(); ++j) {
-				size_t vertex2=left_snc_factor->liftedIDs[j];
+           	for (int j = 0; j < left_snc_factor->getLiftedIDs().size(); ++j) {
+				size_t vertex2=left_snc_factor->getLiftedIDs()[j];
 				//std::cout<<"vertex 2 "<<vertex2<<std::endl;
 				assert(instance.getGraphLifted().findEdge(vertex1,vertex2).first);
 				if(vertex2==this->base_graph_source_node()||vertex2==this->base_graph_source_node()) continue;
 				auto right_snc=single_node_cut_factors_[vertex2][0];
 				size_t i=right_snc->get_factor()->getLiftedOrderToID(vertex1);
+				assert((right_snc->get_factor()->getLiftedIDs().size())>i);
 	       		auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
 	        		snc_lifted_messages_.push_back(message);
 			}
@@ -369,7 +370,7 @@ namespace LPMP {
     	std::cout<<std::endl;
     	std::cout<<"lifted costs"<<std::endl;
     	for (int i = 0; i < liftedCosts.size(); ++i) {
-    		std::cout<<i<<": "<<(sncFactor->liftedIDs[i])<<": ";
+    		std::cout<<i<<": "<<(sncFactor->getLiftedIDs()[i])<<": ";
     		std::cout<<liftedCosts[i];
     		std::cout<<std::endl;
     	}
@@ -398,6 +399,7 @@ namespace LPMP {
     template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::ComputePrimal()
     {
+    	return;
         prepare_mcf_costs();
         mcf_->solve();
         double primalValue=0;
@@ -466,6 +468,8 @@ namespace LPMP {
     template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::prepare_mcf_costs()
     {
+    	return;
+    	/*
         mcf_->reset_costs();
 
         for(std::size_t i=0; i<nr_nodes(); ++i)
@@ -532,11 +536,13 @@ namespace LPMP {
                 }
             }
         }
+        */
     }
 
     template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::write_back_mcf_costs()
     {
+    	return;
         for(std::size_t i=0; i<nr_nodes(); ++i)
         {
             {
@@ -548,6 +554,7 @@ namespace LPMP {
     template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
     void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::reparametrize_snc_factors()
     {
+    	return;
         prepare_mcf_costs();
         mcf_->solve();
         write_back_mcf_costs();
