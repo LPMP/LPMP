@@ -327,11 +327,372 @@ namespace LPMP {
     class bdd_branch_node_opt : public bdd_branch_node_opt_base<bdd_branch_node_opt>{
     };
 
+    //////////////////////////////////////
+    // Smoothed Optimization Branch Node
+    //////////////////////////////////////
+
+    struct bdd_branch_node_exp_sum_entry
+    {
+        std::array<double, 2> sum;
+        std::array<double, 2> max;
+    };
+
+    // TODO: C++20: make default operator==
+    bool operator==(const bdd_branch_node_exp_sum_entry &x, const bdd_branch_node_exp_sum_entry &y) 
+    { 
+        return x.sum == y.sum && x.max == y.max;
+    }
+
+    struct bdd_min_marginal_averaging_smoothed_options
+    {
+        double cost_scaling_ = 1.0;
+    };
+
+    template<typename DERIVED>
+    class bdd_branch_node_opt_smoothed_base : public bdd_branch_node_opt_base<DERIVED>
+    {
+    public:
+        // below two are provided by base
+        //double *variable_cost = nullptr;
+        //double m = 0.0;
+
+        double current_max = 0.0; // intermediate maximum value in the exp sum, used for stabilizing log-sum-exp computation. Also referred to as streamed log sum exp.
+
+        // From C++20
+        friend bool operator==(const bdd_branch_node_opt_smoothed_base &x, const bdd_branch_node_opt_smoothed_base &y);
+
+        void smooth_backward_step();
+        void smooth_forward_step();
+
+        // Debug functions for checking correctness of forward and backward step
+        double smooth_cost_from_first() const;
+        double smooth_cost_from_terminal() const;
+
+        bdd_branch_node_exp_sum_entry exp_sums() const;
+        template <typename BDD_BRANCH_NODE_ITERATOR>
+        static bdd_branch_node_exp_sum_entry exp_sums(BDD_BRANCH_NODE_ITERATOR bdd_node_begin, BDD_BRANCH_NODE_ITERATOR bdd_node_end);
+    };
+
+    class bdd_branch_node_opt_smoothed : public bdd_branch_node_opt_smoothed_base<bdd_branch_node_opt_smoothed>
+    {};
+
+    template<typename DERIVED>
+    void bdd_branch_node_opt_smoothed_base<DERIVED>::smooth_forward_step()
+    {
+        check_bdd_branch_node(*this);
+
+        if (this->is_first()) {
+            this->m = 1.0; // == exp(0);
+            current_max = 0.0;
+            return;
+        }
+
+        this->m = 0.0; 
+        current_max = -std::numeric_limits<double>::infinity();
+
+        // iterate over all incoming low edges
+        {
+            for(auto *cur = this->first_low_incoming; cur != nullptr; cur = cur->next_low_incoming)
+            {
+                if(cur->current_max < current_max)
+                {
+                    this->m += std::exp(cur->current_max - current_max) * cur->m;
+                }
+                else
+                {
+                    this->m *= std::exp(current_max - cur->current_max);
+                    this->m += cur->m;
+                    current_max = cur->current_max;
+                }
+                assert(std::isfinite(this->m));
+            }
+        }
+
+        // iterate over all incoming high edges
+        {
+            for(auto *cur = this->first_high_incoming; cur != nullptr; cur = cur->next_high_incoming)
+            {
+                if(cur->current_max -*cur->variable_cost < current_max)
+                {
+                    this->m += std::exp((cur->current_max -*cur->variable_cost) - current_max) * cur->m;
+                } 
+                else
+                {
+                    this->m *= std::exp(current_max - (cur->current_max - *cur->variable_cost));
+                    this->m += cur->m; //1.0;
+                    current_max = cur->current_max - *cur->variable_cost;
+                }
+                //m += std::exp(-*(cur->variable_cost)) * cur->m;
+                assert(std::isfinite(this->m));
+            }
+        }
+
+        assert(std::isfinite(this->m));
+        assert(this->m > 0.0);
+        assert(this->m < 10000.0);
+        check_bdd_branch_node(*this);
+    }
+
+    template<typename DERIVED>
+    void bdd_branch_node_opt_smoothed_base<DERIVED>::smooth_backward_step()
+    {
+        check_bdd_branch_node(*this);
+
+        // low edge
+        const auto [low_cost, low_max] = [&]() -> std::array<double,2> {
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
+                return {0.0, -std::numeric_limits<double>::infinity()};
+            else if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+                return {std::exp(0.0), 0.0};
+            else
+                return {this->low_outgoing->m, this->low_outgoing->current_max};
+        }();
+
+        // high edge
+        const auto [high_cost, high_max] = [&]() -> std::array<double,2> {
+            //if (high_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+            //    return {0.0, -std::numeric_limits<double>::infinity()};
+            //else if (high_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+            //    return {std::exp(-*variable_cost - low_max)), -*variable_cost};
+            //else
+            //    return {std::exp(-*variable_cost) * high_outgoing->m, -*variable_cost + high_outgoing->current_max};
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
+                return {0.0, -std::numeric_limits<double>::infinity()};
+            else if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+                return {std::exp(0.0), 0.0};
+            else
+                return {this->high_outgoing->m, this->high_outgoing->current_max};
+        }();
+
+        assert(std::isfinite(low_cost));
+        assert(std::isfinite(high_cost));
+        this->m = low_cost;
+        current_max = low_max;
+        //current_max = 0;
+        //m += std::exp(-*variable_cost)*high_cost;
+        //return;
+
+        if (std::isfinite(high_max))
+        {
+            if (high_max - *this->variable_cost < low_max)
+            {
+                this->m += std::exp((high_max - *this->variable_cost) - current_max) * high_cost;
+                //m += std::exp(-*variable_cost - current_max) * high_cost;
+            }
+            else
+            {
+                this->m *= std::exp(current_max - (high_max - *this->variable_cost));
+                this->m += high_cost;//1.0;
+                current_max = high_max - *this->variable_cost;
+            }
+        }
+        //m = low_cost + high_cost;
+
+        assert(std::isfinite(this->m));
+        assert(std::abs(this->m) < 10000.0);
+        assert(std::isfinite(current_max));
+
+        check_bdd_branch_node(*this);
+        //assert(std::abs(m - cost_from_terminal()) <= 1e-8);
+    }
+
+    template<typename DERIVED>
+    double bdd_branch_node_opt_smoothed_base<DERIVED>::smooth_cost_from_first() const
+    {
+        double c = 0.0;
+
+        if (this->is_first())
+            return 0.0;
+
+        // iterate over all incoming low edges
+        for (auto *cur = this->first_low_incoming; cur != nullptr; cur = cur->next_low_incoming)
+            c += cur->smooth_cost_from_first();
+
+        // iterate over all incoming high edges
+        for (auto *cur = this->first_high_incoming; cur != nullptr; cur = cur->next_high_incoming)
+            c += std::exp(-*cur->variable_cost) * cur->smooth_cost_from_first(); // ??
+
+        return c;
+    }
+
+    template<typename DERIVED>
+    double bdd_branch_node_opt_smoothed_base<DERIVED>::smooth_cost_from_terminal() const
+    {
+        // TODO: only works if no bdd nodes skips variables
+        // low edge
+        const double low_cost = [&]() {
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
+                return 0.0;
+            else if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+                return 1.0;
+            else
+                return this->low_outgoing->smooth_cost_from_terminal();
+        }();
+
+        // high edge
+        const double high_cost = [&]() {
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
+                return 0.0;
+            else if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+                return std::exp(-*this->variable_cost);
+            else
+                return this->high_outgoing->smooth_cost_from_terminal() + std::exp(-*this->variable_cost);
+        }();
+
+        return low_cost + high_cost;
+    }
+
+    template<typename DERIVED>
+    bdd_branch_node_exp_sum_entry bdd_branch_node_opt_smoothed_base<DERIVED>::exp_sums() const
+    {
+        check_bdd_branch_node(*this);
+
+        // assert(std::abs(m - cost_from_first()) <= 1e-8);
+        if (!bdd_branch_node_opt_smoothed_base<DERIVED>::is_terminal(this->low_outgoing))
+        {
+            //assert(std::abs(low_outgoing->m - low_outgoing->cost_from_terminal()) <= 1e-8);
+        }
+        if (!bdd_branch_node_opt_smoothed_base<DERIVED>::is_terminal(this->high_outgoing))
+        {
+            //assert(std::abs(high_outgoing->m - high_outgoing->cost_from_terminal()) <= 1e-8);
+        }
+
+        bdd_branch_node_exp_sum_entry e;
+
+        std::tie(e.sum[0], e.max[0]) = [&]() -> std::tuple<double, double> {
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
+                return {0.0, -std::numeric_limits<double>::infinity()};
+            if (this->low_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+                return {this->m, current_max};
+            else
+                return {this->m * this->low_outgoing->m, current_max + this->low_outgoing->current_max};
+        }();
+
+        std::tie(e.sum[1], e.max[1]) = [&]() -> std::tuple<double, double> {
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0())
+                return {0.0, -std::numeric_limits<double>::infinity()};
+            if (this->high_outgoing == bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+            {
+                //const double new_max = std::max(this->current_max, this->current_max - *this->variable_cost);
+                //return {this->m * std::exp(-*this->variable_cost + this->current_max - new_max), new_max};
+                return {this->m, this->current_max - *this->variable_cost};
+            }
+            else
+            {
+                //const double new_max = std::max({this->current_max, this->current_max - *this->variable_cost, this->high_outgoing->current_max});
+                //return {this->m * std::exp(-*this->variable_cost + this->current_max + this->high_outgoing->current_max - new_max) * this->high_outgoing->m, new_max};
+                return {this->m * this->high_outgoing->m, this->current_max - *this->variable_cost + this->high_outgoing->current_max};
+            }
+        }();
+
+        assert(std::isfinite(e.sum[0]));
+        assert(std::isfinite(e.sum[1]));
+        assert(e.sum[0] >= 0.0);
+        assert(e.sum[1] >= 0.0);
+        assert(e.sum[0] > 0 || e.sum[1] > 0);
+        if(this->low_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0() && this->low_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+        {
+            assert(e.sum[0] > 0);
+            assert(std::isfinite(e.max[0]));
+        }
+        if (this->high_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_0() && this->high_outgoing != bdd_branch_node_opt_smoothed_base<DERIVED>::terminal_1())
+        {
+            assert(e.sum[1] > 0);
+            assert(std::isfinite(e.max[1]));
+        }
+
+        assert(std::abs(e.sum[0]) < 10000.0);
+        assert(std::abs(e.sum[1]) < 10000.0);
+
+        return e;
+    }
+
+template<typename DERIVED>
+template<typename BDD_BRANCH_NODE_ITERATOR>
+bdd_branch_node_exp_sum_entry bdd_branch_node_opt_smoothed_base<DERIVED>::exp_sums(BDD_BRANCH_NODE_ITERATOR bdd_node_begin, BDD_BRANCH_NODE_ITERATOR bdd_node_end)
+{
+    bdd_branch_node_exp_sum_entry e;
+    e.sum = {0.0, 0.0};
+    e.max = {-std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
+    std::array<double, 2> s = {0.0, 0.0};
+    std::array<double, 2> current_max = {-std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
+    for(auto bdd_node_it = bdd_node_begin; bdd_node_it != bdd_node_end; ++bdd_node_it)
+    {
+        const auto &bdd = *bdd_node_it;
+        const auto bdd_exp_sums = bdd.exp_sums();
+        //std::cout << "var" << var << ", bdd index = " << bdd_index << ": " << "\n";
+        //std::cout << bdd_exp_sums.sum[0] << "," << bdd_exp_sums.sum[1] << ";" << bdd_exp_sums.max[0] << "," << bdd_exp_sums.max[1] << "\n";
+
+        if (bdd_exp_sums.sum[0] > 0)
+        {
+            if (current_max[0] > bdd_exp_sums.max[0])
+            {
+                s[0] += bdd_exp_sums.sum[0] * std::exp(bdd_exp_sums.max[0] - current_max[0]);
+            }
+            else
+            {
+                s[0] *= std::exp(current_max[0] - bdd_exp_sums.max[0]);
+                s[0] += bdd_exp_sums.sum[0];
+                current_max[0] = bdd_exp_sums.max[0];
+            }
+        }
+
+        if (bdd_exp_sums.sum[1] > 0)
+        {
+            if (current_max[1] > bdd_exp_sums.max[1])
+            {
+                s[1] += bdd_exp_sums.sum[1] * std::exp(bdd_exp_sums.max[1] - current_max[1]);
+            }
+            else
+            {
+                s[1] *= std::exp(current_max[1] - bdd_exp_sums.max[1]);
+                s[1] += bdd_exp_sums.sum[1];
+                current_max[1] = bdd_exp_sums.max[1];
+            }
+        }
+        assert(std::isfinite(s[0]));
+        assert(std::isfinite(s[1]));
+    }
+    //std::cout << s[0] << "," << s[1] << ";" << current_max[0] << "," << current_max[1] << "\n";
+    assert(s[0] > 0);
+    assert(s[1] > 0);
+    return {s, current_max};
+}
+
+    /*
+    std::array<double, 2> bdd_branch_node_opt_smoothed::min_marginal_debug() const
+    {
+        check_bdd_branch_node(*this);
+
+        const double m_debug = cost_from_first();
+
+        const double m0 = [&]() {
+            if (low_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+                return std::numeric_limits<double>::infinity();
+            if (low_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+                return m_debug;
+            return m_debug + this->low_outgoing->cost_from_terminal();
+        }();
+
+        const double m1 = [&]() {
+            if (high_outgoing == bdd_branch_node_opt_smoothed::terminal_0())
+                return std::numeric_limits<double>::infinity();
+            if (high_outgoing == bdd_branch_node_opt_smoothed::terminal_1())
+                return m_debug + *this->variable_cost;
+            return m_debug + *this->variable_cost + this->high_outgoing->cost_from_terminal();
+        }();
+
+        assert(std::isfinite(std::min(m0, m1)));
+
+        return {m0, m1};
+    }
+    */
+
     /////////////////////////////////
     // Variable Fixing Branch Node
     /////////////////////////////////
 
-    class bdd_branch_node_fix : public bdd_branch_node_opt_base<bdd_branch_node_fix> {
+    class bdd_branch_node_fix : public bdd_branch_node_opt_smoothed_base<bdd_branch_node_fix> {
         public:
             bdd_branch_node_fix* prev_low_incoming = nullptr;
             bdd_branch_node_fix* prev_high_incoming = nullptr;
@@ -341,6 +702,11 @@ namespace LPMP {
             // From C++20
             friend bool operator==(const bdd_branch_node_fix& x, const bdd_branch_node_fix& y);
 
+            void count_forward_step();
+            void count_backward_step();
+
+            double count_low();
+            double count_high();
     };
 
     bool operator==(const bdd_branch_node_fix& x, const bdd_branch_node_fix& y)
@@ -356,5 +722,107 @@ namespace LPMP {
             x.bdd_var == y.bdd_var);
         return equal;
     }
+
+    // template<typename DERIVED>
+    // class bdd_branch_node_fix_base : virtual public bdd_branch_node<DERIVED> {
+    //     public:
+    //         DERIVED* prev_low_incoming = nullptr;
+    //         DERIVED* prev_high_incoming = nullptr;
+
+    //         bdd_variable_fix* bdd_var;
+
+    //         // From C++20
+    //         friend bool operator==(const DERIVED& x, const DERIVED& y);
+
+    // };
+
+    // template<typename DERIVED>
+    // bool operator==(const DERIVED& x, const DERIVED& y)
+    // {
+    //     const bool equal = ((bdd_branch_node<DERIVED>) x == (bdd_branch_node<DERIVED>) y &&
+    //         x.prev_low_incoming == y.prev_low_incoming &&
+    //         x.prev_high_incoming == y.prev_high_incoming &&
+    //         x.bdd_var == y.bdd_var);
+    //     return equal;
+    // }
+
+    // class bdd_branch_node_fix : public bdd_branch_node_opt_base<bdd_branch_node_fix>, public bdd_branch_node_fix_base<bdd_branch_node_fix> {
+    // };
+
+    void bdd_branch_node_fix::count_forward_step()
+    {
+        if(this->is_first()) {
+            m = 1.0;
+            return;
+        }
+
+        m = 0.0;
+
+        // iterate over all incoming low edges 
+        {
+            auto* cur = this->first_low_incoming;
+            while(cur != nullptr) {
+                m += cur->m;
+                cur = cur->next_low_incoming;
+            }
+        }
+
+        // iterate over all incoming high edges 
+        {
+            auto* cur = this->first_high_incoming;
+            while(cur != nullptr) {
+                m += cur->m;
+                cur = cur->next_high_incoming;
+            }
+        }
+    }
+
+    void bdd_branch_node_fix::count_backward_step()
+    {
+        // low edge
+        const double low_count = [&]() {
+            if(this->low_outgoing == bdd_branch_node_fix::terminal_0()) {
+                return 0.0;
+            } else if(this->low_outgoing == bdd_branch_node_fix::terminal_1()) {
+                return 1.0;
+            } else {
+                return this->low_outgoing->m;
+            }
+        }();
+
+        // high edge
+        const double high_count = [&]() {
+            if(this->high_outgoing == bdd_branch_node_fix::terminal_0()) {
+                return 0.0; 
+            } else if(this->high_outgoing == bdd_branch_node_fix::terminal_1()) {
+                return 1.0; 
+            } else {
+                return this->high_outgoing->m;
+            }
+        }();
+
+        m = low_count + high_count;
+    }
+
+    double bdd_branch_node_fix::count_low()
+    {
+        if (this->low_outgoing == bdd_branch_node_fix::terminal_0())
+            return 0.0;
+        else if (this->low_outgoing == bdd_branch_node_fix::terminal_1())
+            return m;
+        else
+            return m * this->low_outgoing->m;
+    }
+
+    double bdd_branch_node_fix::count_high()
+    {
+        if (this->high_outgoing == bdd_branch_node_fix::terminal_0())
+            return 0.0;
+        else if (this->high_outgoing == bdd_branch_node_fix::terminal_1())
+            return m;
+        else
+            return m * this->high_outgoing->m;
+    }
+
 }
 

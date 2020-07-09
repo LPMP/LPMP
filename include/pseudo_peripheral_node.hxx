@@ -4,6 +4,7 @@
 #include <queue>
 #include <vector>
 #include <tuple>
+#include <algorithm>
 
 namespace LPMP {
 

@@ -60,7 +60,7 @@ namespace mrf_opengm_input {
        for(std::size_t f=0; f<gm.numberOfFactors(); ++f) {
            if(gm[f].numberOfVariables()==2) {
                pairwise_size.push_back({gm[f].numberOfLabels(0), gm[f].numberOfLabels(1)});
-               input.pairwise_indices.push_back({gm.variableOfFactor(f,0), gm.variableOfFactor(f,0)});
+               input.pairwise_indices.push_back({gm.variableOfFactor(f,0), gm.variableOfFactor(f,1)});
            }
        }
        input.pairwise_values.resize(pairwise_size.begin(), pairwise_size.end());
@@ -80,6 +80,7 @@ namespace mrf_opengm_input {
            else if(gm[f].numberOfVariables()==2){
                const std::size_t i = gm.variableOfFactor(f,0);
                const std::size_t j = gm.variableOfFactor(f,1);
+               assert(i < j);
                for(std::size_t l1=0; l1<gm[f].numberOfLabels(0); ++l1){
                    for(std::size_t l2=0; l2<gm[f].numberOfLabels(1); ++l2){
                        input.pairwise_values(pairwise_counter, l1, l2) = gm[f](std::array<std::size_t,2>({l1,l2}).begin()); 

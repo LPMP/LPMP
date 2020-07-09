@@ -1,5 +1,6 @@
 #include "test.h"
 #include "bdd/bdd_anisotropic_diffusion.h"
+#include "bdd/bdd_primal_fixing.h"
 #include "bdd/bdd_min_marginal_averaging.h"
 #include "bdd/ILP_parser.h"
 #include "mrf/mrf_input.h"

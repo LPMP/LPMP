@@ -233,6 +233,10 @@ public:
    iterator begin() { return iterator(&data_[0],&offsets_[0]); }
    iterator end() { return iterator(&data_[0],&offsets_.back()); }
 
+   // TODO: correct?
+   iterator begin() const { return iterator(&data_[0],&offsets_[0]); }
+   iterator end() const { return iterator(&data_[0],&offsets_.back()); }
+
    reverse_iterator rbegin() { return reverse_iterator(&data_[0],&offsets_.back()); }
    reverse_iterator rend() { return reverse_iterator(&data_[0],&offsets_[0]); }
 

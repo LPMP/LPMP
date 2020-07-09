@@ -1,5 +1,6 @@
 #include "bdd/ILP_parser.h"
 #include "bdd/bdd_min_marginal_averaging.h"
+#include "bdd/bdd_primal_fixing.h"
 #include "bdd/bdd_anisotropic_diffusion.h"
 #include "bdd/convert_pb_to_bdd.h"
 #include <vector>

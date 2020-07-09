@@ -1,0 +1,56 @@
+import os
+
+cell_tracking_small_instance_list = [
+   'cell-tracking-AISTATS-2020/DIC-C2DH-HeLA.lp',
+   'cell-tracking-AISTATS-2020/drosophila.lp',
+   'cell-tracking-AISTATS-2020/Fluo-C2DL-MSC_01.lp',
+   'cell-tracking-AISTATS-2020/Fluo-C2DL-MSC_02.lp',
+   'cell-tracking-AISTATS-2020/Fluo-N2DH-GOWT1_01.lp',
+   'cell-tracking-AISTATS-2020/Fluo-N2DH-GOWT1_02.lp',
+   'cell-tracking-AISTATS-2020/Fluo-N2DL-HELA.lp',
+   'cell-tracking-AISTATS-2020/flywing_11.lp',
+   'cell-tracking-AISTATS-2020/PhC-C2DH-U373_01.lp',
+   'cell-tracking-AISTATS-2020/PhC-C2DH-U373_02.lp',
+]
+
+cell_tracking_large_instance_list = [
+   'cell-tracking-AISTATS-2020/flywing_100_1.lp',
+   'cell-tracking-AISTATS-2020/flywing_100_2.lp',
+   'cell-tracking-AISTATS-2020/flywing_245.lp',
+   'cell-tracking-AISTATS-2020/PhC-C2DL-PSC_01.lp',
+   'cell-tracking-AISTATS-2020/PhC-C2DL-PSC_02.lp'
+]
+
+algorithms = [
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input'
+]
+
+solver_options = [
+   "-a classic -o input",
+   "-a classic -o cuthill",
+   "-a classic -o bfs",
+   "-a SRMP -o input",
+   "-a SRMP -o cuthill",
+   "-a SRMP -o bfs"
+]
+
+opts_names = [
+   "classic_input",
+   "classic_cuthill",
+   "classic_bfs",
+   "srmp_input",
+   "srmp_cuthill",
+   "srmp_bfs"
+]
+
+executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")
+
+instance_dir = "@CELL_TRACKING_INSTANCE_DIRECTORY@"
+output_dir = os.path.join("/BS/discrete_opt/nobackup/bdd_experiments/", "cell-tracking/")

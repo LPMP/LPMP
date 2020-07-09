@@ -3,8 +3,11 @@
 #include "cuddObj.hh"
 #include "ILP_input.h"
 #include "convert_pb_to_bdd.h"
+#include "hash_helper.hxx"
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <stack>
 #include <numeric>
 
 namespace LPMP {
@@ -25,8 +28,8 @@ namespace LPMP {
         };
 
         bdd_storage() {};
-        bdd_storage(const ILP_input& input, Cudd& bdd_mgr);
-        bdd_storage(const ILP_input& input); 
+        bdd_storage(const ILP_input& input, Cudd& bdd_mgr, const bool record_primal_propgation_ = false);
+        bdd_storage(const ILP_input& input, const bool record_primal_propgation_ = false);
 
         void check_node_valid(const bdd_node bdd) const
         {
@@ -42,11 +45,11 @@ namespace LPMP {
             //assert(bdd.high != bdd.low); this can be so in ou formulation, but not in ordinary BDDs
         }
 
-        template<typename BDD_VARIABLES_ITERATOR>
-            void add_bdd(Cudd& bdd_mgr, BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end);
+        template <typename BDD_VARIABLES_ITERATOR>
+        void add_bdd(Cudd &bdd_mgr, BDD &bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end);
 
-        template<typename STREAM>
-            void export_dot(STREAM& s) const;
+        template <typename STREAM>
+        void export_dot(STREAM &s) const;
 
         std::size_t nr_bdds() const { return bdd_delimiters().size()-1; }
         std::size_t nr_variables() const { return nr_variables_; }
@@ -58,7 +61,20 @@ namespace LPMP {
         std::size_t first_bdd_node(const std::size_t bdd_nr) const;
         std::size_t last_bdd_node(const std::size_t bdd_nr) const;
 
-        private:
+        template <typename BDD_VARIABLES_ITERATOR>
+        void register_primal_propagations(Cudd &bdd_mgr, BDD &bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end);
+
+        struct variable_value_pair
+        {
+            std::size_t var : 63;
+            std::size_t val : 1;
+            bool operator==(const variable_value_pair o) const { return var == o.var && val == o.val; }
+            static std::size_t hash_val(const variable_value_pair x) { return hash::hash_combine(x.var, x.val); }
+        };
+
+        std::vector<variable_value_pair> primal_propagations(const std::size_t var, const bool val) const;
+
+    private:
         void init(const ILP_input& input, Cudd& bdd_mgr);
         void check_bdd_node(const bdd_node bdd) const;
 
@@ -67,8 +83,12 @@ namespace LPMP {
         std::vector<std::size_t> nr_bdd_nodes_per_variable;
         std::vector<std::size_t> nr_bdds_per_variable;
         std::size_t nr_variables_ = 0;
-    };
 
+        void prepare_primal_propagation_data();
+        bool record_primal_propagation = false;
+        std::vector<std::vector<std::size_t>> primal_propagations_tmp;
+        two_dim_variable_array<std::size_t> primal_propagation;
+    };
 
     template<typename BDD_VARIABLES_ITERATOR>
         void bdd_storage::add_bdd(Cudd& bdd_mgr, BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end)
@@ -219,15 +239,21 @@ namespace LPMP {
             
             BDD bdd = converter.convert_to_bdd(coefficients, constraint.ineq, constraint.right_hand_side);
             add_bdd(bdd_mgr, bdd, variables.begin(), variables.end());
+            if(record_primal_propagation)
+                register_primal_propagations(bdd_mgr, bdd, variables.begin(), variables.end());
         }
+        if(record_primal_propagation)
+            prepare_primal_propagation_data();
     }
 
-    bdd_storage::bdd_storage(const ILP_input& input, Cudd& bdd_mgr)
+    bdd_storage::bdd_storage(const ILP_input& input, Cudd& bdd_mgr, const bool record_primal_propagation_)
+    : record_primal_propagation(record_primal_propagation_)
     {
         init(input, bdd_mgr);
     }
 
-    bdd_storage::bdd_storage(const ILP_input& instance)
+    bdd_storage::bdd_storage(const ILP_input& instance, const bool record_primal_propagation_)
+    : record_primal_propagation(record_primal_propagation_)
     {
         Cudd bdd_mgr;
         init(instance, bdd_mgr);
@@ -268,4 +294,93 @@ namespace LPMP {
             s << "}\n"; 
         }
 
-}
+    template <typename BDD_VARIABLES_ITERATOR>
+    void bdd_storage::register_primal_propagations(Cudd &bdd_mgr, BDD &bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end)
+    {
+        primal_propagations_tmp.resize(2 * nr_variables());
+
+        auto record_primal_fixations = [&](BDD bdd, std::size_t i, const std::size_t val) {
+            assert(val == 0 || val == 1);
+            for (std::size_t j = 0; j < std::distance(bdd_vars_begin, bdd_vars_end); ++j)
+            {
+                const std::size_t i_var = *(bdd_vars_begin+i);
+                const std::size_t j_var = *(bdd_vars_begin+j);
+                if (i != j)
+                {
+                    BDD bdd_j = bdd_mgr.bddVar(j);
+                    if (bdd == bdd * (!bdd_j))
+                    {
+                        primal_propagations_tmp[2 * i_var + val].push_back(2 * j_var + 1);
+                        //std::cout << "variable " << j << " forced to 0";
+                    }
+                    if (bdd == bdd * bdd_j)
+                    {
+                        primal_propagations_tmp[2 * i_var + val].push_back(2 * j_var);
+                        //std::cout << "variable " << j << " forced to 1";
+                    }
+                    assert(bdd * (!bdd_j) != bdd * bdd_j);
+                }
+            }
+        };
+
+        // go over each variable and set it to 0 and 1. Afterwards, check if other variables are forced to specific values.
+        for (std::size_t i = 0; i < std::distance(bdd_vars_begin, bdd_vars_end); ++i)
+        {
+            BDD bdd_i = bdd_mgr.bddVar(i);
+            BDD bdd_0 = bdd * (!bdd_i);
+            record_primal_fixations(bdd_0, i, 1);
+
+            BDD bdd_1 = bdd * bdd_i;
+            record_primal_fixations(bdd_1, i, 0);
+        }
+    }
+
+    void bdd_storage::prepare_primal_propagation_data()
+    {
+        // remove duplicates
+        for (auto &p : primal_propagations_tmp)
+        {
+            std::sort(p.begin(), p.end());
+            p.erase( std::unique( p.begin(), p.end() ), p.end() );
+        }
+
+        primal_propagation = two_dim_variable_array<std::size_t>(primal_propagations_tmp);
+    }
+
+    std::vector<typename bdd_storage::variable_value_pair> bdd_storage::primal_propagations(const std::size_t var, const bool val) const
+    {
+        assert(var < nr_variables());
+        assert(record_primal_propagation);
+
+        auto hash = [](const variable_value_pair x) { return variable_value_pair::hash_val(x); };
+        auto equal = [](const variable_value_pair x, const variable_value_pair y) { return x == y; };
+        std::unordered_set<variable_value_pair, decltype(hash), decltype(equal)> p_set(1, hash, equal);
+        std::stack<variable_value_pair> Q;
+        Q.push(variable_value_pair({var, val}));
+
+        while(!Q.empty())
+        {
+            const auto [var, val] = Q.top();
+            Q.pop();
+            if(p_set.count(variable_value_pair{var, val}) == 0)
+            {
+                for (const auto x : primal_propagation[2 * var + val])
+                {
+                    const std::size_t var = x / 2;
+                    const std::size_t val = x % 2;
+                    if(p_set.count(variable_value_pair{var,val}) == 0)
+                    {
+                        p_set.insert(variable_value_pair{var, val});
+                        Q.push(variable_value_pair{var, val});
+                    }
+                }
+            }
+        }
+
+        std::vector<variable_value_pair> p;
+        p.reserve(p_set.size());
+        for (const variable_value_pair x : p_set)
+            p.push_back(x);
+        return p;
+    }
+    } // namespace LPMP
