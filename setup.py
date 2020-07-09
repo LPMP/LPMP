@@ -39,6 +39,7 @@ class CMakeBuild(build_ext):
         for word in reversed(words):
             if "." in word:
                 gcc_version = parse_version(word)
+                print(f"...has version {gcc_version}")
                 if gcc_version >= parse_version('8.0'):
                     return True
 
