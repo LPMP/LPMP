@@ -49,6 +49,8 @@ class CMakeBuild(build_ext):
 
         all_gcc_commands = ['gcc']
         for path_dir in all_path_dirs:
+            if not path_dir.exists(path_dir):
+                continue
             local_gccs = [s for s in os.listdir(path_dir) if re.search(r'^gcc-[0-9].?.?.?', s)]
             local_gccs = [s for s in local_gccs if os.access(os.path.join(path_dir, s), os.X_OK)]
             all_gcc_commands.extend(local_gccs)
