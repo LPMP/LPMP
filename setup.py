@@ -35,6 +35,8 @@ class CMakeBuild(build_ext):
     def _validate_gcc_version(self, gcc_command):
         print(f'Testing {gcc_command}...')
         out = subprocess.check_output([gcc_command, '--version']).decode()
+        if 'clang' in out.lower():
+            return False
         words = out.split('\n')[0].split(' ')
         for word in reversed(words):
             if "." in word:
