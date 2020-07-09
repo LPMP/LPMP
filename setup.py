@@ -1,3 +1,4 @@
+import glob
 import os
 import re
 import sys
@@ -43,13 +44,22 @@ class CMakeBuild(build_ext):
 
         return False
 
+    def _get_all_gcc_commands(self):
+        all_path_dirs = subprocess.check_output("echo -n $PATH", shell=True).decode("utf-8").rstrip().split(":")
+
+        all_gcc_commands = ['gcc']
+        for path_dir in all_path_dirs:
+            local_gccs = [s for s in os.listdir(path_dir) if re.search(r'^gcc-[0-9].?.?.?', s)]
+            local_gccs = [s for s in local_gccs if os.access(os.path.join(path_dir, s), os.X_OK)]
+            all_gcc_commands.extend(local_gccs)
+        return all_gcc_commands
+
+
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
-        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find -H {} -maxdepth 1 -perm -o=x -type"
-                            " l,f -printf '%P\n' | grep \'^gcc-[0-9].\\?.\\?.\\?'")
-        all_gccs = subprocess.check_output(cmd_for_all_gccs, shell=True).decode("utf-8").rstrip().split("\n")
+        all_gccs = self._get_all_gcc_commands()
 
-        for gcc in ['gcc'] + all_gccs:
+        for gcc in all_gccs:
             if self._validate_gcc_version(gcc):
                 matching_gpp = gcc.replace("cc", "++")
                 print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
