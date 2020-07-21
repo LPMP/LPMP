@@ -147,7 +147,7 @@ public:
 	double getOneBaseEdgeMinMarginal(size_t vertex);
 	std::vector<double> getAllBaseMinMarginals();
 
-	std::vector<double> getAllLiftedMinMarginals();
+    std::vector<double> getAllLiftedMinMarginals() const;
 
 	double getNodeMinMarginal()const;
 	double oneLiftedMinMarginal(size_t indexOfLiftedEdge)const;
@@ -156,9 +156,17 @@ public:
 		return baseIDs;
 	}
 
+    size_t getBaseID(size_t order) const {
+        return baseIDs.at(order);
+    }
+
 	const std::vector<size_t>& getLiftedIDs() const {
 		return liftedIDs;
 	}
+
+    size_t getLiftedID(size_t order) const {
+        return liftedIDs.at(order);
+    }
 
 	size_t getNodeNotActive() const {
 		return nodeNotActive;
@@ -825,9 +833,11 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
-	//if(debug()) std::cout<<"lower bound "<<nodeID<<std::endl;
+    if(debug()) std::cout<<"lower bound "<<nodeID;
 	updateOptimal();
-	return solutionCosts.at(optimalSolutionBase);
+    double value=solutionCosts.at(optimalSolutionBase);
+    if(debug()) std::cout<<" computed"<<std::endl;
+    return value;
 }
 
 
@@ -1374,7 +1384,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 //}
 
 template<class LDP_INSTANCE>
-inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(){
+inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals() const{
 
 
 	updateOptimal();
@@ -1489,7 +1499,7 @@ public:
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamLeft(SINGLE_NODE_CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
 	{
-		//if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<right_node<<std::endl;
+        //if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
 		assert(msg_dim == 0);
 		l.updateCostSimple(msg,right_node,true);
 	}
@@ -1497,7 +1507,7 @@ public:
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
 	{
-		//if(debug()) std::cout<<"repam right "<<r.nodeID<<": "<<left_node<<std::endl;
+      //  if(debug()) std::cout<<"repam right "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 		assert(msg_dim == 0);
 		r.updateCostSimple(msg,left_node,true);
 	}
@@ -1505,18 +1515,72 @@ public:
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
 	void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
 	{
-		//if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<left_node<<std::endl;
+        if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 		const double delta = r.oneLiftedMinMarginal(left_node);
 		msg[0] -= omega * delta;
+        if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
 	void send_message_to_right(const SINGLE_NODE_CUT_FACTOR& l, MSG& msg, const double omega)
 	{
-		//if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<right_node<<std::endl;
+        //if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
 		const double delta = l.oneLiftedMinMarginal(right_node);
 		msg[0] -= omega * delta;
 	}
+
+
+
+    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
+    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+    {
+        if(debug()){
+            std::cout<<"running get all lifted marginals to left "<<r.nodeID<<std::endl;
+        }
+        const std::vector<double>& msg_vec = r.getAllLiftedMinMarginals();
+        if(debug()){
+            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
+        }
+        for(auto it=msg_begin; it!=msg_end; ++it)
+        {
+            auto& msg = (*it).GetMessageOp();
+            const size_t left_node = msg.left_node;
+            const size_t right_node = msg.right_node;
+            (*it)[0] -= omega * msg_vec.at(left_node);
+        }
+        if(debug()){
+            std::cout<<"messages added "<<std::endl;
+        }
+    }
+
+    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
+    static void SendMessagesToRight(const SINGLE_NODE_CUT_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+    {
+        if(debug()){
+            std::cout<<"running get all lifted marginals to right "<<l.nodeID<<std::endl;
+        }
+        const std::vector<double>& msg_vec = l.getAllLiftedMinMarginals();
+        if(debug()){
+            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
+        }
+        for(auto it=msg_begin; it!=msg_end; ++it)
+        {
+            auto& msg = (*it).GetMessageOp();
+            const size_t left_node = msg.left_node;
+            const size_t right_node = msg.right_node;
+//            if(debug()){
+//               // auto& origVal=(*it)[0];
+//                std::cout<<"source node"<<l.nodeID<<"to node "<<l.getLiftedID(right_node)<<", to subtract "<<msg_vec.at(right_node)<<std::endl;
+//            }
+            //(*it)[0] -= omega * msg_vec.at(right_node);
+            (*it).operator[](0)-= omega * msg_vec.at(right_node);
+        }
+        if(debug()){
+            std::cout<<"messages added "<<std::endl;
+        }
+    }
+
+
 
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	bool check_primal_consistency(const SINGLE_NODE_CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
