@@ -1,3 +1,4 @@
+import glob
 import os
 import re
 import sys
@@ -34,22 +35,36 @@ class CMakeBuild(build_ext):
     def _validate_gcc_version(self, gcc_command):
         print(f'Testing {gcc_command}...')
         out = subprocess.check_output([gcc_command, '--version']).decode()
+        if 'clang' in out.lower():
+            return False
         words = out.split('\n')[0].split(' ')
         for word in reversed(words):
             if "." in word:
                 gcc_version = parse_version(word)
+                print(f"...has version {gcc_version}")
                 if gcc_version >= parse_version('8.0'):
                     return True
 
         return False
 
+    def _get_all_gcc_commands(self):
+        all_path_dirs = subprocess.check_output("echo -n $PATH", shell=True).decode("utf-8").rstrip().split(":")
+
+        all_gcc_commands = ['gcc']
+        for path_dir in all_path_dirs:
+            if not os.path.exists(path_dir):
+                continue
+            local_gccs = [s for s in os.listdir(path_dir) if re.search(r'^gcc-[0-9].?.?.?', s)]
+            local_gccs = [s for s in local_gccs if os.access(os.path.join(path_dir, s), os.X_OK)]
+            all_gcc_commands.extend(local_gccs)
+        return all_gcc_commands
+
+
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
-        cmd_for_all_gccs = ("echo -n $PATH | xargs -d : -I {} find -H {} -maxdepth 1 -perm -o=x -type"
-                            " l,f -printf '%P\n' | grep \'^gcc-[0-9].\\?.\\?.\\?'")
-        all_gccs = subprocess.check_output(cmd_for_all_gccs, shell=True).decode("utf-8").rstrip().split("\n")
+        all_gccs = self._get_all_gcc_commands()
 
-        for gcc in ['gcc'] + all_gccs:
+        for gcc in all_gccs:
             if self._validate_gcc_version(gcc):
                 matching_gpp = gcc.replace("cc", "++")
                 print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
