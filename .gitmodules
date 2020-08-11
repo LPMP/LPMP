@@ -54,3 +54,6 @@
 	path = external/cudd
 	url = https://github.com/ivmai/cudd.git
 	branch = release
+[submodule "LifT_Solver"]
+	path = external/LifT_Solver
+	url = https://github.com/AndreaHor/LifT_Solver.git

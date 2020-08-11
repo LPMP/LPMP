@@ -5,4 +5,5 @@ add_library(lifted_disjoint_paths_input lifted_disjoint_paths_input.cpp)
 target_link_libraries(lifted_disjoint_paths_input LPMP ldp_instance)
 
 add_executable(lifted_disjoint_paths_text_input  lifted_disjoint_paths_text_input.cpp)
+ target_include_directories(lifted_disjoint_paths_text_input PUBLIC external/LifT_Solver/include)
 target_link_libraries(lifted_disjoint_paths_text_input ldp_instance lifted_disjoint_paths_input LPMP)

@@ -14,7 +14,7 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,Com
 	useTimeFrames=true;
 	//useTimeFrames=parameters.isRestrictFrames()||parameters.isSparsify();
 	size_t maxVertex;
-	if(cs==0){
+    if(cs==nullptr){
 		if(useTimeFrames){
 			vertexGroups=VertexGroups<size_t>(parameters,delim);
 			maxVertex=vertexGroups.getMaxVertex();
