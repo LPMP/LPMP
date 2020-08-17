@@ -32,7 +32,11 @@
 #include <list>
 #include "ldp_functions.hxx"
 #include <utility>
-//#include <LifT_Solver/solverILP/include/disjoint-paths/disjointPathsMethods.hxx>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/operators.h>
+#include <pybind11/numpy.h>
+#include <disjoint-paths/disjointPathsMethods.hxx>
 
 namespace LPMP{
 namespace lifted_disjoint_paths {
@@ -44,6 +48,7 @@ public:
 
 
     LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
+   // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
 		if(i==t_||j==s_) return false;  //Assume no path from the terminal node

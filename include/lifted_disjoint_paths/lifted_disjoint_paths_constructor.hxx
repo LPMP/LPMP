@@ -81,68 +81,69 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
 bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::checkFeasibilityLiftedInSnc(){
-    bool isFeasible=true;
-    for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
-        size_t vertex=i;
-        const auto snc=single_node_cut_factors_[vertex][1]->get_factor();
-        size_t primalBaseIndex=snc->getPrimalBase();
-        if(snc->baseIDs[primalBaseIndex]==base_graph_terminal_node()){
+  //TODO check this
+//    bool isFeasible=true;
+//    for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
+//        size_t vertex=i;
+//        const auto* snc=single_node_cut_factors_[vertex][1]->get_factor();
+//        size_t primalBaseIndex=snc->getPrimalBase();
+//        if(snc->baseIDs[primalBaseIndex]==base_graph_terminal_node()){
 
-            std::vector<bool> isOnPath(nr_nodes(),0);
-            isOnPath[vertex]=1;
-            std::list<size_t> path;
-            path.push_front(vertex);
+//            std::vector<bool> isOnPath(nr_nodes(),0);
+//            isOnPath[vertex]=1;
+//            std::list<size_t> path;
+//            //path.push_front(vertex);
 
-            while(vertex!=base_graph_source_node()){
-                const auto& sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
-                const std::unordered_set<size_t>& indicesOfActiveEndpoints=sncFactorOut.getPrimalLiftedIndices();
-                std::vector<bool> activeVector(sncFactorOut.getLiftedCosts().size());
-                for(size_t v:indicesOfActiveEndpoints){
-                    activeVector[v]=1;
-                }
-                for (int j = 0; j < activeVector.size(); ++j) {
-                    size_t vertex2=sncFactorOut->getLiftedIDs()[j];
-                    if(activeVector[j]!=isOnPath[vertex2]){
-                        isFeasible=false;
-                        break;
-                    }
+//            while(vertex!=base_graph_source_node()){
+//                const auto* sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
+//                const std::unordered_set<size_t>& indicesOfActiveEndpoints=sncFactorOut->getPrimalLiftedIndices();
+//                std::vector<bool> activeVector(sncFactorOut->getLiftedCosts().size());
+//                for(size_t v:indicesOfActiveEndpoints){
+//                    activeVector[v]=1;
+//                }
+//                for (int j = 0; j < activeVector.size(); ++j) {
+//                    size_t vertex2=sncFactorOut->getLiftedIDs()[j];
+//                    if(activeVector[j]!=isOnPath[vertex2]){
+//                        isFeasible=false;
+//                        break;
+//                    }
 
-                }
+//                }
 
-                if(!isFeasible) break;
-
-
-                isOnPath[vertex]=1;
-                path.push_front(vertex);
-                auto& sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
-                size_t ind=sncFactorIn.getPrimalBase();
-                vertex=sncFactorIn.baseIDs[ind];
-
-            }
-            if(isFeasible){
-                for(size_t activeVertex:path){
-                    auto& sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
+//                if(!isFeasible) break;
 
 
-                    const std::unordered_set<size_t>& indicesOfActiveEndpoints=sncFactorIn.getPrimalLiftedIndices();
-                    std::vector<bool> activeVector(sncFactorIn.getLiftedCosts().size());
-                    for(size_t v:indicesOfActiveEndpoints){
-                        activeVector[v]=1;
-                    }
-                    for (int j = 0; j < activeVector.size(); ++j) {
-                        size_t vertex2=sncFactorIn->getLiftedIDs()[j];
-                        if(activeVector[j]!=isOnPath[vertex2]){
-                            isFeasible=false;
-                            break;
-                        }
+//                isOnPath[vertex]=1;
+//                path.push_front(vertex);
+//                auto* sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
+//                size_t ind=sncFactorIn->getPrimalBase();
+//                vertex=sncFactorIn.baseIDs[ind];
 
-                    }
+//            }
+//            if(isFeasible){
+//                for(size_t activeVertex:path){
+//                    auto* sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
 
-                }
-            }
-        }
-    }
-    return isFeasible;
+
+//                    const std::unordered_set<size_t>& indicesOfActiveEndpoints=sncFactorIn.getPrimalLiftedIndices();
+//                    std::vector<bool> activeVector(sncFactorIn->getLiftedCosts().size());
+//                    for(size_t v:indicesOfActiveEndpoints){
+//                        activeVector[v]=1;
+//                    }
+//                    for (int j = 0; j < activeVector.size(); ++j) {
+//                        size_t vertex2=sncFactorIn->getLiftedIDs()[j];
+//                        if(activeVector[j]!=isOnPath[vertex2]){
+//                            isFeasible=false;
+//                            break;
+//                        }
+
+//                    }
+
+//                }
+//            }
+//        }
+//    }
+//    return isFeasible;
 
 }
 
@@ -154,11 +155,9 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     bool isFeasible=true;
     std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
     for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
-        auto *incoming_snc = single_node_cut_factors_[i][0]->get_factor();
-        const auto incoming_min_marg = incoming_snc->getAllBaseMinMarginals();
 
-        const auto sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
-        const auto sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+        const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
+        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
 
         if(sncFactorIn->isNodeActive()!=sncFactorOut->isNodeActive()){
             isFeasible=false;
@@ -167,7 +166,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         else if(sncFactorIn->isNodeActive()&&sncFactorOut->isNodeActive()){
             size_t inputNode=sncFactorIn->getPrimalBaseVertexID();
             if(inputNode!=base_graph_source_node()){
-                auto sncFactorInputNodeOut=single_node_cut_factors_[inputNode][1]->get_factor();
+                auto* sncFactorInputNodeOut=single_node_cut_factors_[inputNode][1]->get_factor();
                 if(sncFactorInputNodeOut->getPrimalBaseVertexID()!=i){
                     isFeasible=false;
 
@@ -176,7 +175,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             size_t outputNode=sncFactorOut->getPrimalBaseVertexID();
             if(outputNode!=base_graph_terminal_node()){
-                auto sncFactorOuputNodeIn=single_node_cut_factors_[outputNode][0]->get_factor();
+                auto* sncFactorOuputNodeIn=single_node_cut_factors_[outputNode][0]->get_factor();
                 if(sncFactorOuputNodeIn->getPrimalBaseVertexID()!=i){
                     isFeasible=false;
 
@@ -193,42 +192,42 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::adjustLiftedLabels(){
+ //TODO fix this
+//    for (int i = 0; i < nr_nodes(); ++i) {
+//        size_t vertex=i;
+//        auto* snc=single_node_cut_factors_[vertex][1]->get_factor();
+//        if(snc->getPrimalBaseVertexID()==base_graph_terminal_node()){
 
-    for (int i = 0; i < nr_nodes(); ++i) {
-        size_t vertex=i;
-        auto& snc=single_node_cut_factors_[vertex][1]->get_factor();
-        if(snc.getPrimalBaseVertexID()==base_graph_terminal_node()){
+//            std::vector<bool> isOnPath(nr_nodes(),0);
+//            isOnPath[vertex]=1;
+//            std::list<size_t> path;
+//           // path.push_front(vertex);
 
-            std::vector<bool> isOnPath(nr_nodes(),0);
-            isOnPath[vertex]=1;
-            std::list<size_t> path;
-            path.push_front(vertex);
+//            while(vertex!=base_graph_source_node()){
+//                auto* sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
+//                std::unordered_set<size_t> activeEndpointIndices;
+//                const std::vector<size_t>& liftedIDs= sncFactorOut->getLiftedIDs();
+//                for (int i = 0; i < liftedIDs.size(); ++i) {
+//                    if(isOnPath[liftedIDs[i]]) activeEndpointIndices.insert(i);
+//                }
 
-            while(vertex!=base_graph_source_node()){
-                auto& sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
-                std::unordered_set<size_t> activeEndpointIndices;
-                const std::vector<size_t>& liftedIDs= sncFactorOut->getLiftedIDs();
-                for (int i = 0; i < liftedIDs.size(); ++i) {
-                    if(isOnPath[liftedIDs[i]]) activeEndpointIndices.insert(i);
-                }
-
-                sncFactorOut.setPrimalLifted(activeEndpointIndices);
-                isOnPath[vertex]=1;
-                path.push_front(vertex);
-                auto& sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
-                vertex=sncFactorIn.getPrimalBaseVertexID();
-            }
-            for(size_t activeVertex:path){
-                auto& sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
-                std::unordered_set<size_t> activeEndpointIndices;
-                const std::vector<size_t>& liftedIDs= sncFactorIn->liftedIDs;
-                for (int i = 0; i < liftedIDs.size(); ++i) {
-                    if(isOnPath[liftedIDs[i]]) activeEndpointIndices.insert(i);
-                }
-                sncFactorIn.setPrimalLifted(activeEndpointIndices);
-            }
-        }
-    }
+//                sncFactorOut->setPrimalLifted(activeEndpointIndices);
+//                isOnPath[vertex]=1;
+//                path.push_front(vertex);
+//                auto* sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
+//                vertex=sncFactorIn->getPrimalBaseVertexID();
+//            }
+//            for(size_t activeVertex:path){
+//                auto* sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
+//                std::unordered_set<size_t> activeEndpointIndices;
+//                const std::vector<size_t>& liftedIDs= sncFactorIn->liftedIDs;
+//                for (int i = 0; i < liftedIDs.size(); ++i) {
+//                    if(isOnPath[liftedIDs[i]]) activeEndpointIndices.insert(i);
+//                }
+//                sncFactorIn->setPrimalLifted(activeEndpointIndices);
+//            }
+//        }
+//    }
 }
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
@@ -309,22 +308,22 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>(left_snc, right_snc, left_node, right_node);
 
     for (int vertex1 = 0; vertex1 < single_node_cut_factors_.size(); ++vertex1) {
-        auto left_snc=single_node_cut_factors_[vertex1][1];
-        auto left_snc_factor=left_snc->get_factor();
+        auto* left_snc=single_node_cut_factors_[vertex1][1];
+        auto* left_snc_factor=left_snc->get_factor();
         //	std::cout<<"vertex 1 "<<vertex1<<std::endl;
         for (int j = 0; j < left_snc_factor->getLiftedIDs().size(); ++j) {
             size_t vertex2=left_snc_factor->getLiftedIDs()[j];
             //std::cout<<"vertex 2 "<<vertex2<<std::endl;
             assert(instance.getGraphLifted().findEdge(vertex1,vertex2).first);
             if(vertex2==this->base_graph_source_node()||vertex2==this->base_graph_source_node()) continue;
-            auto right_snc=single_node_cut_factors_[vertex2][0];
+            auto* right_snc=single_node_cut_factors_[vertex2][0];
             size_t i=right_snc->get_factor()->getLiftedOrderToID(vertex1);
             assert((right_snc->get_factor()->getLiftedIDs().size())>i);
             auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
             snc_lifted_messages_.push_back(message);
-            if(debug()){
-                std::cout<<"message left "<<vertex1<<", right"<<vertex2<<", ij "<<i<<","<<j<<std::endl;
-            }
+//            if(debug()){
+//                std::cout<<"message left "<<vertex1<<", right"<<vertex2<<", ij "<<i<<","<<j<<std::endl;
+//            }
         }
         //
         //        	for (int j = 0; j < instance.getGraph().numberOfEdgesFromVertex(vertex1); ++j) {
@@ -370,7 +369,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class S
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::sncDebug(size_t vertex,bool isOut)
 {
     std::cout<<"print node "<<vertex<<std::endl;
-    auto sncFactor=single_node_cut_factors_[vertex][isOut]->get_factor();
+    auto* sncFactor=single_node_cut_factors_[vertex][isOut]->get_factor();
     const std::vector<double>& baseCosts=sncFactor->getBaseCosts();
     const std::vector<double>& liftedCosts=sncFactor->getLiftedCosts();
 
