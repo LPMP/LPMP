@@ -140,11 +140,10 @@ public:
 	}
 
     template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
-    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
+    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(baseCosts, liftedCosts); }
 
     //auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
-    double tmp_to_delete_val;
-    auto export_variables() { return std::tie(); } //?What comes here?
+    auto export_variables() { return std::tie(baseCosts, liftedCosts); }
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
 	void updateNodeCost(const double value);
@@ -432,7 +431,6 @@ nodeNotActive(sncFactor.nodeNotActive)
 	optLiftedUpToDate=sncFactor.optLiftedUpToDate;
 	optBaseUpToDate=sncFactor.optBaseUpToDate;
 
-    tmp_to_delete_val=sncFactor.tmp_to_delete_val;
     nodeNotActiveForStructures=sncFactor.nodeNotActiveForStructures;
 	baseIDs=sncFactor.baseIDs;
 	liftedIDs=sncFactor.liftedIDs;
