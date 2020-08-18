@@ -507,12 +507,11 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 		optValueComputed+=nodeCost;
 
 		bool hasOptDescendant=true;
-        std::cout<<"opt base "<<myStr.optBase<<std::endl;
+
         size_t vertexInOptimalPath=baseIDs.at(myStr.optBase);
         //size_t vertexInOptimalPath=myStr.vertexIDStructure.at(baseIDs[myStr.optBase]);saarbrücken
 
 		while(hasOptDescendant){
-            if(debug())	std::cout<<"vertex in opt path "<<vertexInOptimalPath<<","<<std::endl;
 
 			if(liftedIDToOrder.count(vertexInOptimalPath)>0){
 
@@ -900,9 +899,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 	if(lastLayerSet){
 		for(auto it=myStr.valuesStructure.begin();it!=myStr.valuesStructure.end();it++){
-            if(it->first>=baseGraph.numberOfVertices()){
-                std::cout<<"fail in valuesStructure "<< std::to_string(it->first)<<", size "<<myStr.valuesStructure.size()<<std::endl;
-            }
+//            if(it->first>=baseGraph.numberOfVertices()){
+//                std::cout<<"fail in valuesStructure "<< std::to_string(it->first)<<", size "<<myStr.valuesStructure.size()<<std::endl;
+//            }
 			if(isInGivenRange(it->first,lastLayer)) it->second=0;
 		}
 	}
@@ -929,8 +928,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 	std::stack<size_t> nodeStack;
 	nodeStack.push(nodeID);
 
+    //if(debug()) std::cout<<"update values before while "<<std::endl;
 	while(!nodeStack.empty()){
 		size_t currentNode=nodeStack.top();
+        // if(debug()) std::cout<<"current node "<<currentNode<<std::endl;
 		if(closedVertices.count(currentNode)>0){
 			nodeStack.pop();
 		}
@@ -1041,7 +1042,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 			}
 		}
 	}
-    if(debug()) std::cout<<"opt value "<<myStr.optValue<<", opt base: "<<myStr.optBase<<std::endl;
+   // if(debug()) std::cout<<"opt value "<<myStr.optValue<<", opt base: "<<myStr.optBase<<std::endl;
 
 
 
@@ -1082,7 +1083,7 @@ class ldp_mcf_single_node_cut_message
 
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(size_t indexOfLiftedEdge)const{
-    if(debug()) std::cout<<"lifted min marginal "<<nodeID<<", outgoing "<<isOutFlow<<std::endl;
+    if(debug()) std::cout<<"lifted min marginal "<<nodeID<<", outgoing "<<isOutFlow<<" id of lifted endpoint "<<liftedIDs[indexOfLiftedEdge]<<std::endl;
 	updateOptimal();
 
 
@@ -1098,7 +1099,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
 
 
-	//if(debug())std::cout<<"lilfted marginal "<<nodeID<<" "<<indexOfLiftedEdge<<", optimal "<<isOptimal<<std::endl;
+    if(debug())std::cout<<"lifted marginal "<<nodeID<<" "<<indexOfLiftedEdge<<", optimal "<<isOptimal<<std::endl;
 
 	if(isOptimal){
 		//double lbBefore=0;
@@ -1108,14 +1109,16 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 	//	getOptLiftedFromIndexStr(strForUpdateValues);
 
 
-		std::vector<double> localSolutionCosts;
+        std::vector<double> localSolutionCosts(solutionCosts.size());
 		std::vector<double> localLiftedCosts=liftedCosts;
 		StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolutionCosts,nodeID);
 		myStr.copyFromOther(strForUpdateValues);
 
 		myStr.setUseAllVertices(false);
 
-		updateValues(myStr,liftedIDs[indexOfLiftedEdge]);
+        if(debug()) std::cout<<"before values updated "<<std::endl;
+        updateValues(myStr,liftedIDs.at(indexOfLiftedEdge));
+        if(debug()) std::cout<<"values updated "<<std::endl;
 		//size_t restrictedOptimalSolution=myStr.indexStructure[nodeID];
 		double restrictedOptValue=myStr.optValue;
 
@@ -1140,7 +1143,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 		//if(debug()) std::cout<<"optimal "<<valueToReturn<<std::endl;
 
 
-		//if(debug())std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
+        if(debug())std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
 		return valueToReturn;
 
 
@@ -1423,31 +1426,12 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 	myStr.setUseAllVertices(false);
 
 
-    if(debug()){
-        std::cout<<"not zero in opt "<<std::endl;
-        for(auto vert:isNotZeroInOpt){
-            std::cout<<vert<<" ";
-        }
-        std::cout<<std::endl;
-        std::cout<<"values structure "<<std::endl;
-        for(auto iter=myStr.valuesStructure.begin();iter!=myStr.valuesStructure.end();iter++){
-            std::cout<<std::to_string(iter->first)<<"->"<<std::to_string(iter->second)<<std::endl;
-        }
-    }
-
-	auto listIt=isNotZeroInOpt.begin();
+    auto listIt=isNotZeroInOpt.begin();
 	while(!isNotZeroInOpt.empty()){
 		size_t vertexToClose=*listIt;
         if(debug()) std::cout<<"process vertex "<<vertexToClose<<std::endl;
 
-		//std::cout<<"vertex to close "<<vertexToClose<<std::endl;
-        std::cout<<"values structure "<<std::endl;
-        for(auto iter=myStr.valuesStructure.begin();iter!=myStr.valuesStructure.end();iter++){
-            //std::cout<<std::to_string(iter->first)<<"->"<<std::to_string(iter->second)<<std::endl;
-            if(iter->first>baseGraph.numberOfVertices()) std::cout<<"wrong value in values str. while begin"<<std::endl;
-        }
-
-		updateValues(myStr,vertexToClose);
+        updateValues(myStr,vertexToClose);
 		double newOpt=myStr.optValue;
 		//std::cout<<"new opt "<<newOpt<<std::endl;
 
@@ -1457,59 +1441,33 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 		listIt=isNotZeroInOpt.erase(listIt);
 		while(listIt!=isNotZeroInOpt.end()&&sbIt!=secondBest.end()){
 
-            if(debug()){
-                std::cout<<"list "<<std::endl;
-                for(auto vert:isNotZeroInOpt){
-                    std::cout<<vert<<" ";
-                }
-                std::cout<<std::endl<<"second best "<<std::endl;
-                for(auto vert:secondBest){
-                    std::cout<<vert<<" ";
-                }
-                std::cout<<std::endl<<"list it "<<std::to_string(*listIt)<<", sbIt "<<std::to_string(*sbIt)<<std::endl;
-            }
 			if(*sbIt==*listIt){
-                if(debug()) std::cout<<"bot equal"<<std::endl;
+
 				isOneInOpt.insert(*sbIt);
 				sbIt++;
 				listIt++;
 			}
 			else if(reachable(*sbIt,*listIt)){
-                if(debug()) std::cout<<"opt reachable from sb"<<std::endl;
+
 				isOneInOpt.insert(*sbIt);
 				sbIt++;
 			}
 			else if(reachable(*listIt,*sbIt)){
-                if(debug()) std::cout<<"sb reachable from opt"<<std::endl;
+
 				listIt=isNotZeroInOpt.erase(listIt);
 			}
 			else{
-                if(debug()) std::cout<<"different branches"<<std::endl;
+
 				listIt=isNotZeroInOpt.erase(listIt);
 				isOneInOpt.insert(*sbIt);
 				sbIt++;
 			}
 
-            for(auto iter=myStr.valuesStructure.begin();iter!=myStr.valuesStructure.end();iter++){
-                if(iter->first>baseGraph.numberOfVertices()) std::cout<<"wrong value in values str. in small while"<<std::endl;
-            }
-            if(listIt!=isNotZeroInOpt.end()&&sbIt!=secondBest.end())  std::cout<<std::endl<<"after shift: list it "<<std::to_string(*listIt)<<", sbIt "<<std::to_string(*sbIt)<<std::endl;
-		}
-        if(debug()){
-            std::cout<<"list after"<<std::endl;
-            for(auto vert:isNotZeroInOpt){
-                std::cout<<vert<<" ";
-            }
-            std::cout<<std::endl<<"second best after"<<std::endl;
-            for(auto vert:secondBest){
-                std::cout<<vert<<" ";
-            }
-            std::cout<<std::endl;
-        }
 
-        for(auto iter=myStr.valuesStructure.begin();iter!=myStr.valuesStructure.end();iter++){
-            if(iter->first>baseGraph.numberOfVertices()) std::cout<<"wrong value in values str. after small while"<<std::endl;
-        }
+		}
+
+
+
 		isNotZeroInOpt.erase(listIt,isNotZeroInOpt.end());
 		while(sbIt!=secondBest.end()){
 			isOneInOpt.insert(*sbIt);
@@ -1517,9 +1475,6 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 		}
 
 
-        for(auto iter=myStr.valuesStructure.begin();iter!=myStr.valuesStructure.end();iter++){
-            if(iter->first>baseGraph.numberOfVertices()) std::cout<<"wrong value in values str. after sb increase"<<std::endl;
-        }
 		listIt=isNotZeroInOpt.begin();
 
 		double delta=currentOptValue-newOpt;
@@ -1529,16 +1484,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 		liftedMessages[vertexToClose]=delta;
 		currentOptValue=newOpt;
 
-        for(auto iter=myStr.valuesStructure.begin();iter!=myStr.valuesStructure.end();iter++){
-            if(iter->first>baseGraph.numberOfVertices()) std::cout<<"wrong value in values str. end while, vertex to close: "<<vertexToClose<<std::endl;
-        }
-		//std::cout<<"message "<<vertexToClose<<": "<<delta<<std::endl;
-		//std::cout<<"delta for "<<vertexToClose<<": "<<delta<<", new l.cost: "<<localLiftedCosts[vertexToClose]<<std::endl;
-		//std::cout<<"lifted cost in myStr "<<myStr.liftedCosts.at(vertexToClose)<<std::endl;
-		//listIt=isNotZeroInOpt.erase(listIt);
-
 	}
-    if(debug()) std::cout<<"first part finished "<<std::endl;
 
 	myStr.setUseAllVertices(true);
 
