@@ -12,6 +12,7 @@
 #include <string>         // std::string
 #include <bitset>
 #include <vector>
+#include<array>
 #include <assert.h>
 #include <unordered_map>
 namespace LPMP {
@@ -42,7 +43,7 @@ public:
 		double minValue=0;
 		short minIndex=0;
 		for (short i = 0; i < labelings.size(); ++i) {
-			std::bitset<3>& label=labelings[i];
+            const std::bitset<3>& label=labelings.at(i);
 			double value=label[0]*edgeCosts[0]+label[1]*edgeCosts[1]+label[2]*edgeCosts[2];
 			if(value<minValue){
 				minValue=value;
@@ -53,24 +54,37 @@ public:
 	}
 
 	double EvaluatePrimal() const{
-		std::bitset<3>& label=labelings[primal_];
+        const std::bitset<3>& label=labelings.at(primal_);
 		double value=label[0]*edgeCosts[0]+label[1]*edgeCosts[1]+label[2]*edgeCosts[2];
 		return value;
 	}
 
+    void setPrimal(const std::bitset<3>& primalSolution){
+        bool primalSet=false;
+        for (short i = 0; i < labelings.size(); ++i) {
+            const std::bitset<3>& label=labelings.at(i);
+            if(label==primalSolution){
+                primal_=i;
+                primalSet=true;
+                break;
+            }
+        }
+        assert(primalSet);
+    }
+
 	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primal_); }
 	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
 
-	auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }
+    //auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }
 
 	void init_primal() { primal_ = 0; }
 
-	double delta(short edgeId){  //difference: label[edgeId]=1-label[edgeId]=0
+    double delta(short edgeId,const std::array<double,3>& localEdgeCosts)const{  //difference: label[edgeId]=1-label[edgeId]=0
 		assert(edgeId<=2);
 		double min1=std::numeric_limits<double>::infinity();
 		double min0=std::numeric_limits<double>::infinity();
 		for (int i = 0; i < labelings.size(); ++i) {
-			double value=labelings[i][0]*edgeCosts[0]+labelings[i][1]*edgeCosts[1]+labelings[i][2]*edgeCosts[2];
+            double value=labelings[i][0]*localEdgeCosts[0]+labelings[i][1]*localEdgeCosts[1]+labelings[i][2]*localEdgeCosts[2];
 			if(labelings[i][edgeId]){
 				min1=std::min(min1,value);
 			}
@@ -81,22 +95,29 @@ public:
 		return min1-min0;
 	}
 
-	std::unordered_map<std::pair<size_t,size_t>,double> adjustCostAndGetMessages(){ //returns edge as pair of vertices and update cost
-		std::unordered_map<std::pair<size_t,size_t>,double> outputMap;
-		double d=delta(0);
-		edgeCosts[0]-=d;
-		outputMap[{vInd,uInd}]=d;
+    std::array<double,3> getAllMinMarginals() const{
+        std::array<double,3> localEdgeCosts=edgeCosts;
+        std::array<double,3> minMarginals;
+        double d=delta(0,localEdgeCosts);
+        localEdgeCosts[0]-=d;
+        minMarginals[0]=d;
 
-		d=delta(1);
-		edgeCosts[1]-=d;
-		outputMap[{uInd,wInd}]=d;
+        d=delta(1,localEdgeCosts);
+        localEdgeCosts[1]-=d;
+        minMarginals[1]=d;
 
-		d=delta(2);
-		edgeCosts[2]-=d;
-		outputMap[{vInd,wInd}]=d;
+        d=delta(2,localEdgeCosts);
+        localEdgeCosts[2]-=d;
+        minMarginals[2]=d;
 
-		return outputMap;
+        return minMarginals;
 	}
+
+    double getOneMinMarginal(size_t edgeId) const{
+       assert(edgeId<=2);
+        double d=delta(edgeId,edgeCosts);
+        return d;
+    }
 
 	void updateCost(size_t edgeId,double update){  //update cost of one edge, assumed local edge ID: indices 0-2
 		assert(edgeId<=2);
@@ -122,13 +143,14 @@ public:
 				return 1;
 			}
 		}
-		return 3;
+        assert(false);
 	}
 
 private:
 	std::size_t primal_; // index of feasible labeling
 	size_t vInd,uInd,wInd;
-	double edgeCosts[3]; //vu, uw, vw
+    //double edgeCosts[3]; //vu, uw, vw
+    std::array<double,3> edgeCosts;
 	std::vector<std::bitset<3>> labelings;
 };
 
