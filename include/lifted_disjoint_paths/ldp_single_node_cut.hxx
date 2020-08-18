@@ -1234,7 +1234,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 				double bestValue=std::numeric_limits<double>::infinity();
 				auto baseIt=baseIDToOrder.find(currentVertex);
 				if(baseIt!=baseIDToOrder.end()){
-					double bCost=myStr.baseCosts[baseIt->second];
+                    double bCost=myStr.baseCosts.at(baseIt->second);
 					bestValue=bCost+nodeCost;
 				}
 				for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) {
@@ -1254,10 +1254,10 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 				indexStr[currentVertex]=bestIndex;
 				if(liftedIt!=liftedIDToOrder.end()){
 					if(onlyOne&&currentVertex!=vertex){
-						bestValue+=myStr.liftedCosts[liftedIt->second];
+                        bestValue+=myStr.liftedCosts.at(liftedIt->second);
 					}
 					else{
-						bestValue+=myStr.liftedCosts[liftedIt->second];
+                        bestValue+=myStr.liftedCosts.at(liftedIt->second);
 						double topDownValue=0;
 						auto bestTdIt=myStr.vertexIDStructure.find(currentVertex);
 						size_t bestTd=bestTdIt->second;
