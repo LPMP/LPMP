@@ -140,11 +140,9 @@ public:
 	}
 
 	template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
-	template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
+    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(baseCosts, liftedCosts); }
 
-	//auto export_variables() { return std::tie(*static_cast<std::size_t>(this)); }//TODO change this. This will not work with so many variables
-	double tmp_to_delete_val;
-	auto export_variables() { return std::tie(tmp_to_delete_val); } //?What comes here?
+    auto export_variables() { return std::tie(baseCosts, liftedCosts); }
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
 	void updateNodeCost(const double value);
@@ -432,7 +430,6 @@ nodeNotActive(sncFactor.nodeNotActive)
 	optLiftedUpToDate=sncFactor.optLiftedUpToDate;
 	optBaseUpToDate=sncFactor.optBaseUpToDate;
 
-	tmp_to_delete_val=sncFactor.tmp_to_delete_val;
 	nodeNotActiveForStructures=sncFactor.nodeNotActiveForStructures;
 	baseIDs=sncFactor.baseIDs;
 	liftedIDs=sncFactor.liftedIDs;
@@ -1278,30 +1275,17 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 						double topDownValue=0;
 						auto bestTdIt=myStr.vertexIDStructure.find(currentVertex);
 						size_t bestTd=bestTdIt->second;
-//						if(liftedCosts.count(bestTd)>0&&isOneInOpt.count(bestTd)==0){
-//
-//							//std::cout<<"new optimal vertex "<<bestTd<<std::endl;
-//
-//						}
 						if(bestTd!=getVertexToReach()){
 							topDownValue=myStr.valuesStructure.at(bestTd);
-							//std::cout<<"best td "<<bestTd<<", value "<<topDownValue<<std::endl;
+
 						}
 
-						//					auto valuesIt=myStr.valuesStructure.find(currentVertex);
-						//					if(valuesIt!=myStr.valuesStructure.end()){
-						//						topDownValue=valuesIt->second;
-						//					}
+
 						double restrictedOpt=topDownValue+bestValue;
 
 
 						double delta=restrictedOpt-myStr.optValue;
-						//std::cout<<"restricted opt "<<restrictedOpt<<std::endl;
-						//std::cout<<"orig  opt "<<myStr.optValue<<std::endl;
-						//std::cout<<"delta "<<delta<<std::endl;
 
-
-						//std::cout<<"message "<<currentVertex<<": "<<delta<<std::endl;
 
 						messages[currentVertex]=delta;
 						bestValue-=delta;
