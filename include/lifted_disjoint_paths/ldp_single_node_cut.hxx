@@ -335,9 +335,8 @@ private:
 	}
 
 
-    mutable size_t optimalSolutionBase;
-	//mutable std::unordered_set<size_t> optimalSolutionLifted;
-	mutable std::list<size_t> optimalSolutionLifted;  //maybe change to vector<bool>
+    mutable size_t optimalSolutionBase; //Contains vertices w.r.t. their order for central vertex
+    mutable std::list<size_t> optimalSolutionLifted;  //Contains IDs of vertices, not their order w.r.t. central vertex!
 
 	//std::set<size_t> optimalSolutionLifted;
 
@@ -476,7 +475,7 @@ strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 	//if(debug()) std::cout<<"lifted costs set "<<std::endl;
 	nodeNotActive=baseCosts.size();
 	//solutionCosts=std::unordered_map<size_t,double>();
-    //solutionCosts[nodeNotActive]=0;saarbrücken
+    //solutionCosts[nodeNotActive]=0;
 //	baseCosts[nodeNotActive]=0;
 	optLiftedUpToDate=false;
 	optBaseUpToDate=false;
@@ -1111,7 +1110,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
         std::vector<double> localSolutionCosts(solutionCosts.size());
 		std::vector<double> localLiftedCosts=liftedCosts;
-		StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolutionCosts,nodeID);
+        StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolutionCosts,nodeID);  //Probably is enough to use global liftedCosts
 		myStr.copyFromOther(strForUpdateValues);
 
 		myStr.setUseAllVertices(false);
@@ -1466,7 +1465,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 	std::unordered_set<size_t> closedVertices;
 	for(size_t optVertex:isOneInOpt){
         assert(optVertex<baseGraph.numberOfVertices());
-		buValuesStructure[optVertex]=currentOptValue-myStr.valuesStructure[optVertex]+localLiftedCosts[optVertex];
+        buValuesStructure[optVertex]=currentOptValue-myStr.valuesStructure[optVertex]+localLiftedCosts[liftedIDToOrder.at(optVertex)];
 		closedVertices.insert(optVertex);
 	}
 	std::unordered_map<size_t,size_t> indexStr;
@@ -1501,7 +1500,7 @@ public:
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamLeft(SINGLE_NODE_CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
 	{
-        //if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
+      //  if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
 		assert(msg_dim == 0);
 		l.updateCostSimple(msg,right_node,true);
 	}
