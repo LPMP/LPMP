@@ -196,7 +196,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     for (int i = 0; i < nr_nodes(); ++i) {
         size_t vertex=i;
         auto* snc=single_node_cut_factors_[vertex][1]->get_factor();
-        if(snc->getPrimalBaseVertexID()==base_graph_terminal_node()){
+        if(snc->isNodeActive()&&(snc->getPrimalBaseVertexID()==base_graph_terminal_node())){
 
             std::vector<bool> isOnPath(nr_nodes(),0);
             isOnPath[vertex]=1;
@@ -220,7 +220,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             for(size_t activeVertex:path){
                 auto* sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
                 std::unordered_set<size_t> activeEndpointIndices;
-                const std::vector<size_t>& liftedIDs= sncFactorIn->liftedIDs;
+                const std::vector<size_t>& liftedIDs= sncFactorIn->getLiftedIDs();
                 for (int i = 0; i < liftedIDs.size(); ++i) {
                     if(isOnPath[liftedIDs.at(i)]) activeEndpointIndices.insert(i);
                 }
@@ -415,7 +415,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 {
     read_in_mcf_costs();
     mcf_->solve();
-    double primalValue=0;
+
     for (std::size_t graph_node = 0; graph_node < nr_nodes(); ++graph_node) {
         single_node_cut_factors_[graph_node][0]->get_factor()->setNoBaseEdgeActive();
         single_node_cut_factors_[graph_node][1]->get_factor()->setNoBaseEdgeActive();
@@ -429,7 +429,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* pSNC=single_node_cut_factors_[graph_node][0]->get_factor();
                 if(mcf_->flow(edge_id) == -1) {
                     pSNC->setBaseEdgeActive(vertex_index);
-                    primalValue+=pSNC->EvaluatePrimal();
+                   // primalValue+=pSNC->EvaluatePrimal();
                 }
                 ++vertex_index;
             }
@@ -437,6 +437,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
         const std::size_t mcf_outgoing_node = outgoing_mcf_node(graph_node);
         vertex_index = 0;
+
         for (std::size_t j = 0; j < mcf_->no_outgoing_arcs(mcf_outgoing_node); ++j) {
             const std::size_t edge_id=j+mcf_->first_outgoing_arc(mcf_outgoing_node);
             const std::size_t node = mcf_->head(edge_id);
@@ -444,16 +445,27 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* pSNC=single_node_cut_factors_[graph_node][1]->get_factor();
                 if(mcf_->flow(edge_id) == 1) {
                     pSNC->setBaseEdgeActive(vertex_index);
-                    primalValue+=pSNC->EvaluatePrimal();
+                   // primalValue+=pSNC->EvaluatePrimal();
                 }
                 ++vertex_index;
             }
-
         }
     }
     const bool isFeasible=this->checkFeasibilityBaseInSnc();
     std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
     assert(isFeasible);
+    adjustLiftedLabels();
+    double primalValue=0;
+    for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
+
+        const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
+        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+        primalValue+=sncFactorIn->EvaluatePrimal();
+        primalValue+=sncFactorOut->EvaluatePrimal();
+
+
+    }
+
     std::cout<<"primal value: "<<primalValue<<std::endl;
 }
 
