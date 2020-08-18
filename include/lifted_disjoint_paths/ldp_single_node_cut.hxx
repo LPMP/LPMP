@@ -745,7 +745,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 		assert(vertexIndex<baseCosts.size());
 		baseCosts[vertexIndex]+=value;
 		solutionCosts[vertexIndex]+=value;
-		optBaseUpToDate=false;
+        optBaseUpToDate=false; //TODO sometimes can stay true
 	}
 	else{ //update in lifted edge
 
@@ -862,7 +862,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 	//std::cout<<"values updated"<<std::endl;
 
 	optimalSolutionBase=strForUpdateValues.optBase;
-	optValue=solutionCosts[optimalSolutionBase];
+    optValue=solutionCosts.at(optimalSolutionBase);
 	//std::cout<<"opt base: "<<optimalSolutionBase<<std::endl;
 
 	optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
@@ -910,10 +910,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 	//	std::cout<<"clear vs "<<std::endl;
 	}
     for (int i = 0; i < liftedIDs.size(); ++i) {
-        assert(liftedIDs[i] < baseGraph.numberOfVertices());
-		if(!lastLayerSet||isInGivenRange(liftedIDs[i],lastLayer)){
+        assert(liftedIDs.at(i) < baseGraph.numberOfVertices());
+        if(!lastLayerSet||isInGivenRange(liftedIDs.at(i),lastLayer)){
 
-            myStr.valuesStructure[liftedIDs[i]]=myStr.liftedCosts.at(i);
+            myStr.valuesStructure[liftedIDs.at(i)]=myStr.liftedCosts.at(i);
 
 		}
 	}
