@@ -1129,7 +1129,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
 
 
-        if(debug())std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
+        //if(debug())std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
 		return valueToReturn;
 
 
@@ -1380,7 +1380,7 @@ template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals() const{
 
 
-    if(debug()) std::cout<<"all lifted min marginals "<<std::endl;
+    //if(debug()) std::cout<<"all lifted min marginals "<<std::endl;
 	updateOptimal();
 	std::unordered_map<size_t,double> liftedMessages;
 
@@ -1402,7 +1402,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     auto listIt=isNotZeroInOpt.begin();
 	while(!isNotZeroInOpt.empty()){
 		size_t vertexToClose=*listIt;
-        if(debug()) std::cout<<"process vertex "<<vertexToClose<<std::endl;
+      //  if(debug()) std::cout<<"process vertex "<<vertexToClose<<std::endl;
 
         updateValues(myStr,vertexToClose);
 		double newOpt=myStr.optValue;
@@ -1520,7 +1520,7 @@ public:
         if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 		const double delta = r.oneLiftedMinMarginal(left_node);
 		msg[0] -= omega * delta;
-        if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
+    //    if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
@@ -1540,9 +1540,9 @@ public:
             std::cout<<"running get all lifted marginals to left "<<r.nodeID<<std::endl;
         }
         const std::vector<double> msg_vec = r.getAllLiftedMinMarginals();
-        if(debug()){
-            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
-        }
+//        if(debug()){
+//            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
+//        }
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
             auto& msg = (*it).GetMessageOp();
@@ -1550,9 +1550,9 @@ public:
             const size_t right_node = msg.right_node;
             (*it)[0] -= omega * msg_vec.at(left_node);
         }
-        if(debug()){
-            std::cout<<"messages added "<<std::endl;
-        }
+//        if(debug()){
+//            std::cout<<"messages added "<<std::endl;
+//        }
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
@@ -1562,9 +1562,9 @@ public:
             std::cout<<"running get all lifted marginals to right "<<l.nodeID<<std::endl;
         }
         const std::vector<double> msg_vec = l.getAllLiftedMinMarginals();
-        if(debug()){
-            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
-        }
+//        if(debug()){
+//            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
+//        }
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
             auto& msg = (*it).GetMessageOp();
