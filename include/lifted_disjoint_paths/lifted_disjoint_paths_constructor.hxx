@@ -312,12 +312,12 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         auto* left_snc_factor=left_snc->get_factor();
         //	std::cout<<"vertex 1 "<<vertex1<<std::endl;
         for (int j = 0; j < left_snc_factor->getLiftedIDs().size(); ++j) {
-            size_t vertex2=left_snc_factor->getLiftedIDs()[j];
+            size_t vertex2=left_snc_factor->getLiftedIDs().at(j);
             //std::cout<<"vertex 2 "<<vertex2<<std::endl;
             assert(instance.getGraphLifted().findEdge(vertex1,vertex2).first);
             if(vertex2==this->base_graph_source_node()||vertex2==this->base_graph_source_node()) continue;
             auto* right_snc=single_node_cut_factors_[vertex2][0];
-            size_t i=right_snc->get_factor()->getLiftedOrderToID(vertex1);
+            size_t i=right_snc->get_factor()->getLiftedIDToOrder(vertex1);
             assert((right_snc->get_factor()->getLiftedIDs().size())>i);
             auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
             snc_lifted_messages_.push_back(message);
