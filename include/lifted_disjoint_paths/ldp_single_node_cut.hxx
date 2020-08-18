@@ -334,9 +334,8 @@ private:
 	}
 
 
-    mutable size_t optimalSolutionBase;
-	//mutable std::unordered_set<size_t> optimalSolutionLifted;
-	mutable std::list<size_t> optimalSolutionLifted;  //maybe change to vector<bool>
+    mutable size_t optimalSolutionBase; //Contains vertices w.r.t. their order for central vertex
+    mutable std::list<size_t> optimalSolutionLifted;  //Contains IDs of vertices, not their order w.r.t. central vertex!
 
 	//std::set<size_t> optimalSolutionLifted;
 
@@ -474,7 +473,7 @@ strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 	//if(debug()) std::cout<<"lifted costs set "<<std::endl;
 	nodeNotActive=baseCosts.size();
 	//solutionCosts=std::unordered_map<size_t,double>();
-    //solutionCosts[nodeNotActive]=0;saarbrücken
+    //solutionCosts[nodeNotActive]=0;
 //	baseCosts[nodeNotActive]=0;
 	optLiftedUpToDate=false;
 	optBaseUpToDate=false;
@@ -1109,7 +1108,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
         std::vector<double> localSolutionCosts(solutionCosts.size());
 		std::vector<double> localLiftedCosts=liftedCosts;
-		StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolutionCosts,nodeID);
+        StrForUpdateValues myStr(baseCosts,localLiftedCosts,localSolutionCosts,nodeID);  //Probably is enough to use global liftedCosts
 		myStr.copyFromOther(strForUpdateValues);
 
 		myStr.setUseAllVertices(false);
@@ -1127,7 +1126,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
 
 
-        if(debug())std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
+        //if(debug())std::cout<<"marginal "<<valueToReturn<<"node cost "<<nodeCost<<std::endl;
 		return valueToReturn;
 
 
@@ -1378,7 +1377,7 @@ template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals() const{
 
 
-    if(debug()) std::cout<<"all lifted min marginals "<<std::endl;
+    //if(debug()) std::cout<<"all lifted min marginals "<<std::endl;
 	updateOptimal();
 	std::unordered_map<size_t,double> liftedMessages;
 
@@ -1400,7 +1399,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     auto listIt=isNotZeroInOpt.begin();
 	while(!isNotZeroInOpt.empty()){
 		size_t vertexToClose=*listIt;
-        if(debug()) std::cout<<"process vertex "<<vertexToClose<<std::endl;
+      //  if(debug()) std::cout<<"process vertex "<<vertexToClose<<std::endl;
 
         updateValues(myStr,vertexToClose);
 		double newOpt=myStr.optValue;
@@ -1464,7 +1463,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 	std::unordered_set<size_t> closedVertices;
 	for(size_t optVertex:isOneInOpt){
         assert(optVertex<baseGraph.numberOfVertices());
-		buValuesStructure[optVertex]=currentOptValue-myStr.valuesStructure[optVertex]+localLiftedCosts[optVertex];
+        buValuesStructure[optVertex]=currentOptValue-myStr.valuesStructure[optVertex]+localLiftedCosts[liftedIDToOrder.at(optVertex)];
 		closedVertices.insert(optVertex);
 	}
 	std::unordered_map<size_t,size_t> indexStr;
@@ -1499,7 +1498,7 @@ public:
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamLeft(SINGLE_NODE_CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
 	{
-        //if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
+      //  if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
 		assert(msg_dim == 0);
 		l.updateCostSimple(msg,right_node,true);
 	}
@@ -1518,7 +1517,7 @@ public:
         if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 		const double delta = r.oneLiftedMinMarginal(left_node);
 		msg[0] -= omega * delta;
-        if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
+    //    if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
@@ -1538,9 +1537,9 @@ public:
             std::cout<<"running get all lifted marginals to left "<<r.nodeID<<std::endl;
         }
         const std::vector<double> msg_vec = r.getAllLiftedMinMarginals();
-        if(debug()){
-            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
-        }
+//        if(debug()){
+//            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
+//        }
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
             auto& msg = (*it).GetMessageOp();
@@ -1548,9 +1547,9 @@ public:
             const size_t right_node = msg.right_node;
             (*it)[0] -= omega * msg_vec.at(left_node);
         }
-        if(debug()){
-            std::cout<<"messages added "<<std::endl;
-        }
+//        if(debug()){
+//            std::cout<<"messages added "<<std::endl;
+//        }
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
@@ -1560,9 +1559,9 @@ public:
             std::cout<<"running get all lifted marginals to right "<<l.nodeID<<std::endl;
         }
         const std::vector<double> msg_vec = l.getAllLiftedMinMarginals();
-        if(debug()){
-            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
-        }
+//        if(debug()){
+//            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
+//        }
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
             auto& msg = (*it).GetMessageOp();
