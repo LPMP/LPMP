@@ -222,7 +222,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 std::unordered_set<size_t> activeEndpointIndices;
                 const std::vector<size_t>& liftedIDs= sncFactorIn->liftedIDs;
                 for (int i = 0; i < liftedIDs.size(); ++i) {
-                    if(isOnPath[liftedIDs.at(i)) activeEndpointIndices.insert(i);
+                    if(isOnPath[liftedIDs.at(i)]) activeEndpointIndices.insert(i);
                 }
                 sncFactorIn->setPrimalLifted(activeEndpointIndices);
             }
