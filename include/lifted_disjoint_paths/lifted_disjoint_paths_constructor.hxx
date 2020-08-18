@@ -81,8 +81,93 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
 bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::checkFeasibilityLiftedInSnc(){
-  //TODO check this
-//    bool isFeasible=true;
+  //Assumes primal feasible solution w.r.t. base edges and node labels
+    bool isFeasible=true;
+
+
+    for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
+        size_t vertex=i;
+        auto* sncOut=single_node_cut_factors_[vertex][1]->get_factor();
+        auto* sncIn=single_node_cut_factors_[vertex][0]->get_factor();
+        if(sncOut->isNodeActive()!=sncIn->isNodeActive()){
+            isFeasible=false;
+            break;
+        }
+        if(!sncOut->isNodeActive()){
+            if(!sncOut->getPrimalLiftedIndices().empty()){
+                isFeasible=false;
+            }
+            if(!sncIn->getPrimalLiftedIndices().empty()){
+                isFeasible=false;
+            }
+        }
+
+    }
+
+    for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
+        size_t vertex=i;
+        auto* snc=single_node_cut_factors_[vertex][1]->get_factor();
+        if(snc->isNodeActive()&&(snc->getPrimalBaseVertexID()==base_graph_terminal_node())){
+
+            std::vector<bool> isOnPath(nr_nodes(),0);
+            std::list<size_t> path;
+
+            while(vertex!=base_graph_source_node()&&isFeasible){
+                auto* sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
+                const std::vector<size_t>& liftedIDs= sncFactorOut->getLiftedIDs();
+                const std::unordered_set<size_t>& activeInFactor=sncFactorOut->getPrimalLiftedIndices();
+                for (int i = 0; i < liftedIDs.size(); ++i) {
+                    if(isOnPath[liftedIDs.at(i)]){
+                        if(activeInFactor.count(i)==0){
+                            isFeasible=false;
+                            break;
+                        }
+                    }
+                }
+                for(size_t activeV:activeInFactor){
+                    size_t activeVertexID=liftedIDs[activeV];
+                    if(!isOnPath[activeVertexID]){
+                        isFeasible=false;
+                        break;
+                    }
+                }
+                isOnPath[vertex]=1;
+                path.push_front(vertex);
+                auto* sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
+                vertex=sncFactorIn->getPrimalBaseVertexID();
+            }
+            for(size_t activeVertex:path){
+                auto* sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
+
+                const std::vector<size_t>& liftedIDs= sncFactorIn->getLiftedIDs();
+                const std::unordered_set<size_t>& activeInFactor=sncFactorIn->getPrimalLiftedIndices();
+                for (int i = 0; i < liftedIDs.size(); ++i) {
+                    if(isOnPath[liftedIDs.at(i)]){
+                        if(activeInFactor.count(i)==0){
+                            isFeasible=false;
+                            break;
+                        }
+                    }
+                }
+                for(size_t activeV:activeInFactor){
+                    size_t activeVertexID=liftedIDs[activeV];
+                    if(!isOnPath[activeVertexID]){
+                        isFeasible=false;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return isFeasible;
+
+
+
+
+
+
+
 //    for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
 //        size_t vertex=i;
 //        const auto* snc=single_node_cut_factors_[vertex][1]->get_factor();
@@ -117,7 +202,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 //                path.push_front(vertex);
 //                auto* sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
 //                size_t ind=sncFactorIn->getPrimalBase();
-//                vertex=sncFactorIn.baseIDs[ind];
+//                vertex=sncFactorIn->baseIDs.at(ind);
 
 //            }
 //            if(isFeasible){
@@ -153,6 +238,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     //Check flow conservation
     bool isFeasible=true;
+
     std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
     for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
 
@@ -192,7 +278,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::adjustLiftedLabels(){
- //TODO fix this
+//Assumes primal feasible solution w.r.t. base edges and node labels
     for (int i = 0; i < nr_nodes(); ++i) {
         size_t vertex=i;
         auto* snc=single_node_cut_factors_[vertex][1]->get_factor();
@@ -226,6 +312,14 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 }
                 sncFactorIn->setPrimalLifted(activeEndpointIndices);
             }
+        }
+        else if(!(snc->isNodeActive())){
+            auto* sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
+            std::unordered_set<size_t> verticesOfActiveEdges;
+            sncFactorOut->setPrimalLifted(verticesOfActiveEdges);
+            auto* sncFactorIn=single_node_cut_factors_[vertex][0]->get_factor();
+            sncFactorIn->setPrimalLifted(verticesOfActiveEdges);
+
         }
     }
 }
@@ -451,10 +545,12 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             }
         }
     }
-    const bool isFeasible=this->checkFeasibilityBaseInSnc();
+    bool isFeasible=this->checkFeasibilityBaseInSnc();
     std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
     assert(isFeasible);
     adjustLiftedLabels();
+    isFeasible=this->checkFeasibilityLiftedInSnc();
+    assert(isFeasible);
     double primalValue=0;
     for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
 
