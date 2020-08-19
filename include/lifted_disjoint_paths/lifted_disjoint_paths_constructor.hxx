@@ -517,6 +517,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     std::vector<double> baseEdgeLabels(baseGraph.numberOfEdges());
     std::vector<double> liftedEdgeLabels(liftedGraph.numberOfEdges());
 
+    std::multimap<double,ldp_triangle_factor> candidateFactors;
+
+
     for (size_t i = 0; i < nr_nodes(); ++i) {
 
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
@@ -550,9 +553,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             size_t edge=liftedGraph.edgeFromVertex(i,j);
             liftedEdgeLabels.at(edge)-=minMarginalsLiftedOut[j];
         }
-    }
 
-    std::multimap<double,ldp_triangle_factor> candidateFactors;
+    }
 
     for (size_t vertex = 0; vertex < nr_nodes(); ++vertex) {
         //base edges out
@@ -561,7 +563,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             size_t edgeOut=baseGraph.edgeFromVertex(vertex,beOut);
             double valueOut=baseEdgeLabels[edgeOut];
             if(valueOut>-eps) continue;
-           // if(valueOut<eps&&valueOut>-eps) continue;
+
+            //base edges in
             for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
                 size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
@@ -569,7 +572,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     size_t edgeIn=baseGraph.edgeToVertex(vertex,beIn);
                     double valueIn=baseEdgeLabels.at(edgeIn);
                     double valueConnecting=liftedEdgeLabels.at(findEdge.second);
-                   // if((valueIn<eps&&valueIn>-eps)||(valueConnecting<eps&&valueConnecting>-eps)) continue;
+                    // if((valueIn<eps&&valueIn>-eps)||(valueConnecting<eps&&valueConnecting>-eps)) continue;
                     if(valueIn<-eps&&valueConnecting>eps){
                         double improvement=std::min({-valueOut,-valueIn,valueConnecting});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
@@ -581,6 +584,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             }
 
+            //lifted edges in
             for (size_t leIn = 0; leIn < liftedGraph.numberOfEdgesToVertex(vertex); ++leIn) {
                 size_t vertexIn=liftedGraph.vertexToVertex(vertex,leIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
@@ -607,6 +611,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             size_t edgeOut=liftedGraph.edgeFromVertex(vertex,leOut);
             double valueOut=liftedEdgeLabels[edgeOut];
             if(valueOut<eps&&valueOut>-eps) continue;
+
+            //base edges in
             for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
                 size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
@@ -625,6 +631,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 }
 
             }
+            //lifted edges in
             for (size_t leIn = 0; leIn < liftedGraph.numberOfEdgesToVertex(vertex); ++leIn) {
                 size_t vertexIn=liftedGraph.vertexToVertex(vertex,leIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
@@ -634,7 +641,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     double valueConnecting=liftedEdgeLabels.at(findEdge.second);
                     if((valueOut<-eps&&valueIn<-eps&&valueConnecting>eps)||(valueOut<-eps&&valueIn>eps&&valueConnecting<-eps)||(valueOut>eps&&valueIn<-eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
-                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,false,false);
+                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,false);
                         candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                     }
 
