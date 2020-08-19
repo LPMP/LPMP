@@ -56,8 +56,9 @@ private:
     using mcf_solver_type = MCF::SSP<long, double>;
     std::unique_ptr<mcf_solver_type> mcf_; // minimum cost flow factor for base edges
     std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>> single_node_cut_factors_;
+    std::vector<TRIANGLE_FACTOR_CONT*> triangle_factors_;
     std::vector<SINGLE_NODE_CUT_LIFTED_MESSAGE*> snc_lifted_messages_;
-    std::vector<SNC_TRIANGLE_MESSAGE*> SNC_TRIANGLE_MESSAGEs_;
+    std::vector<SNC_TRIANGLE_MESSAGE*> snc_triangle_messages_;
 
 };
 
@@ -397,6 +398,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     //sncDebug(20,1);
     if(debug()) std::cout<<"messages added"<<std::endl;
+  //  Tighten(200);
 }
 
 
@@ -509,6 +511,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
+
+    std::cout<<"tighten "<<std::endl;
 
     const lifted_disjoint_paths::LdpInstance &instance=single_node_cut_factors_[0][0]->get_factor()->getLdpInstance();
     const andres::graph::Digraph<>& baseGraph=instance.getGraph();
@@ -654,8 +658,54 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         }
     }
 
+size_t counter=0;
+for(auto iter=candidateFactors.rbegin();iter!=candidateFactors.rend()&&counter<nr_constraints_to_add;iter++){
+    const ldp_triangle_factor& trFact=iter->second;
+    auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact.getV1(),trFact.getV2(),trFact.getV3(),trFact.getEdgeCosts(),trFact.isV1V2Base(),trFact.isV2V3Base());
+    triangle_factors_.push_back(triangleFactor);
+//    size_t v1=triangleFactor->get_factor()->getV1();
+//    size_t v2=triangleFactor->get_factor()->getV2();
+//    size_t v3=triangleFactor->get_factor()->getV3();
+
+//    auto * sncOutV1=single_node_cut_factors_[v1][1]->get_factor();
+//    auto * sncOutV2=single_node_cut_factors_[v2][1]->get_factor();
+//    auto * sncInV2=single_node_cut_factors_[v2][0]->get_factor();
+//    auto * sncInV3=single_node_cut_factors_[v3][0]->get_factor();
+
+//    bool isv1v2Base=triangleFactor->get_factor()->isV1V2Base();
+//    bool isv2v3Base=triangleFactor->get_factor()->isV2V3Base();
+
+//    std::vector<size_t> trInd={0,2};
+//    std::vector<size_t> vertices={v2,v3};
+//    std::vector<bool> isLifted={!isv1v2Base,true};
+
+//    auto * message1=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV1, trInd, vertices,isLifted);
+//    snc_triangle_messages_.push_back(message1);
+
+//    trInd={0};
+//    vertices={v1};
+//    isLifted={!isv1v2Base};
+//    auto * message2=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV2, trInd, vertices,isLifted);
+//    snc_triangle_messages_.push_back(message2);
+
+//    trInd={1};
+//    vertices={v3};
+//    isLifted={!isv2v3Base};
+//    auto * message3=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV2, trInd, vertices,isLifted);
+//    snc_triangle_messages_.push_back(message3);
+
+//    trInd={1,2};
+//    vertices={v2,v1};
+//    isLifted={!isv2v3Base,true};
+//    auto * message4=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV3, trInd, vertices,isLifted);
+//    snc_triangle_messages_.push_back(message4);
+
+//    auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+//    snc_lifted_messages_.push_back(message);
 
 
+    counter++;
+}
 
 
 
@@ -675,12 +725,6 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 //    andres::graph::Digraph<> graph; //TODO initialize this: Actually, it is needed lifted with some base edges. Maybe copy of lifted, add some edges?
 //    components.build(graph,costs);
 //    //for all edges with positive costs whose vertices belong to the same component: add triangle (priority queue)
-
-
-
-
-
-
 
 }
 

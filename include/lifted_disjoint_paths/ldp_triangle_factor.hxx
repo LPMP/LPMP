@@ -26,6 +26,8 @@ public:
 		vInd(v),
 		uInd(u),
         wInd(w),
+        v1v2Base(vuBase),
+        v2v3Base(uwBase),
         edgeCosts(costs)
 {
 
@@ -40,6 +42,45 @@ public:
 		primal_=0;
 }
 
+    ldp_triangle_factor(const ldp_triangle_factor& trFactor): //TODO remember vertex indices instead of edge indices?
+        vInd(trFactor.vInd),
+        uInd(trFactor.uInd),
+        wInd(trFactor.wInd),
+        v1v2Base(trFactor.v1v2Base),
+        v2v3Base(trFactor.v2v3Base),
+        edgeCosts(trFactor.edgeCosts),
+        labelings(trFactor.labelings),
+        primal_(trFactor.primal_)
+{
+
+}
+
+
+    const std::array<double,3> getEdgeCosts()const {
+        return edgeCosts;
+    }
+
+    const size_t & getV1()const {
+        return vInd;
+    }
+
+
+    const size_t & getV2()const {
+        return uInd;
+    }
+
+
+    const size_t & getV3()const {
+        return wInd;
+    }
+
+    bool isV1V2Base()const{
+        return v1v2Base;
+    }
+
+    bool isV2V3Base()const{
+        return v2v3Base;
+    }
 	double LowerBound() const{
 		double minValue=0;
 		short minIndex=0;
@@ -125,13 +166,13 @@ public:
         return d;
     }
 
-	void updateCost(size_t edgeId,double update){  //update cost of one edge, assumed local edge ID: indices 0-2
+    void updateCost(size_t edgeId,double update) {  //update cost of one edge, assumed local edge ID: indices 0-2
 		assert(edgeId<=2);
 		edgeCosts[edgeId]+=update;
 	}
 
-	void updateCost(size_t v1, size_t v2,double update){ //assumes directed edge vertices
-		size_t e=getLocalEdgeID(v1,v2);
+    void updateCost(size_t v1, size_t v2,double update){ //assumes directed edge vertices
+        size_t e=getLocalEdgeID(v1,v2);
 		updateCost(e,update);
 	}
 
@@ -158,6 +199,8 @@ private:
     //double edgeCosts[3]; //vu, uw, vw
     std::array<double,3> edgeCosts;
 	std::vector<std::bitset<3>> labelings;
+    const bool v1v2Base;
+    const bool v2v3Base;
 };
 
 
@@ -167,46 +210,53 @@ private:
 class ldp_snc_triangle_message
 {
 public:
-    ldp_snc_triangle_message(const std::size_t _indexInTriangle, const std::size_t _vertexInSnc,const bool & _isLifted)
-    : vertexInSnc(_vertexInSnc),
-      indexInTriangle(_indexInTriangle),
+    ldp_snc_triangle_message(const std::vector<size_t>& _indicesInTriangle, const std::vector<size_t>& _verticesInSnc,const std::vector<bool> & _isLifted)
+    : verticesInSnc(_verticesInSnc),
+      indicesInTriangle(_indicesInTriangle),
       isLifted(_isLifted)
-    {}
+    {
+        assert(verticesInSnc.size()==isLifted.size()&&indicesInTriangle.size()==isLifted.size());
+        assert(verticesInSnc.size()<=2);
+    }
 
     template<typename TRIANGLE_FACTOR>
     void RepamLeft(TRIANGLE_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
       //  if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
-        assert(msg_dim == 0);
-        l.updateCost(msg,indexInTriangle);
-    }
+        assert(msg_dim == 0 || msg_dim == 1);
+        l.updateCost(msg,indicesInTriangle[msg_dim]);
+     }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
       //  if(debug()) std::cout<<"repam right "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
-        assert(msg_dim == 0);
-        r.updateCostSimple(msg,vertexInSnc,isLifted);
+        assert(msg_dim == 0||msg_dim==1);
+        r.updateCostSimple(msg,verticesInSnc[msg_dim],isLifted[msg_dim]);
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
-       double delta=0;
-       if(isLifted){
-           delta = r.oneLiftedMinMarginal(vertexInSnc);
-       }
-       else{
-           delta = r.getOneBaseEdgeMinMarginal(vertexInSnc);
-       }
-       msg[0] -= omega * delta;
+        for (size_t i=0;i<isLifted.size();i++) {
+            double delta=0;
+            if(isLifted[i]){
+                delta = r.oneLiftedMinMarginal(verticesInSnc[i]);
+            }
+            else{
+                delta = r.getOneBaseEdgeMinMarginal(verticesInSnc[i]);
+            }
+            msg[i] -= omega * delta;
+        }
     }
 
     template<typename TRIANGLE_FACTOR, typename MSG>
     void send_message_to_right(const TRIANGLE_FACTOR& l, MSG& msg, const double omega)
     {
-        const double delta = l.getOneMinMarginal(indexInTriangle);
-        msg[0] -= omega * delta;
+        for (size_t i=0;i<indicesInTriangle.size();i++) {
+            const double delta = l.getOneMinMarginal(indicesInTriangle[i]);
+            msg[i] -= omega * delta;
+        }
     }
 
 
@@ -217,7 +267,7 @@ public:
 
         const std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
         std::vector<double> localBaseCost=r.getBaseCosts();
-        for (int i = 0; i < localBaseCost.size(); ++i) {
+        for (size_t i = 0; i < localBaseCost.size(); ++i) {
             localBaseCost[i]-=msg_vec_base[i];
         }
         const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);
@@ -225,15 +275,16 @@ public:
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
             auto& msg = (*it).GetMessageOp();
-            const size_t vertex = msg.vertexInSnc;
-            bool isLifted=msg.isLifted;
-            if(isLifted){
-                (*it)[0] -= omega * msg_vec_lifted.at(vertex);
+            for (int i = 0; i <msg.verticesInSnc.size(); ++i) {
+                const size_t vertex = msg.verticesInSnc[i];
+                bool lifted=msg.isLifted[i];
+                if(lifted){
+                    (*it)[i] -= omega * msg_vec_lifted.at(vertex);
+                }
+                else{
+                    (*it)[i] -= omega * msg_vec_base.at(vertex);
+                }
             }
-            else{
-                (*it)[0] -= omega * msg_vec_base.at(vertex);
-            }
-
         }
     }
 
@@ -241,13 +292,16 @@ public:
     static void SendMessagesToRight(const TRIANGLE_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
     {
 
-        const std::vector<double> msg_vec = l.getAllMinMarginals();
+        const std::array<double,3> msg_vec = l.getAllMinMarginals();
 
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
             auto& msg = (*it).GetMessageOp();
-            const size_t indexInTr = msg.indexInTriangle;
-            (*it).operator[](0)-= 0.5*omega * msg_vec.at(indexInTr);
+            for (int i = 0; i < msg.indicesInTriangle.size(); ++i) {
+                const size_t indexInTr = msg.indicesInTriangle[i];
+                (*it)[i]-= 0.5*omega * msg_vec.at(indexInTr);
+            }
+
         }
 
     }
@@ -257,21 +311,25 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR,typename TRIANGLE_FACTOR>
     bool check_primal_consistency(const TRIANGLE_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
     {
-        const bool triangleActive = l.getPrimal[indexInTriangle];
-        bool edgeActive=false;
-        if(isLifted){
-            edgeActive=r.isActiveInPrimalLifted(vertexInSnc);
+        bool isConsistent=true;
+        for (int i = 0; i < verticesInSnc.size()&&isConsistent; ++i) {
+            const bool triangleActive = l.getPrimal[indicesInTriangle[i]];
+            bool edgeActive=false;
+            if(isLifted[i]){
+                edgeActive=r.isActiveInPrimalLifted(verticesInSnc[i]);
+            }
+            else{
+                edgeActive=r.getPrimalBaseIndex()==verticesInSnc[i];
+            }
+            isConsistent=(edgeActive==triangleActive);
         }
-        else{
-            edgeActive=r.getPrimalBaseIndex()==vertexInSnc;
-        }
-        return edgeActive==triangleActive;
+        return isConsistent;
     }
 
 private:
-    const std::size_t indexInTriangle;
-    const std::size_t vertexInSnc;
-    const bool isLifted;
+    const std::vector<size_t> indicesInTriangle;
+    const std::vector<size_t> verticesInSnc;
+    const std::vector<bool> isLifted;
 };
 
 
