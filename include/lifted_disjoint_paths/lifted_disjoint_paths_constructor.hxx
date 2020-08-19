@@ -3,14 +3,17 @@
 #include "LP.h"
 #include "solver.hxx"
 #include "lifted_disjoint_paths/ldp_instance.hxx"
+#include "ldp_triangle_factor.hxx"
 #include "MCF-SSP/mcf_ssp.hxx"
 #include <unordered_map>
+#include<andres/graph/components.hxx>
+#include<map>
 
 #include <memory>
 
 namespace LPMP {
 
-template<class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
+template<class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 class lifted_disjoint_paths_constructor
 {
 public:
@@ -54,12 +57,12 @@ private:
     std::unique_ptr<mcf_solver_type> mcf_; // minimum cost flow factor for base edges
     std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>> single_node_cut_factors_;
     std::vector<SINGLE_NODE_CUT_LIFTED_MESSAGE*> snc_lifted_messages_;
-    std::vector<SNC_NODE_MESSAGE*> snc_node_messages_;
+    std::vector<SNC_TRIANGLE_MESSAGE*> SNC_TRIANGLE_MESSAGEs_;
 
 };
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_NODE_MESSAGE>
-std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_NODE_MESSAGE>::base_graph_node(const std::size_t mcf_node) const
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_TRIANGLE_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_TRIANGLE_MESSAGE>::base_graph_node(const std::size_t mcf_node) const
 {
     assert(mcf_node < mcf_->no_nodes());
     if(mcf_node == mcf_source_node())
@@ -69,8 +72,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     return mcf_node / 2;
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::checkFeasibilityInSnc(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::checkFeasibilityInSnc(){
     bool isFeasible=checkFeasibilityBaseInSnc();
     if(isFeasible){
         isFeasible=checkFeasibilityLiftedInSnc();
@@ -79,8 +82,8 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::checkFeasibilityLiftedInSnc(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::checkFeasibilityLiftedInSnc(){
   //Assumes primal feasible solution w.r.t. base edges and node labels
     bool isFeasible=true;
 
@@ -171,8 +174,8 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::checkFeasibilityBaseInSnc(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::checkFeasibilityBaseInSnc(){
 
     //Check flow conservation
     bool isFeasible=true;
@@ -214,8 +217,8 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::adjustLiftedLabels(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::adjustLiftedLabels(){
 //Assumes primal feasible solution w.r.t. base edges and node labels
     for (int i = 0; i < nr_nodes(); ++i) {
         size_t vertex=i;
@@ -262,8 +265,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
 {
 
     // first construct minimum cost flow factor for base edges
@@ -337,7 +340,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     // get outgoing factor container -> left_snc, left_node
     // get incoming factor container -> right_snc, right_node
 
-    //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>(left_snc, right_snc, left_node, right_node);
+    //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>(left_snc, right_snc, left_node, right_node);
 
     for (int vertex1 = 0; vertex1 < single_node_cut_factors_.size(); ++vertex1) {
         auto* left_snc=single_node_cut_factors_[vertex1][1];
@@ -388,8 +391,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     //        	if(i==this->base_graph_source_node()||i==this->base_graph_terminal_node()) continue;
     //        	auto left_snc=single_node_cut_factors_[i][0];
     //        	auto right_snc=single_node_cut_factors_[i][1];
-    //        	auto * message=lp_->template add_message<SNC_NODE_MESSAGE>(left_snc, right_snc, i);
-    //        	snc_node_messages_.push_back(message);
+    //        	auto * message=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(left_snc, right_snc, i);
+    //        	SNC_TRIANGLE_MESSAGEs_.push_back(message);
     //        }
 
     //sncDebug(20,1);
@@ -397,8 +400,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::sncDebug(size_t vertex,bool isOut)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::sncDebug(size_t vertex,bool isOut)
 {
     std::cout<<"print node "<<vertex<<std::endl;
     auto* sncFactor=single_node_cut_factors_[vertex][isOut]->get_factor();
@@ -442,8 +445,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::ComputePrimal()
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::ComputePrimal()
 {
     read_in_mcf_costs();
     mcf_->solve();
@@ -490,7 +493,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     isFeasible=this->checkFeasibilityLiftedInSnc();
     assert(isFeasible);
     double primalValue=0;
-    for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
+    for (int i = 0; i < nr_nodes(); ++i) {
 
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
         const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
@@ -503,13 +506,178 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     std::cout<<"primal value: "<<primalValue<<std::endl;
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
+
+    const lifted_disjoint_paths::LdpInstance &instance=single_node_cut_factors_[0][0]->get_factor()->getLdpInstance();
+    const andres::graph::Digraph<>& baseGraph=instance.getGraph();
+    const andres::graph::Digraph<>& liftedGraph=instance.getGraphLifted();
+
+    std::vector<double> baseEdgeLabels(baseGraph.numberOfEdges());
+    std::vector<double> liftedEdgeLabels(liftedGraph.numberOfEdges());
+
+    for (size_t i = 0; i < nr_nodes(); ++i) {
+
+        const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
+        std::vector<double> minMarginalsIn=sncFactorIn->getAllBaseMinMarginals();
+        std::vector<double> localBaseCostsIn=sncFactorIn->getBaseCosts();
+        for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
+            size_t edge=baseGraph.edgeToVertex(i,j);
+            baseEdgeLabels.at(edge)+=minMarginalsIn[j];
+            localBaseCostsIn.at(j)+=minMarginalsIn.at(j);
+        }
+
+
+        std::vector<double> minMarginalsLiftedIn=sncFactorIn->getAllLiftedMinMarginals(&localBaseCostsIn);
+        for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
+            size_t edge=liftedGraph.edgeToVertex(i,j);
+            liftedEdgeLabels.at(edge)+=minMarginalsLiftedIn[j];
+        }
+
+        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+        std::vector<double> localBaseCostsOut=sncFactorOut->getBaseCosts();
+        std::vector<double> minMarginalsOut=sncFactorOut->getAllBaseMinMarginals();
+        for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
+            size_t edge=baseGraph.edgeFromVertex(i,j);
+            baseEdgeLabels.at(edge)+=minMarginalsOut[j];
+            localBaseCostsOut.at(j)+=minMarginalsOut.at(j);
+        }
+
+
+        std::vector<double> minMarginalsLiftedOut=sncFactorOut->getAllLiftedMinMarginals(&localBaseCostsOut);
+        for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
+            size_t edge=liftedGraph.edgeFromVertex(i,j);
+            liftedEdgeLabels.at(edge)-=minMarginalsLiftedOut[j];
+        }
+    }
+
+    std::multimap<double,ldp_triangle_factor> candidateFactors;
+
+    for (size_t vertex = 0; vertex < nr_nodes(); ++vertex) {
+        //base edges out
+        for (size_t beOut = 0; beOut < baseGraph.numberOfEdgesFromVertex(vertex); ++beOut) {
+            size_t vertexOut=baseGraph.vertexFromVertex(vertex,beOut);
+            size_t edgeOut=baseGraph.edgeFromVertex(vertex,beOut);
+            double valueOut=baseEdgeLabels[edgeOut];
+            if(valueOut>-eps) continue;
+           // if(valueOut<eps&&valueOut>-eps) continue;
+            for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
+                size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
+                auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
+                if(findEdge.first){
+                    size_t edgeIn=baseGraph.edgeToVertex(vertex,beIn);
+                    double valueIn=baseEdgeLabels.at(edgeIn);
+                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                   // if((valueIn<eps&&valueIn>-eps)||(valueConnecting<eps&&valueConnecting>-eps)) continue;
+                    if(valueIn<-eps&&valueConnecting>eps){
+                        double improvement=std::min({-valueOut,-valueIn,valueConnecting});
+                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,true); //TODO this will be templetized
+                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+
+                    }
+                }
+
+            }
+
+            for (size_t leIn = 0; leIn < liftedGraph.numberOfEdgesToVertex(vertex); ++leIn) {
+                size_t vertexIn=liftedGraph.vertexToVertex(vertex,leIn);
+                auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
+                if(findEdge.first){
+                    size_t edgeIn=liftedGraph.edgeToVertex(vertex,leIn);
+                    double valueIn=liftedEdgeLabels.at(edgeIn);
+                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                    if((valueIn<-eps&&valueConnecting>eps)||(valueIn>eps&&valueConnecting<-eps)){
+                        double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
+                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,true);
+                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                    }
+
+                }
+
+            }
+
+        }
+
+        //lifted edges out
+        for (size_t leOut = 0; leOut < liftedGraph.numberOfEdgesFromVertex(vertex); ++leOut) {
+            size_t vertexOut=liftedGraph.vertexFromVertex(vertex,leOut);
+            size_t edgeOut=liftedGraph.edgeFromVertex(vertex,leOut);
+            double valueOut=liftedEdgeLabels[edgeOut];
+            if(valueOut<eps&&valueOut>-eps) continue;
+            for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
+                size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
+                auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
+                if(findEdge.first){
+                    size_t edgeIn=baseGraph.edgeToVertex(vertex,beIn);
+                    double valueIn=baseEdgeLabels.at(edgeIn);
+                    if(valueIn>-eps) continue;
+                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                    if((valueOut<-eps&&valueConnecting>eps)||(valueOut>eps&&valueConnecting<-eps)){
+                        double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
+                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,false); //TODO this will be templetized
+                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+
+                    }
+                }
+
+            }
+            for (size_t leIn = 0; leIn < liftedGraph.numberOfEdgesToVertex(vertex); ++leIn) {
+                size_t vertexIn=liftedGraph.vertexToVertex(vertex,leIn);
+                auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
+                if(findEdge.first){
+                    size_t edgeIn=liftedGraph.edgeToVertex(vertex,leIn);
+                    double valueIn=liftedEdgeLabels.at(edgeIn);
+                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                    if((valueOut<-eps&&valueIn<-eps&&valueConnecting>eps)||(valueOut<-eps&&valueIn>eps&&valueConnecting<-eps)||(valueOut>eps&&valueIn<-eps&&valueConnecting<-eps)){
+                        double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
+                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,false,false);
+                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                    }
+
+                }
+
+            }
+
+
+        }
+    }
+
+
+
+
+
+
+
+
+//    andres::graph::ComponentsBySearch<andres::graph::Digraph<>> components;
+//    struct ForLabels{
+//        ForLabels(const std::vector<double>& costs):myCosts(costs){}
+//        bool vertex(size_t i) const {return true;}
+//        bool edge(size_t i) const {
+//            return myCosts.at(i)<0;
+//        }
+//        const std::vector<double>& myCosts;
+//    };
+//    std::vector<double> costs(nr_nodes(),0);
+//    //TODO initialize costs with lifted min marginals (evt. base min marginals)
+//    andres::graph::Digraph<> graph; //TODO initialize this: Actually, it is needed lifted with some base edges. Maybe copy of lifted, add some edges?
+//    components.build(graph,costs);
+//    //for all edges with positive costs whose vertices belong to the same component: add triangle (priority queue)
+
+
+
+
+
+
+
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::mcf_node_to_graph_node(std::size_t i) const
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::mcf_node_to_graph_node(std::size_t i) const
 {
     assert(i < mcf_->no_nodes());
     if(i == mcf_source_node())
@@ -520,8 +688,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         return i/2;
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_NODE_MESSAGE>::read_in_mcf_costs(const bool change_marginals)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_TRIANGLE_MESSAGE>::read_in_mcf_costs(const bool change_marginals)
 {
     mcf_->reset_costs();
 
@@ -600,8 +768,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::write_back_mcf_costs()
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::write_back_mcf_costs()
 {
     assert(std::abs(mcf_->potential(mcf_source_node()) - mcf_->potential(mcf_terminal_node())) <= 1e-8);
     for(std::size_t i=0; i<nr_nodes(); ++i)
@@ -706,8 +874,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_NODE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_NODE_MESSAGE>::reparametrize_snc_factors()
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::reparametrize_snc_factors()
 {
     const double primal_cost_before = this->lp_->EvaluatePrimal();
     read_in_mcf_costs(true);

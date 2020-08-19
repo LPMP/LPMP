@@ -147,10 +147,10 @@ public:
 
 	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
 	void updateNodeCost(const double value);
-	double getOneBaseEdgeMinMarginal(size_t vertex);
-	std::vector<double> getAllBaseMinMarginals();
+    double getOneBaseEdgeMinMarginal(size_t vertex) const;
+    std::vector<double> getAllBaseMinMarginals()const;
 
-    std::vector<double> getAllLiftedMinMarginals() const;
+    std::vector<double> getAllLiftedMinMarginals(std::vector<double>* pLocalBaseCosts=nullptr) const;
 
 	double getNodeMinMarginal()const;
 	double oneLiftedMinMarginal(size_t indexOfLiftedEdge)const;
@@ -188,9 +188,13 @@ public:
 
 
 
+    const LDP_INSTANCE& getLdpInstance() const{
+        return ldpInstance;
+    }
+
 private:
-	void updateValues() const;
-	void updateValues(StrForUpdateValues& myStr,size_t vertexIDToIgnore) const;
+    void updateValues() const;
+    void updateValues(StrForUpdateValues& myStr,size_t vertexIDToIgnore) const;
 	void updateValues(StrForUpdateValues& myStr) const;
 	std::unordered_map<size_t,double> bottomUpUpdate(const StrForUpdateValues& myStr,size_t vertex,std::unordered_map<size_t,size_t>& indexStr,std::unordered_set<size_t>* pClosedVert=0,std::unordered_map<size_t,double>* pBUValuesStr=0) const;
 	void updateOptimal() const;
@@ -259,7 +263,7 @@ private:
 		else{
 			return ldpInstance.getGroupIndex(nodeIndex)>=boundLayer;
 		}
-	}
+    }
 
 	size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex)const{
 		if(isOutFlow){
@@ -286,7 +290,8 @@ private:
 			return liftedGraph.edgeToVertex(firstNode,neighborIndex);
 		}
 	}
-	size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex)const {
+
+    size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex)const {
 		if(isOutFlow){
 			return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
 		}
@@ -545,6 +550,8 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 
 
 
+
+
 //template<class LDP_INSTANCE>
 //inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedFromIndexStr(const StrForUpdateValues& myStr) const{
 //	size_t vertexInOptimalPath=myStr.indexStructure.at(nodeID);
@@ -672,7 +679,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getNodeMinMarginal()cons
 }
 
 template<class LDP_INSTANCE>
-inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMarginal(const size_t index){
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMarginal(const size_t index)const{
 	assert(index<baseCosts.size());
 	updateOptimal();
 	if(optimalSolutionBase!=index){
@@ -692,7 +699,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMargina
 
 //TODO make this function return a vector
 template<class LDP_INSTANCE>
-inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals(){
+inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals() const{
 	updateOptimal();
 	//if(debug()) std::cout<<"output min marginals"<<std::endl;
 	std::vector<double> minMarginals(baseCosts.size());
@@ -1374,7 +1381,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 //}
 
 template<class LDP_INSTANCE>
-inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals() const{
+inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(std::vector<double>* pLocalBaseCosts) const{
 
 
     //if(debug()) std::cout<<"all lifted min marginals "<<std::endl;
@@ -1388,7 +1395,13 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
 	std::vector<double> localSolutionCosts=solutionCosts;
 	std::vector<double> localLiftedCosts=liftedCosts;
-	std::vector<double> localBaseCosts=baseCosts;
+    std::vector<double> localBaseCosts;
+    if(pLocalBaseCosts==nullptr){
+        localBaseCosts=baseCosts;
+    }
+    else{
+        localBaseCosts=*pLocalBaseCosts;
+    }
 
 	StrForUpdateValues myStr(localBaseCosts,localLiftedCosts,localSolutionCosts,nodeID);
 	myStr.copyFromOther(strForUpdateValues);
