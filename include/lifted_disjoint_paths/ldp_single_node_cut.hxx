@@ -608,6 +608,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 			double value=solutionCosts[i];
 			if(value<minValue){
 				minValue=value;
+                optimalSolutionBase=i;
 
 			}
 		}
