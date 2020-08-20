@@ -13,6 +13,7 @@
 #include <bitset>
 #include <vector>
 #include<array>
+#include <config.hxx>
 #include <assert.h>
 #include <unordered_map>
 namespace LPMP {
@@ -226,104 +227,113 @@ public:
     template<typename TRIANGLE_FACTOR>
     void RepamLeft(TRIANGLE_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
-      //  if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
+       if(debug()) std::cout<<"triangle repam left "<<std::endl;
         assert(msg_dim == 0 || msg_dim == 1);
-        l.updateCost(msg,indicesInTriangle[msg_dim]);
+        l.updateCost(msg,indicesInTriangle.at(msg_dim));
      }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
-      //  if(debug()) std::cout<<"repam right "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
+        if(debug()) std::cout<<"triangle repam right "<<std::endl;
         assert(msg_dim == 0||msg_dim==1);
-        r.updateCostSimple(msg,verticesInSnc[msg_dim],isLifted[msg_dim]);
+        r.updateCostSimple(msg,verticesInSnc.at(msg_dim),isLifted.at(msg_dim));
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
+        if(debug()) std::cout<<"triangle send one to left";
+        //for (size_t i=0;i<1;i++) {
         for (size_t i=0;i<isLifted.size();i++) {
             double delta=0;
             if(isLifted[i]){
-                delta = r.oneLiftedMinMarginal(verticesInSnc[i]);
+                delta = r.oneLiftedMinMarginal(verticesInSnc.at(i));
             }
             else{
-                delta = r.getOneBaseEdgeMinMarginal(verticesInSnc[i]);
+                delta = r.getOneBaseEdgeMinMarginal(verticesInSnc.at(i));
             }
             msg[i] -= omega * delta;
         }
+        std::cout<<" done "<<std::endl;
     }
 
     template<typename TRIANGLE_FACTOR, typename MSG>
     void send_message_to_right(const TRIANGLE_FACTOR& l, MSG& msg, const double omega)
     {
+        if(debug()) std::cout<<"triangle send one to right"<<std::endl;
+        //for (size_t i=0;i<1;i++) {
         for (size_t i=0;i<indicesInTriangle.size();i++) {
-            const double delta = l.getOneMinMarginal(indicesInTriangle[i]);
+            const double delta = l.getOneMinMarginal(indicesInTriangle.at(i));
             msg[i] -= omega * delta;
         }
     }
 
 
 
-    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
-    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
-    {
+//    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
+//    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+//    {
+//        if(debug()) std::cout<<"triangle send all to left"<<std::endl;
 
-        const std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
-        std::vector<double> localBaseCost=r.getBaseCosts();
-        for (size_t i = 0; i < localBaseCost.size(); ++i) {
-            localBaseCost[i]-=msg_vec_base[i];
-        }
-        const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);
+//        const std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
+//        std::vector<double> localBaseCost=r.getBaseCosts();
+//        for (size_t i = 0; i < localBaseCost.size(); ++i) {
+//            localBaseCost[i]-=msg_vec_base[i];
+//        }
+//        const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);
 
-        for(auto it=msg_begin; it!=msg_end; ++it)
-        {
-            auto& msg = (*it).GetMessageOp();
-            for (int i = 0; i <msg.verticesInSnc.size(); ++i) {
-                const size_t vertex = msg.verticesInSnc[i];
-                bool lifted=msg.isLifted[i];
-                if(lifted){
-                    (*it)[i] -= omega * msg_vec_lifted.at(vertex);
-                }
-                else{
-                    (*it)[i] -= omega * msg_vec_base.at(vertex);
-                }
-            }
-        }
-    }
+//        for(auto it=msg_begin; it!=msg_end; ++it)
+//        {
+//            auto& msg = (*it).GetMessageOp();
+//            for (int i = 0; i <msg.verticesInSnc.size(); ++i) {
+//                const size_t vertex = msg.verticesInSnc[i];
+//                bool lifted=msg.isLifted[i];
+//                if(lifted){
+//                    (*it)[i] -= omega * msg_vec_lifted.at(vertex);
+//                }
+//                else{
+//                    (*it)[i] -= omega * msg_vec_base.at(vertex);
+//                }
+//            }
+//        }
+//    }
 
-    template<typename TRIANGLE_FACTOR, typename MSG_ARRAY>
-    static void SendMessagesToRight(const TRIANGLE_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
-    {
+//    template<typename TRIANGLE_FACTOR, typename MSG_ARRAY>
+//    static void SendMessagesToRight(const TRIANGLE_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+//    {
 
-        const std::array<double,3> msg_vec = l.getAllMinMarginals();
+//        if(debug()) std::cout<<"triangle send all to right"<<std::endl;
+//        const std::array<double,3> msg_vec = l.getAllMinMarginals();
 
-        for(auto it=msg_begin; it!=msg_end; ++it)
-        {
-            auto& msg = (*it).GetMessageOp();
-            for (int i = 0; i < msg.indicesInTriangle.size(); ++i) {
-                const size_t indexInTr = msg.indicesInTriangle[i];
-                (*it)[i]-= 0.5*omega * msg_vec.at(indexInTr);
-            }
+//        for(auto it=msg_begin; it!=msg_end; ++it)
+//        {
+//            auto& msg = (*it).GetMessageOp();
+//            for (int i = 0; i < msg.indicesInTriangle.size(); ++i) {
+//                const size_t indexInTr = msg.indicesInTriangle[i];
+//                (*it)[i]-= 0.5*omega * msg_vec.at(indexInTr);
+//            }
 
-        }
+//        }
 
-    }
+//    }
 
 
 
     template<typename SINGLE_NODE_CUT_FACTOR,typename TRIANGLE_FACTOR>
     bool check_primal_consistency(const TRIANGLE_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
     {
+        if(debug()) std::cout<<"triangle check primal"<<std::endl;
         bool isConsistent=true;
         for (int i = 0; i < verticesInSnc.size()&&isConsistent; ++i) {
-            const bool triangleActive = l.getPrimal[indicesInTriangle[i]];
+        //for (int i = 0; i < 1&&isConsistent; ++i) {
+            const bool triangleActive = l.getPrimal[indicesInTriangle.at(i)];
             bool edgeActive=false;
             if(isLifted[i]){
-                edgeActive=r.isActiveInPrimalLifted(verticesInSnc[i]);
+                edgeActive=r.isActiveInPrimalLifted(verticesInSnc.at(i));
             }
             else{
-                edgeActive=r.getPrimalBaseIndex()==verticesInSnc[i];
+                edgeActive=r.getPrimalBaseIndex()==verticesInSnc.at(i);
             }
             isConsistent=(edgeActive==triangleActive);
         }

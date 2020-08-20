@@ -19,6 +19,7 @@ namespace LPMP {
 
        // using single_node_cut_node_message_container = MessageContainer<ldp_snc_node_message, 0, 0, message_passing_schedule::only_send, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 1>;
 
+        // TODO: replace with atMostFourMessages
          using snc_triangel_message_container=MessageContainer<ldp_snc_triangle_message, 1, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 1>;
 
         using FactorList = meta::list<single_node_cut_factor_container,triangle_factor_container>;

@@ -136,9 +136,16 @@ public:
 	}
 
     const size_t getLiftedIDToOrder(size_t vertexID) const{
-		return liftedIDToOrder.at(vertexID);
+        auto it=liftedIDToOrder.find(vertexID);
+        assert(it!=liftedIDToOrder.end());
+        return it->second;
 	}
 
+    const size_t getBaseIDToOrder(size_t vertexID) const{
+        auto it=baseIDToOrder.find(vertexID);
+        assert(it!=baseIDToOrder.end());
+        return it->second;
+    }
     template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
     template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(baseCosts, liftedCosts); }
 

@@ -511,6 +511,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
+    //TODO: Remember triangles that have already been added!
 
     std::cout<<"tighten "<<std::endl;
 
@@ -518,8 +519,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     const andres::graph::Digraph<>& baseGraph=instance.getGraph();
     const andres::graph::Digraph<>& liftedGraph=instance.getGraphLifted();
 
-    std::vector<double> baseEdgeLabels(baseGraph.numberOfEdges());
-    std::vector<double> liftedEdgeLabels(liftedGraph.numberOfEdges());
+    std::vector<double> baseEdgeLabels(baseGraph.numberOfEdges(),0);
+    std::vector<double> liftedEdgeLabels(liftedGraph.numberOfEdges(),0);
 
     std::multimap<double,ldp_triangle_factor> candidateFactors;
 
@@ -530,10 +531,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
         std::vector<double> minMarginalsIn=sncFactorIn->getAllBaseMinMarginals();
         std::vector<double> localBaseCostsIn=sncFactorIn->getBaseCosts();
+        assert(baseGraph.numberOfEdgesToVertex(i)==minMarginalsIn.size());
         for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
             size_t edge=baseGraph.edgeToVertex(i,j);
-            baseEdgeLabels.at(edge)+=minMarginalsIn[j];
-            localBaseCostsIn.at(j)+=minMarginalsIn.at(j);
+            baseEdgeLabels.at(edge)+=minMarginalsIn.at(j);
+            localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
         }
 
       //  std::cout<<"base min marginals in "<<i<<std::endl;
@@ -541,9 +543,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
         std::vector<double> minMarginalsLiftedIn=sncFactorIn->getAllLiftedMinMarginals(&localBaseCostsIn);
+        assert(liftedGraph.numberOfEdgesToVertex(i)==minMarginalsLiftedIn.size());
         for (size_t j = 0; j < minMarginalsLiftedIn.size(); ++j) {
             size_t edge=liftedGraph.edgeToVertex(i,j);
-            liftedEdgeLabels.at(edge)+=minMarginalsLiftedIn[j];
+            liftedEdgeLabels.at(edge)+=minMarginalsLiftedIn.at(j);
         }
 
        // std::cout<<"lifted min marginals in "<<i<<std::endl;
@@ -551,19 +554,21 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
         std::vector<double> localBaseCostsOut=sncFactorOut->getBaseCosts();
         std::vector<double> minMarginalsOut=sncFactorOut->getAllBaseMinMarginals();
+        assert(baseGraph.numberOfEdgesFromVertex(i)==minMarginalsOut.size());
         for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
             size_t edge=baseGraph.edgeFromVertex(i,j);
-            baseEdgeLabels.at(edge)+=minMarginalsOut[j];
-            localBaseCostsOut.at(j)+=minMarginalsOut.at(j);
+            baseEdgeLabels.at(edge)+=minMarginalsOut.at(j);
+            localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
         }
 
       //  std::cout<<"base min marginals out "<<i<<std::endl;
 
 
         std::vector<double> minMarginalsLiftedOut=sncFactorOut->getAllLiftedMinMarginals(&localBaseCostsOut);
+        assert(liftedGraph.numberOfEdgesFromVertex(i)==minMarginalsLiftedOut.size());
         for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
             size_t edge=liftedGraph.edgeFromVertex(i,j);
-            liftedEdgeLabels.at(edge)-=minMarginalsLiftedOut[j];
+            liftedEdgeLabels.at(edge)+=minMarginalsLiftedOut.at(j);
         }
 
        // std::cout<<"lifted min marginals out "<<i<<std::endl;
@@ -577,7 +582,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         for (size_t beOut = 0; beOut < baseGraph.numberOfEdgesFromVertex(vertex); ++beOut) {
             size_t vertexOut=baseGraph.vertexFromVertex(vertex,beOut);
             size_t edgeOut=baseGraph.edgeFromVertex(vertex,beOut);
-            double valueOut=baseEdgeLabels[edgeOut];
+            double valueOut=baseEdgeLabels.at(edgeOut);
             if(valueOut>-eps) continue;
 
             //base edges in
@@ -627,7 +632,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         for (size_t leOut = 0; leOut < liftedGraph.numberOfEdgesFromVertex(vertex); ++leOut) {
             size_t vertexOut=liftedGraph.vertexFromVertex(vertex,leOut);
             size_t edgeOut=liftedGraph.edgeFromVertex(vertex,leOut);
-            double valueOut=liftedEdgeLabels[edgeOut];
+            double valueOut=liftedEdgeLabels.at(edgeOut);
             if(valueOut<eps&&valueOut>-eps) continue;
 
             //base edges in
@@ -694,6 +699,8 @@ for (int i = 0; i < triangle_factors_.size(); ++i) {
     size_t v2=triangleFactor->get_factor()->getV2();
     size_t v3=triangleFactor->get_factor()->getV3();
 
+    assert(v1<nr_nodes()&&v2<nr_nodes()&&v3<nr_nodes());
+
     auto * sncOutV1=single_node_cut_factors_[v1][1];
     auto * sncOutV2=single_node_cut_factors_[v2][1];
     auto * sncInV2=single_node_cut_factors_[v2][0];
@@ -703,26 +710,56 @@ for (int i = 0; i < triangle_factors_.size(); ++i) {
     bool isv2v3Base=triangleFactor->get_factor()->isV2V3Base();
 
     std::vector<size_t> trInd={0,2};
-    std::vector<size_t> vertices={v2,v3};
+    size_t v2IndexInV1;
+    if(isv1v2Base){
+        v2IndexInV1=sncOutV1->get_factor()->getBaseIDToOrder(v2);
+    }
+    else{
+        v2IndexInV1=sncOutV1->get_factor()->getLiftedIDToOrder(v2);
+    }
+    size_t v3IndexInV1=sncOutV1->get_factor()->getLiftedIDToOrder(v3);
+    std::vector<size_t> vertices={v2IndexInV1,v3IndexInV1};
     std::vector<bool> isLifted={!isv1v2Base,true};
 
     auto * message1=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV1, trInd, vertices,isLifted);
     snc_triangle_messages_.push_back(message1);
 
     trInd={0};
-    vertices={v1};
+    size_t v1IndexInV2;
+    if(isv1v2Base){
+        v1IndexInV2=sncInV2->get_factor()->getBaseIDToOrder(v1);
+    }
+    else{
+        v1IndexInV2=sncInV2->get_factor()->getLiftedIDToOrder(v1);
+    }
+    vertices={v1IndexInV2};
     isLifted={!isv1v2Base};
     auto * message2=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV2, trInd, vertices,isLifted);
     snc_triangle_messages_.push_back(message2);
 
     trInd={1};
-    vertices={v3};
+    size_t v3IndexInV2;
+    if(isv2v3Base){
+        v3IndexInV2=sncOutV2->get_factor()->getBaseIDToOrder(v3);
+    }
+    else{
+        v3IndexInV2=sncOutV2->get_factor()->getLiftedIDToOrder(v3);
+    }
+    vertices={v3IndexInV2};
     isLifted={!isv2v3Base};
     auto * message3=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV2, trInd, vertices,isLifted);
     snc_triangle_messages_.push_back(message3);
 
     trInd={1,2};
-    vertices={v2,v1};
+    size_t v2IndexInV3;
+    if(isv2v3Base){
+        v2IndexInV3=sncInV3->get_factor()->getBaseIDToOrder(v2);
+    }
+    else{
+        v2IndexInV3=sncInV3->get_factor()->getLiftedIDToOrder(v2);
+    }
+    size_t v1IndexInV3=sncInV3->get_factor()->getLiftedIDToOrder(v1);
+    vertices={v2IndexInV3,v1IndexInV3};
     isLifted={!isv2v3Base,true};
     auto * message4=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV3, trInd, vertices,isLifted);
     snc_triangle_messages_.push_back(message4);
@@ -733,7 +770,7 @@ for (int i = 0; i < triangle_factors_.size(); ++i) {
 
     counter++;
 }
-
+std::cout<<"tighten finished"<<std::endl;
 
 
 
