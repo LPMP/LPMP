@@ -73,7 +73,7 @@ public:
 	ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut);
 	ldp_single_node_cut_factor(const ldp_single_node_cut_factor&);
     ~ldp_single_node_cut_factor(){
-        std::cout<<"destructor "<<nodeID<<std::endl;
+       // std::cout<<"destructor "<<nodeID<<std::endl;
     }
 
 	void initBaseCosts(double fractionBase);
@@ -415,7 +415,7 @@ solutionCosts(sncFactor.solutionCosts),
 strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID),
 nodeNotActive(sncFactor.nodeNotActive)
 {
-    std::cout<<"copy constructor "<<nodeID<<std::endl;
+    //std::cout<<"copy constructor "<<nodeID<<std::endl;
 
 	primalBase_=sncFactor.primalBase_;
 	primalLifted_=sncFactor.primalLifted_;

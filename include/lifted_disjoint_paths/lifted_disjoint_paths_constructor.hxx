@@ -398,7 +398,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     //sncDebug(20,1);
     if(debug()) std::cout<<"messages added"<<std::endl;
-  //  Tighten(200);
+    Tighten(200);
 }
 
 
@@ -525,6 +525,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
     for (size_t i = 0; i < nr_nodes(); ++i) {
+       // std::cout<<"node "<<i<<std::endl;
 
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
         std::vector<double> minMarginalsIn=sncFactorIn->getAllBaseMinMarginals();
@@ -535,12 +536,17 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             localBaseCostsIn.at(j)+=minMarginalsIn.at(j);
         }
 
+      //  std::cout<<"base min marginals in "<<i<<std::endl;
+
+
 
         std::vector<double> minMarginalsLiftedIn=sncFactorIn->getAllLiftedMinMarginals(&localBaseCostsIn);
-        for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
+        for (size_t j = 0; j < minMarginalsLiftedIn.size(); ++j) {
             size_t edge=liftedGraph.edgeToVertex(i,j);
             liftedEdgeLabels.at(edge)+=minMarginalsLiftedIn[j];
         }
+
+       // std::cout<<"lifted min marginals in "<<i<<std::endl;
 
         const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
         std::vector<double> localBaseCostsOut=sncFactorOut->getBaseCosts();
@@ -551,6 +557,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             localBaseCostsOut.at(j)+=minMarginalsOut.at(j);
         }
 
+      //  std::cout<<"base min marginals out "<<i<<std::endl;
+
 
         std::vector<double> minMarginalsLiftedOut=sncFactorOut->getAllLiftedMinMarginals(&localBaseCostsOut);
         for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
@@ -558,7 +566,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             liftedEdgeLabels.at(edge)-=minMarginalsLiftedOut[j];
         }
 
+       // std::cout<<"lifted min marginals out "<<i<<std::endl;
+
     }
+
+    //std::cout<<"edge scores obtained"<<std::endl;
 
     for (size_t vertex = 0; vertex < nr_nodes(); ++vertex) {
         //base edges out
@@ -580,6 +592,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     if(valueIn<-eps&&valueConnecting>eps){
                         double improvement=std::min({-valueOut,-valueIn,valueConnecting});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                        // std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,true); //TODO this will be templetized
                         candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
 
@@ -599,6 +612,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     if((valueIn<-eps&&valueConnecting>eps)||(valueIn>eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                        // std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,true);
                         candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                     }
@@ -628,6 +642,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     if((valueOut<-eps&&valueConnecting>eps)||(valueOut>eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                        // std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,false); //TODO this will be templetized
                         candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
 
@@ -646,6 +661,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     if((valueOut<-eps&&valueIn<-eps&&valueConnecting>eps)||(valueOut<-eps&&valueIn>eps&&valueConnecting<-eps)||(valueOut>eps&&valueIn<-eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
+                         //std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,false);
                         candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                     }
@@ -658,47 +674,58 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         }
     }
 
+    std::cout<<"triangle factors candidates"<<std::endl;
+
 size_t counter=0;
 for(auto iter=candidateFactors.rbegin();iter!=candidateFactors.rend()&&counter<nr_constraints_to_add;iter++){
     const ldp_triangle_factor& trFact=iter->second;
-    auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact.getV1(),trFact.getV2(),trFact.getV3(),trFact.getEdgeCosts(),trFact.isV1V2Base(),trFact.isV2V3Base());
+    auto * triangleFactor =lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact);
+   // std::vector<double> costs={trFact.getEdgeCosts()[0],trFact.getEdgeCosts()[1],trFact.getEdgeCosts()[2]};
+    //auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact.getV1(),trFact.getV2(),trFact.getV3(),trFact.getEdgeCosts(),trFact.isV1V2Base(),trFact.isV2V3Base());
     triangle_factors_.push_back(triangleFactor);
-//    size_t v1=triangleFactor->get_factor()->getV1();
-//    size_t v2=triangleFactor->get_factor()->getV2();
-//    size_t v3=triangleFactor->get_factor()->getV3();
 
-//    auto * sncOutV1=single_node_cut_factors_[v1][1]->get_factor();
-//    auto * sncOutV2=single_node_cut_factors_[v2][1]->get_factor();
-//    auto * sncInV2=single_node_cut_factors_[v2][0]->get_factor();
-//    auto * sncInV3=single_node_cut_factors_[v3][0]->get_factor();
+}
 
-//    bool isv1v2Base=triangleFactor->get_factor()->isV1V2Base();
-//    bool isv2v3Base=triangleFactor->get_factor()->isV2V3Base();
+for (int i = 0; i < triangle_factors_.size(); ++i) {
+    auto * triangleFactor=triangle_factors_[i];
 
-//    std::vector<size_t> trInd={0,2};
-//    std::vector<size_t> vertices={v2,v3};
-//    std::vector<bool> isLifted={!isv1v2Base,true};
 
-//    auto * message1=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV1, trInd, vertices,isLifted);
-//    snc_triangle_messages_.push_back(message1);
+    size_t v1=triangleFactor->get_factor()->getV1();
+    size_t v2=triangleFactor->get_factor()->getV2();
+    size_t v3=triangleFactor->get_factor()->getV3();
 
-//    trInd={0};
-//    vertices={v1};
-//    isLifted={!isv1v2Base};
-//    auto * message2=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV2, trInd, vertices,isLifted);
-//    snc_triangle_messages_.push_back(message2);
+    auto * sncOutV1=single_node_cut_factors_[v1][1];
+    auto * sncOutV2=single_node_cut_factors_[v2][1];
+    auto * sncInV2=single_node_cut_factors_[v2][0];
+    auto * sncInV3=single_node_cut_factors_[v3][0];
 
-//    trInd={1};
-//    vertices={v3};
-//    isLifted={!isv2v3Base};
-//    auto * message3=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV2, trInd, vertices,isLifted);
-//    snc_triangle_messages_.push_back(message3);
+    bool isv1v2Base=triangleFactor->get_factor()->isV1V2Base();
+    bool isv2v3Base=triangleFactor->get_factor()->isV2V3Base();
 
-//    trInd={1,2};
-//    vertices={v2,v1};
-//    isLifted={!isv2v3Base,true};
-//    auto * message4=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV3, trInd, vertices,isLifted);
-//    snc_triangle_messages_.push_back(message4);
+    std::vector<size_t> trInd={0,2};
+    std::vector<size_t> vertices={v2,v3};
+    std::vector<bool> isLifted={!isv1v2Base,true};
+
+    auto * message1=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV1, trInd, vertices,isLifted);
+    snc_triangle_messages_.push_back(message1);
+
+    trInd={0};
+    vertices={v1};
+    isLifted={!isv1v2Base};
+    auto * message2=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV2, trInd, vertices,isLifted);
+    snc_triangle_messages_.push_back(message2);
+
+    trInd={1};
+    vertices={v3};
+    isLifted={!isv2v3Base};
+    auto * message3=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV2, trInd, vertices,isLifted);
+    snc_triangle_messages_.push_back(message3);
+
+    trInd={1,2};
+    vertices={v2,v1};
+    isLifted={!isv2v3Base,true};
+    auto * message4=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV3, trInd, vertices,isLifted);
+    snc_triangle_messages_.push_back(message4);
 
 //    auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
 //    snc_lifted_messages_.push_back(message);

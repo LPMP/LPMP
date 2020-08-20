@@ -30,7 +30,11 @@ public:
         v2v3Base(uwBase),
         edgeCosts(costs)
 {
+//        assert(costs.size()==3);
 
+//        for (int i = 0; i < 3; ++i) {
+//            edgeCosts[i]=costs[i];
+//        }
 		//Feasible labelings of edge (vu,uw,vw)
 		labelings={std::bitset<3>("000"),std::bitset<3>("111"),std::bitset<3>("100"),std::bitset<3>("010"),std::bitset<3>("001")};
 		if(vuBase){
@@ -119,10 +123,10 @@ public:
     }
 
     template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
-    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(edgeCosts); }
+    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
     // auto export_variables() { return std::tie(); }
 
-    auto export_variables() { return std::tie(edgeCosts); }
+    auto export_variables() { return std::tie(); }
 
 	void init_primal() { primal_ = 0; }
 
