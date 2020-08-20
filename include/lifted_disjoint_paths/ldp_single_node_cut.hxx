@@ -608,7 +608,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 			double value=solutionCosts[i];
 			if(value<minValue){
 				minValue=value;
-				optimalSolutionBase=i;
+
 			}
 		}
 
@@ -1101,7 +1101,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 	assert(indexOfLiftedEdge<liftedCosts.size());
 	bool isOptimal=false;
 	for(size_t optVertex:optimalSolutionLifted){
-		if(optVertex==liftedIDs[indexOfLiftedEdge]){
+        if(optVertex==liftedIDs.at(indexOfLiftedEdge)){
 			isOptimal=true;
 			//if(debug()) std::cout<<"is optimal"<<std::endl;
 			break;
@@ -1110,7 +1110,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::oneLiftedMinMarginal(siz
 
 
 
-   // if(debug())std::cout<<"lifted marginal "<<nodeID<<" "<<indexOfLiftedEdge<<", optimal "<<isOptimal<<std::endl;
+    if(debug())std::cout<<"lifted marginal "<<nodeID<<" "<<indexOfLiftedEdge<<", optimal "<<isOptimal<<std::endl;
 
 	if(isOptimal){
         //double lbBefore=0;

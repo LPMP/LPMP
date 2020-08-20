@@ -398,7 +398,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     //sncDebug(20,1);
     if(debug()) std::cout<<"messages added"<<std::endl;
-    Tighten(200);
+    //Tighten(200);
 }
 
 
@@ -528,6 +528,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     for (size_t i = 0; i < nr_nodes(); ++i) {
        // std::cout<<"node "<<i<<std::endl;
 
+        //TODO just half of the change for base!
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
         std::vector<double> minMarginalsIn=sncFactorIn->getAllBaseMinMarginals();
         std::vector<double> localBaseCostsIn=sncFactorIn->getBaseCosts();
@@ -684,12 +685,16 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 size_t counter=0;
 for(auto iter=candidateFactors.rbegin();iter!=candidateFactors.rend()&&counter<nr_constraints_to_add;iter++){
     const ldp_triangle_factor& trFact=iter->second;
-    auto * triangleFactor =lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact);
+    //auto * triangleFactor =lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact);
    // std::vector<double> costs={trFact.getEdgeCosts()[0],trFact.getEdgeCosts()[1],trFact.getEdgeCosts()[2]};
-    //auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact.getV1(),trFact.getV2(),trFact.getV3(),trFact.getEdgeCosts(),trFact.isV1V2Base(),trFact.isV2V3Base());
+    std::array<double,3> costs={0,0,0};
+    auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact.getV1(),trFact.getV2(),trFact.getV3(),costs,trFact.isV1V2Base(),trFact.isV2V3Base());
     triangle_factors_.push_back(triangleFactor);
+    counter++;
 
 }
+
+//TODO update cost in SNC factors that were used for creating the triangle factors!
 
 for (int i = 0; i < triangle_factors_.size(); ++i) {
     auto * triangleFactor=triangle_factors_[i];
@@ -768,7 +773,7 @@ for (int i = 0; i < triangle_factors_.size(); ++i) {
 //    snc_lifted_messages_.push_back(message);
 
 
-    counter++;
+
 }
 std::cout<<"tighten finished"<<std::endl;
 

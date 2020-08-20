@@ -172,14 +172,17 @@ public:
     }
 
     void updateCost(size_t edgeId,double update) {  //update cost of one edge, assumed local edge ID: indices 0-2
+        if(edgeId>2){
+            std::cout<<"error in triangle update cost, edge id "<<edgeId<<std::endl;
+        }
 		assert(edgeId<=2);
 		edgeCosts[edgeId]+=update;
 	}
 
-    void updateCost(size_t v1, size_t v2,double update){ //assumes directed edge vertices
-        size_t e=getLocalEdgeID(v1,v2);
-		updateCost(e,update);
-	}
+//    void updateCost(size_t v1, size_t v2,double update){ //assumes directed edge vertices
+//        size_t e=getLocalEdgeID(v1,v2);
+//		updateCost(e,update);
+//	}
 
 	size_t getLocalEdgeID(size_t v1, size_t v2){ //assumes directed edge vertices. If edge not present in the factor, returns 3.
 		if(v1==vInd){
@@ -222,6 +225,9 @@ public:
     {
         assert(verticesInSnc.size()==isLifted.size()&&indicesInTriangle.size()==isLifted.size());
         assert(verticesInSnc.size()<=2);
+        for (int i = 0; i < verticesInSnc.size(); ++i) {
+            assert(indicesInTriangle[i]<=2);
+        }
     }
 
     template<typename TRIANGLE_FACTOR>
@@ -243,14 +249,16 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
-        if(debug()) std::cout<<"triangle send one to left";
+        if(debug()) std::cout<<"triangle send one to left ";
         //for (size_t i=0;i<1;i++) {
         for (size_t i=0;i<isLifted.size();i++) {
             double delta=0;
             if(isLifted[i]){
+                std::cout<<"lifted "<<std::endl;
                 delta = r.oneLiftedMinMarginal(verticesInSnc.at(i));
             }
             else{
+                std::cout<<"base "<<std::endl;
                 delta = r.getOneBaseEdgeMinMarginal(verticesInSnc.at(i));
             }
             msg[i] -= omega * delta;
@@ -323,21 +331,22 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR,typename TRIANGLE_FACTOR>
     bool check_primal_consistency(const TRIANGLE_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
     {
-        if(debug()) std::cout<<"triangle check primal"<<std::endl;
-        bool isConsistent=true;
-        for (int i = 0; i < verticesInSnc.size()&&isConsistent; ++i) {
-        //for (int i = 0; i < 1&&isConsistent; ++i) {
-            const bool triangleActive = l.getPrimal[indicesInTriangle.at(i)];
-            bool edgeActive=false;
-            if(isLifted[i]){
-                edgeActive=r.isActiveInPrimalLifted(verticesInSnc.at(i));
-            }
-            else{
-                edgeActive=r.getPrimalBaseIndex()==verticesInSnc.at(i);
-            }
-            isConsistent=(edgeActive==triangleActive);
-        }
-        return isConsistent;
+        return true;
+//        if(debug()) std::cout<<"triangle check primal"<<std::endl;
+//        bool isConsistent=true;
+//        for (int i = 0; i < verticesInSnc.size()&&isConsistent; ++i) {
+//        //for (int i = 0; i < 1&&isConsistent; ++i) {
+//            const bool triangleActive = l.getPrimal().at(indicesInTriangle.at(i));
+//            bool edgeActive=false;
+//            if(isLifted[i]){
+//                edgeActive=r.isActiveInPrimalLifted(verticesInSnc.at(i));
+//            }
+//            else{
+//                edgeActive=r.getPrimalBaseIndex()==verticesInSnc.at(i);
+//            }
+//            isConsistent=(edgeActive==triangleActive);
+//        }
+//        return isConsistent;
     }
 
 private:
