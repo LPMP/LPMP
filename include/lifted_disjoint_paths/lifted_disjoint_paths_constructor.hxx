@@ -526,10 +526,15 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     const andres::graph::Digraph<>& baseGraph=instance.getGraph();
     const andres::graph::Digraph<>& liftedGraph=instance.getGraphLifted();
 
-    std::vector<double> baseEdgeLabels(baseGraph.numberOfEdges(),0);
-    std::vector<double> liftedEdgeLabels(liftedGraph.numberOfEdges(),0);
+    std::vector<double> baseEdgeLabelsIn(baseGraph.numberOfEdges(),0);
+    std::vector<double> liftedEdgeLabelsIn(liftedGraph.numberOfEdges(),0);
+    std::vector<double> baseEdgeLabelsOut(baseGraph.numberOfEdges(),0);
+    std::vector<double> liftedEdgeLabelsOut(liftedGraph.numberOfEdges(),0);
 
-    std::multimap<double,ldp_triangle_factor> candidateFactors;
+    std::vector<bool> baseEdgeUsed(baseGraph.numberOfEdges(),0);
+    std::vector<bool> liftedEdgeUsed(liftedGraph.numberOfEdges(),0);
+
+    //std::multimap<double,ldp_triangle_factor> candidateFactors;
     std::multimap<double,std::array<size_t,3>> candidates;
 
 
@@ -544,7 +549,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
             minMarginalsIn[j]*=0.5;
             size_t edge=baseGraph.edgeToVertex(i,j);
-            baseEdgeLabels.at(edge)+=minMarginalsIn.at(j);
+            baseEdgeLabelsIn.at(edge)+=minMarginalsIn.at(j);
             localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
         }
 
@@ -556,7 +561,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         assert(liftedGraph.numberOfEdgesToVertex(i)==minMarginalsLiftedIn.size());
         for (size_t j = 0; j < minMarginalsLiftedIn.size(); ++j) {
             size_t edge=liftedGraph.edgeToVertex(i,j);
-            liftedEdgeLabels.at(edge)+=minMarginalsLiftedIn.at(j);
+            liftedEdgeLabelsIn.at(edge)+=minMarginalsLiftedIn.at(j);
         }
 
        // std::cout<<"lifted min marginals in "<<i<<std::endl;
@@ -568,7 +573,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
             minMarginalsOut[j]*=0.5;
             size_t edge=baseGraph.edgeFromVertex(i,j);
-            baseEdgeLabels.at(edge)+=minMarginalsOut.at(j);
+            baseEdgeLabelsOut.at(edge)+=minMarginalsOut.at(j);
             localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
         }
 
@@ -579,7 +584,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         assert(liftedGraph.numberOfEdgesFromVertex(i)==minMarginalsLiftedOut.size());
         for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
             size_t edge=liftedGraph.edgeFromVertex(i,j);
-            liftedEdgeLabels.at(edge)+=minMarginalsLiftedOut.at(j);
+            liftedEdgeLabelsOut.at(edge)+=minMarginalsLiftedOut.at(j);
         }
 
        // std::cout<<"lifted min marginals out "<<i<<std::endl;
@@ -596,7 +601,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         for (size_t beOut = 0; beOut < baseGraph.numberOfEdgesFromVertex(vertex); ++beOut) {
             size_t vertexOut=baseGraph.vertexFromVertex(vertex,beOut);
             size_t edgeOut=baseGraph.edgeFromVertex(vertex,beOut);
-            double valueOut=baseEdgeLabels.at(edgeOut);
+            double valueOut=baseEdgeLabelsOut.at(edgeOut)+baseEdgeLabelsIn.at(edgeOut);
             if(valueOut>-eps) continue;
 
             //base edges in
@@ -606,8 +611,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
                     size_t edgeIn=baseGraph.edgeToVertex(vertex,beIn);
-                    double valueIn=baseEdgeLabels.at(edgeIn);
-                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                    double valueIn=baseEdgeLabelsIn.at(edgeIn)+baseEdgeLabelsOut.at(edgeIn);
+                    double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     // if((valueIn<eps&&valueIn>-eps)||(valueConnecting<eps&&valueConnecting>-eps)) continue;
                     if(valueIn<-eps&&valueConnecting>eps){
                         double improvement=std::min({-valueOut,-valueIn,valueConnecting});
@@ -630,8 +635,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
                     size_t edgeIn=liftedGraph.edgeToVertex(vertex,leIn);
-                    double valueIn=liftedEdgeLabels.at(edgeIn);
-                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                    double valueIn=liftedEdgeLabelsIn.at(edgeIn)+liftedEdgeLabelsOut.at(edgeIn);
+                    double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     if((valueIn<-eps&&valueConnecting>eps)||(valueIn>eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
@@ -652,7 +657,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         for (size_t leOut = 0; leOut < liftedGraph.numberOfEdgesFromVertex(vertex); ++leOut) {
             size_t vertexOut=liftedGraph.vertexFromVertex(vertex,leOut);
             size_t edgeOut=liftedGraph.edgeFromVertex(vertex,leOut);
-            double valueOut=liftedEdgeLabels.at(edgeOut);
+            double valueOut=liftedEdgeLabelsIn.at(edgeOut)+liftedEdgeLabelsOut.at(edgeOut);
             if(valueOut<eps&&valueOut>-eps) continue;
 
             //base edges in
@@ -662,9 +667,9 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
                     size_t edgeIn=baseGraph.edgeToVertex(vertex,beIn);
-                    double valueIn=baseEdgeLabels.at(edgeIn);
+                    double valueIn=baseEdgeLabelsIn.at(edgeIn)+baseEdgeLabelsOut.at(edgeIn);
                     if(valueIn>-eps) continue;
-                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                    double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     if((valueOut<-eps&&valueConnecting>eps)||(valueOut>eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
@@ -684,8 +689,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
                     size_t edgeIn=liftedGraph.edgeToVertex(vertex,leIn);
-                    double valueIn=liftedEdgeLabels.at(edgeIn);
-                    double valueConnecting=liftedEdgeLabels.at(findEdge.second);
+                    double valueIn=liftedEdgeLabelsIn.at(edgeIn)+liftedEdgeLabelsOut.at(edgeIn);
+                    double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     if((valueOut<-eps&&valueIn<-eps&&valueConnecting>eps)||(valueOut<-eps&&valueIn>eps&&valueConnecting<-eps)||(valueOut>eps&&valueIn<-eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
@@ -717,24 +722,42 @@ size_t counter=0;
 //    counter++;
 //}
 
+double expectedImprovement=0;
 
 
 for(auto iter=candidates.rbegin();iter!=candidates.rend()&&counter<nr_constraints_to_add;iter++){
+
     std::array<size_t,3>& triple =iter->second;
     std::array<double,3> costs={0,0,0};
     size_t v2=triple[0];
     assert(v2<nr_nodes());
     size_t v1;
     bool v1v2base=true;
+
+    std::pair<bool,size_t> feV1V2;
+    std::pair<bool,size_t> feV2V3;
+  //  std::pair<bool,size_t> feV1V3;
+
+
     if(triple[1]>=baseGraph.numberOfEdgesToVertex(v2)){
         size_t liftedOrder=triple[1]-baseGraph.numberOfEdgesToVertex(v2);
         assert(liftedOrder<liftedGraph.numberOfEdgesToVertex(v2));
         v1=liftedGraph.vertexToVertex(v2,liftedOrder);
         v1v2base=false;
+        feV1V2=liftedGraph.findEdge(v1,v2);
+        assert(feV1V2.first);
+        if(liftedEdgeUsed.at(feV1V2.second)) continue;
+        liftedEdgeUsed.at(feV1V2.second)=true;
+
     }
     else{
         v1=baseGraph.vertexToVertex(v2,triple[1]);
+        feV1V2=baseGraph.findEdge(v1,v2);
+        assert(feV1V2.first);
+        if(baseEdgeUsed.at(feV1V2.second)) continue;
+        baseEdgeUsed.at(feV1V2.second)=true;
     }
+
     assert(v2<nr_nodes());
     size_t v3;
     bool v2v3base=true;
@@ -743,12 +766,109 @@ for(auto iter=candidates.rbegin();iter!=candidates.rend()&&counter<nr_constraint
         assert(liftedOrder<liftedGraph.numberOfEdgesFromVertex(v2));
         v3=liftedGraph.vertexFromVertex(v2,liftedOrder);
         v2v3base=false;
+        feV2V3=liftedGraph.findEdge(v2,v3);
+        assert(feV2V3.first);
+        if(liftedEdgeUsed.at(feV2V3.second)) continue;
+        liftedEdgeUsed.at(feV2V3.second)=true;
     }
     else{
         v3=baseGraph.vertexFromVertex(v2,triple[2]);
+        feV2V3=baseGraph.findEdge(v2,v3);
+        assert(feV2V3.first);
+        if(baseEdgeUsed.at(feV2V3.second)) continue;
+        baseEdgeUsed.at(feV2V3.second)=true;
+
     }
+    auto feV1V3=liftedGraph.findEdge(v1,v3);
+    assert(feV1V3.first);
+    if(liftedEdgeUsed.at(feV1V3.second)) continue;
+    liftedEdgeUsed.at(feV1V3.second)=true;
+
+    auto * sncFactorOutV1=single_node_cut_factors_[v1][1]->get_factor();
+    auto * sncFactorInV2=single_node_cut_factors_[v2][0]->get_factor();
+    auto * sncFactorOutV2=single_node_cut_factors_[v2][1]->get_factor();
+    auto * sncFactorInV3=single_node_cut_factors_[v3][0]->get_factor();
+
+    if(!v1v2base){
+
+        size_t orderV2InV1=sncFactorOutV1->getLiftedIDToOrder(v2);
+        size_t orderV1InV2=sncFactorInV2->getLiftedIDToOrder(v1);
+
+        sncFactorOutV1->increaseLiftedEdgeTriangles(orderV2InV1);
+        sncFactorInV2->increaseLiftedEdgeTriangles(orderV1InV2);
+
+        sncFactorOutV1->updateCostSimple(-liftedEdgeLabelsOut.at(feV1V2.second),orderV2InV1,true);
+        sncFactorInV2->updateCostSimple(-liftedEdgeLabelsIn.at(feV1V2.second),orderV1InV2,true);
+        costs[0]=liftedEdgeLabelsIn.at(feV1V2.second)+liftedEdgeLabelsOut.at(feV1V2.second);
+
+
+    }
+    else{
+
+        size_t orderV2InV1=sncFactorOutV1->getBaseIDToOrder(v2);
+        size_t orderV1InV2=sncFactorInV2->getBaseIDToOrder(v1);
+
+        sncFactorOutV1->increaseBaseEdgeTriangles(orderV2InV1);
+        sncFactorInV2->increaseBaseEdgeTriangles(orderV1InV2);
+
+        sncFactorOutV1->updateCostSimple(-baseEdgeLabelsOut.at(feV1V2.second),orderV2InV1,false);
+        sncFactorInV2->updateCostSimple(-baseEdgeLabelsIn.at(feV1V2.second),orderV1InV2,false);
+        costs[0]=baseEdgeLabelsIn.at(feV1V2.second)+baseEdgeLabelsOut.at(feV1V2.second);
+    }
+
+
+    if(!v2v3base){
+
+        size_t orderV3InV2=sncFactorOutV2->getLiftedIDToOrder(v3);
+        size_t orderV2InV3=sncFactorInV3->getLiftedIDToOrder(v2);
+
+        sncFactorOutV2->increaseLiftedEdgeTriangles(orderV3InV2);
+        sncFactorInV3->increaseLiftedEdgeTriangles(orderV2InV3);
+
+        sncFactorOutV2->updateCostSimple(-liftedEdgeLabelsOut.at(feV2V3.second),orderV3InV2,true);
+        sncFactorInV3->updateCostSimple(-liftedEdgeLabelsIn.at(feV2V3.second),orderV2InV3,true);
+        costs[1]=liftedEdgeLabelsIn.at(feV2V3.second)+liftedEdgeLabelsOut.at(feV2V3.second);
+    }
+    else{
+        size_t orderV3InV2=sncFactorOutV2->getBaseIDToOrder(v3);
+        size_t orderV2InV3=sncFactorInV3->getBaseIDToOrder(v2);
+
+        sncFactorOutV2->increaseBaseEdgeTriangles(orderV3InV2);
+        sncFactorInV3->increaseBaseEdgeTriangles(orderV2InV3);
+
+        sncFactorOutV2->updateCostSimple(-baseEdgeLabelsOut.at(feV2V3.second),orderV3InV2,false);
+        sncFactorInV3->updateCostSimple(-baseEdgeLabelsIn.at(feV2V3.second),orderV2InV3,false);
+        costs[1]=baseEdgeLabelsIn.at(feV2V3.second)+baseEdgeLabelsOut.at(feV2V3.second);
+    }
+
+
+
+     size_t orderV3InV1=sncFactorOutV1->getLiftedIDToOrder(v3);
+    size_t orderV1InV3=sncFactorInV3->getLiftedIDToOrder(v1);
+
+    sncFactorOutV1->increaseLiftedEdgeTriangles(orderV3InV1);
+    sncFactorInV3->increaseLiftedEdgeTriangles(orderV1InV3);
+
+    sncFactorOutV1->updateCostSimple(-liftedEdgeLabelsOut.at(feV1V3.second),orderV3InV1,true);
+    sncFactorInV3->updateCostSimple(-liftedEdgeLabelsIn.at(feV1V3.second),orderV1InV3,true);
+    costs[2]=liftedEdgeLabelsIn.at(feV1V3.second)+liftedEdgeLabelsOut.at(feV1V3.second);
+
     assert(v3<nr_nodes());
     auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(v1,v2,v3,costs,v1v2base,v2v3base);
+//    double lb=triangleFactor->LowerBound();
+//    double simpleLB=0;
+//    for (int i = 0; i < 3; ++i) {
+//        if(costs[i]<0){
+//            simpleLB+=costs[i];
+//        }
+//        else {
+//            simpleLB-=costs[i];
+//        }
+//    }
+
+
+
+    expectedImprovement+=iter->first;
     triangle_factors_.push_back(triangleFactor);
     usedTriangles.at(triple[0]).at(triple[1]).insert(triple[2]);
     counter++;
@@ -854,7 +974,7 @@ std::cout<<"tighten finished"<<std::endl;
 //    andres::graph::Digraph<> graph; //TODO initialize this: Actually, it is needed lifted with some base edges. Maybe copy of lifted, add some edges?
 //    components.build(graph,costs);
 //    //for all edges with positive costs whose vertices belong to the same component: add triangle (priority queue)
-
+std::cout<<"tighten expected improvement "<<expectedImprovement<<std::endl;
 return counter;
 
 }

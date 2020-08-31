@@ -310,10 +310,10 @@ public:
                 const size_t vertex = msg.verticesInSnc.at(i);
                 bool lifted=msg.isLifted.at(i);
                 if(lifted){
-                    (*it)[i] -= omega * msg_vec_lifted.at(vertex);
+                    (*it)[i] -= r.getTriangleCoeffForLiftedEdge(vertex)* omega * msg_vec_lifted.at(vertex);
                 }
                 else{
-                    (*it)[i] -= omega * msg_vec_base.at(vertex);
+                    (*it)[i] -= r.getTriangleCoeffForBaseEdge(vertex)*omega * msg_vec_base.at(vertex);
                 }
             }
         }
