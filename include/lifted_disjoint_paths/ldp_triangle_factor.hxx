@@ -295,9 +295,10 @@ public:
         if(debug()) std::cout<<"triangle send all to left"<<std::endl;
 
         //TODO take only one half from the base min marginals!
-        const std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
+        std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
         std::vector<double> localBaseCost=r.getBaseCosts();
         for (size_t i = 0; i < localBaseCost.size(); ++i) {
+            msg_vec_base[i]=0.5*msg_vec_base[i];
             localBaseCost[i]-=msg_vec_base[i];
         }
         const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);

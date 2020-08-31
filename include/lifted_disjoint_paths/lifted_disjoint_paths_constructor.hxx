@@ -26,7 +26,7 @@ public:
 
     void ComputePrimal();
 
-    void Tighten(const std::size_t nr_constraints_to_add);
+    size_t Tighten(const std::size_t nr_constraints_to_add);
     void pre_iterate() { reparametrize_snc_factors(); }
 
 private:
@@ -59,6 +59,7 @@ private:
     std::vector<TRIANGLE_FACTOR_CONT*> triangle_factors_;
     std::vector<SINGLE_NODE_CUT_LIFTED_MESSAGE*> snc_lifted_messages_;
     std::vector<SNC_TRIANGLE_MESSAGE*> snc_triangle_messages_;
+    std::vector<std::vector<std::unordered_set<size_t>>> usedTriangles;
 
 };
 
@@ -398,7 +399,13 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     //sncDebug(20,1);
     if(debug()) std::cout<<"messages added"<<std::endl;
-    Tighten(200);
+    usedTriangles=std::vector<std::vector<std::unordered_set<size_t>>>(nr_nodes());
+    for (int i = 0; i < nr_nodes(); ++i) {
+        size_t nrIncomingEdges=instance.getGraph().numberOfEdgesToVertex(i);
+        nrIncomingEdges+=instance.getGraphLifted().numberOfEdgesToVertex(i);
+        usedTriangles[i]=std::vector<std::unordered_set<size_t>>(nrIncomingEdges);
+    }
+    //Tighten(200);
 }
 
 
@@ -509,11 +516,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
     //TODO: Remember triangles that have already been added!
 
-    std::cout<<"tighten "<<std::endl;
+    std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
 
     const lifted_disjoint_paths::LdpInstance &instance=single_node_cut_factors_[0][0]->get_factor()->getLdpInstance();
     const andres::graph::Digraph<>& baseGraph=instance.getGraph();
@@ -523,6 +530,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     std::vector<double> liftedEdgeLabels(liftedGraph.numberOfEdges(),0);
 
     std::multimap<double,ldp_triangle_factor> candidateFactors;
+    std::multimap<double,std::array<size_t,3>> candidates;
 
 
     for (size_t i = 0; i < nr_nodes(); ++i) {
@@ -534,6 +542,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         std::vector<double> localBaseCostsIn=sncFactorIn->getBaseCosts();
         assert(baseGraph.numberOfEdgesToVertex(i)==minMarginalsIn.size());
         for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
+            minMarginalsIn[j]*=0.5;
             size_t edge=baseGraph.edgeToVertex(i,j);
             baseEdgeLabels.at(edge)+=minMarginalsIn.at(j);
             localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
@@ -557,6 +566,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         std::vector<double> minMarginalsOut=sncFactorOut->getAllBaseMinMarginals();
         assert(baseGraph.numberOfEdgesFromVertex(i)==minMarginalsOut.size());
         for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
+            minMarginalsOut[j]*=0.5;
             size_t edge=baseGraph.edgeFromVertex(i,j);
             baseEdgeLabels.at(edge)+=minMarginalsOut.at(j);
             localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
@@ -579,6 +589,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     //std::cout<<"edge scores obtained"<<std::endl;
 
     for (size_t vertex = 0; vertex < nr_nodes(); ++vertex) {
+        size_t numberOfBaseOut=baseGraph.numberOfEdgesFromVertex(vertex);
+        size_t numberOfBaseIn=baseGraph.numberOfEdgesToVertex(vertex);
+
         //base edges out
         for (size_t beOut = 0; beOut < baseGraph.numberOfEdgesFromVertex(vertex); ++beOut) {
             size_t vertexOut=baseGraph.vertexFromVertex(vertex,beOut);
@@ -588,6 +601,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             //base edges in
             for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
+                if(usedTriangles.at(vertex).at(beIn).count(beOut)>0) continue;
                 size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
@@ -600,7 +614,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
                         // std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,true); //TODO this will be templetized
-                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                       // candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                        std::array<size_t,3> toInsert={vertex,beIn,beOut};
+                        candidates.emplace(improvement,toInsert);
 
                     }
                 }
@@ -609,6 +625,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             //lifted edges in
             for (size_t leIn = 0; leIn < liftedGraph.numberOfEdgesToVertex(vertex); ++leIn) {
+                if(usedTriangles.at(vertex).at(leIn+numberOfBaseIn).count(beOut)>0) continue;
                 size_t vertexIn=liftedGraph.vertexToVertex(vertex,leIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
@@ -620,7 +637,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
                         // std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,true);
-                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                      //  candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                        std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,beOut};
+                        candidates.emplace(improvement,toInsert);
                     }
 
                 }
@@ -638,6 +657,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             //base edges in
             for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
+                if(usedTriangles.at(vertex).at(beIn).count(leOut+numberOfBaseOut)>0) continue;
                 size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
@@ -650,14 +670,16 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
                         // std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,false); //TODO this will be templetized
-                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
-
+                   //     candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                        std::array<size_t,3> toInsert={vertex,beIn,leOut+numberOfBaseOut};
+                        candidates.emplace(improvement,toInsert);
                     }
                 }
 
             }
             //lifted edges in
             for (size_t leIn = 0; leIn < liftedGraph.numberOfEdgesToVertex(vertex); ++leIn) {
+                 if(usedTriangles.at(vertex).at(leIn+numberOfBaseIn).count(leOut+numberOfBaseOut)>0) continue;
                 size_t vertexIn=liftedGraph.vertexToVertex(vertex,leIn);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
@@ -669,7 +691,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
                          //std::vector<double> costs={valueIn,valueOut,valueConnecting};
                         ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,false);
-                        candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                     //   candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+                        std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,leOut+numberOfBaseOut};
+                        candidates.emplace(improvement,toInsert);
                     }
 
                 }
@@ -683,15 +707,51 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     std::cout<<"triangle factors candidates"<<std::endl;
 
 size_t counter=0;
-for(auto iter=candidateFactors.rbegin();iter!=candidateFactors.rend()&&counter<nr_constraints_to_add;iter++){
-    const ldp_triangle_factor& trFact=iter->second;
-    //auto * triangleFactor =lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact);
-   // std::vector<double> costs={trFact.getEdgeCosts()[0],trFact.getEdgeCosts()[1],trFact.getEdgeCosts()[2]};
-    std::array<double,3> costs={0,0,0};
-    auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact.getV1(),trFact.getV2(),trFact.getV3(),costs,trFact.isV1V2Base(),trFact.isV2V3Base());
-    triangle_factors_.push_back(triangleFactor);
-    counter++;
+//for(auto iter=candidateFactors.rbegin();iter!=candidateFactors.rend()&&counter<nr_constraints_to_add;iter++){
+//    const ldp_triangle_factor& trFact=iter->second;
+//    //auto * triangleFactor =lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact);
+//   // std::vector<double> costs={trFact.getEdgeCosts()[0],trFact.getEdgeCosts()[1],trFact.getEdgeCosts()[2]};
+//    std::array<double,3> costs={0,0,0};
+//    auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(trFact.getV1(),trFact.getV2(),trFact.getV3(),costs,trFact.isV1V2Base(),trFact.isV2V3Base());
+//    triangle_factors_.push_back(triangleFactor);
+//    counter++;
+//}
 
+
+
+for(auto iter=candidates.rbegin();iter!=candidates.rend()&&counter<nr_constraints_to_add;iter++){
+    std::array<size_t,3>& triple =iter->second;
+    std::array<double,3> costs={0,0,0};
+    size_t v2=triple[0];
+    assert(v2<nr_nodes());
+    size_t v1;
+    bool v1v2base=true;
+    if(triple[1]>=baseGraph.numberOfEdgesToVertex(v2)){
+        size_t liftedOrder=triple[1]-baseGraph.numberOfEdgesToVertex(v2);
+        assert(liftedOrder<liftedGraph.numberOfEdgesToVertex(v2));
+        v1=liftedGraph.vertexToVertex(v2,liftedOrder);
+        v1v2base=false;
+    }
+    else{
+        v1=baseGraph.vertexToVertex(v2,triple[1]);
+    }
+    assert(v2<nr_nodes());
+    size_t v3;
+    bool v2v3base=true;
+    if(triple[2]>=baseGraph.numberOfEdgesFromVertex(v2)){
+        size_t liftedOrder=triple[2]-baseGraph.numberOfEdgesFromVertex(v2);
+        assert(liftedOrder<liftedGraph.numberOfEdgesFromVertex(v2));
+        v3=liftedGraph.vertexFromVertex(v2,liftedOrder);
+        v2v3base=false;
+    }
+    else{
+        v3=baseGraph.vertexFromVertex(v2,triple[2]);
+    }
+    assert(v3<nr_nodes());
+    auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(v1,v2,v3,costs,v1v2base,v2v3base);
+    triangle_factors_.push_back(triangleFactor);
+    usedTriangles.at(triple[0]).at(triple[1]).insert(triple[2]);
+    counter++;
 }
 
 //TODO update cost in SNC factors that were used for creating the triangle factors!
@@ -794,6 +854,8 @@ std::cout<<"tighten finished"<<std::endl;
 //    andres::graph::Digraph<> graph; //TODO initialize this: Actually, it is needed lifted with some base edges. Maybe copy of lifted, add some edges?
 //    components.build(graph,costs);
 //    //for all edges with positive costs whose vertices belong to the same component: add triangle (priority queue)
+
+return counter;
 
 }
 
