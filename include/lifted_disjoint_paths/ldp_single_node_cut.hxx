@@ -88,7 +88,7 @@ public:
 
 	const std::vector<double>& getLiftedCosts() const {
 		return liftedCosts;
-	}
+    }
 
 	const std::vector<double>& getBaseCosts() const {
 		return baseCosts;
@@ -191,6 +191,15 @@ public:
 	//std::vector<bool> primalLifted_;
 
 
+    void print() const{
+        std::cout<<nodeID<<":";
+        if(isOutFlow){
+            std::cout<<"out";
+        }
+        else{
+            std::cout<<"in";
+        }
+    }
 
 
 

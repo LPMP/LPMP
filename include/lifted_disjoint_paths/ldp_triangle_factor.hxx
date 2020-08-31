@@ -86,6 +86,10 @@ public:
     bool isV2V3Base()const{
         return v2v3Base;
     }
+
+    void print() const{
+        std::cout<<vInd<<","<<uInd<<","<<wInd<<" ";
+    }
 	double LowerBound() const{
 		double minValue=0;
 		short minIndex=0;
@@ -233,9 +237,14 @@ public:
     template<typename TRIANGLE_FACTOR>
     void RepamLeft(TRIANGLE_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
-       if(debug()) std::cout<<"triangle repam left "<<std::endl;
-        assert(msg_dim == 0 || msg_dim == 1);
-        l.updateCost(msg,indicesInTriangle.at(msg_dim));
+       if(debug()) std::cout<<"triangle repam left ";
+//       l.print();
+//       printIndices();
+
+      // std::cout<<std::endl;
+        assert(msg_dim <=indicesInTriangle.size());
+       //std::cout<<"index to update "<<indicesInTriangle.at(msg_dim);
+        l.updateCost(indicesInTriangle.at(msg_dim),msg);
      }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
@@ -250,20 +259,21 @@ public:
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
         if(debug()) std::cout<<"triangle send one to left ";
+        //printIndices();
         //for (size_t i=0;i<1;i++) {
         for (size_t i=0;i<isLifted.size();i++) {
             double delta=0;
             if(isLifted[i]){
-                std::cout<<"lifted "<<std::endl;
+               // std::cout<<"lifted "<<std::endl;
                 delta = r.oneLiftedMinMarginal(verticesInSnc.at(i));
             }
             else{
-                std::cout<<"base "<<std::endl;
+              //  std::cout<<"base "<<std::endl;
                 delta = r.getOneBaseEdgeMinMarginal(verticesInSnc.at(i));
             }
             msg[i] -= omega * delta;
         }
-        std::cout<<" done "<<std::endl;
+      //  std::cout<<" done "<<std::endl;
     }
 
     template<typename TRIANGLE_FACTOR, typename MSG>
@@ -279,52 +289,53 @@ public:
 
 
 
-//    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
-//    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
-//    {
-//        if(debug()) std::cout<<"triangle send all to left"<<std::endl;
+    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
+    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+    {
+        if(debug()) std::cout<<"triangle send all to left"<<std::endl;
 
-//        const std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
-//        std::vector<double> localBaseCost=r.getBaseCosts();
-//        for (size_t i = 0; i < localBaseCost.size(); ++i) {
-//            localBaseCost[i]-=msg_vec_base[i];
-//        }
-//        const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);
+        //TODO take only one half from the base min marginals!
+        const std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
+        std::vector<double> localBaseCost=r.getBaseCosts();
+        for (size_t i = 0; i < localBaseCost.size(); ++i) {
+            localBaseCost[i]-=msg_vec_base[i];
+        }
+        const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);
 
-//        for(auto it=msg_begin; it!=msg_end; ++it)
-//        {
-//            auto& msg = (*it).GetMessageOp();
-//            for (int i = 0; i <msg.verticesInSnc.size(); ++i) {
-//                const size_t vertex = msg.verticesInSnc[i];
-//                bool lifted=msg.isLifted[i];
-//                if(lifted){
-//                    (*it)[i] -= omega * msg_vec_lifted.at(vertex);
-//                }
-//                else{
-//                    (*it)[i] -= omega * msg_vec_base.at(vertex);
-//                }
-//            }
-//        }
-//    }
+        for(auto it=msg_begin; it!=msg_end; ++it)
+        {
+            auto& msg = (*it).GetMessageOp();
+            for (int i = 0; i <msg.verticesInSnc.size(); ++i) {
+                const size_t vertex = msg.verticesInSnc.at(i);
+                bool lifted=msg.isLifted.at(i);
+                if(lifted){
+                    (*it)[i] -= omega * msg_vec_lifted.at(vertex);
+                }
+                else{
+                    (*it)[i] -= omega * msg_vec_base.at(vertex);
+                }
+            }
+        }
+    }
 
-//    template<typename TRIANGLE_FACTOR, typename MSG_ARRAY>
-//    static void SendMessagesToRight(const TRIANGLE_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
-//    {
+    template<typename TRIANGLE_FACTOR, typename MSG_ARRAY>
+    static void SendMessagesToRight(const TRIANGLE_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+    {
 
-//        if(debug()) std::cout<<"triangle send all to right"<<std::endl;
-//        const std::array<double,3> msg_vec = l.getAllMinMarginals();
+        if(debug()) std::cout<<"triangle send all to right"<<std::endl;
+        const std::array<double,3> msg_vec = l.getAllMinMarginals();
 
-//        for(auto it=msg_begin; it!=msg_end; ++it)
-//        {
-//            auto& msg = (*it).GetMessageOp();
-//            for (int i = 0; i < msg.indicesInTriangle.size(); ++i) {
-//                const size_t indexInTr = msg.indicesInTriangle[i];
-//                (*it)[i]-= 0.5*omega * msg_vec.at(indexInTr);
-//            }
+        for(auto it=msg_begin; it!=msg_end; ++it)
+        {
+            auto& msg = (*it).GetMessageOp();
+            for (int i = 0; i < msg.indicesInTriangle.size(); ++i) {
+                const size_t indexInTr = msg.indicesInTriangle.at(i);
+                (*it)[i]-= 0.5*omega * msg_vec.at(indexInTr);
+            }
 
-//        }
+        }
 
-//    }
+    }
 
 
 
@@ -350,6 +361,13 @@ public:
     }
 
 private:
+//    void printIndices()const{
+//        std::cout<<"indices in triangle ";
+//        for (int i = 0; i < indicesInTriangle.size(); ++i) {
+//            std::cout<<indicesInTriangle.at(i)<<",";
+//        }
+//        std::cout<<std::endl;
+//    }
     const std::vector<size_t> indicesInTriangle;
     const std::vector<size_t> verticesInSnc;
     const std::vector<bool> isLifted;
