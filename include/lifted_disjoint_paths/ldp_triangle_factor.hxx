@@ -310,11 +310,17 @@ public:
                 const size_t vertex = msg.verticesInSnc.at(i);
                 bool lifted=msg.isLifted.at(i);
                 if(lifted){
-                    (*it)[i] -= r.getTriangleCoeffForLiftedEdge(vertex)* omega * msg_vec_lifted.at(vertex);
+                    (*it)[i] -=  omega * msg_vec_lifted.at(vertex);
                 }
                 else{
-                    (*it)[i] -= r.getTriangleCoeffForBaseEdge(vertex)*omega * msg_vec_base.at(vertex);
+                    (*it)[i] -= omega * msg_vec_base.at(vertex);
                 }
+//                if(lifted){
+//                    (*it)[i] -= r.getTriangleCoeffForLiftedEdge(vertex)* omega * msg_vec_lifted.at(vertex);
+//                }
+//                else{
+//                    (*it)[i] -= r.getTriangleCoeffForBaseEdge(vertex)*omega * msg_vec_base.at(vertex);
+//                }
             }
         }
     }
@@ -331,7 +337,8 @@ public:
             auto& msg = (*it).GetMessageOp();
             for (int i = 0; i < msg.indicesInTriangle.size(); ++i) {
                 const size_t indexInTr = msg.indicesInTriangle.at(i);
-                (*it)[i]-= 0.5*omega * msg_vec.at(indexInTr);
+                //(*it)[i]-= 0.5*omega * msg_vec.at(indexInTr);
+                (*it)[i]-= omega * msg_vec.at(indexInTr);
             }
 
         }

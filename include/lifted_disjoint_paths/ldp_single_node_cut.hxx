@@ -219,7 +219,8 @@ public:
     }
 
     void increaseLiftedEdgeTriangles(size_t liftedEdgeOrder){
-        neighborLiftedTriangles.at(liftedEdgeOrder)++;
+        assert(liftedEdgeOrder<neighborLiftedTriangles.size());
+        neighborLiftedTriangles[liftedEdgeOrder]++;
     }
 
 
