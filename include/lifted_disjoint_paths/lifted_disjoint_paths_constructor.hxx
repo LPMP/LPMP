@@ -833,9 +833,6 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t orderV2InV1=sncFactorOutV1->getLiftedIDToOrder(v2);
             size_t orderV1InV2=sncFactorInV2->getLiftedIDToOrder(v1);
 
-            sncFactorOutV1->increaseLiftedEdgeTriangles(orderV2InV1);
-            sncFactorInV2->increaseLiftedEdgeTriangles(orderV1InV2);
-
             sncFactorOutV1->updateCostSimple(-liftedEdgeLabelsOut.at(feV1V2.second),orderV2InV1,true);
             sncFactorInV2->updateCostSimple(-liftedEdgeLabelsIn.at(feV1V2.second),orderV1InV2,true);
             costs[0]=liftedEdgeLabelsIn.at(feV1V2.second)+liftedEdgeLabelsOut.at(feV1V2.second);
@@ -846,9 +843,6 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
             size_t orderV2InV1=sncFactorOutV1->getBaseIDToOrder(v2);
             size_t orderV1InV2=sncFactorInV2->getBaseIDToOrder(v1);
-
-            sncFactorOutV1->increaseBaseEdgeTriangles(orderV2InV1);
-            sncFactorInV2->increaseBaseEdgeTriangles(orderV1InV2);
 
             sncFactorOutV1->updateCostSimple(-baseEdgeLabelsOut.at(feV1V2.second),orderV2InV1,false);
             sncFactorInV2->updateCostSimple(-baseEdgeLabelsIn.at(feV1V2.second),orderV1InV2,false);
@@ -861,8 +855,6 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t orderV3InV2=sncFactorOutV2->getLiftedIDToOrder(v3);
             size_t orderV2InV3=sncFactorInV3->getLiftedIDToOrder(v2);
 
-            sncFactorOutV2->increaseLiftedEdgeTriangles(orderV3InV2);
-            sncFactorInV3->increaseLiftedEdgeTriangles(orderV2InV3);
 
             sncFactorOutV2->updateCostSimple(-liftedEdgeLabelsOut.at(feV2V3.second),orderV3InV2,true);
             sncFactorInV3->updateCostSimple(-liftedEdgeLabelsIn.at(feV2V3.second),orderV2InV3,true);
@@ -872,8 +864,6 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t orderV3InV2=sncFactorOutV2->getBaseIDToOrder(v3);
             size_t orderV2InV3=sncFactorInV3->getBaseIDToOrder(v2);
 
-            sncFactorOutV2->increaseBaseEdgeTriangles(orderV3InV2);
-            sncFactorInV3->increaseBaseEdgeTriangles(orderV2InV3);
 
             sncFactorOutV2->updateCostSimple(-baseEdgeLabelsOut.at(feV2V3.second),orderV3InV2,false);
             sncFactorInV3->updateCostSimple(-baseEdgeLabelsIn.at(feV2V3.second),orderV2InV3,false);
@@ -885,8 +875,6 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         size_t orderV3InV1=sncFactorOutV1->getLiftedIDToOrder(v3);
         size_t orderV1InV3=sncFactorInV3->getLiftedIDToOrder(v1);
 
-        sncFactorOutV1->increaseLiftedEdgeTriangles(orderV3InV1);
-        sncFactorInV3->increaseLiftedEdgeTriangles(orderV1InV3);
 
         sncFactorOutV1->updateCostSimple(-liftedEdgeLabelsOut.at(feV1V3.second),orderV3InV1,true);
         sncFactorInV3->updateCostSimple(-liftedEdgeLabelsIn.at(feV1V3.second),orderV1InV3,true);

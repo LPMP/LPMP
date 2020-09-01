@@ -201,29 +201,6 @@ public:
         }
     }
 
-    double getTriangleCoeffForBaseEdge(size_t baseEdgeOrder)const {
-        assert(baseEdgeOrder<neighborBaseTriangles.size());
-        return 1.0/double(neighborBaseTriangles[baseEdgeOrder]);
-
-    }
-
-    double getTriangleCoeffForLiftedEdge(size_t liftedEdgeOrder)const{
-        assert(liftedEdgeOrder<neighborLiftedTriangles.size());
-        return 1.0/double(neighborLiftedTriangles[liftedEdgeOrder]);
-
-    }
-
-    void increaseBaseEdgeTriangles(size_t baseEdgeOrder) {
-        assert(baseEdgeOrder<neighborBaseTriangles.size());
-        neighborBaseTriangles[baseEdgeOrder]++;
-    }
-
-    void increaseLiftedEdgeTriangles(size_t liftedEdgeOrder){
-        assert(liftedEdgeOrder<neighborLiftedTriangles.size());
-        neighborLiftedTriangles[liftedEdgeOrder]++;
-    }
-
-
 
 
     const LDP_INSTANCE& getLdpInstance() const{
@@ -425,9 +402,6 @@ private:
 
 	std::vector<size_t> baseIDs;
 	std::vector<size_t> liftedIDs;
-
-    std::vector<size_t> neighborBaseTriangles;
-    std::vector<size_t> neighborLiftedTriangles;
 
 	size_t nodeNotActive;
 
@@ -841,7 +815,6 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 			liftedIDToOrder[neighborID]=i;
 		}
 	}
-    neighborLiftedTriangles=std::vector<size_t>(liftedCosts.size(),0);
     optLiftedUpToDate=false;
 }
 
@@ -876,8 +849,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 
 	}
     solutionCosts=std::vector<double>(baseCosts.size()+1);
-    neighborBaseTriangles=std::vector<size_t>(baseCosts.size(),0);
-	//	for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+    //	for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
 	//		size_t edgeID=getNeighborLiftedEdge(nodeID,i);
 	//		size_t neighborID=getNeighborLiftedVertex(nodeID,i);
 	//		double cost=ldpInstance.getLiftedEdgeScore(edgeID);
