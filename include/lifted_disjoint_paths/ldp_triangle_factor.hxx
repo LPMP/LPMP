@@ -93,7 +93,7 @@ public:
     }
 
     void print() const{
-        std::cout<<vInd<<","<<uInd<<","<<wInd<<" ";
+        std::cout<<vInd<<","<<uInd<<","<<wInd<<", base "<<isV1V2Base()<<", "<<isV2V3Base()<<std::endl;
     }
 	double LowerBound() const{
 		double minValue=0;
@@ -124,6 +124,11 @@ public:
                 primalSet=true;
                 break;
             }
+        }
+        if(!primalSet){
+            print();
+            std::cout<<"wrong primal "<<primalSolution[0]<<","<<primalSolution[1]<<","<<primalSolution[2]<<","<<std::endl;
+
         }
         assert(primalSet);
     }

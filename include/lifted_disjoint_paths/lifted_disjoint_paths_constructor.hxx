@@ -45,6 +45,7 @@ private:
     std::size_t base_graph_terminal_node() const { return nr_nodes() + 1; }
 
     void adjustLiftedLabels();
+    void adjustTriangleLabels();
 
     bool checkFeasibilityInSnc();
     bool checkFeasibilityLiftedInSnc();
@@ -266,6 +267,59 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         }
     }
 }
+
+
+
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::adjustTriangleLabels(){
+//Assumes primal feasible solution w.r.t. base edges and node labels and adjusted lifted labels
+    for (size_t i = 0; i < triangle_factors_.size(); ++i) {
+        auto * trFactor=triangle_factors_[i]->get_factor();
+        std::bitset<3> primalSolution("000");
+        size_t v1=trFactor->getV1();
+        size_t v2=trFactor->getV2();
+        size_t v3=trFactor->getV3();
+        auto * sncV1=single_node_cut_factors_[v1][1]->get_factor();
+        auto * sncV2=single_node_cut_factors_[v2][1]->get_factor();
+
+        if(sncV1->isNodeActive()){
+            if(trFactor->isV1V2Base()){
+                size_t primalV1=sncV1->getPrimalBaseVertexID();
+                if(primalV1==v2){
+                    primalSolution[0]=1;
+                }
+            }
+            else{
+                if(sncV1->isActiveInPrimalLifted(sncV1->getLiftedIDToOrder(v2))){
+                    primalSolution[0]=1;
+                }
+            }
+            if(sncV1->isActiveInPrimalLifted(sncV1->getLiftedIDToOrder(v3))){
+                primalSolution[2]=1;
+            }
+        }
+        if(sncV2->isNodeActive()){
+            if(trFactor->isV2V3Base()){
+                size_t primalV2=sncV2->getPrimalBaseVertexID();
+                if(primalV2==v3){
+                    primalSolution[1]=1;
+                }
+            }
+            else{
+                if(sncV2->isActiveInPrimalLifted(sncV2->getLiftedIDToOrder(v3))){
+                    primalSolution[1]=1;
+                }
+            }
+        }
+
+        trFactor->setPrimal(primalSolution);
+
+
+    }
+}
+
+
+
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
@@ -500,6 +554,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     assert(isFeasible);
     adjustLiftedLabels();
     isFeasible=this->checkFeasibilityLiftedInSnc();
+    adjustTriangleLabels();
     assert(isFeasible);
     double primalValue=0;
     for (int i = 0; i < nr_nodes(); ++i) {
@@ -509,6 +564,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         primalValue+=sncFactorIn->EvaluatePrimal();
         primalValue+=sncFactorOut->EvaluatePrimal();
 
+
+    }
+    for (int i = 0; i < triangle_factors_.size(); ++i) {
+        auto * trFactor=triangle_factors_[i]->get_factor();
+        primalValue+=trFactor->EvaluatePrimal();
 
     }
 
