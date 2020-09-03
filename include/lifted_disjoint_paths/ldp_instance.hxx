@@ -158,6 +158,7 @@ public:
 	bool check_feasiblity(LABEL_ITERATOR begin, LABEL_ITERATOR end) const;
 	template<typename EDGE_LABEL_ITERATOR>
 	double evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const;
+    bool isStrongBase(size_t v,size_t w) const;
 
 
 	const ConfigDisjoint<>& parameters;
@@ -181,6 +182,8 @@ private:
 
 	andres::graph::Digraph<> graph_;
 	andres::graph::Digraph<> graphLifted_;
+
+    std::vector<std::unordered_set<size_t>> strongBaseEdges;
 
 	std::vector<bool> baseEdgeLabels;
 

@@ -618,7 +618,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                         double improvement=std::min({-valueOut,-valueIn,valueConnecting});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
                         // std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,true); //TODO this will be templetized
+                       // ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,true,instance); //TODO this will be templetized
                         // candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                         std::array<size_t,3> toInsert={vertex,beIn,beOut};
                         candidates.emplace(improvement,toInsert);
@@ -651,7 +651,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                         }
                         if(positiveCounter!=1) std::cout<<"wrong triangle"<<std::endl;
                         // std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,true);
+                       // ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,true);
                         //  candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                         std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,beOut};
                         candidates.emplace(improvement,toInsert);
@@ -684,7 +684,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
                         // std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,false); //TODO this will be templetized
+                       // ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,false); //TODO this will be templetized
                         //     candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                         std::array<size_t,3> toInsert={vertex,beIn,leOut+numberOfBaseOut};
                         candidates.emplace(improvement,toInsert);
@@ -710,7 +710,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<double,3> costs={valueIn,valueOut,valueConnecting};
                         //std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                        ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,false);
+                      //  ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,false);
                         //   candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                         std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,leOut+numberOfBaseOut};
                         candidates.emplace(improvement,toInsert);
@@ -881,7 +881,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         costs[2]=liftedEdgeLabelsIn.at(feV1V3.second)+liftedEdgeLabelsOut.at(feV1V3.second);
 
         assert(v3<nr_nodes());
-        auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(v1,v2,v3,costs,v1v2base,v2v3base);
+        auto* triangleFactor = lp_->template add_factor<TRIANGLE_FACTOR_CONT>(v1,v2,v3,costs,v1v2base,v2v3base,instance);
         //    double lb=triangleFactor->LowerBound();
         //    double simpleLB=0;
         //    for (int i = 0; i < 3; ++i) {

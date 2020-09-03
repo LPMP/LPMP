@@ -16,6 +16,7 @@
 #include <config.hxx>
 #include <assert.h>
 #include <unordered_map>
+#include"lifted_disjoint_paths/ldp_instance.hxx"
 namespace LPMP {
 
 class ldp_triangle_factor
@@ -23,7 +24,7 @@ class ldp_triangle_factor
 public:
 
 	//By default, all edges are lifted. However vu or uw can be base too.
-    ldp_triangle_factor(size_t v,size_t u,size_t w,const std::array<double,3>& costs,bool vuBase=0,bool uwBase=0): //TODO remember vertex indices instead of edge indices?
+    ldp_triangle_factor(size_t v,size_t u,size_t w,const std::array<double,3>& costs,bool vuBase,bool uwBase,const lifted_disjoint_paths::LdpInstance& instance): //TODO remember vertex indices instead of edge indices?
 		vInd(v),
 		uInd(u),
         wInd(w),
@@ -37,28 +38,32 @@ public:
 //            edgeCosts[i]=costs[i];
 //        }
 		//Feasible labelings of edge (vu,uw,vw)
-		labelings={std::bitset<3>("000"),std::bitset<3>("111"),std::bitset<3>("100"),std::bitset<3>("010"),std::bitset<3>("001")};
-		if(vuBase){
-			labelings.push_back(std::bitset<3>("011"));
-		}
-		if(uwBase){
-			labelings.push_back(std::bitset<3>("101"));
-		}
-		primal_=0;
+        labelings={std::bitset<3>("000"),std::bitset<3>("111"),std::bitset<3>("100"),std::bitset<3>("010"),std::bitset<3>("001")};
+        if(vuBase&&!instance.isStrongBase(v,u)){
+            // if(vuBase){
+            labelings.push_back(std::bitset<3>("011"));
+        }
+        if(uwBase&&!instance.isStrongBase(u,w)){
+            //if(uwBase){
+            labelings.push_back(std::bitset<3>("101"));
+        }
+
+
+        primal_=0;
 }
 
-    ldp_triangle_factor(const ldp_triangle_factor& trFactor): //TODO remember vertex indices instead of edge indices?
-        vInd(trFactor.vInd),
-        uInd(trFactor.uInd),
-        wInd(trFactor.wInd),
-        v1v2Base(trFactor.v1v2Base),
-        v2v3Base(trFactor.v2v3Base),
-        edgeCosts(trFactor.edgeCosts),
-        labelings(trFactor.labelings),
-        primal_(trFactor.primal_)
-{
+//    ldp_triangle_factor(const ldp_triangle_factor& trFactor): //TODO remember vertex indices instead of edge indices?
+//        vInd(trFactor.vInd),
+//        uInd(trFactor.uInd),
+//        wInd(trFactor.wInd),
+//        v1v2Base(trFactor.v1v2Base),
+//        v2v3Base(trFactor.v2v3Base),
+//        edgeCosts(trFactor.edgeCosts),
+//        labelings(trFactor.labelings),
+//        primal_(trFactor.primal_)
+//{
 
-}
+//}
 
 
     const std::array<double,3> getEdgeCosts()const {

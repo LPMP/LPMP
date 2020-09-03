@@ -53,6 +53,7 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,Com
 	std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
 	parameters.infoFile()<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
 	parameters.infoFile().flush();
+    strongBaseEdges=std::vector<std::unordered_set<size_t>>(graph_.numberOfVertices());
 	if(parameters.isSparsify()){
 		sparsifyBaseGraph();
 		sparsifyLiftedGraph();
@@ -523,15 +524,24 @@ void LdpInstance::sparsifyLiftedGraph(){
 
 
 	std::unordered_map<size_t,std::set<size_t>> liftedEdges;
-	for (int v = 0; v < graphLifted_.numberOfVertices()-2; ++v) {
+    for (size_t v = 0; v < graphLifted_.numberOfVertices()-2; ++v) {
 		std::unordered_set<size_t> alternativePath;
-		for (int i = 0; i < graph_.numberOfEdgesFromVertex(v); ++i) {
+        for (size_t i = 0; i < graph_.numberOfEdgesFromVertex(v); ++i) {
 			size_t w=graph_.vertexFromVertex(v,i);
 			for(size_t u:reachable[w]){
-				if(u!=w) alternativePath.insert(u);
+                if(u!=w){
+                    alternativePath.insert(u);
+                }
 			}
 		}
-		for (int i = 0; i < graphLifted_.numberOfEdgesFromVertex(v); ++i) {
+        for (size_t i = 0; i < graph_.numberOfEdgesFromVertex(v); ++i) {
+            size_t w=graph_.vertexFromVertex(v,i);
+            if(alternativePath.count(w)==0){
+                strongBaseEdges.at(v).insert(w);
+            }
+        }
+
+        for (size_t i = 0; i < graphLifted_.numberOfEdgesFromVertex(v); ++i) {
 			size_t w=graphLifted_.vertexFromVertex(v,i);
 			if(w!=t_){
 				if(alternativePath.count(w)>0) liftedEdges[v].insert(w);
@@ -546,11 +556,11 @@ void LdpInstance::sparsifyLiftedGraph(){
 	parameters.infoFile().flush();
 
 
-	for (int i = 0; i < graphLifted_.numberOfEdges(); ++i) {
+    for (int i = 0; i < graphLifted_.numberOfEdges(); ++i) {
 		size_t v0=graphLifted_.vertexOfEdge(i,0);
 		size_t v1=graphLifted_.vertexOfEdge(i,1);
-		int l0=vertexGroups.getGroupIndex(v0);
-		int l1=vertexGroups.getGroupIndex(v1);
+        int l0=vertexGroups.getGroupIndex(v0);
+        int l1=vertexGroups.getGroupIndex(v1);
 		double cost=getLiftedEdgeScore(i);
 		bool goodCost=(cost<negMaxValue)||(cost>posMinValue);
 		if(isReachable(v0,v1)){
@@ -595,6 +605,12 @@ void LdpInstance::sparsifyLiftedGraph(){
 	}
 	parameters.infoFile().flush();
 
+}
+
+bool LdpInstance::isStrongBase(size_t v,size_t w) const{
+    bool isStrong= strongBaseEdges.at(v).count(w)>0;
+    return isStrong;
+   // return false;
 }
 
 
