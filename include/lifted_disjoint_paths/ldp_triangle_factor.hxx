@@ -242,8 +242,10 @@ public:
     template<typename TRIANGLE_FACTOR>
     void RepamLeft(TRIANGLE_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
-       if(debug()) std::cout<<"triangle repam left ";
-//       l.print();
+       if(debug()){
+          std::cout<<"triangle repam left ";
+          l.print();
+       }
 //       printIndices();
 
       // std::cout<<std::endl;
@@ -255,7 +257,10 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
-        if(debug()) std::cout<<"triangle repam right "<<std::endl;
+        if(debug()){
+            std::cout<<"triangle repam right "<<std::endl;
+            r.print();
+        }
         assert(msg_dim == 0||msg_dim==1);
         r.updateCostSimple(msg,verticesInSnc.at(msg_dim),isLifted.at(msg_dim));
     }

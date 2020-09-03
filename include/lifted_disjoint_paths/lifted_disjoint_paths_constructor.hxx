@@ -616,17 +616,10 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                     // if((valueIn<eps&&valueIn>-eps)||(valueConnecting<eps&&valueConnecting>-eps)) continue;
                     if(valueIn<-eps&&valueConnecting>eps){
                         double improvement=std::min({-valueOut,-valueIn,valueConnecting});
-                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
-                        // std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                       // ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,true,instance); //TODO this will be templetized
-                        // candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                         std::array<size_t,3> toInsert={vertex,beIn,beOut};
                         candidates.emplace(improvement,toInsert);
-                        size_t positiveCounter=0;
-                        for (int k = 0; k < 3; ++k) {
-                            if(costs[k]>eps) positiveCounter++;
-                        }
-                        if(positiveCounter!=1) std::cout<<"wrong triangle"<<std::endl;
+
+
 
                     }
                 }
@@ -644,15 +637,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                     double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     if((valueIn<-eps&&valueConnecting>eps)||(valueIn>eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
-                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
-                        size_t positiveCounter=0;
-                        for (int k = 0; k < 3; ++k) {
-                            if(costs[k]>eps) positiveCounter++;
-                        }
-                        if(positiveCounter!=1) std::cout<<"wrong triangle"<<std::endl;
-                        // std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                       // ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,true);
-                        //  candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
+
                         std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,beOut};
                         candidates.emplace(improvement,toInsert);
                     }
@@ -682,17 +667,9 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                     double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     if((valueOut<-eps&&valueConnecting>eps)||(valueOut>eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
-                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
-                        // std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                       // ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,true,false); //TODO this will be templetized
-                        //     candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                         std::array<size_t,3> toInsert={vertex,beIn,leOut+numberOfBaseOut};
                         candidates.emplace(improvement,toInsert);
-                        size_t positiveCounter=0;
-                        for (int k = 0; k < 3; ++k) {
-                            if(costs[k]>eps) positiveCounter++;
-                        }
-                        if(positiveCounter!=1) std::cout<<"wrong triangle"<<std::endl;
+
                     }
                 }
 
@@ -708,21 +685,9 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                     double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     if((valueOut<-eps&&valueIn<-eps&&valueConnecting>eps)||(valueOut<-eps&&valueIn>eps&&valueConnecting<-eps)||(valueOut>eps&&valueIn<-eps&&valueConnecting<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
-                        std::array<double,3> costs={valueIn,valueOut,valueConnecting};
-                        //std::vector<double> costs={valueIn,valueOut,valueConnecting};
-                      //  ldp_triangle_factor triangleFactor(vertexIn,vertex,vertexOut,costs,false,false);
-                        //   candidateFactors.insert(std::pair<double,ldp_triangle_factor>(improvement,triangleFactor));
                         std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,leOut+numberOfBaseOut};
                         candidates.emplace(improvement,toInsert);
-                        size_t positiveCounter=0;
-                        size_t positiveIndex=0;
-                        for (int k = 0; k < 3; ++k) {
-                            if(costs[k]>eps){
-                                positiveIndex=k;
-                                positiveCounter++;
-                            }
-                        }
-                        if(positiveCounter!=1) std::cout<<"wrong triangle"<<std::endl;
+
                     }
 
                 }
@@ -750,6 +715,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     std::cout<<"candidate size "<<candidates.size()<<std::endl;
 
 
+    size_t triangleFactorsOrigSize=triangle_factors_.size();
     for(auto iter=candidates.rbegin();iter!=candidates.rend()&&counter<nr_constraints_to_add;iter++){
        // std::cout<<"new candidate "<<std::endl;
 
@@ -901,9 +867,11 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         counter++;
     }
 
+    std::cout<<"used triangles size "<<usedTriangles.size()<<std::endl;
+
     //TODO update cost in SNC factors that were used for creating the triangle factors!
 
-    for (int i = 0; i < triangle_factors_.size(); ++i) {
+    for (int i = triangleFactorsOrigSize; i < triangle_factors_.size(); ++i) {
         auto * triangleFactor=triangle_factors_[i];
 
 
