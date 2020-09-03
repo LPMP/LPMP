@@ -600,22 +600,24 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         //base edges out
         for (size_t beOut = 0; beOut < baseGraph.numberOfEdgesFromVertex(vertex); ++beOut) {
             size_t vertexOut=baseGraph.vertexFromVertex(vertex,beOut);
+            bool isStrongOut=instance.isStrongBase(vertex,vertexOut);
             size_t edgeOut=baseGraph.edgeFromVertex(vertex,beOut);
             double valueOut=baseEdgeLabelsOut.at(edgeOut)+baseEdgeLabelsIn.at(edgeOut);
-            if(valueOut>-eps) continue;
+            if((!isStrongOut&&valueOut>-eps)||(isStrongOut&&valueOut<eps&&valueOut>-eps )) continue;
 
             //base edges in
             for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
                 if(usedTriangles.at(vertex).at(beIn).count(beOut)>0) continue;
                 size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
+                bool isStrongIn=instance.isStrongBase(vertexIn,vertex);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
                     size_t edgeIn=baseGraph.edgeToVertex(vertex,beIn);
                     double valueIn=baseEdgeLabelsIn.at(edgeIn)+baseEdgeLabelsOut.at(edgeIn);
                     double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
                     // if((valueIn<eps&&valueIn>-eps)||(valueConnecting<eps&&valueConnecting>-eps)) continue;
-                    if(valueIn<-eps&&valueConnecting>eps){
-                        double improvement=std::min({-valueOut,-valueIn,valueConnecting});
+                    if((valueIn<-eps&&valueConnecting>eps&&valueOut<-eps)||(valueIn<-eps&&valueConnecting<-eps&&valueOut>eps)||((valueIn>eps&&isStrongIn)&&valueConnecting<-eps&&valueOut<-eps)){
+                        double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<size_t,3> toInsert={vertex,beIn,beOut};
                         candidates.emplace(improvement,toInsert);
 
@@ -630,12 +632,13 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             for (size_t leIn = 0; leIn < liftedGraph.numberOfEdgesToVertex(vertex); ++leIn) {
                 if(usedTriangles.at(vertex).at(leIn+numberOfBaseIn).count(beOut)>0) continue;
                 size_t vertexIn=liftedGraph.vertexToVertex(vertex,leIn);
+
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
                     size_t edgeIn=liftedGraph.edgeToVertex(vertex,leIn);
                     double valueIn=liftedEdgeLabelsIn.at(edgeIn)+liftedEdgeLabelsOut.at(edgeIn);
                     double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
-                    if((valueIn<-eps&&valueConnecting>eps)||(valueIn>eps&&valueConnecting<-eps)){
+                    if((valueIn<-eps&&valueConnecting>eps&&valueOut<-eps)||(valueIn<-eps&&valueConnecting<-eps&&valueOut>eps)||(valueIn>eps&&valueConnecting<-eps&&valueOut<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
 
                         std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,beOut};
@@ -659,13 +662,14 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             for (size_t beIn = 0; beIn < baseGraph.numberOfEdgesToVertex(vertex); ++beIn) {
                 if(usedTriangles.at(vertex).at(beIn).count(leOut+numberOfBaseOut)>0) continue;
                 size_t vertexIn=baseGraph.vertexToVertex(vertex,beIn);
+                bool isStrongIn=instance.isStrongBase(vertexIn,vertex);
                 auto findEdge=liftedGraph.findEdge(vertexIn,vertexOut);
                 if(findEdge.first){
                     size_t edgeIn=baseGraph.edgeToVertex(vertex,beIn);
                     double valueIn=baseEdgeLabelsIn.at(edgeIn)+baseEdgeLabelsOut.at(edgeIn);
                     if(valueIn>-eps) continue;
                     double valueConnecting=liftedEdgeLabelsIn.at(findEdge.second)+liftedEdgeLabelsOut.at(findEdge.second);
-                    if((valueOut<-eps&&valueConnecting>eps)||(valueOut>eps&&valueConnecting<-eps)){
+                    if((valueIn<-eps&&valueConnecting>eps&&valueOut<-eps)||(valueIn<-eps&&valueConnecting<-eps&&valueOut>eps)||((valueIn>eps&&isStrongIn)&&valueConnecting<-eps&&valueOut<-eps)){
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<size_t,3> toInsert={vertex,beIn,leOut+numberOfBaseOut};
                         candidates.emplace(improvement,toInsert);
