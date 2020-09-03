@@ -1055,6 +1055,29 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 {
     mcf_->reset_costs();
 
+//    const lifted_disjoint_paths::LdpInstance &instance=single_node_cut_factors_[0][0]->get_factor()->getLdpInstance();
+//    const andres::graph::Digraph<>& baseGraph=instance.getGraph();
+//    std::vector<std::unordered_map<size_t,double>> costsFromTriangles(nr_nodes());
+
+
+//    for(size_t i=0;i<triangle_factors_.size();i++){
+//        auto * trFactor=triangle_factors_[i]->get_factor();
+//        size_t v1=trFactor->getV1();
+//        size_t v2=trFactor->getV2();
+//        size_t v3=trFactor->getV3();
+//        if(trFactor->isV1V2Base()){
+//            double m=trFactor->getOneMinMarginal(0);
+//            trFactor->updateCost(0,-m);
+//            costsFromTriangles[v1][v2]+=m;
+//        }
+//        if(trFactor->isV2V3Base()){
+//            double m=trFactor->getOneMinMarginal(1);
+//            trFactor->updateCost(1,-m);
+//            costsFromTriangles[v2][v3]+=m;
+//        }
+//    }
+
+
     for(std::size_t i=0; i<nr_nodes(); ++i)
     {
         {
@@ -1118,6 +1141,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 const double m = outgoing_min_marg[l];
                 assert(mcf_->lower_bound(e) == 0 && mcf_->upper_bound(e) == 1);
                 mcf_->update_cost(e, m);
+//                auto iter=costsFromTriangles[i].find(j);
+//                if(iter!=costsFromTriangles[i].end()){
+//                    mcf_->update_cost(e,iter->second);
+//                }
             }
             if(change_marginals)
             {
