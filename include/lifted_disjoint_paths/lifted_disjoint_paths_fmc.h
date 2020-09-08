@@ -20,14 +20,14 @@ namespace LPMP {
        // using single_node_cut_node_message_container = MessageContainer<ldp_snc_node_message, 0, 0, message_passing_schedule::only_send, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 1>;
 
         // TODO: replace with atMostFourMessages
-        using snc_triangel_message_container=MessageContainer<ldp_snc_triangle_message, 1, 0, message_passing_schedule::only_send, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 1>;
+        using snc_triangle_message_container=MessageContainer<ldp_snc_triangle_message, 1, 0, message_passing_schedule::only_send, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 1>;
 
      //    using snc_triangel_message_container=MessageContainer<ldp_snc_triangle_message, 1, 0, message_passing_schedule::full, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 1>;
 
         using FactorList = meta::list<single_node_cut_factor_container,triangle_factor_container>;
-        using MessageList = meta::list<single_node_cut_lifted_edge_message_container,snc_triangel_message_container>;
+        using MessageList = meta::list<single_node_cut_lifted_edge_message_container,snc_triangle_message_container>;
 
-        using problem_constructor = lifted_disjoint_paths_constructor<lifted_disjoint_paths_FMC, single_node_cut_factor_container,triangle_factor_container, single_node_cut_lifted_edge_message_container,snc_triangel_message_container>;
+        using problem_constructor = lifted_disjoint_paths_constructor<lifted_disjoint_paths_FMC, single_node_cut_factor_container,triangle_factor_container, single_node_cut_lifted_edge_message_container,snc_triangle_message_container>;
     };
 
 }

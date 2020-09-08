@@ -45,7 +45,7 @@ private:
     std::size_t base_graph_terminal_node() const { return nr_nodes() + 1; }
 
     void adjustLiftedLabels();
-    void adjustTriangleLabels();
+    void adjustTriangleLabels(size_t firstIndex=0);
 
     bool checkFeasibilityInSnc();
     bool checkFeasibilityLiftedInSnc();
@@ -271,9 +271,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::adjustTriangleLabels(){
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::adjustTriangleLabels(size_t firstIndex){
 //Assumes primal feasible solution w.r.t. base edges and node labels and adjusted lifted labels
-    for (size_t i = 0; i < triangle_factors_.size(); ++i) {
+    for (size_t i = firstIndex; i < triangle_factors_.size(); ++i) {
         auto * trFactor=triangle_factors_[i]->get_factor();
         std::bitset<3> primalSolution("000");
         size_t v1=trFactor->getV1();
@@ -1034,7 +1034,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     //    components.build(graph,costs);
     //    //for all edges with positive costs whose vertices belong to the same component: add triangle (priority queue)
     std::cout<<"tighten expected improvement "<<expectedImprovement<<", added constraints "<<counter<<std::endl;
-    adjustTriangleLabels();
+    adjustTriangleLabels(triangleFactorsOrigSize);
     return counter;
 
 }
