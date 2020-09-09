@@ -14,11 +14,49 @@ namespace LPMP {
 //	std::unordered_map<size_t,double> baseMessages;
 //	std::unordered_map<size_t,double> liftedMessages;
 //};
+template<class T>
+struct ShiftedVector{
+public:
+    ShiftedVector<T>(size_t minVertex_,size_t maxVertex_): //minVertex inclusive, maxVertex exclusive
+    minVertex(minVertex_),maxVertex(maxVertex_)
+    {
+        myVector=std::vector<T>(maxVertex-minVertex);
+    }
+    ShiftedVector<T>(){
+        minVertex=0;
+        maxVertex=0;
+        ShiftedVector(minVertex,maxVertex);
+    }
+
+    const T& operator[](std::size_t idx){
+        assert(idx>=minVertex&&idx<maxVertex);
+        return myVector[idx-minVertex];
+    }
+
+    void fillWith(const T& value){
+        myVector=std::vector<T>(maxVertex-minVertex,value);
+    }
+
+    void fillWith(const T& value,size_t index1,size_t index2){
+        size_t minIndex=std::min(index1,index2);
+        size_t maxIndex=std::max(index1,index2);
+
+        myVector=std::vector<T>(maxVertex-minVertex,value);
+    }
+
+private:
+    std::vector<T> myVector;
+    size_t minVertex;
+    size_t maxVertex;
+};
+
 
 struct StrForUpdateValues{
 	std::vector<double>& solutionCosts;
-	std::unordered_map<size_t,double> valuesStructure;
-	std::unordered_map<size_t,size_t> vertexIDStructure;
+    ShiftedVector<double> valuesStructure;
+    ShiftedVector<size_t> vertexIDStructure;
+//	std::unordered_map<size_t,double> valuesStructure;
+//	std::unordered_map<size_t,size_t> vertexIDStructure;
 	size_t optBase;
 	const std::vector<double>& baseCosts;
 	const std::vector<double>& liftedCosts;
@@ -30,7 +68,8 @@ struct StrForUpdateValues{
 	double optValue;
 	const size_t nodeID;
 	//size_t optimalSolution;
-	StrForUpdateValues(const std::vector<double>& bCosts,const std::vector<double>& lCosts,std::vector<double>& solCosts,const size_t centralNode):
+    //StrForUpdateValues(const std::vector<double>& bCosts,const std::vector<double>& lCosts,std::vector<double>& solCosts,const size_t centralNode):
+    StrForUpdateValues(const std::vector<double>& bCosts,const std::vector<double>& lCosts,std::vector<double>& solCosts,const size_t centralNode,size_t boundaryValue):
 	baseCosts(bCosts),
 	liftedCosts(lCosts),
 	solutionCosts(solCosts),
@@ -39,6 +78,8 @@ struct StrForUpdateValues{
 	{
 		useAllVertices=true;
 		optBase=0;
+        valuesStructure=ShiftedVector<double>(std::min(centralNode,boundaryValue),std::max(centralNode,boundaryValue)+1);
+        vertexIDStructure=ShiftedVector<size_t>(std::min(centralNode,boundaryValue),std::max(centralNode,boundaryValue)+1);
 
 	}
 	bool useVertex(size_t vertex){
@@ -355,6 +396,15 @@ private:
 		}
 	}
 
+    size_t getMoreDistantNode(const size_t& v1,const size_t& v2)const {
+        if(isOutFlow){
+            return std::max(v1,v2);
+        }
+        else{
+            return std::min(v1,v2);
+        }
+    }
+
 
     mutable size_t optimalSolutionBase; //Contains vertices w.r.t. their order for central vertex
     mutable std::list<size_t> optimalSolutionLifted;  //Contains IDs of vertices, not their order w.r.t. central vertex!
@@ -365,6 +415,8 @@ private:
 
 	std::size_t minLayer;
 	std::size_t maxLayer;
+
+    std::size_t mostDistantNeighborID;
 
 	const bool isOutFlow;
 
@@ -397,7 +449,7 @@ private:
 
 	mutable double optValue;
 
-	mutable StrForUpdateValues strForUpdateValues;
+//	mutable StrForUpdateValues strForUpdateValues;
 
 
 	std::vector<size_t> baseIDs;
@@ -430,7 +482,8 @@ isOutFlow(sncFactor.isOutFlow),
 baseCosts(sncFactor.baseCosts),
 liftedCosts(sncFactor.liftedCosts),
 solutionCosts(sncFactor.solutionCosts),
-strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID),
+mostDistantNeighborID(sncFactor.mostDistantNeighborID),
+//strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID),
 nodeNotActive(sncFactor.nodeNotActive)
 {
     //std::cout<<"copy constructor "<<nodeID<<std::endl;
@@ -447,7 +500,7 @@ nodeNotActive(sncFactor.nodeNotActive)
 	nodeCost=sncFactor.nodeCost;
 	optValue=sncFactor.optValue;
 
-	strForUpdateValues.copyFromOther(sncFactor.strForUpdateValues);
+//	strForUpdateValues.copyFromOther(sncFactor.strForUpdateValues);
 
 
 	optLiftedUpToDate=sncFactor.optLiftedUpToDate;
@@ -469,8 +522,8 @@ baseGraph(ldpInst.getGraph()),
 liftedGraph(ldpInst.getGraphLifted()),
 nodeID(nID),
 ldpInstance(ldpInst),
-isOutFlow(isOut),
-strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
+isOutFlow(isOut)
+//strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 //nodeNotActive(nID),strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 {
 	//if(debug()) std::cout<<" snc factor "<<nodeID<<", "<<isOut<<std::endl;
@@ -489,6 +542,7 @@ strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID)
 
 //	if(debug()) std::cout<<"min and max layers set "<<std::endl;
 	//baseCosts=std::unordered_map<size_t,double>();
+    mostDistantNeighborID=nodeID;
 	initBaseCosts(0);
 	//if(debug()) std::cout<<"base costs set "<<std::endl;
 	//liftedCosts=std::unordered_map<size_t,double>();
@@ -543,8 +597,10 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 					optValueComputed+=toAdd;
 				}
 			}
-			auto it=myStr.vertexIDStructure.find(vertexInOptimalPath);
-			hasOptDescendant=it!=myStr.vertexIDStructure.end();
+            //auto it=myStr.vertexIDStructure.find(vertexInOptimalPath);
+            //hasOptDescendant=it!=myStr.vertexIDStructure.end();
+            size_t vert=myStr.vertexIDStructure[vertexInOptimalPath];
+            hasOptDescendant=it!=getVertexToReach();
 			if(hasOptDescendant){
 				vertexInOptimalPath=it->second;
 			}
@@ -625,12 +681,15 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
 		}
 
 
+        StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID,mostDistantNeighborID);
+
 		strForUpdateValues.optBase=optimalSolutionBase;
 		strForUpdateValues.optValue=minValue;
 		optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
 		optBaseUpToDate=true;
+        optValue=strForUpdateValues.optValue;
 	}
-	optValue=strForUpdateValues.optValue;
+    //optValue=strForUpdateValues.optValue;
 }
 
 
@@ -799,6 +858,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 	if(fractionLifted==0){
 		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
 			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
 			//liftedCosts[neighborID]=0;
 			liftedCosts.push_back(0);
 			liftedIDs.push_back(neighborID);
@@ -809,6 +869,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
 			size_t edgeID=getNeighborLiftedEdge(nodeID,i);
 			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
 			double cost=ldpInstance.getLiftedEdgeScore(edgeID);
 			liftedCosts.push_back(fractionLifted*cost);
 			liftedIDs.push_back(neighborID);
@@ -827,6 +888,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 	if(fractionBase==0){
 		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 			size_t neighborID=getNeighborBaseVertex(nodeID,i);
+            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
 			baseCosts.push_back(0);
 			baseIDs.push_back(neighborID);
 			baseIDToOrder[neighborID]=i;
@@ -839,6 +901,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 			size_t edgeID=getNeighborBaseEdge(nodeID,i);
 			size_t neighborID=getNeighborBaseVertex(nodeID,i);
+            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
 			double cost=ldpInstance.getEdgeScore(edgeID);
 			//baseCosts[neighborID]=fractionBase*cost;
 			baseCosts.push_back(fractionBase*cost);
@@ -875,10 +938,10 @@ template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
 	//if(debug())std::cout<<"update values run"<<nodeID<<std::endl;
 
-	//StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID);
-	strForUpdateValues.vertexIDStructure.clear();
+    StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID,mostDistantNeighborID);
+    //strForUpdateValues.vertexIDStructure.clear();
 
-	strForUpdateValues.valuesStructure.clear();
+    //strForUpdateValues.valuesStructure.clear();
 	strForUpdateValues.setUseAllVertices(true);
 
 	updateValues(strForUpdateValues);
