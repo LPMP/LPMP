@@ -20,6 +20,10 @@ public:
     ShiftedVector<T>(size_t boundary1,size_t boundary2,const T& value): //inclusive both min and max vertex
     minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
     {
+        //const size_t min = std::min(boundary1,boundary2);
+        //const size_t max = std::max(boundary1,boundary2);
+        //const size_t size = max - min + 1;
+        //myVector = new T[size];
         myVector=std::vector<T>(maxVertex-minVertex+1,value);
     }
     ShiftedVector<T>(size_t boundary1,size_t boundary2): //inclusive both min and max vertex
@@ -35,6 +39,7 @@ public:
 
 
     T& operator[](size_t idx){
+        if(debug()&&( idx<minVertex||idx>maxVertex)) std::cout<<"out of bounds, index "<<idx<<", interval "<<minVertex<<","<<maxVertex<<std::endl;
         assert(idx>=minVertex&&idx<=maxVertex);
         size_t shiftedIndex=idx-minVertex;
         return myVector[shiftedIndex];
@@ -70,6 +75,7 @@ public:
     }
 
 private:
+    //T* myVector; // TODO: might be faster depending on whether initializing myVector is expensive
     std::vector<T> myVector;
     size_t minVertex;
     size_t maxVertex;
@@ -328,7 +334,7 @@ public:
 
 private:
   //  void updateValues() const;
-    void updateValues(StrForUpdateValues& myStr,size_t vertexIDToIgnore) const;
+    void updateValues(StrForUpdateValues& myStr, const size_t vertexIDToIgnore) const;
 	void updateValues(StrForUpdateValues& myStr) const;
     std::unordered_map<size_t,double> bottomUpUpdate(const StrForUpdateValues& myStr, const size_t vertex, ShiftedVector<size_t>& indexStr, ShiftedVector<bool>* pClosedVert=nullptr, ShiftedVector<double>* pBUValuesStr=nullptr)const;
     void updateOptimal() const;
@@ -652,6 +658,8 @@ isOutFlow(isOut)
 	nodeCost=0;
 	optValue=0;
 	nodeNotActiveForStructures=nodeID;
+    optValueUpToDate=false;
+    solutionCostsUpToDate=false;
 
 //	if(debug()){
 //			std::cout<<"factor "<<nodeID<<" created."<<std::endl;
@@ -802,9 +810,11 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>:: updateOptimal()const {
             optValue=myStr.optValue;
             solutionCosts=myStr.solutionCosts;
             optimalSolutionBase=myStr.optBase;
-            return optValue;
+
         }
     }
+    optValueUpToDate=true;
+    solutionCostsUpToDate=true;
 
 }
 
@@ -909,6 +919,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 
 		optLiftedUpToDate=false;
 		optBaseUpToDate=false;
+        optValueUpToDate=false;
+        solutionCostsUpToDate=false;
 
 
 	}
@@ -930,7 +942,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 	if(fractionLifted==0){
 		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
 			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
-            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            if(neighborID!=getVertexToReach()){
+                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            }
 			//liftedCosts[neighborID]=0;
 			liftedCosts.push_back(0);
 			liftedIDs.push_back(neighborID);
@@ -941,7 +955,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
 			size_t edgeID=getNeighborLiftedEdge(nodeID,i);
 			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
-            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            if(neighborID!=getVertexToReach()){
+                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            }
 			double cost=ldpInstance.getLiftedEdgeScore(edgeID);
 			liftedCosts.push_back(fractionLifted*cost);
 			liftedIDs.push_back(neighborID);
@@ -949,6 +965,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 		}
 	}
     optLiftedUpToDate=false;
+    optValueUpToDate=false;
+    solutionCostsUpToDate=false;
 }
 
 
@@ -960,7 +978,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 	if(fractionBase==0){
 		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 			size_t neighborID=getNeighborBaseVertex(nodeID,i);
-            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            if(neighborID!=getVertexToReach()){
+                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            }
 			baseCosts.push_back(0);
 			baseIDs.push_back(neighborID);
 			baseIDToOrder[neighborID]=i;
@@ -973,7 +993,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
 			size_t edgeID=getNeighborBaseEdge(nodeID,i);
 			size_t neighborID=getNeighborBaseVertex(nodeID,i);
-            mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            if(neighborID!=getVertexToReach()){
+                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            }
 			double cost=ldpInstance.getEdgeScore(edgeID);
 			//baseCosts[neighborID]=fractionBase*cost;
 			baseCosts.push_back(fractionBase*cost);
@@ -991,6 +1013,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 	//		liftedCosts[neighborID]=fractionLifted*cost;
 	//	}
     optBaseUpToDate=false;
+    optValueUpToDate=false;
+    solutionCostsUpToDate=false;
 
 }
 
@@ -1037,9 +1061,11 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr,size_t vertexIDToIgnore) const{
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateValues& myStr,const size_t vertexIDToIgnore) const{
 
-	//std::cout<<"update values in node "<<nodeID<<std::endl;
+    std::cout<<"update values in node "<<nodeID<<std::endl;
+    std::cout<<"most distant "<<mostDistantNeighborID<<std::endl;
+    std::cout<<"to reach "<<getVertexToReach()<<std::endl;
     ShiftedVector<bool> closedVertices(nodeID,mostDistantNeighborID);
 
 
@@ -1072,10 +1098,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 	std::stack<size_t> nodeStack;
 	nodeStack.push(nodeID);
 
-    //if(debug()) std::cout<<"update values before while "<<std::endl;
+    if(debug()) std::cout<<"update values before while "<<std::endl;
 	while(!nodeStack.empty()){
 		size_t currentNode=nodeStack.top();
-        // if(debug()) std::cout<<"current node "<<currentNode<<std::endl;
+         if(debug()) std::cout<<"current node "<<currentNode<<std::endl;
         if(closedVertices.getValue(currentNode)){
 			nodeStack.pop();
 		}
@@ -1125,7 +1151,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues(StrForUpdateV
 
                         double baseCost=myStr.baseCosts[i];
 
-                        double valueToAdd=myStr.valuesStructure[baseIDs[i]];
+                        double valueToAdd=0;
+                        if(baseIDs[i]!=getVertexToReach()){
+                            valueToAdd=myStr.valuesStructure[baseIDs[i]];
+                        }
 						double value=baseCost+nodeCost+valueToAdd;
 
 						myStr.solutionCosts[i]=value;
