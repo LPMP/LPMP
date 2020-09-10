@@ -327,11 +327,11 @@ public:
 
 
 private:
-    void updateValues() const;
+  //  void updateValues() const;
     void updateValues(StrForUpdateValues& myStr,size_t vertexIDToIgnore) const;
 	void updateValues(StrForUpdateValues& myStr) const;
     std::unordered_map<size_t,double> bottomUpUpdate(const StrForUpdateValues& myStr, const size_t vertex, ShiftedVector<size_t>& indexStr, ShiftedVector<bool>* pClosedVert=nullptr, ShiftedVector<double>* pBUValuesStr=nullptr)const;
-	void updateOptimal() const;
+    void updateOptimal() const;
 
 	std::list<size_t> getOptLiftedFromIndexStr(const StrForUpdateValues& myStr)const;
 
@@ -534,6 +534,9 @@ private:
 	mutable bool optLiftedUpToDate;
 	mutable bool optBaseUpToDate;
 
+    mutable bool solutionCostsUpToDate;
+    mutable bool optValueUpToDate;
+
 	mutable double optValue;
 
 //	mutable StrForUpdateValues strForUpdateValues;
@@ -571,7 +574,9 @@ liftedCosts(sncFactor.liftedCosts),
 solutionCosts(sncFactor.solutionCosts),
 mostDistantNeighborID(sncFactor.mostDistantNeighborID),
 //strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID),
-nodeNotActive(sncFactor.nodeNotActive)
+nodeNotActive(sncFactor.nodeNotActive),
+solutionCostsUpToDate(sncFactor.solutionCostsUpToDate),
+ optValueUpToDate(sncFactor.optValueUpToDate)
 {
     //std::cout<<"copy constructor "<<nodeID<<std::endl;
 
@@ -700,39 +705,39 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 
 
 
-template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
-	if(!optLiftedUpToDate){
+//template<class LDP_INSTANCE>
+//inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateOptimal() const{
+//	if(!optLiftedUpToDate){
 
-		//if(debug())std::cout<<"updating lifted str."<<std::endl;
+//		//if(debug())std::cout<<"updating lifted str."<<std::endl;
 
-		updateValues();
-	}
-	else if(!optBaseUpToDate){
-		//if(debug())std::cout<<"updating base str."<<std::endl;
-		optimalSolutionBase=nodeNotActive;
-		double minValue=0;
-		for (int i = 0; i < solutionCosts.size()-1; ++i) {
-			double value=solutionCosts[i];
-			if(value<minValue){
-				minValue=value;
-                optimalSolutionBase=i;
+//		updateValues();
+//	}
+//	else if(!optBaseUpToDate){
+//		//if(debug())std::cout<<"updating base str."<<std::endl;
+//		optimalSolutionBase=nodeNotActive;
+//		double minValue=0;
+//		for (int i = 0; i < solutionCosts.size()-1; ++i) {
+//			double value=solutionCosts[i];
+//			if(value<minValue){
+//				minValue=value;
+//                optimalSolutionBase=i;
 
-			}
-		}
+//			}
+//		}
 
 
-        StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID,mostDistantNeighborID);
+//        StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID,mostDistantNeighborID);
 
-		strForUpdateValues.optBase=optimalSolutionBase;
-		strForUpdateValues.optValue=minValue;
-		optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
-		optBaseUpToDate=true;
-        optValue=strForUpdateValues.optValue;
-        solutionCosts=strForUpdateValues.solutionCosts;
-	}
-    //optValue=strForUpdateValues.optValue;
-}
+//		strForUpdateValues.optBase=optimalSolutionBase;
+//		strForUpdateValues.optValue=minValue;
+//		optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
+//		optBaseUpToDate=true;
+//        optValue=strForUpdateValues.optValue;
+//        solutionCosts=strForUpdateValues.solutionCosts;
+//	}
+//    //optValue=strForUpdateValues.optValue;
+//}
 
 
 
@@ -780,6 +785,30 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setNoBaseEdgeActive(){
 
 
 template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>:: updateOptimal()const {
+    if(!optValueUpToDate){
+        if(solutionCostsUpToDate){
+            double optValue=solutionCosts[0];
+            for(size_t i=0;i<solutionCosts.size();i++){
+                if(optValue>solutionCosts[i]){
+                    optValue=solutionCosts[i];
+                    optimalSolutionBase=i;
+                }
+            }
+        }
+        else{
+            StrForUpdateValues myStr(baseCosts,liftedCosts,solutionCosts,nodeID,mostDistantNeighborID);
+            updateValues(myStr);
+            optValue=myStr.optValue;
+            solutionCosts=myStr.solutionCosts;
+            optimalSolutionBase=myStr.optBase;
+            return optValue;
+        }
+    }
+
+}
+
+template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getNodeMinMarginal()const{
 	//std::cout<<"node min marginal "<<nodeID<<" "<<isOutFlow<<std::endl;
 	updateOptimal();
@@ -801,7 +830,8 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getNodeMinMarginal()cons
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMarginal(const size_t index)const{
 	assert(index<baseCosts.size());
-	updateOptimal();
+
+    updateOptimal();
 	if(optimalSolutionBase!=index){
 		return solutionCosts[index]-solutionCosts[optimalSolutionBase];
 	}
@@ -817,7 +847,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMargina
 	}
 }
 
-//TODO make this function return a vector
+
 template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals() const{
 	updateOptimal();
@@ -967,39 +997,37 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
-  //  if(debug()) std::cout<<"lower bound "<<nodeID;
-	updateOptimal();
-    double value=solutionCosts.at(optimalSolutionBase);
-    //if(debug()) std::cout<<" computed"<<std::endl;
-    return value;
+    updateOptimal();
+    return optValue;
+
 }
 
 
 
-template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
-	//if(debug())std::cout<<"update values run"<<nodeID<<std::endl;
+//template<class LDP_INSTANCE>
+//inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateValues() const{
+//	//if(debug())std::cout<<"update values run"<<nodeID<<std::endl;
 
-    StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID,mostDistantNeighborID);
-    //strForUpdateValues.vertexIDStructure.clear();
+//    StrForUpdateValues strForUpdateValues(baseCosts,liftedCosts,solutionCosts,nodeID,mostDistantNeighborID);
+//    //strForUpdateValues.vertexIDStructure.clear();
 
-    //strForUpdateValues.valuesStructure.clear();
-	strForUpdateValues.setUseAllVertices(true);
+//    //strForUpdateValues.valuesStructure.clear();
+//	strForUpdateValues.setUseAllVertices(true);
 
-	updateValues(strForUpdateValues);
+//	updateValues(strForUpdateValues);
 
-	//std::cout<<"values updated"<<std::endl;
+//	//std::cout<<"values updated"<<std::endl;
 
-	optimalSolutionBase=strForUpdateValues.optBase;
-    optValue=solutionCosts.at(optimalSolutionBase);
-	//std::cout<<"opt base: "<<optimalSolutionBase<<std::endl;
+//	optimalSolutionBase=strForUpdateValues.optBase;
+//    optValue=solutionCosts.at(optimalSolutionBase);
+//	//std::cout<<"opt base: "<<optimalSolutionBase<<std::endl;
 
-	optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
-	//std::cout<<std::endl;
+//	optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
+//	//std::cout<<std::endl;
 
-	optLiftedUpToDate=true;
-	optBaseUpToDate=true;
-}
+//	optLiftedUpToDate=true;
+//	optBaseUpToDate=true;
+//}
 
 //TODO make this separate from standard update
 template<class LDP_INSTANCE>
