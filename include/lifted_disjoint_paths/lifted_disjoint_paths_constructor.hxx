@@ -527,6 +527,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* pSNC=single_node_cut_factors_[graph_node][0]->get_factor();
                 if(mcf_->flow(edge_id) == -1) {
                     pSNC->setBaseEdgeActive(vertex_index);
+                      std::cout<<pSNC->getBaseIDs()[vertex_index]<<", "<<graph_node<<std::endl;
                    // primalValue+=pSNC->EvaluatePrimal();
                 }
                 ++vertex_index;
@@ -543,6 +544,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* pSNC=single_node_cut_factors_[graph_node][1]->get_factor();
                 if(mcf_->flow(edge_id) == 1) {
                     pSNC->setBaseEdgeActive(vertex_index);
+                      std::cout<<graph_node<<", "<<pSNC->getBaseIDs()[vertex_index]<<std::endl;
                    // primalValue+=pSNC->EvaluatePrimal();
                 }
                 ++vertex_index;
@@ -1082,7 +1084,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     for(std::size_t i=0; i<nr_nodes(); ++i)
     {
         {
-            std::cout<<"incomming primal "<<std::endl;
+           // std::cout<<"incomming primal "<<std::endl;
             auto *incoming_snc = single_node_cut_factors_[i][0]->get_factor();
             const auto incoming_min_marg = incoming_snc->getAllBaseMinMarginals();
             const auto incoming_edge_ids = incoming_snc->getBaseIDs();
@@ -1106,7 +1108,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 const std::size_t start_node = mcf_->tail(e);
                 assert(mcf_->tail(e) == incoming_mcf_node(i));
                 const double m = incoming_min_marg[l];
-                std::cout<<i<<","<<j<<": "<<m<<std::endl;
+               // std::cout<<i<<","<<j<<": "<<m<<std::endl;
                 assert(mcf_->lower_bound(e) == 1 && mcf_->upper_bound(e) == 0);
                 if (j != base_graph_source_node())
                     mcf_->update_cost(e, -m);
@@ -1124,7 +1126,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         }
 
         {
-            std::cout<<"outgoing primal "<<std::endl;
+           // std::cout<<"outgoing primal "<<std::endl;
             auto *outgoing_snc = single_node_cut_factors_[i][1]->get_factor();
             const auto outgoing_min_marg = outgoing_snc->getAllBaseMinMarginals();
             const auto outgoing_edge_ids = outgoing_snc->getBaseIDs();
@@ -1143,7 +1145,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 const std::size_t start_node = mcf_->tail(e);
                 assert(mcf_->tail(e) == outgoing_mcf_node(i));
                 const double m = outgoing_min_marg[l];
-                 std::cout<<i<<","<<j<<": "<<m<<std::endl;
+               //  std::cout<<i<<","<<j<<": "<<m<<std::endl;
                 assert(mcf_->lower_bound(e) == 0 && mcf_->upper_bound(e) == 1);
                 mcf_->update_cost(e, m);
                 auto iter=costsFromTriangles[i].find(j);
