@@ -714,27 +714,42 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::unord
 
 
 
+
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
-	//double value=0;
+    //double value=0;
     //if(debug())
-    std::cout<<"evaluate primal "<<nodeID<<": ";
-	if(primalBase_==nodeNotActive){
-        std::cout<<0.0<<std::endl;
-		return 0;
-	}
-	else{
-		double value=nodeCost;
-		value+=baseCosts.at(primalBase_);
-		for(size_t node:primalLifted_){
-			value+=liftedCosts.at(node);
-		}
-        std::cout<<value<<std::endl;
-		return value;
-	}
+    //std::cout<<"evaluate primal "<<nodeID<<": ";
+
+//    if(nodeID==16&&isOutFlow){
+//        std::cout<<"base costs "<<nodeID<<std::endl;
+//        for (int i = 0; i < baseCosts.size(); ++i) {
+//            std::cout<<i<<": "<<baseCosts[i]<<std::endl;
+//        }
+//        std::cout<<"lifted costs "<<std::endl;
+//        for (int j = 0; j < liftedCosts.size(); ++j) {
+//            std::cout<<j<<": "<<liftedCosts[j]<<std::endl;
+//        }
+//        std::cout<<"primal solution "<<primalBase_<<std::endl;
+//        std::cout<<" lifted solution< ";
+//    }
+    if(primalBase_==nodeNotActive){
+      //  std::cout<<0.0<<std::endl;
+        return 0;
+    }
+    else{
+        double value=nodeCost;
+        value+=baseCosts.at(primalBase_);
+
+        for(size_t node:primalLifted_){
+            value+=liftedCosts.at(node);
+        //    if(nodeID==16&&isOutFlow) std::cout<<node<<", ";
+        }
+        //if(nodeID==16&&isOutFlow) std::cout<<std::endl;
+      //  std::cout<<value<<std::endl;
+        return value;
+    }
 }
-
-
 
 
 template<class LDP_INSTANCE>
