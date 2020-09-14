@@ -1306,20 +1306,37 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
                         bestValue+=myStr.liftedCosts.at(liftedIt->second);
 					}
 					else{
-                        bestValue+=myStr.liftedCosts.at(liftedIt->second);
-						double topDownValue=0;
+//                        bestValue+=myStr.liftedCosts.at(liftedIt->second);
+//						double topDownValue=0;
 
-                        size_t bestTd=myStr.vertexIDStructure[currentVertex];
-						if(bestTd!=getVertexToReach()){
-                            topDownValue=myStr.valuesStructure[bestTd];
-						}
+//                        size_t bestTd=myStr.vertexIDStructure[currentVertex];
+//						if(bestTd!=getVertexToReach()){
+//                            topDownValue=myStr.valuesStructure[bestTd];
+//						}
 
-						double restrictedOpt=topDownValue+bestValue;
-						double delta=restrictedOpt-myStr.optValue;
+//						double restrictedOpt=topDownValue+bestValue;
+//						double delta=restrictedOpt-myStr.optValue;
 
-						messages[currentVertex]=delta;
+//						messages[currentVertex]=delta;
+//                      //  std::cout<<"message "<<currentVertex<<": "<<delta<<std::endl;
+//						bestValue-=delta;
+
+
+                        double topDownValueOfDesc=0;
+
+                        size_t bestDesc=myStr.vertexIDStructure[currentVertex];
+                        if(bestDesc!=getVertexToReach()){
+                            topDownValueOfDesc=myStr.valuesStructure[bestDesc];
+                        }
+                        double topDownCurrent=myStr.valuesStructure[currentVertex];
+
+                        double restrictedOpt=topDownCurrent+bestValue;
+                        double delta=restrictedOpt-myStr.optValue;
+                        bestValue=myStr.optValue-topDownValueOfDesc;
+
+                        messages[currentVertex]=delta;
                       //  std::cout<<"message "<<currentVertex<<": "<<delta<<std::endl;
-						bestValue-=delta;
+
 
 					}
 				}
