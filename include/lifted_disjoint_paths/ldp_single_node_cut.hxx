@@ -717,8 +717,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::unord
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
 	//double value=0;
-	//if(debug()) std::cout<<"evaluate primal "<<nodeID<<std::endl;
+    //if(debug())
+    std::cout<<"evaluate primal "<<nodeID<<": ";
 	if(primalBase_==nodeNotActive){
+        std::cout<<0.0<<std::endl;
 		return 0;
 	}
 	else{
@@ -727,6 +729,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
 		for(size_t node:primalLifted_){
 			value+=liftedCosts.at(node);
 		}
+        std::cout<<value<<std::endl;
 		return value;
 	}
 }
