@@ -49,7 +49,7 @@ class ldp_single_node_cut_factor
 {
 public:
     ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut);
-	ldp_single_node_cut_factor(const ldp_single_node_cut_factor&);
+    //ldp_single_node_cut_factor(const ldp_single_node_cut_factor&);
     ~ldp_single_node_cut_factor(){
        // std::cout<<"destructor "<<nodeID<<std::endl;
     }
@@ -138,25 +138,17 @@ public:
 		return baseIDs;
 	}
 
-    size_t getBaseID(size_t order) const {
-        return baseIDs.at(order);
+    size_t getBaseID(size_t index) const {
+        return baseIDs.at(index);
     }
 
 	const std::vector<size_t>& getLiftedIDs() const {
 		return liftedIDs;
 	}
 
-    size_t getLiftedID(size_t order) const {
-        return liftedIDs.at(order);
+    size_t getLiftedID(size_t index) const {
+        return liftedIDs.at(index);
     }
-
-	size_t getNodeNotActive() const {
-		return nodeNotActive;
-	}
-
-	const std::size_t nodeID;
-	size_t primalBase_;
-	std::unordered_set<size_t> primalLifted_;
 
 
     void print() const{
@@ -184,6 +176,7 @@ public:
         }
     }
 
+       const std::size_t nodeID;
 
 
 private:
@@ -320,6 +313,9 @@ private:
     }
 
 
+    size_t primalBase_;
+    std::unordered_set<size_t> primalLifted_;
+
     mutable size_t optimalSolutionBase; //Contains vertices w.r.t. their order for central vertex
 
     std::size_t mostDistantNeighborID;
@@ -358,44 +354,6 @@ private:
 
 
 };
-
-
-template<class LDP_INSTANCE>
-inline  ldp_single_node_cut_factor<LDP_INSTANCE>::ldp_single_node_cut_factor(const ldp_single_node_cut_factor& sncFactor):
-baseGraph(sncFactor.baseGraph),
-liftedGraph(sncFactor.liftedGraph),
-nodeID(sncFactor.nodeID),
-ldpInstance(sncFactor.ldpInstance),
-isOutFlow(sncFactor.isOutFlow),
-baseCosts(sncFactor.baseCosts),
-liftedCosts(sncFactor.liftedCosts),
-solutionCosts(sncFactor.solutionCosts),
-mostDistantNeighborID(sncFactor.mostDistantNeighborID),
-nodeNotActive(sncFactor.nodeNotActive),
-solutionCostsUpToDate(sncFactor.solutionCostsUpToDate),
- optValueUpToDate(sncFactor.optValueUpToDate)
-{
-
-	primalBase_=sncFactor.primalBase_;
-	primalLifted_=sncFactor.primalLifted_;
-
-	optimalSolutionBase=sncFactor.optimalSolutionBase;
-
-
-	nodeCost=sncFactor.nodeCost;
-	optValue=sncFactor.optValue;
-
-	optLiftedUpToDate=sncFactor.optLiftedUpToDate;
-	optBaseUpToDate=sncFactor.optBaseUpToDate;
-
-    nodeNotActiveForStructures=sncFactor.nodeNotActiveForStructures;
-	baseIDs=sncFactor.baseIDs;
-	liftedIDs=sncFactor.liftedIDs;
-	liftedIDToOrder=sncFactor.liftedIDToOrder;
-    baseIDToIndex=sncFactor.baseIDToIndex;
-
-
-}
 
 
 template<class LDP_INSTANCE>
@@ -741,8 +699,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
                 mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
             }
 			double cost=ldpInstance.getEdgeScore(edgeID);
-			//baseCosts[neighborID]=fractionBase*cost;
-			baseCosts.push_back(fractionBase*cost);
+            baseCosts.push_back(fractionBase*cost);
 			baseIDs.push_back(neighborID);
             baseIDToIndex[neighborID]=i;
 
@@ -759,7 +716,6 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
-    //if(debug()) std::cout<<"lower bound "<<nodeID<<std::endl;
     updateOptimal();
     return optValue;
 
@@ -1166,7 +1122,10 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     for(size_t optVertex:isOneInOpt){ //TODO get rid of maps here?
         assert(optVertex<baseGraph.numberOfVertices());
-        buValuesStructure[optVertex]=currentOptValue-myStr.valuesStructure[optVertex]+localLiftedCosts[liftedIDToOrder.at(optVertex)];
+        size_t bestDesc=myStr.vertexIDStructure[optVertex];
+        double toSubtract=0;
+        if(bestDesc!=getVertexToReach()) toSubtract=myStr.valuesStructure[bestDesc];
+        buValuesStructure[optVertex]=currentOptValue-toSubtract;
         closedVertices.setValue(optVertex,true);
 	}
     ShiftedVector<size_t> indexStr(nodeID,mostDistantNeighborID,getVertexToReach());  //Note that vertices closed in previous for do not have valid indexStr entries
