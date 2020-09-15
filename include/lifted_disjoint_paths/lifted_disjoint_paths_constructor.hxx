@@ -1086,7 +1086,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         {
           //  std::cout<<"incomming primal "<<std::endl;
             auto *incoming_snc = single_node_cut_factors_[i][0]->get_factor();
-            const auto incoming_min_marg = incoming_snc->getAllBaseMinMarginals();
+            const auto incoming_min_marg = incoming_snc->getAllBaseMinMarginalsForMCF();
             const auto incoming_edge_ids = incoming_snc->getBaseIDs();
             assert(incoming_min_marg.size() == incoming_edge_ids.size());
             assert(incoming_min_marg.size() + 1 == mcf_->no_outgoing_arcs(incoming_mcf_node(i))); // one extra mcf node for capacity one arc.
@@ -1128,7 +1128,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         {
            // std::cout<<"outgoing primal "<<std::endl;
             auto *outgoing_snc = single_node_cut_factors_[i][1]->get_factor();
-            const auto outgoing_min_marg = outgoing_snc->getAllBaseMinMarginals();
+            const auto outgoing_min_marg = outgoing_snc->getAllBaseMinMarginalsForMCF();
             const auto outgoing_edge_ids = outgoing_snc->getBaseIDs();
             assert(outgoing_min_marg.size() + 1 == mcf_->no_outgoing_arcs(outgoing_mcf_node(i))); // one extra mcf node for capacity one arc.
             assert(std::is_sorted(outgoing_edge_ids.begin(), outgoing_edge_ids.end()));
