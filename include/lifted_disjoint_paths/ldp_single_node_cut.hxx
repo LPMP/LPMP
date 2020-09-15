@@ -1070,6 +1070,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 			else if(reachable(*sbIt,*listIt)){
 
 				isOneInOpt.insert(*sbIt);
+                liftedMessages[*sbIt]=0;
 				sbIt++;
 			}
 			else if(reachable(*listIt,*sbIt)){
@@ -1080,6 +1081,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
 				listIt=isNotZeroInOpt.erase(listIt);
 				isOneInOpt.insert(*sbIt);
+                liftedMessages[*sbIt]=0;
 				sbIt++;
 			}
 
@@ -1091,6 +1093,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 		isNotZeroInOpt.erase(listIt,isNotZeroInOpt.end());
 		while(sbIt!=secondBest.end()){
 			isOneInOpt.insert(*sbIt);
+            liftedMessages[*sbIt]=0;
 			sbIt++;
 		}
 
@@ -1120,7 +1123,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     ShiftedVector<double> buValuesStructure(nodeID,mostDistantNeighborID,std::numeric_limits<double>::max());
     ShiftedVector<bool> closedVertices(nodeID,mostDistantNeighborID,false);
 
-    for(size_t optVertex:isOneInOpt){ //TODO get rid of maps here?
+    for(size_t optVertex:isOneInOpt){
         assert(optVertex<baseGraph.numberOfVertices());
         size_t bestDesc=myStr.vertexIDStructure[optVertex];
         double toSubtract=0;
@@ -1128,6 +1131,8 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
         buValuesStructure[optVertex]=currentOptValue-toSubtract;
         closedVertices.setValue(optVertex,true);
 	}
+
+
     ShiftedVector<size_t> indexStr(nodeID,mostDistantNeighborID,getVertexToReach());  //Note that vertices closed in previous for do not have valid indexStr entries
     for (int i = 0; i < baseIDs.size(); ++i) {
         if(baseIDs.at(i)==getVertexToReach()) continue;
