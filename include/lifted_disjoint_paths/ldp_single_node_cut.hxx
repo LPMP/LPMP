@@ -699,6 +699,7 @@ inline ShiftedVector<bool> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
         myStr.topDownValuesStructure.fillWith(0,nodeID,vertexIDToIgnore);
     }
 
+    //Store all lifted costs to top down values structure
     for (int i = 0; i < liftedIDs.size(); ++i) {
         if(!vertexToIgnoreSet||isInGivenInterval(liftedIDs.at(i),lastVertex)){
             myStr.topDownValuesStructure[liftedIDs.at(i)]=myStr.liftedCosts.at(i);
@@ -718,8 +719,8 @@ inline ShiftedVector<bool> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
 		else{
 
 			bool descClosed=true;
-			double minValue=0;
-			size_t minValueVertexID=getVertexToReach();
+            double bestDescValue=0;
+            size_t bestDescVertexID=getVertexToReach();
 
             //Traverse all base neighbors in direction out from central node
             //Not closed vertices store to the stack. Search for best descendant in closed neighbors
@@ -733,9 +734,9 @@ inline ShiftedVector<bool> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
                     if(closedVertices.getValue(desc)||(vertexToIgnoreSet&&!isInGivenInterval(desc, vertexIDToIgnore))){  //descendant closed
                         if(descClosed){
                             double value=myStr.topDownValuesStructure[desc];
-                            if(minValue>value){
-                                minValue=value;
-                                minValueVertexID=desc;
+                            if(bestDescValue>value){
+                                bestDescValue=value;
+                                bestDescVertexID=desc;
                             }
                         }
                     }
@@ -750,8 +751,8 @@ inline ShiftedVector<bool> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
 			if(descClosed){ //Close node if all descendants are closed
 
 				if(currentNode==nodeID){  //all nodes closed, compute solution values
-					double bestValue=0;
-					size_t bestIndex=nodeNotActive;
+                    double bestSolutionValue=0;
+                    size_t bestSolutionIndex=nodeNotActive;
 
 					myStr.solutionCosts[nodeNotActive]=0;
                     for (size_t i = 0; i < myStr.baseCosts.size(); ++i) {
@@ -765,29 +766,28 @@ inline ShiftedVector<bool> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
                             double value=baseCost+nodeCost+valueToAdd;
 
                             myStr.solutionCosts.at(i)=value;
-                            if(value<bestValue){
-                                bestValue=value;
-                                bestIndex=i;
+                            if(value<bestSolutionValue){
+                                bestSolutionValue=value;
+                                bestSolutionIndex=i;
 
                             }
                         }
 
                     }
 
-                    myStr.optBaseIndex=bestIndex;
-                    myStr.optValue=bestValue;
+                    myStr.optBaseIndex=bestSolutionIndex;
+                    myStr.optValue=bestSolutionValue;
 
                 }
                 else{
+                    //Close current node, store best node value and pointer to the best descendant
 
-                    double valueToStore=minValue;
-
-                    assert(!vertexToIgnoreSet||minValueVertexID!=vertexIDToIgnore);
+                    assert(!vertexToIgnoreSet||bestDescVertexID!=vertexIDToIgnore);
                     assert(currentNode<baseGraph.numberOfVertices());
 
-                    //Store best node value and pointer to the best descendant
-                    myStr.topDownVertexIDStructure[currentNode]=minValueVertexID;
-                    myStr.topDownValuesStructure[currentNode]+=minValue;
+                    //adding the descendant value to the already stored lifted cost of node
+                    myStr.topDownValuesStructure[currentNode]+=bestDescValue;
+                    myStr.topDownVertexIDStructure[currentNode]=bestDescVertexID;
 
                     closedVertices.setValue(currentNode,true); //marking the node as closed.
 
@@ -1116,6 +1116,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 	}
 
 
+    //Storing values from messages to output vector
 	std::vector<double> messagesToOutput=std::vector<double>(liftedCosts.size());
 	for (int i = 0; i < messagesToOutput.size(); ++i) {
 		messagesToOutput[i]=liftedMessages[liftedIDs[i]];
