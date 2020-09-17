@@ -107,7 +107,7 @@ public:
 
     auto export_variables() { return std::tie(baseCosts, liftedCosts); }
 
-	void updateCostSimple(const double value,const size_t vertexIndex,bool isLifted);
+    void updateEdgeCost(const double value,const size_t vertexIndex,bool isLifted);
 	void updateNodeCost(const double value);
 
 
@@ -318,10 +318,6 @@ private:
     std::unordered_map<size_t,size_t> baseIDToIndex;
 	std::unordered_map<size_t,size_t> liftedIDToOrder;
 
-
-	mutable bool optLiftedUpToDate;
-	mutable bool optBaseUpToDate;
-
     mutable bool solutionCostsUpToDate;
     mutable bool optValueUpToDate;
 
@@ -353,9 +349,6 @@ isOutFlow(isOut)
     initLiftedCosts(0);
 
 	nodeNotActive=baseCosts.size();
-
-	optLiftedUpToDate=false;
-	optBaseUpToDate=false;
 
 	primalBase_=nodeNotActive;  //corresponds to no edge active
 	optimalSolutionBase=nodeNotActive;
@@ -562,16 +555,15 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateNodeCost(const doubl
 	for (int i = 0; i < solutionCosts.size()-1; ++i) {
 		(solutionCosts[i]+=value);
 	}
-	optBaseUpToDate=false;
+
 }
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const double value,const size_t vertexIndex,bool isLifted){//Only cost change
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateEdgeCost(const double value,const size_t vertexIndex,bool isLifted){//Only cost change
 	if(!isLifted){ //update in base edge
 		assert(vertexIndex<baseCosts.size());
 		baseCosts[vertexIndex]+=value;
 		solutionCosts[vertexIndex]+=value;
-        optBaseUpToDate=false; //TODO sometimes can stay true
         optValueUpToDate=false;
 	}
 	else{ //update in lifted edge
@@ -579,8 +571,6 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateCostSimple(const dou
 		assert(vertexIndex<liftedCosts.size());
 		liftedCosts[vertexIndex]+=value;
 
-		optLiftedUpToDate=false;
-		optBaseUpToDate=false;
         optValueUpToDate=false;
         solutionCostsUpToDate=false;
 
@@ -619,7 +609,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 			liftedIDToOrder[neighborID]=i;
 		}
 	}
-    optLiftedUpToDate=false;
+
     optValueUpToDate=false;
     solutionCostsUpToDate=false;
 }
@@ -657,7 +647,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 
 	}
     solutionCosts=std::vector<double>(baseCosts.size()+1);
-    optBaseUpToDate=false;
+
     optValueUpToDate=false;
     solutionCostsUpToDate=false;
 
@@ -1145,7 +1135,7 @@ public:
 	{
         if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<":"<<msg<<std::endl;
 		assert(msg_dim == 0);
-		l.updateCostSimple(msg,right_node,true);
+        l.updateEdgeCost(msg,right_node,true);
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR>
@@ -1153,7 +1143,7 @@ public:
 	{
         if(debug()) std::cout<<"repam right "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<":"<<msg<<std::endl;
 		assert(msg_dim == 0);
-		r.updateCostSimple(msg,left_node,true);
+        r.updateEdgeCost(msg,left_node,true);
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>

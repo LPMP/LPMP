@@ -865,8 +865,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t orderV2InV1=sncFactorOutV1->getLiftedIDToOrder(v2);
             size_t orderV1InV2=sncFactorInV2->getLiftedIDToOrder(v1);
 
-            sncFactorOutV1->updateCostSimple(-liftedEdgeLabelsOut.at(feV1V2.second),orderV2InV1,true);
-            sncFactorInV2->updateCostSimple(-liftedEdgeLabelsIn.at(feV1V2.second),orderV1InV2,true);
+            sncFactorOutV1->updateEdgeCost(-liftedEdgeLabelsOut.at(feV1V2.second),orderV2InV1,true);
+            sncFactorInV2->updateEdgeCost(-liftedEdgeLabelsIn.at(feV1V2.second),orderV1InV2,true);
             costs[0]=liftedEdgeLabelsIn.at(feV1V2.second)+liftedEdgeLabelsOut.at(feV1V2.second);
 
 
@@ -876,8 +876,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t orderV2InV1=sncFactorOutV1->getBaseIDToOrder(v2);
             size_t orderV1InV2=sncFactorInV2->getBaseIDToOrder(v1);
 
-            sncFactorOutV1->updateCostSimple(-baseEdgeLabelsOut.at(feV1V2.second),orderV2InV1,false);
-            sncFactorInV2->updateCostSimple(-baseEdgeLabelsIn.at(feV1V2.second),orderV1InV2,false);
+            sncFactorOutV1->updateEdgeCost(-baseEdgeLabelsOut.at(feV1V2.second),orderV2InV1,false);
+            sncFactorInV2->updateEdgeCost(-baseEdgeLabelsIn.at(feV1V2.second),orderV1InV2,false);
             costs[0]=baseEdgeLabelsIn.at(feV1V2.second)+baseEdgeLabelsOut.at(feV1V2.second);
         }
 
@@ -888,8 +888,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t orderV2InV3=sncFactorInV3->getLiftedIDToOrder(v2);
 
 
-            sncFactorOutV2->updateCostSimple(-liftedEdgeLabelsOut.at(feV2V3.second),orderV3InV2,true);
-            sncFactorInV3->updateCostSimple(-liftedEdgeLabelsIn.at(feV2V3.second),orderV2InV3,true);
+            sncFactorOutV2->updateEdgeCost(-liftedEdgeLabelsOut.at(feV2V3.second),orderV3InV2,true);
+            sncFactorInV3->updateEdgeCost(-liftedEdgeLabelsIn.at(feV2V3.second),orderV2InV3,true);
             costs[1]=liftedEdgeLabelsIn.at(feV2V3.second)+liftedEdgeLabelsOut.at(feV2V3.second);
         }
         else{
@@ -897,8 +897,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t orderV2InV3=sncFactorInV3->getBaseIDToOrder(v2);
 
 
-            sncFactorOutV2->updateCostSimple(-baseEdgeLabelsOut.at(feV2V3.second),orderV3InV2,false);
-            sncFactorInV3->updateCostSimple(-baseEdgeLabelsIn.at(feV2V3.second),orderV2InV3,false);
+            sncFactorOutV2->updateEdgeCost(-baseEdgeLabelsOut.at(feV2V3.second),orderV3InV2,false);
+            sncFactorInV3->updateEdgeCost(-baseEdgeLabelsIn.at(feV2V3.second),orderV2InV3,false);
             costs[1]=baseEdgeLabelsIn.at(feV2V3.second)+baseEdgeLabelsOut.at(feV2V3.second);
         }
 
@@ -908,8 +908,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         size_t orderV1InV3=sncFactorInV3->getLiftedIDToOrder(v1);
 
 
-        sncFactorOutV1->updateCostSimple(-liftedEdgeLabelsOut.at(feV1V3.second),orderV3InV1,true);
-        sncFactorInV3->updateCostSimple(-liftedEdgeLabelsIn.at(feV1V3.second),orderV1InV3,true);
+        sncFactorOutV1->updateEdgeCost(-liftedEdgeLabelsOut.at(feV1V3.second),orderV3InV1,true);
+        sncFactorInV3->updateEdgeCost(-liftedEdgeLabelsIn.at(feV1V3.second),orderV1InV3,true);
         costs[2]=liftedEdgeLabelsIn.at(feV1V3.second)+liftedEdgeLabelsOut.at(feV1V3.second);
 
         assert(v3<nr_nodes());
@@ -1120,7 +1120,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             {
                 for(std::size_t l = 0; l < incoming_min_marg.size(); ++l)
                 {
-                    incoming_snc->updateCostSimple(-incoming_min_marg[l], l, false);
+                    incoming_snc->updateEdgeCost(-incoming_min_marg[l], l, false);
                 }
             }
         }
@@ -1157,7 +1157,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             {
                 for (std::size_t l = 0; l < outgoing_min_marg.size(); ++l)
                 {
-                    outgoing_snc->updateCostSimple(-outgoing_min_marg[l], l, false);
+                    outgoing_snc->updateEdgeCost(-outgoing_min_marg[l], l, false);
                 }
             }
         }
@@ -1189,10 +1189,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         assert(reduced_cost <= 1e-8);
                     if (flow == -1)
                         assert(reduced_cost >= -1e-8);
-                    //incoming_snc->updateCostSimple(- reduced_cost, base_graph_node(incoming_node), false);
+                    //incoming_snc->updateEdgeCost(- reduced_cost, base_graph_node(incoming_node), false);
                     //assert(vertex_index == incoming_snc->getBaseIDs().size()-1);
                     assert(incoming_snc->getBaseIDs()[vertex_index] == base_graph_node(incoming_node));
-                    incoming_snc->updateCostSimple(- reduced_cost, vertex_index , false);
+                    incoming_snc->updateEdgeCost(- reduced_cost, vertex_index , false);
                     ++vertex_index;
                 }
                 else if (base_graph_node(incoming_node) != i) // regular edge
@@ -1203,7 +1203,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     if (flow == -1)
                         assert(reduced_cost >= -1e-8);
                     assert(incoming_snc->getBaseIDs()[vertex_index] == base_graph_node(incoming_node));
-                    incoming_snc->updateCostSimple(-0.5 * reduced_cost, vertex_index, false);
+                    incoming_snc->updateEdgeCost(-0.5 * reduced_cost, vertex_index, false);
                     ++vertex_index;
                 }
                 else // bottleneck edge
@@ -1238,9 +1238,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         assert(reduced_cost >= -1e-8);
                     if (flow == 1)
                         assert(reduced_cost <= 1e-8);
-                    //outgoing_snc->updateCostSimple(reduced_cost, base_graph_node(outgoing_node), false);
+                    //outgoing_snc->updateEdgeCost(reduced_cost, base_graph_node(outgoing_node), false);
                     assert(outgoing_snc->getBaseIDs()[vertex_index] == base_graph_node(outgoing_node));
-                    outgoing_snc->updateCostSimple(reduced_cost, vertex_index , false);
+                    outgoing_snc->updateEdgeCost(reduced_cost, vertex_index , false);
                     ++vertex_index;
                 }
                 else if (base_graph_node(outgoing_node) != i) // regular edge
@@ -1250,9 +1250,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         assert(reduced_cost >= -1e-8);
                     if (flow == 1)
                         assert(reduced_cost <= 1e-8);
-                    //outgoing_snc->updateCostSimple(0.5 * reduced_cost, base_graph_node(outgoing_node), false);
+                    //outgoing_snc->updateEdgeCost(0.5 * reduced_cost, base_graph_node(outgoing_node), false);
                     assert(outgoing_snc->getBaseIDs()[vertex_index] == base_graph_node(outgoing_node));
-                    outgoing_snc->updateCostSimple(0.5 * reduced_cost, vertex_index, false);
+                    outgoing_snc->updateEdgeCost(0.5 * reduced_cost, vertex_index, false);
                     ++vertex_index;
                 }
                 else // bottleneck edge

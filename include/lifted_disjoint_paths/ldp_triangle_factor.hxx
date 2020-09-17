@@ -267,7 +267,7 @@ public:
             r.print();
         }
         assert(msg_dim == 0||msg_dim==1);
-        r.updateCostSimple(msg,verticesInSnc.at(msg_dim),isLifted.at(msg_dim));
+        r.updateEdgeCost(msg,verticesInSnc.at(msg_dim),isLifted.at(msg_dim));
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
