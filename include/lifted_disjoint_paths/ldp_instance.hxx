@@ -150,6 +150,11 @@ public:
 		return vertexIndex;
 	}
 
+    bool existLiftedEdge(const size_t v,const size_t w)const{
+        bool value=liftedStructure.at(v).isWithinBounds(w)&&liftedStructure.at(v).getValue(w);
+        return value;
+    }
+
 //	std::vector<bool>& getBaseEdgeLabels()  {
 //		return baseEdgeLabels;
 //	}
@@ -195,7 +200,10 @@ private:
 	void readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs);
 	void sparsifyBaseGraph();
 	void sparsifyLiftedGraph();
+    void initLiftedStructure();
 	bool useTimeFrames;
+
+    std::vector<ShiftedVector<bool>> liftedStructure;
 
 
 };

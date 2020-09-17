@@ -35,7 +35,7 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,Com
 	std::cout<<"Adding automatic lifted edges"<<std::endl;
 	parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
 	parameters.infoFile().flush();
-	for (int i = 0; i < graph_.numberOfEdges(); ++i) {
+    for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
 		size_t v0=graph_.vertexOfEdge(i,0);
 		size_t v1=graph_.vertexOfEdge(i,1);
 		if(v0!=s_&&v1!=t_){
@@ -62,6 +62,7 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,Com
 	else{
 		//desc=initReachable(graph_,parameters);
 		reachable=initReachableSet(graph_,&vertexGroups);
+        initLiftedStructure();
 	}
 
 	numberOfVertices=graph_.numberOfVertices();
@@ -249,134 +250,154 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 }
 
 
-template<typename LABEL_ITERATOR>
-bool LdpInstance::check_feasiblity(LABEL_ITERATOR begin, LABEL_ITERATOR end) const{
+//template<typename LABEL_ITERATOR>
+//bool LdpInstance::check_feasiblity(LABEL_ITERATOR begin, LABEL_ITERATOR end) const{
 
 
-	//Labels into vector
-	size_t indexCounter=0;
-	std::vector<double> solution0(graph_.numberOfEdges()+graphLifted_.numberOfEdges()+graph_.numberOfVertices());
-	auto it=begin;
-	for (;it!=end&&indexCounter<solution0.size();it++) {
-		double value=*it;
-		solution0[indexCounter]=value;
-		indexCounter++;
-	}
+//	//Labels into vector
+//	size_t indexCounter=0;
+//	std::vector<double> solution0(graph_.numberOfEdges()+graphLifted_.numberOfEdges()+graph_.numberOfVertices());
+//	auto it=begin;
+//	for (;it!=end&&indexCounter<solution0.size();it++) {
+//		double value=*it;
+//		solution0[indexCounter]=value;
+//		indexCounter++;
+//	}
 
-	if(it!=end){
-		throw std::runtime_error("Wrong size of solution labels for feasibility check.");
-	}
+//	if(it!=end){
+//		throw std::runtime_error("Wrong size of solution labels for feasibility check.");
+//	}
 
 
-	//Check flow conservation
-	bool isFeasible=true;
-	std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
-	for (int i = 0; i < graph_.numberOfVertices()&&isFeasible; ++i) {
-		if(i==s_||i==t_) continue;
-		bool vertexActive=solution0[getVertexVarIndex(i)]>0.5;
-		bool outputFound=false;
-		for (int j = 0; j < graph_.numberOfEdgesFromVertex(i)&&isFeasible; ++j) {
-			size_t e=graph_.edgeFromVertex(i,j);
-			if(solution0[getEdgeVarIndex(e)]>0.5){
-				if(outputFound||!vertexActive){
-					isFeasible=false;
-				}
+//	//Check flow conservation
+//	bool isFeasible=true;
+//	std::unordered_map<size_t,size_t> predecessors; //Used later for lifted edges consistency
+//	for (int i = 0; i < graph_.numberOfVertices()&&isFeasible; ++i) {
+//		if(i==s_||i==t_) continue;
+//		bool vertexActive=solution0[getVertexVarIndex(i)]>0.5;
+//		bool outputFound=false;
+//		for (int j = 0; j < graph_.numberOfEdgesFromVertex(i)&&isFeasible; ++j) {
+//			size_t e=graph_.edgeFromVertex(i,j);
+//			if(solution0[getEdgeVarIndex(e)]>0.5){
+//				if(outputFound||!vertexActive){
+//					isFeasible=false;
+//				}
 
-				else{
-					outputFound=true;
-				}
-			}
-		}
-		if(vertexActive&&!outputFound){
-			isFeasible=false;
-		}
+//				else{
+//					outputFound=true;
+//				}
+//			}
+//		}
+//		if(vertexActive&&!outputFound){
+//			isFeasible=false;
+//		}
 
-		bool inputFound=false;
-		for (int j = 0; j < graph_.numberOfEdgesToVertex(i)&&isFeasible; ++j) {
-			size_t e=graph_.edgeToVertex(i,j);
-			if(solution0[getEdgeVarIndex(e)]>0.5){
-				if(inputFound||!vertexActive){
-					isFeasible=false;
-				}
-				else{
-					inputFound=true;
-					predecessors[i]=graph_.vertexToVertex(i,j);
-				}
-			}
-		}
-		if(vertexActive&&!inputFound){
-			isFeasible=false;
-		}
+//		bool inputFound=false;
+//		for (int j = 0; j < graph_.numberOfEdgesToVertex(i)&&isFeasible; ++j) {
+//			size_t e=graph_.edgeToVertex(i,j);
+//			if(solution0[getEdgeVarIndex(e)]>0.5){
+//				if(inputFound||!vertexActive){
+//					isFeasible=false;
+//				}
+//				else{
+//					inputFound=true;
+//					predecessors[i]=graph_.vertexToVertex(i,j);
+//				}
+//			}
+//		}
+//		if(vertexActive&&!inputFound){
+//			isFeasible=false;
+//		}
 
-	}
+//	}
 
-	//Check lifted edge labels consistency with paths
-	for (int i = 0; i < graph_.numberOfEdgesToVertex(t_)&&isFeasible; ++i) {
-		size_t e=graph_.edgeToVertex(t_,i);
-		size_t eVarIndex=getEdgeVarIndex(e);
-		if(solution0[eVarIndex] > 0.5){
+//	//Check lifted edge labels consistency with paths
+//	for (int i = 0; i < graph_.numberOfEdgesToVertex(t_)&&isFeasible; ++i) {
+//		size_t e=graph_.edgeToVertex(t_,i);
+//		size_t eVarIndex=getEdgeVarIndex(e);
+//		if(solution0[eVarIndex] > 0.5){
 
-			std::vector<bool> isOnPath(graph_.numberOfVertices(),0);
-			size_t vertex=graph_.vertexToVertex(t_,i);
-			isOnPath[vertex]=1;
-			isOnPath[t_]=1;  //Maybe not necessary
+//			std::vector<bool> isOnPath(graph_.numberOfVertices(),0);
+//			size_t vertex=graph_.vertexToVertex(t_,i);
+//			isOnPath[vertex]=1;
+//			isOnPath[t_]=1;  //Maybe not necessary
 
-			while(vertex!=s_&&isFeasible){
+//			while(vertex!=s_&&isFeasible){
 
-				for (int j = 0; j < graphLifted_.numberOfEdgesFromVertex(vertex); ++j) {
-					size_t le=graphLifted_.edgeFromVertex(vertex,j);
-					size_t vertex2=graphLifted_.vertexFromVertex(vertex,j);
-					size_t leVarIndex=getLiftedEdgeVarIndex(le);
-					//size_t vertex2VarIndex=data_.getVertexVarIndex(vertex2);
-					if(isOnPath[vertex2]&&solution0[leVarIndex]<0.5) {
-						isFeasible=false;
-					}
-					else if(!isOnPath[vertex2]&&solution0[leVarIndex]>0.5){
-						isFeasible=false;
-					}
-				}
-				isOnPath[vertex]=1;
-				vertex=predecessors[vertex];
-			}
+//				for (int j = 0; j < graphLifted_.numberOfEdgesFromVertex(vertex); ++j) {
+//					size_t le=graphLifted_.edgeFromVertex(vertex,j);
+//					size_t vertex2=graphLifted_.vertexFromVertex(vertex,j);
+//					size_t leVarIndex=getLiftedEdgeVarIndex(le);
+//					//size_t vertex2VarIndex=data_.getVertexVarIndex(vertex2);
+//					if(isOnPath[vertex2]&&solution0[leVarIndex]<0.5) {
+//						isFeasible=false;
+//					}
+//					else if(!isOnPath[vertex2]&&solution0[leVarIndex]>0.5){
+//						isFeasible=false;
+//					}
+//				}
+//				isOnPath[vertex]=1;
+//				vertex=predecessors[vertex];
+//			}
 
-		}
-	}
+//		}
+//	}
 
-	return isFeasible;
+//	return isFeasible;
 
+//}
+
+
+
+//template<typename EDGE_LABEL_ITERATOR>
+//double LdpInstance::evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const{
+//	size_t indexCounter=0;
+//	std::vector<double> solution0(graph_.numberOfEdges()+graphLifted_.numberOfEdges()+graph_.numberOfVertices());
+//	auto it=begin;
+//	for (;it!=end&&indexCounter<solution0.size();it++) {
+//		double value=*it;
+//		solution0[indexCounter]=value;
+//		indexCounter++;
+//	}
+
+//	if(it!=end){
+//		throw std::runtime_error("Wrong size of solution labels for evaluation.");
+//	}
+
+//	double objectiveValue=0;
+//	for (int i = 0; i < numberOfEdges; ++i) {
+//		if(solution0[getEdgeVarIndex(i)]>0.5) objectiveValue+=edgeScore[i];
+//	}
+//	for (int i = 0; i < numberOfLiftedEdges; ++i) {
+//		if(solution0[getLiftedEdgeVarIndex(i)]>0.5) objectiveValue+=liftedEdgeScore[i];
+//	}
+
+//	return objectiveValue;
+
+
+//}
+
+void LdpInstance::initLiftedStructure(){
+    liftedStructure=std::vector<ShiftedVector<bool>>(graphLifted_.numberOfVertices());
+    for (size_t i = 0; i < graphLifted_.numberOfVertices(); ++i) {
+        size_t maxVertex=0;
+        size_t minVertex=graphLifted_.numberOfVertices();
+        for (size_t j = 0; j < graphLifted_.numberOfEdgesFromVertex(i); ++j) {
+           size_t vertex2=graphLifted_.vertexFromVertex(i,j);
+           if(vertex2<minVertex){
+               minVertex=vertex2;
+           }
+           if(vertex2>maxVertex){
+               maxVertex=vertex2;
+           }
+        }
+        liftedStructure[i]=ShiftedVector<bool>(minVertex,maxVertex,false);
+        for (size_t j = 0; j < graphLifted_.numberOfEdgesFromVertex(i); ++j) {
+           size_t vertex2=graphLifted_.vertexFromVertex(i,j);
+           liftedStructure[i].setValue(vertex2,true);
+        }
+    }
 }
-
-
-
-template<typename EDGE_LABEL_ITERATOR>
-double LdpInstance::evaluate(EDGE_LABEL_ITERATOR begin, EDGE_LABEL_ITERATOR end) const{
-	size_t indexCounter=0;
-	std::vector<double> solution0(graph_.numberOfEdges()+graphLifted_.numberOfEdges()+graph_.numberOfVertices());
-	auto it=begin;
-	for (;it!=end&&indexCounter<solution0.size();it++) {
-		double value=*it;
-		solution0[indexCounter]=value;
-		indexCounter++;
-	}
-
-	if(it!=end){
-		throw std::runtime_error("Wrong size of solution labels for evaluation.");
-	}
-
-	double objectiveValue=0;
-	for (int i = 0; i < numberOfEdges; ++i) {
-		if(solution0[getEdgeVarIndex(i)]>0.5) objectiveValue+=edgeScore[i];
-	}
-	for (int i = 0; i < numberOfLiftedEdges; ++i) {
-		if(solution0[getLiftedEdgeVarIndex(i)]>0.5) objectiveValue+=liftedEdgeScore[i];
-	}
-
-	return objectiveValue;
-
-
-}
-
-
 
 
 
@@ -604,6 +625,7 @@ void LdpInstance::sparsifyLiftedGraph(){
 
 	}
 	parameters.infoFile().flush();
+    initLiftedStructure();
 
 }
 

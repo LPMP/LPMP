@@ -32,6 +32,7 @@
 #include <map>
 #include <list>
 #include <utility>
+#include <config.hxx>
 
 
 
@@ -39,7 +40,15 @@
 
 
 namespace LPMP{
+
+
+
+
+
 namespace lifted_disjoint_paths {
+
+
+
 
 template<class T=char>
  std::vector<std::string> split(
@@ -455,8 +464,90 @@ public:
 
 
 
-}
-}
+}  //end of namespace
+
+
+
+
+
+
+
+
+template<class T>
+struct ShiftedVector{
+public:
+    ShiftedVector<T>(size_t boundary1,size_t boundary2,const T& value): //inclusive both min and max vertex
+    minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
+    {
+        //const size_t min = std::min(boundary1,boundary2);
+        //const size_t max = std::max(boundary1,boundary2);
+        //const size_t size = max - min + 1;
+        //myVector = new T[size];
+        myVector=std::vector<T>(maxVertex-minVertex+1,value);
+    }
+    ShiftedVector<T>(size_t boundary1,size_t boundary2): //inclusive both min and max vertex
+    minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
+    {
+        myVector=std::vector<T>(maxVertex-minVertex+1);
+    }
+    ShiftedVector<T>(){
+        minVertex=0;
+        maxVertex=0;
+        ShiftedVector(minVertex,maxVertex);
+    }
+
+
+    T& operator[](size_t idx){
+        if(debug()&&( idx<minVertex||idx>maxVertex)) std::cout<<"out of bounds, index "<<idx<<", interval "<<minVertex<<","<<maxVertex<<std::endl;
+        assert(idx>=minVertex&&idx<=maxVertex);
+        size_t shiftedIndex=idx-minVertex;
+        return myVector[shiftedIndex];
+    }
+
+    void setValue(size_t index,T value){
+        assert(index>=minVertex&&index<=maxVertex);
+        myVector[index-minVertex]=value;
+
+    }
+
+    T getValue(size_t idx)const {
+        assert(idx>=minVertex&&idx<=maxVertex);
+        size_t shiftedIndex=idx-minVertex;
+        return myVector[shiftedIndex];
+    }
+
+    const T& operator [](size_t idx) const {
+        if(debug()&&( idx<minVertex||idx>maxVertex)) std::cout<<"out of bounds, index "<<idx<<", interval "<<minVertex<<","<<maxVertex<<std::endl;
+        assert(idx>=minVertex&&idx<=maxVertex);
+        return myVector[idx-minVertex];
+    }
+
+    void fillWith(const T& value){
+        myVector=std::vector<T>(maxVertex-minVertex+1,value);
+    }
+
+    void fillWith(const T& value,size_t index1,size_t index2){ //inclusive both boundary indices
+        size_t minIndex=std::min(index1,index2);
+        size_t maxIndex=std::max(index1,index2);
+        assert(minIndex>=minVertex&&maxIndex<=maxVertex);
+        for (size_t i = minIndex; i <= maxIndex; ++i) {
+            myVector[i-minVertex]=value;
+        }
+    }
+
+    bool isWithinBounds(const size_t index)const{
+        return index>=minVertex&&index<=maxVertex;
+
+    }
+
+private:
+    //T* myVector; // TODO: might be faster depending on whether initializing myVector is expensive
+    std::vector<T> myVector;
+    size_t minVertex;
+    size_t maxVertex;
+};
+
+} //end of namespace
 
 
 #endif /* INCLUDE_LIFTED_DISJOINT_PATHS_LDP_FUNCTIONS_HXX_ */
