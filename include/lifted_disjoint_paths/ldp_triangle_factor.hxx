@@ -280,7 +280,7 @@ public:
             double delta=0;
             if(isLifted[i]){
                // std::cout<<"lifted "<<std::endl;
-                delta = r.oneLiftedMinMarginal(verticesInSnc.at(i));
+                delta = r.getOneLiftedMinMarginal(verticesInSnc.at(i));
             }
             else{
               //  std::cout<<"base "<<std::endl;

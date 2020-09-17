@@ -61,6 +61,7 @@ private:
     std::vector<SINGLE_NODE_CUT_LIFTED_MESSAGE*> snc_lifted_messages_;
     std::vector<SNC_TRIANGLE_MESSAGE*> snc_triangle_messages_;
     std::vector<std::vector<std::unordered_set<size_t>>> usedTriangles;
+    const lifted_disjoint_paths::LdpInstance * pInstance;
 
 };
 
@@ -324,6 +325,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
 {
+    pInstance=&instance;
 
     // first construct minimum cost flow factor for base edges
     const std::size_t nr_base_graph_nodes = instance.getGraph().numberOfVertices() - 2;
@@ -501,7 +503,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
     std::cout<<"computing lifted min marginal "<<std::endl;
-    double value=sncFactor->oneLiftedMinMarginal(1);
+    double value=sncFactor->getOneLiftedMinMarginal(1);
     //std::cout<<"lifted min marginal "<<value<<std::endl;
     //	sncFactor->getAllLiftedMinMarginals();
 
@@ -582,7 +584,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
     std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
 
-    const lifted_disjoint_paths::LdpInstance &instance=single_node_cut_factors_[0][0]->get_factor()->getLdpInstance();
+    const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
     const andres::graph::Digraph<>& baseGraph=instance.getGraph();
     const andres::graph::Digraph<>& liftedGraph=instance.getGraphLifted();
 
@@ -1056,7 +1058,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 {
     mcf_->reset_costs();
 
-    const lifted_disjoint_paths::LdpInstance &instance=single_node_cut_factors_[0][0]->get_factor()->getLdpInstance();
+    const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
     const andres::graph::Digraph<>& baseGraph=instance.getGraph();
     std::vector<std::unordered_map<size_t,double>> costsFromTriangles(nr_nodes());
 
