@@ -562,34 +562,11 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMargina
 template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginalsForMCF() const{
     updateOptimal();
-    //if(debug()) std::cout<<"output min marginals"<<std::endl;
-    std::vector<double> minMarginals(baseCosts.size());
-    if(optimalSolutionBase==nodeNotActive){
-        for (int i = 0; i < solutionCosts.size()-1; ++i) {
-            minMarginals[i]=solutionCosts[i];
-            //if(debug()) std::cout<<i<<" "<<minMarginals[i]<<std::endl;
+    auto it=solutionCosts.end();
+    it--;
+    std::vector<double> toReturn(solutionCosts.begin(),it);
+    return toReturn;
 
-        }
-    }
-    else{
-        double secondBest=std::numeric_limits<double>::infinity();
-        double optValue=solutionCosts.at(optimalSolutionBase);
-        for (int i = 0; i < solutionCosts.size(); ++i) {
-            if(i==optimalSolutionBase) continue;
-            if(std::abs(optValue-solutionCosts[i])<eps&&(i!=nodeNotActive)) continue;
-            if(solutionCosts[i]<secondBest){
-                secondBest=solutionCosts[i];
-            }
-
-        }
-        for (int i = 0; i < solutionCosts.size()-1; ++i) {
-            minMarginals[i]=solutionCosts[i]-secondBest;
-            //if(debug()) std::cout<<i<<" "<<minMarginals[i]<<std::endl;
-        }
-
-
-    }
-    return minMarginals;
 }
 
 
