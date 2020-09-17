@@ -1004,11 +1004,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(std::vector<double>* pLocalBaseCosts) const{
 
-
-
-   // std::cout<<"is out "<<isOutFlow<<std::endl;
 	std::unordered_map<size_t,double> liftedMessages;
-
 
 
 	std::vector<double> localLiftedCosts=liftedCosts;
@@ -1151,7 +1147,6 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     if(debug()){
         StrForUpdateValues myStr2(localBaseCosts,localLiftedCosts,nodeID,mostDistantNeighborID,getVertexToReach());
-
         updateValues(myStr2);
         assert(std::abs(myStr2.optValue-currentOptValue)<eps);
         assert(myStr2.optValue+minMarginalsImproving-origOptValue>-eps);
