@@ -238,8 +238,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
                 std::unordered_set<size_t> activeEndpointIndices;
                 const std::vector<size_t>& liftedIDs= sncFactorOut->getLiftedIDs();
-                for (int i = 0; i < liftedIDs.size(); ++i) {
-                    if(isOnPath[liftedIDs.at(i)]) activeEndpointIndices.insert(i);
+                for (int j = 0; j < liftedIDs.size(); ++j) {
+                    if(isOnPath[liftedIDs.at(j)]) activeEndpointIndices.insert(j);
                 }
 
                 sncFactorOut->setPrimalLifted(activeEndpointIndices);
@@ -252,8 +252,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* sncFactorIn=single_node_cut_factors_[activeVertex][0]->get_factor();
                 std::unordered_set<size_t> activeEndpointIndices;
                 const std::vector<size_t>& liftedIDs= sncFactorIn->getLiftedIDs();
-                for (int i = 0; i < liftedIDs.size(); ++i) {
-                    if(isOnPath[liftedIDs.at(i)]) activeEndpointIndices.insert(i);
+                for (int j = 0; j < liftedIDs.size(); ++j) {
+                    if(isOnPath[liftedIDs.at(j)]) activeEndpointIndices.insert(j);
                 }
                 sncFactorIn->setPrimalLifted(activeEndpointIndices);
             }

@@ -24,10 +24,9 @@ struct StrForTopDownUpdate{
 	optValue(0),
     nodeID(centralNodeID),
     topDownValuesStructure(centralNodeID,mostDistantNodeID,0),
-    topDownVertexIDStructure(centralNodeID,mostDistantNodeID,vertexToReach),
-     optBaseIndex(0) //maybe set to node not active
+    topDownVertexIDStructure(centralNodeID,mostDistantNodeID,vertexToReach)
 	{
-
+        optBaseIndex=bCosts.size();
 	}
 
     const size_t nodeID;
@@ -565,6 +564,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateNodeCost(const doubl
 	for (int i = 0; i < solutionCosts.size()-1; ++i) {
 		(solutionCosts[i]+=value);
 	}
+    optValueUpToDate=false;
 
 }
 
