@@ -123,9 +123,9 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
                 const std::vector<size_t>& liftedIDs= sncFactorOut->getLiftedIDs();
                 const std::unordered_set<size_t>& activeInFactor=sncFactorOut->getPrimalLiftedIndices();
-                for (int i = 0; i < liftedIDs.size(); ++i) {
-                    if(isOnPath.at(liftedIDs.at(i))){
-                        if(activeInFactor.count(i)==0){
+                for (int j = 0; j < liftedIDs.size(); ++j) {
+                    if(isOnPath.at(liftedIDs.at(j))){
+                        if(activeInFactor.count(j)==0){
                             isFeasible=false;
                             break;
                         }
@@ -151,9 +151,9 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
                     const std::vector<size_t>& liftedIDs= sncFactorIn->getLiftedIDs();
                     const std::unordered_set<size_t>& activeInFactor=sncFactorIn->getPrimalLiftedIndices();
-                    for (int i = 0; i < liftedIDs.size(); ++i) {
-                        if(isOnPath.at(liftedIDs.at(i))){
-                            if(activeInFactor.count(i)==0){
+                    for (int j = 0; j < liftedIDs.size(); ++j) {
+                        if(isOnPath.at(liftedIDs.at(j))){
+                            if(activeInFactor.count(j)==0){
                                 isFeasible=false;
                                 break;
                             }
