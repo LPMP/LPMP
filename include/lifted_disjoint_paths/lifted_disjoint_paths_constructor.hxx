@@ -414,46 +414,14 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             assert((right_snc->get_factor()->getLiftedIDs().size())>i);
             auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
             snc_lifted_messages_.push_back(message);
-//            if(debug()){
-//                std::cout<<"message left "<<vertex1<<", right"<<vertex2<<", ij "<<i<<","<<j<<std::endl;
-//            }
+
         }
-        //
-        //        	for (int j = 0; j < instance.getGraph().numberOfEdgesFromVertex(vertex1); ++j) {
-        //        		size_t vertex2=instance.getGraph().vertexFromVertex(vertex1,j);
-        //        		auto right_snc=single_node_cut_factors_[vertex2][0];
-        //        		size_t i=right_snc->get_factor()->getLiftedOrderToID(vertex1);
-        //        		if(debug()) std::cout<<"message "<<vertex1<<", "<<vertex2<<": "<<i<<", "<<j<<std::endl;
-        //        		auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
-        //        		snc_lifted_messages_.push_back(message);
-        //
-        //
-        //			}
+
     }
 
 
 
-    //        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
-    //        	auto left_snc=single_node_cut_factors_[i][0];
-    //        	for(const auto pair:left_snc->get_factor()->getLiftedCosts()){
-    //        		size_t j=pair.first;
-    //        		auto right_snc=single_node_cut_factors_[j][1];
-    //
-    //        		auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
-    //        		snc_lifted_messages_.push_back(message);
-    //
-    //
-    //        	}
-    //        }
-    //        for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
-    //        	if(i==this->base_graph_source_node()||i==this->base_graph_terminal_node()) continue;
-    //        	auto left_snc=single_node_cut_factors_[i][0];
-    //        	auto right_snc=single_node_cut_factors_[i][1];
-    //        	auto * message=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(left_snc, right_snc, i);
-    //        	SNC_TRIANGLE_MESSAGEs_.push_back(message);
-    //        }
 
-    //sncDebug(20,1);
     if(debug()) std::cout<<"messages added"<<std::endl;
     usedTriangles=std::vector<std::vector<std::unordered_set<size_t>>>(nr_nodes());
     for (int i = 0; i < nr_nodes(); ++i) {
@@ -1063,6 +1031,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     std::vector<std::unordered_map<size_t,double>> costsFromTriangles(nr_nodes());
 
 
+    std::cout<<"triangle factors size "<<triangle_factors_.size()<<std::endl;
     for(size_t i=0;i<triangle_factors_.size();i++){
         auto * trFactor=triangle_factors_[i]->get_factor();
         size_t v1=trFactor->getV1();
