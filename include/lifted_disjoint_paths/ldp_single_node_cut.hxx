@@ -997,27 +997,27 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     //All vertices that are one in at least one of the optimal solutions
     std::unordered_set<size_t> isOneInOpt(isNotZeroInOpt.begin(),isNotZeroInOpt.end());
 
-    if(myStr.optBaseIndex!=nodeNotActive){
-    std::cout<<"opt base "<< baseIDs.at(myStr.optBaseIndex)<<"opt path "<<std::endl;
-    for(auto it=isNotZeroInOpt.begin();it!=isNotZeroInOpt.end();it++){
-        std::cout<<*it<<",";
-    }
-    std::cout<<std::endl;
-    }
-    else{
-        std::cout<<"opt not active "<<std::endl;
-    }
+//    if(myStr.optBaseIndex!=nodeNotActive){
+//    std::cout<<"opt base "<< baseIDs.at(myStr.optBaseIndex)<<"opt path "<<std::endl;
+//    for(auto it=isNotZeroInOpt.begin();it!=isNotZeroInOpt.end();it++){
+//        std::cout<<*it<<",";
+//    }
+//    std::cout<<std::endl;
+//    }
+//    else{
+//        std::cout<<"opt not active "<<std::endl;
+//    }
 
     double minMarginalsImproving=0;
 
     double currentOptValue=myStr.optValue;
-    std::cout<<"opt value "<<currentOptValue<<std::endl;
+   // std::cout<<"opt value "<<currentOptValue<<std::endl;
     auto listIt=isNotZeroInOpt.begin();
 
     //Obtaining min marginals for nodes that are active in all optimal solutions
     while(!isNotZeroInOpt.empty()){
         size_t vertexToClose=*listIt;
-        std::cout<<"closing "<<vertexToClose<<std::endl;
+       // std::cout<<"closing "<<vertexToClose<<std::endl;
 
         //Obtaining best solution while ignoring vertexToClose
         topDownUpdate(myStr,vertexToClose);
@@ -1025,16 +1025,16 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
         std::list<size_t> secondBest=getOptLiftedFromIndexStr(myStr);
 
         bool isSecondBestActive=myStr.optBaseIndex!=nodeNotActive;
-        if(isSecondBestActive){
-            std::cout<<"second best base "<<baseIDs.at(myStr.optBaseIndex)<<", lifted"<<std::endl;
-            for(auto it=secondBest.begin();it!=secondBest.end();it++){
-                std::cout<<*it<<",";
-            }
-            std::cout<<std::endl;
-        }
-        else{
-            std::cout<<"second best not active "<<std::endl;
-        }
+//        if(isSecondBestActive){
+//            std::cout<<"second best base "<<baseIDs.at(myStr.optBaseIndex)<<", lifted"<<std::endl;
+//            for(auto it=secondBest.begin();it!=secondBest.end();it++){
+//                std::cout<<*it<<",";
+//            }
+//            std::cout<<std::endl;
+//        }
+//        else{
+//            std::cout<<"second best not active "<<std::endl;
+//        }
 
         auto sbIt=secondBest.begin();
         listIt=isNotZeroInOpt.erase(listIt);
@@ -1082,7 +1082,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
         double delta=currentOptValue-newOpt;
 
-        std::cout<<"delta "<<delta<<std::endl;
+       // std::cout<<"delta "<<delta<<std::endl;
 
         size_t orderToClose=liftedIDToOrder.at(vertexToClose);
         localLiftedCosts[orderToClose]-=delta;
@@ -1216,37 +1216,29 @@ public:
 //        if(debug()){
 //            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
 //        }
-        bool hasPositive=false;
-        bool hasNegative=false;
-        if(!hasPositive){
-            std::cout<<"no positive min marginals"<<std::endl;
-        }
-        if(!hasNegative){
-            std::cout<<"no negative min marginals"<<std::endl;
-        }
+
+
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
 
             auto& msg = (*it).GetMessageOp();
             const size_t left_node = msg.left_node;
             const size_t right_node = msg.right_node;
-            if( msg_vec.at(left_node)<-eps) hasNegative=true;
-            if( msg_vec.at(left_node)>eps) hasPositive=true;
+
             (*it)[0] -= omega * msg_vec.at(left_node);
         }
-        if(!hasPositive){
-            std::cout<<"no positive min marginals"<<std::endl;
-        }
-        if(!hasNegative){
-            std::cout<<"no negative min marginals"<<std::endl;
-        }
-        std::vector<double> testMinMarginals=r.getAllLiftedMinMarginals();
-        for (int i = 0; i < testMinMarginals.size(); ++i) {
-            if(testMinMarginals[i]>=eps||testMinMarginals[i]<-eps){
-                std::cout<<"wrong test min marginal "<<i<<": "<<testMinMarginals[i]<<std::endl;
-            }
-            assert(testMinMarginals[i]<eps);
-        }
+
+//        std::vector<double> testMinMarginals=r.getAllLiftedMinMarginals();
+//        for (int i = 0; i < testMinMarginals.size(); ++i) {
+//            if(std::abs(testMinMarginals[i]-(1-omega)*msg_vec.at(i))>=eps){
+//                std::cout<<"test min marginal "<<i<<": "<<testMinMarginals[i]<<", expected "<<(1-omega)*msg_vec.at(i)<<", omega "<<omega<<", orig min marginal "<<msg_vec.at(i)<<std::endl;
+//                for (int j = 0; j < msg_vec.size(); ++j) {
+//                    std::cout<<r.getLiftedID(j)<<": "<<testMinMarginals.at(j)<<", "<<msg_vec.at(j)<<std::endl;
+//                }
+
+//            }
+//            assert(std::abs(testMinMarginals[i]-(1-omega)*msg_vec.at(i))<eps);
+//        }
 
 //        if(debug()){
 //            std::cout<<"messages added "<<std::endl;
@@ -1263,15 +1255,13 @@ public:
 //        if(debug()){
 //            std::cout<<"obtained all lifted marginals, size "<<msg_vec.size()<<std::endl;
 //        }
-        bool hasPositive=false;
-        bool hasNegative=false;
+
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
             auto& msg = (*it).GetMessageOp();
             const size_t left_node = msg.left_node;
             const size_t right_node = msg.right_node;
-            if(msg_vec.at(right_node)<-eps) hasNegative=true;
-            if(msg_vec.at(right_node)>eps) hasPositive=true;
+
 //            if(debug()){
 //               // auto& origVal=(*it)[0];
 //                std::cout<<"source node"<<l.nodeID<<"to node "<<l.getLiftedID(right_node)<<", to subtract "<<msg_vec.at(right_node)<<std::endl;
@@ -1279,31 +1269,19 @@ public:
             //(*it)[0] -= omega * msg_vec.at(right_node);
             (*it).operator[](0)-= omega * msg_vec.at(right_node);
         }
-        if(!hasPositive){
-            std::cout<<"no positive min marginals"<<std::endl;
-        }
-        if(!hasNegative){
-            std::cout<<"no negative min marginals"<<std::endl;
-        }
-        std::vector<double> testMinMarginals=l.getAllLiftedMinMarginals();
-        for (int i = 0; i < testMinMarginals.size(); ++i) {
-//            if(testMinMarginals[i]>=eps||testMinMarginals[i]<-eps){
 
-//                std::cout<<"wrong test min marginal "<<i<<": "<<testMinMarginals[i]<<std::endl;
-//                std::cout<<"omega "<<omega<<std::endl;
+//        std::vector<double> testMinMarginals=l.getAllLiftedMinMarginals();
+//        for (int i = 0; i < testMinMarginals.size(); ++i) {
+
+//            if(std::abs(testMinMarginals[i]-(1-omega)*msg_vec.at(i))>=eps){
+//                std::cout<<"test min marginal "<<i<<": "<<testMinMarginals[i]<<", expected "<<(1-omega)*msg_vec.at(i)<<", omega "<<omega<<", orig min marginal "<<msg_vec.at(i)<<std::endl;
 //                for (int j = 0; j < msg_vec.size(); ++j) {
-//                    std::cout<<"j "<<msg_vec.at(j)<<std::endl;
+//                    std::cout<<l.getLiftedID(j)<<": "<<testMinMarginals.at(j)<<", "<<msg_vec.at(j)<<std::endl;
 //                }
-//            }
-            if(std::abs(testMinMarginals[i]-(1-omega)*msg_vec.at(i))>=eps){
-                std::cout<<"test min marginal "<<i<<": "<<testMinMarginals[i]<<", expected "<<(1-omega)*msg_vec.at(i)<<", omega "<<omega<<", orig min marginal "<<msg_vec.at(i)<<std::endl;
-                for (int j = 0; j < msg_vec.size(); ++j) {
-                    std::cout<<l.getLiftedID(j)<<": "<<testMinMarginals.at(j)<<", "<<msg_vec.at(j)<<std::endl;
-                }
 
-            }
-            assert(std::abs(testMinMarginals[i]-(1-omega)*msg_vec.at(i))<eps);
-        }
+//            }
+//            assert(std::abs(testMinMarginals[i]-(1-omega)*msg_vec.at(i))<eps);
+//        }
 
         if(debug()){
             std::cout<<"messages added "<<std::endl;
