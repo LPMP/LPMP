@@ -47,7 +47,7 @@ class LdpInstance {
 public:
 
 
-    LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
+    LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
@@ -124,7 +124,7 @@ public:
 		return vertexScore[v];
 	}
 
-	const VertexGroups<size_t>* getPVertexGroups()const {
+    const disjointPaths::VertexGroups<size_t>* getPVertexGroups()const {
 		return &vertexGroups;
 	}
 
@@ -166,8 +166,8 @@ public:
     bool isStrongBase(size_t v,size_t w) const;
 
 
-	const ConfigDisjoint<>& parameters;
-	VertexGroups<size_t> vertexGroups;
+    const ConfigDisjoint<>& parameters;
+    disjointPaths::VertexGroups<size_t> vertexGroups;
 	size_t minV=0;
 	size_t maxV=0;
 
@@ -197,7 +197,7 @@ private:
 	size_t numberOfLiftedEdges;
 
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
-	void readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs);
+    void readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs);
 	void sparsifyBaseGraph();
 	void sparsifyLiftedGraph();
     void initLiftedStructure();

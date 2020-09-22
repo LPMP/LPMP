@@ -3,7 +3,7 @@
 namespace LPMP{
 namespace lifted_disjoint_paths {
 
-LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,CompleteStructure<>* cs,size_t minTime,size_t maxTime):
+LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,disjointPaths::CompleteStructure<>* cs,size_t minTime,size_t maxTime):
 		parameters(configParameters)
 {
 
@@ -16,7 +16,7 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,Com
 	size_t maxVertex;
     if(cs==nullptr){
 		if(useTimeFrames){
-			vertexGroups=VertexGroups<size_t>(parameters,delim);
+            vertexGroups=disjointPaths::VertexGroups<size_t>(parameters);
 			maxVertex=vertexGroups.getMaxVertex();
 		}
 		else{
@@ -61,7 +61,7 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,Com
 	}
 	else{
 		//desc=initReachable(graph_,parameters);
-		reachable=initReachableSet(graph_,&vertexGroups);
+        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();
 	}
 
@@ -71,11 +71,11 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,Com
 	//baseEdgeLabels=std::vector<bool>(numberOfEdges);
 }
 
-void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs){
+void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs){
 
 	andres::graph::Digraph<>& completeGraph=cs->completeGraph;
 	std::vector<double>& completeScore=cs->completeScore;
-	VertexGroups<> vg=cs->vg;
+    disjointPaths::VertexGroups<> vg=cs->getVertexGroups();
 
 	std::unordered_map<size_t,std::vector<size_t>> groups;
 
@@ -108,7 +108,7 @@ void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,CompleteStruct
 		}
 	}
 
-	vertexGroups=VertexGroups<>(groups,vToGroup);
+    vertexGroups=disjointPaths::VertexGroups<>(groups,vToGroup);
 	vertexScore = std::vector<double>(numberOfVertices, 0);
 	graphLifted_ = andres::graph::Digraph<>(numberOfVertices);
 	graph_ = andres::graph::Digraph<>(numberOfVertices);
@@ -515,7 +515,7 @@ void LdpInstance::sparsifyBaseGraph(){
 		parameters.infoFile().flush();
 	}
 
-	reachable=initReachableSet(graph_,&vertexGroups);
+    reachable=initReachableSet(graph_,parameters,&vertexGroups);
 
 
 	std::cout<<"Left "<<newBaseCosts.size()<<" base edges"<<std::endl;
