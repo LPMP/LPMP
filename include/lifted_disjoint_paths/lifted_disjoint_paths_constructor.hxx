@@ -26,6 +26,8 @@ public:
 
     void ComputePrimal();
 
+    void WritePrimal(std::stringstream& strStream)const;
+
     size_t Tighten(const std::size_t nr_constraints_to_add);
     void pre_iterate() { reparametrize_snc_factors(); }
 
@@ -85,6 +87,25 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     return isFeasible;
 }
 
+
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::WritePrimal(std::stringstream& strStream) const{
+
+    for (int i = 0; i < nr_nodes(); ++i) {
+        size_t vertex=i;
+        auto* snc=single_node_cut_factors_[vertex][0]->get_factor();
+        if(snc->isNodeActive()&&(snc->getPrimalBaseVertexID()==base_graph_source_node())){
+
+            while(vertex!=base_graph_terminal_node()){
+                strStream<<vertex<<" ";
+                auto* sncFactorOut=single_node_cut_factors_[vertex][1]->get_factor();
+                vertex=sncFactorOut->getPrimalBaseVertexID();
+            }
+            strStream<<"\n";
+        }
+
+    }
+}
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::checkFeasibilityLiftedInSnc(){
