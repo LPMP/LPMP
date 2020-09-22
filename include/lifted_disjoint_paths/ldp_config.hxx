@@ -51,7 +51,7 @@ public:
 	}
 
 
-	ConfigDisjoint(std::string inputFileName,char delim='=');
+    ConfigDisjoint(const std::string& inputFileName);
 
 	const std::string& getGraphFileName() const {
 		return graphFileName;
@@ -211,8 +211,9 @@ inline std::pair<std::string,std::string> ConfigDisjoint<T>::parseLine(std::stri
 
 
 template<class T>
-inline ConfigDisjoint<T>::ConfigDisjoint(std::string inputFileName,char delim){
+inline ConfigDisjoint<T>::ConfigDisjoint(const std::string &inputFileName){
 
+    char delim='=';
  	std::ifstream pathsData(inputFileName);
 	std::string line;
 	std::vector<std::string> strings;
