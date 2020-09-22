@@ -47,7 +47,8 @@ class LdpInstance {
 public:
 
 
-    LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
+    LdpInstance(const ConfigDisjoint<>& configParameters);
+     LdpInstance(const ConfigDisjoint<>& configParameters,disjointPaths::CompleteStructure<>& cs);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
@@ -175,6 +176,7 @@ public:
 private:
 
 	//LdpInstance(const LdpInstance& ldpI);
+    void init();
 
 	size_t s_;
 	size_t t_;

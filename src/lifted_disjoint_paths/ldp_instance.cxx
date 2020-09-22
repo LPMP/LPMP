@@ -4,72 +4,89 @@
 namespace LPMP{
 namespace lifted_disjoint_paths {
 
-LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters,char delim,disjointPaths::CompleteStructure<>* cs,size_t minTime,size_t maxTime):
-		parameters(configParameters)
+
+
+
+
+
+LdpInstance::LdpInstance(const ConfigDisjoint<> &configParameters, disjointPaths::CompleteStructure<>& cs):
+    parameters(configParameters)
 {
 
-	std::cout<<"interval "<<minTime<<","<<maxTime<<std::endl;
-	parameters.infoFile()<<"interval "<<minTime<<","<<maxTime<<std::endl;
-	parameters.infoFile().flush();
+    size_t minT=1;
+    size_t maxT=cs.maxTime+1;
+    readGraphWithTime(minT,maxT,&cs);
 
-	useTimeFrames=true;
-	//useTimeFrames=parameters.isRestrictFrames()||parameters.isSparsify();
-	size_t maxVertex;
-    if(cs==nullptr){
-		if(useTimeFrames){
-            vertexGroups=disjointPaths::VertexGroups<size_t>(parameters);
-			maxVertex=vertexGroups.getMaxVertex();
-		}
-		else{
-			maxVertex=std::numeric_limits<size_t>::max();
-		}
-		std::ifstream graphFile(parameters.getGraphFileName());
-		readGraph(graphFile,maxVertex,delim);
-		graphFile.close();
-	}
-	else{
-		readGraphWithTime(minTime,maxTime,cs);
+    init();
 
-	}
+}
 
 
-	std::cout<<"Adding automatic lifted edges"<<std::endl;
-	parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
-	parameters.infoFile().flush();
+
+
+
+
+
+
+LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters):
+    parameters(configParameters)
+{
+    char delim=',';
+    size_t maxVertex;
+    if(useTimeFrames){
+        vertexGroups=disjointPaths::VertexGroups<size_t>(parameters);
+        maxVertex=vertexGroups.getMaxVertex();
+    }
+    else{
+        maxVertex=std::numeric_limits<size_t>::max();
+    }
+    std::ifstream graphFile(parameters.getGraphFileName());
+    readGraph(graphFile,maxVertex,delim);
+    graphFile.close();
+
+    init();
+
+    //baseEdgeLabels=std::vector<bool>(numberOfEdges);
+}
+
+void LdpInstance::init(){
+
+    std::cout<<"Adding automatic lifted edges"<<std::endl;
+    parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
+    parameters.infoFile().flush();
     for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
-		size_t v0=graph_.vertexOfEdge(i,0);
-		size_t v1=graph_.vertexOfEdge(i,1);
-		if(v0!=s_&&v1!=t_){
-			//	if(secOrderDesc[v0][v1]){
-			graphLifted_.insertEdge(v0,v1);
-			liftedEdgeScore.push_back(edgeScore[i]);
+        size_t v0=graph_.vertexOfEdge(i,0);
+        size_t v1=graph_.vertexOfEdge(i,1);
+        if(v0!=s_&&v1!=t_){
+            //	if(secOrderDesc[v0][v1]){
+            graphLifted_.insertEdge(v0,v1);
+            liftedEdgeScore.push_back(edgeScore[i]);
 
-		}
-	}
-	std::cout<<"done"<<std::endl;
-	parameters.infoFile()<<"done"<<std::endl;
-	parameters.infoFile().flush();
+        }
+    }
+    std::cout<<"done"<<std::endl;
+    parameters.infoFile()<<"done"<<std::endl;
+    parameters.infoFile().flush();
 
 
-	std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
-	parameters.infoFile()<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
-	parameters.infoFile().flush();
+    std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
+    parameters.infoFile()<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
+    parameters.infoFile().flush();
     strongBaseEdges=std::vector<std::unordered_set<size_t>>(graph_.numberOfVertices());
-	if(parameters.isSparsify()){
-		sparsifyBaseGraph();
-		sparsifyLiftedGraph();
+    if(parameters.isSparsify()){
+        sparsifyBaseGraph();
+        sparsifyLiftedGraph();
 
-	}
-	else{
-		//desc=initReachable(graph_,parameters);
+    }
+    else{
+        //desc=initReachable(graph_,parameters);
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();
-	}
+    }
 
-	numberOfVertices=graph_.numberOfVertices();
-	numberOfEdges=graph_.numberOfEdges();
-	numberOfLiftedEdges=graphLifted_.numberOfEdges();
-	//baseEdgeLabels=std::vector<bool>(numberOfEdges);
+    numberOfVertices=graph_.numberOfVertices();
+    numberOfEdges=graph_.numberOfEdges();
+    numberOfLiftedEdges=graphLifted_.numberOfEdges();
 }
 
 void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs){

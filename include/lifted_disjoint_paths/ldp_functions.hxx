@@ -41,7 +41,10 @@
 
 namespace LPMP{
 
-
+template<class SOLVER,class INSTANCE>
+void constructProblemFromSolver(SOLVER& solver,const INSTANCE& instance){
+    solver.GetProblemConstructor().construct(instance);
+}
 
 
 
