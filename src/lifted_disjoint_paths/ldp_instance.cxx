@@ -33,13 +33,10 @@ LdpInstance::LdpInstance(const ConfigDisjoint<>& configParameters):
 {
     char delim=',';
     size_t maxVertex;
-    if(useTimeFrames){
+
         vertexGroups=disjointPaths::VertexGroups<size_t>(parameters);
         maxVertex=vertexGroups.getMaxVertex();
-    }
-    else{
-        maxVertex=std::numeric_limits<size_t>::max();
-    }
+
     std::ifstream graphFile(parameters.getGraphFileName());
     readGraph(graphFile,maxVertex,delim);
     graphFile.close();
@@ -265,6 +262,7 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 
 		}
 	}
+    std::cout<<"reading finished"<<std::endl;
 }
 
 
