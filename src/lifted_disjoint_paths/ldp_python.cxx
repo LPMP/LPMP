@@ -31,7 +31,7 @@ PYBIND11_MODULE(ldpMessagePassing, m) {
         .def("add_edges_from_file", &disjointPaths::CompleteStructure<>::addEdgesFromFile<LPMP::lifted_disjoint_paths::ConfigDisjoint<>>, "Initializes all edges of the graph from a file.");
 
      py::class_<LPMP::lifted_disjoint_paths::LdpInstance>(m, "LdpInstance")
-        .def(py::init<const LPMP::lifted_disjoint_paths::ConfigDisjoint<size_t> &,disjointPaths::CompleteStructure<>&>());
+        .def(py::init<LPMP::lifted_disjoint_paths::ConfigDisjoint<size_t> &,disjointPaths::CompleteStructure<>&>());
 
      py::class_<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>>(m,"Solver")
              .def(py::init<>())

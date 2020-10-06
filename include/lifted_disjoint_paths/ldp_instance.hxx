@@ -37,6 +37,7 @@
 //#include <pybind11/operators.h>
 //#include <pybind11/numpy.h>
 #include <disjoint-paths/disjointPathsMethods.hxx>
+#include <disjoint-paths/completeStructure.hxx>
 
 namespace LPMP{
 namespace lifted_disjoint_paths {
@@ -47,8 +48,8 @@ class LdpInstance {
 public:
 
 
-    LdpInstance(const ConfigDisjoint<>& configParameters);
-     LdpInstance(const ConfigDisjoint<>& configParameters,disjointPaths::CompleteStructure<>& cs);
+    LdpInstance(ConfigDisjoint<>& configParameters);
+     LdpInstance(ConfigDisjoint<>& configParameters,disjointPaths::CompleteStructure<>& cs);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
@@ -167,7 +168,7 @@ public:
     bool isStrongBase(size_t v,size_t w) const;
 
 
-    const ConfigDisjoint<>& parameters;
+    ConfigDisjoint<>& parameters;
     disjointPaths::VertexGroups<size_t> vertexGroups;
 	size_t minV=0;
 	size_t maxV=0;

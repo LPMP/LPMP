@@ -12,6 +12,7 @@
 //#include <sstream>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <map>
 #include <limits>
@@ -143,6 +144,20 @@ public:
 		return infoF;
 	}
 
+    std::stringstream& getControlOutput(){
+          return controlOutput;
+      }
+
+
+    void writeControlOutput(){
+           std::cout<<controlOutput.str();
+
+//            if(controlOutputFiles){
+//                infoFile()<<controlOutput.str();
+//                infoFile().flush();
+//            }
+            controlOutput=std::stringstream();
+        }
 
 
 	//ConfigDisjoint<>& operator=(const ConfigDisjoint<>&);
@@ -187,6 +202,8 @@ private:
 	size_t longerIntervalLifted;    //time frame skip for adding lifted edges sparsely
 
 	size_t maxTimeGapComplete;     //max time gap of edges to read
+
+     std::stringstream controlOutput;
 
 
 };
