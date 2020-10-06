@@ -71,7 +71,10 @@ void LdpInstance::init(){
     parameters.infoFile().flush();
     strongBaseEdges=std::vector<std::unordered_set<size_t>>(graph_.numberOfVertices());
     if(parameters.isSparsify()){
-        sparsifyBaseGraph();
+        //sparsifyBaseGraph();
+        disjointPaths::createKnnBaseGraph(*this,parameters);
+        reachable=initReachableSet(graph_,parameters,&vertexGroups);
+        disjointPaths::keepFractionOfLifted(*this,parameters);
         sparsifyLiftedGraph();
 
     }
