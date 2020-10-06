@@ -67,18 +67,28 @@ public:
 	const andres::graph::Digraph<>& getGraph() const  {
 		return graph_;
 	}
+
+    void setGraph(const andres::graph::Digraph<>& newGraph){
+        graph_=newGraph;
+    }
+
+
 	const andres::graph::Digraph<>& getGraphLifted() const  {
 		return graphLifted_;
 	}
+
+    void setGraphLifted(const andres::graph::Digraph<>& newGraphLifted){
+        graphLifted_=newGraphLifted;
+    }
 
 	const size_t getGapLifted() const {
 		return parameters.getMaxTimeLifted();
 	}
 
 
-//	std::vector<std::unordered_set<size_t>>* getPReachableNew(){
-//		return &reachable;
-//	}
+    const std::vector<std::unordered_set<size_t>>* getPReachable(){
+        return &reachable;
+    }
 
 	size_t getSourceNode() const {
 		return s_;
@@ -102,9 +112,17 @@ public:
 		return edgeScore;
 	}
 
+    void setEdgesScore(const std::vector<double>& newEdgesScore){
+        edgeScore=newEdgesScore;
+    }
+
 	const std::vector<double>& getLiftedEdgesScore() {
 			return liftedEdgeScore;
 	}
+
+    void setLiftedEdgesScore(const std::vector<double>& newLiftedScore){
+        liftedEdgeScore=newLiftedScore;
+    }
 
 
 
@@ -126,8 +144,8 @@ public:
 		return vertexScore[v];
 	}
 
-    const disjointPaths::VertexGroups<size_t>* getPVertexGroups()const {
-		return &vertexGroups;
+    const disjointPaths::VertexGroups<size_t>& getVertexGroups()const {
+        return vertexGroups;
 	}
 
 	size_t getGroupIndex(size_t v)const {
