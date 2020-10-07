@@ -33,7 +33,8 @@ PYBIND11_MODULE(ldpMessagePassing, m) {
      py::class_<disjointPaths::CompleteStructure<>>(m, "GraphStructure")
         .def(py::init<disjointPaths::VertexGroups<> &>())
         .def("add_edges_from_array", &disjointPaths::CompleteStructure<>::addEdgesFromMatrix, "Initializes edges of the graph between two time frames from a matrix.")
-        .def("add_edges_from_file", &disjointPaths::CompleteStructure<>::addEdgesFromFile<LPMP::lifted_disjoint_paths::ConfigDisjoint<>>, "Initializes all edges of the graph from a file.");
+        .def("add_edges_from_file", &disjointPaths::CompleteStructure<>::addEdgesFromFile<LPMP::lifted_disjoint_paths::ConfigDisjoint<>>, "Initializes all edges of the graph from a file.")
+        .def("add_edges_from_vectors", &disjointPaths::CompleteStructure<>::addEdgesFromVectors<LPMP::lifted_disjoint_paths::ConfigDisjoint<>>, "Initializes all edges of the graph from vectors of node pairs and costs.");
 
      py::class_<LPMP::lifted_disjoint_paths::LdpInstance>(m, "LdpInstance")
         .def(py::init<LPMP::lifted_disjoint_paths::ConfigDisjoint<size_t> &,disjointPaths::CompleteStructure<>&>());
