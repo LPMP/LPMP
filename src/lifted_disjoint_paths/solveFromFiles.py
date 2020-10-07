@@ -8,8 +8,14 @@ Created on Fri Jul 10 11:37:09 2020
 
 import ldpMessagePassing as ldpMP
 
+
 #pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
 pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
+
+#Command line parameters of the solver
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10"]
+
+
 
 #Create a parser for parameters
 paramsParser=ldpMP.ParametersParser()
@@ -35,7 +41,7 @@ completeGraphStructure.add_edges_from_file(pathToFiles+"problemDesc",params)
 
 instance=ldpMP.LdpInstance(params,completeGraphStructure)
 
-solver=ldpMP.Solver()
+solver=ldpMP.Solver(solverParameters)
 
 ldpMP.construct(solver,instance)
 

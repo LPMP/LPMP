@@ -39,7 +39,7 @@ PYBIND11_MODULE(ldpMessagePassing, m) {
         .def(py::init<LPMP::lifted_disjoint_paths::ConfigDisjoint<size_t> &,disjointPaths::CompleteStructure<>&>());
 
      py::class_<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>>(m,"Solver")
-             .def(py::init<>())
+             .def(py::init<std::vector<std::string>&>())
              .def("solve",&LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>::Solve);
 
 
