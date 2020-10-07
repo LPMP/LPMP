@@ -215,8 +215,8 @@ private:
 
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
     void readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs);
-    void sparsifyBaseGraph();
-    void sparsifyLiftedGraph();
+   // void sparsifyBaseGraph();
+   // void sparsifyLiftedGraph();
     void initLiftedStructure();
 	bool useTimeFrames;
 

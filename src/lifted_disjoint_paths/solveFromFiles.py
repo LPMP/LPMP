@@ -8,10 +8,11 @@ Created on Fri Jul 10 11:37:09 2020
 
 import ldpMessagePassing as ldpMP
 
-pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
+#pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
+pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Initializes structure for holding solver parameters. It expects the path to the solver parameter file.
-params=ldpMP.LdpParams("/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/params_sequence.ini")
+params=ldpMP.LdpParams(pathToFiles+"params_sequence.ini")
 print("params read")
 #Constructor of structure for holding the mapping between time frames and graph vertices
 timeFrames=ldpMP.TimeFramesToVertices()
