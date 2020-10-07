@@ -11,9 +11,16 @@ import ldpMessagePassing as ldpMP
 #pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
 pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
-#Initializes structure for holding solver parameters. It expects the path to the solver parameter file.
-params=ldpMP.LdpParams(pathToFiles+"params_sequence.ini")
+#Create a parser for parameters
+paramsParser=ldpMP.ParametersParser()
+
+#Parses parameters from file
+paramsParser.init_from_file(pathToFiles+"params_sequence.ini")
+
+#Initializes structure for holding solver parameters. It expects a string to string map (dictionary) as an input. ParametersParser.get_parsed_params() can be used for providing such map.
+params=ldpMP.LdpParams(paramsParser.get_parsed_params())
 print("params read")
+
 #Constructor of structure for holding the mapping between time frames and graph vertices
 timeFrames=ldpMP.TimeFramesToVertices()
 
@@ -26,10 +33,10 @@ completeGraphStructure=ldpMP.GraphStructure(timeFrames)
 #Adding edges to graph structure from a file.
 completeGraphStructure.add_edges_from_file(pathToFiles+"problemDesc",params)
 
-instance=LdpInstance(params,completeGraphStructure)
-
-
-ldpMP.construct(solver,instance)
+instance=ldpMP.LdpInstance(params,completeGraphStructure)
 
 solver=ldpMP.Solver()
 
+ldpMP.construct(solver,instance)
+
+solver.solve()

@@ -47,9 +47,9 @@ public:
 
 	~ConfigDisjoint(){
 		std::cout<<"config disjoint destructor"<<std::endl;
-		infoFile()<<"config disjoint destructor"<<std::endl;
-		(*pInfoFile).close();
-		delete pInfoFile;
+        //infoFile()<<"config disjoint destructor"<<std::endl;
+        //(*pInfoFile).close();
+        //delete pInfoFile;
 	}
 
 
@@ -142,10 +142,10 @@ public:
 	}
 
 
-	std::ofstream& infoFile() const {
-		std::ofstream & infoF=*pInfoFile;
-		return infoF;
-	}
+//	std::ofstream& infoFile() const {
+//		std::ofstream & infoF=*pInfoFile;
+//		return infoF;
+//	}
 
     std::stringstream& getControlOutput(){
           return controlOutput;
@@ -174,7 +174,7 @@ private:
 
     //std::pair<std::string,std::string> parseLine(std::string line,char delim);
 	//std::ofstream * fileForGeneralOutputs;
-    mutable std::ofstream* pInfoFile;
+   // mutable std::ofstream* pInfoFile;
     std::string inputFileName;  //file with 3 paths: graph, time information, parameters
     std::string outputFileName;   //file (prefix) where outputs are going to be stored
 
@@ -268,7 +268,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
         graphFileName=parameters["INPUT_GRAPH"];
     }
     else{
-        throw std::runtime_error("File with the input graph was not specified in the config file");
+        graphFileName="";
+        //throw std::runtime_error("File with the input graph was not specified in the config file");
     }
     std::cout<<"input graph "<<graphFileName<<std::endl;
 
@@ -279,12 +280,19 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
 //    else{
 //        inputParamsFileName="";
 //    }
-//    std::cout<<"input parameters file "<<inputParamsFileName<<std::endl;
+    //    std::cout<<"input parameters file "<<inputParamsFileName<<std::endl;
+
+    std::string pathToInputFile=graphFileName.substr(0,graphFileName.find_last_of('/')+1);
 
     if(parameters.count("OUTPUT_PATH")==0){
-        parameters["OUTPUT_PATH"]=graphFileName.substr(0,graphFileName.find_last_of('/'));
-    }
+        if(graphFileName.empty()){
+            parameters["OUTPUT_PATH"]="./";
+        }
+        else{
+            parameters["OUTPUT_PATH"]=pathToInputFile;
+        }
 
+    }
     if(parameters.count("OUTPUT_PREFIX")==0){
         parameters["OUTPUT_PREFIX"]=parameters["OUTPUT_PATH"]+"_output";
     }
@@ -299,7 +307,7 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     paramsFile<<"output files "<<outputFileName<<std::endl;
 
     std::string infoFileName=outputFileName+"-info.txt";
-    pInfoFile=new std::ofstream(infoFileName.data(),std::ofstream::out);
+  //  pInfoFile=new std::ofstream(infoFileName.data(),std::ofstream::out);
 
     std::cout<<"output files "<<outputFileName<<std::endl;
 

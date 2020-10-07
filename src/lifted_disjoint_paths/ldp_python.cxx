@@ -17,8 +17,13 @@ namespace py = pybind11;
 PYBIND11_MODULE(ldpMessagePassing, m) {
      m.doc() = "python binding for lifted disjoint paths based on message passing";
 
+     py::class_<disjointPaths::ParametersParser>(m,"ParametersParser")
+             .def(py::init<>())
+             .def("get_parsed_params",&disjointPaths::ParametersParser::getParsedStrings,"getting the parsed strings from parser")
+             .def("init_from_file", py::overload_cast<std::string&>(&disjointPaths::ParametersParser::initFromFile),"Parses parameters from a file");
+
      py::class_<LPMP::lifted_disjoint_paths::ConfigDisjoint<size_t>>(m, "LdpParams")
-        .def(py::init<const std::string &>());
+        .def(py::init<std::map<std::string,std::string>&>());
 
      py::class_<disjointPaths::VertexGroups<>>(m, "TimeFramesToVertices")
         .def(py::init<>())

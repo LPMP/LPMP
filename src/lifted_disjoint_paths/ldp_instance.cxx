@@ -49,8 +49,8 @@ LdpInstance::LdpInstance( ConfigDisjoint<>& configParameters):
 void LdpInstance::init(){
 
     std::cout<<"Adding automatic lifted edges"<<std::endl;
-    parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
-    parameters.infoFile().flush();
+  //  parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
+   // parameters.infoFile().flush();
     for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
         size_t v0=graph_.vertexOfEdge(i,0);
         size_t v1=graph_.vertexOfEdge(i,1);
@@ -62,13 +62,13 @@ void LdpInstance::init(){
         }
     }
     std::cout<<"done"<<std::endl;
-    parameters.infoFile()<<"done"<<std::endl;
-    parameters.infoFile().flush();
+   // parameters.infoFile()<<"done"<<std::endl;
+  //  parameters.infoFile().flush();
 
 
     std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
-    parameters.infoFile()<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
-    parameters.infoFile().flush();
+  //  parameters.infoFile()<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
+  //  parameters.infoFile().flush();
     strongBaseEdges=std::vector<std::unordered_set<size_t>>(graph_.numberOfVertices());
     if(parameters.isSparsify()){
         //sparsifyBaseGraph();
@@ -165,7 +165,7 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 	std::getline(data, line);
 	lineCounter++;
 	std::cout << "called read graph" << std::endl;
-	parameters.infoFile()<<"called read graph" << std::endl;
+    //parameters.infoFile()<<"called read graph" << std::endl;
 	std::vector<std::string> strings = split(line, delim);
 	size_t numberOfVertices;
 
@@ -199,8 +199,8 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 	vertexScore = std::vector<double>(numberOfVertices, 0);
 
 	std::cout<<"Reading vertices from file. "<<std::endl;
-	parameters.infoFile()<<"Reading vertices from file. "<<std::endl;
-	parameters.infoFile().flush();
+//	parameters.infoFile()<<"Reading vertices from file. "<<std::endl;
+//	parameters.infoFile().flush();
 	//Vertices that are not found have score=0. Appearance and disappearance cost are read here.
 	while (std::getline(data, line) && !line.empty()) {
 		lineCounter++;
@@ -233,8 +233,8 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 	size_t maxGap=parameters.getMaxTimeGapComplete();
 
 	std::cout<<"Reading base edges from file. "<<std::endl;
-	parameters.infoFile()<<"Reading base edges from file. "<<std::endl;
-	parameters.infoFile().flush();
+//	parameters.infoFile()<<"Reading base edges from file. "<<std::endl;
+//	parameters.infoFile().flush();
 	while (std::getline(data, line) && !line.empty()) {
 		lineCounter++;
 		strings = split(line, delim);
