@@ -73,8 +73,11 @@ completeGraphStructure=ldpMP.GraphStructure(timeFrames)
 edgeVector=np.array([[0,3],[0,4],[1,3],[1,4],[2,3],[2,4],[3,5],[3,6],[3,7],[4,5],[4,6],[4,7],[0,5],[0,6],[0,7],[1,5],[1,6],[1,7],[2,6],[2,7]])
 costVector=np.array([-2.2,-1,-1,-2.2,-1,-1,-2.2,-1,-1,-1,-2.2,-1,  -2.2,-1,-1, -1,-2.2,-1, -1,-2.2])
 
-#Adding edges to graph structure from a file.
-completeGraphStructure.add_edges_from_vectors(edgeVector,costVector,params)
+#Adding edges to graph structure from vectors. This method adds all edges regardles restrictions given in params.
+completeGraphStructure.add_edges_from_vectors_all(edgeVector,costVector)
+
+#Alternative method where either MAX_TIMEGAP_COMPLETE or the maximum from MAX_TIMEGAP_BASE and MAX_TIMEGAP_LIFTED applies for selection of edges. 
+#completeGraphStructure.add_edges_from_vectors(edgeVector,costVector,params)
 
 instance=ldpMP.LdpInstance(params,completeGraphStructure)
 
