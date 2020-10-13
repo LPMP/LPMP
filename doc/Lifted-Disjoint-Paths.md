@@ -16,6 +16,11 @@ Another possibility is to use python script for running the solver on an example
 ```
 python3 solveFromVectors.py
 ```
+You can use other command line parameters that are applicable for other problems in LPMP. You can display their full list by running 
+```
+./lifted_disjoint_paths_text_input --help
+```
+In case of running the solver from python, you provide the parameters and their values in an array of strings. See `solveFromVectors.py` for the an example.
 
 ### File format
 In case of running from command line, you have to provide several input files. The main input file `inputFile.txt` passed to the solver as the command line argument has the following structure:
