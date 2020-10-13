@@ -30,7 +30,7 @@ paramsMap["MAX_TIMEGAP_COMPLETE"]="60"
 #pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
 pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
-#Command line parameters of the solver
+#Command line parameters of LPMP
 solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","-v","0"]
 
 #Command line parameters of the solver with tightening enabled
