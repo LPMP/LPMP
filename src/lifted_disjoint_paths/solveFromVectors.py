@@ -86,3 +86,30 @@ solver=ldpMP.Solver(solverParameters)
 ldpMP.construct(solver,instance)
 
 solver.solve()
+
+paths=solver.get_best_primal()
+
+edgeLabels=completeGraphStructure.get_edge_labels(paths)
+
+
+
+
+
+for edge in edgeLabels:
+  print(edge)
+  
+#for edge in usedEdgesVector:
+#   for v in edge:
+#      print(v,end =" ")
+#   print("")
+
+for path in paths:
+  for v in path:
+    print(v, end =" ")
+  print("")
+
+
+
+
+
+

@@ -42,12 +42,26 @@ PYBIND11_MODULE(ldpMessagePassing, m) {
      py::class_<LPMP::lifted_disjoint_paths::LdpInstance>(m, "LdpInstance")
              .def(py::init<LPMP::lifted_disjoint_paths::ConfigDisjoint<size_t> &,disjointPaths::CompleteStructure<>&>());
 
-     py::class_<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>>(m,"Solver")
+     using problemSolver=LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>;
+     py::class_<problemSolver>(m,"Solver")
              .def(py::init<std::vector<std::string>&>())
-             .def("solve",&LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>::Solve);
+             .def("solve",&problemSolver::Solve)
+             .def("get_best_primal", [](problemSolver &solver) {return solver.GetProblemConstructor().getBestPrimal(); },"Returns paths obtained from best so far primal solution.");
 
 
-     m.def("construct",&LPMP::constructProblemFromSolver<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>,LPMP::lifted_disjoint_paths::LdpInstance>,"constructing problem from instance");
+
+
+     m.def("construct",&LPMP::constructProblemFromSolver<problemSolver,LPMP::lifted_disjoint_paths::LdpInstance>,"constructing problem from instance");
+
+
+
+
+//     py::class_<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>>(m,"Solver")
+//             .def(py::init<std::vector<std::string>&>())
+//             .def("solve",&LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>::Solve);
+
+
+//     m.def("construct",&LPMP::constructProblemFromSolver<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>,LPMP::lifted_disjoint_paths::LdpInstance>,"constructing problem from instance");
 
 
 

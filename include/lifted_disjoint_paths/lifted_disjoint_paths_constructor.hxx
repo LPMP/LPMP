@@ -31,6 +31,8 @@ public:
     size_t Tighten(const std::size_t nr_constraints_to_add);
     void pre_iterate() { reparametrize_snc_factors(); }
 
+    const std::vector<std::vector<size_t>>& getBestPrimal()const { return bestPrimalSolution;}
+
 private:
     std::size_t mcf_node_to_graph_node(std::size_t i) const;
     void read_in_mcf_costs(const bool change_marginals = false);
@@ -64,6 +66,8 @@ private:
     std::vector<SNC_TRIANGLE_MESSAGE*> snc_triangle_messages_;
     std::vector<std::vector<std::unordered_set<size_t>>> usedTriangles;
     const lifted_disjoint_paths::LdpInstance * pInstance;
+    double bestPrimalValue;
+    std::vector<std::vector<size_t>> bestPrimalSolution;
 
 };
 
@@ -505,6 +509,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     read_in_mcf_costs();
     mcf_->solve();
 
+    std::vector<size_t> startingNodes;
+    std::vector<size_t> descendants(nr_nodes());
+
     for (std::size_t graph_node = 0; graph_node < nr_nodes(); ++graph_node) {
         single_node_cut_factors_[graph_node][0]->get_factor()->setNoBaseEdgeActive();
         single_node_cut_factors_[graph_node][1]->get_factor()->setNoBaseEdgeActive();
@@ -518,6 +525,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* pSNC=single_node_cut_factors_[graph_node][0]->get_factor();
                 if(mcf_->flow(edge_id) == -1) {
                     pSNC->setBaseEdgeActive(vertex_index);
+                    size_t nodeID=pSNC->getBaseID(vertex_index);
+                    if(nodeID==base_graph_source_node()){
+                        startingNodes.push_back(graph_node);
+                    }
 
                 }
                 ++vertex_index;
@@ -534,7 +545,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 auto* pSNC=single_node_cut_factors_[graph_node][1]->get_factor();
                 if(mcf_->flow(edge_id) == 1) {
                     pSNC->setBaseEdgeActive(vertex_index);
-
+                    size_t nodeID=pSNC->getBaseID(vertex_index);
+                    descendants[graph_node]=nodeID;
                 }
                 ++vertex_index;
             }
@@ -563,7 +575,20 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     }
 
-//    if(primalValue < best_solution_cost)
+    std::vector<std::vector<size_t>> paths; //TODO swap order and use these paths for adjusting lifted and triangle labels
+    if(primalValue < bestPrimalValue){
+        bestPrimalValue=primalValue;
+        for (size_t i = 0; i < startingNodes.size(); ++i) {
+            std::vector<size_t> path;
+            size_t currentNode=startingNodes[i];
+            while(currentNode!=base_graph_terminal_node()){
+                path.push_back(currentNode);
+                currentNode=descendants[currentNode];
+            }
+            paths.push_back(path);
+        }
+        bestPrimalSolution=paths;
+    }
 //    best_primal_solution = ...;
 
     std::cout<<"primal value: "<<primalValue<<std::endl;
