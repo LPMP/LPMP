@@ -46,6 +46,24 @@ LdpInstance::LdpInstance( LdpParameters<>& configParameters):
     //baseEdgeLabels=std::vector<bool>(numberOfEdges);
 }
 
+
+
+//LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
+//    disjointPaths::CompleteStructure<> csBase(*twoGraphsIS.myPvg);
+//    //TODO pointer to VG cannot be constant!
+//    csBase.addEdgesFromVectorsAll(*twoGraphsIS.pBaseEdges,*twoGraphsIS.pBaseCosts);
+//    graph_=csBase.completeGraph;
+//    edgeScore=csBase.completeScore;
+//    //TODO base graph needs s,t edges and scores!
+
+//    disjointPaths::CompleteStructure<> csLifted(*twoGraphsIS.myPvg);
+//    csLifted.addEdgesFromVectorsAll(*twoGraphsIS.pLiftedEdges,*twoGraphsIS.pLiftedCosts);
+//    graphLifted_=csLifted.completeGraph;
+//    liftedEdgeScore=csLifted.completeScore;
+
+//    //TODO set all remaining global variables
+//}
+
 void LdpInstance::init(){
 
     if(debug()) std::cout<<"Adding automatic lifted edges"<<std::endl;
@@ -246,7 +264,8 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 		unsigned int v = std::stoul(strings[0]);
 		unsigned int w = std::stoul(strings[1]);
 
-		if(v>numberOfVertices-3||w>numberOfVertices-3) continue;
+        if(v>numberOfVertices-3) break;
+        if(w>numberOfVertices-3) continue;
 
 		size_t gv=vertexGroups.getGroupIndex(v);
 		size_t gw=vertexGroups.getGroupIndex(w);

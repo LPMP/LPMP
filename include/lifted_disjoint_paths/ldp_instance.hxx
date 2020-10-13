@@ -38,6 +38,7 @@
 //#include <pybind11/numpy.h>
 #include <disjoint-paths/disjointPathsMethods.hxx>
 #include <disjoint-paths/completeStructure.hxx>
+#include <disjoint-paths/twoGraphsInputStructure.hxx>
 #include "config.hxx"
 
 namespace LPMP{
@@ -51,6 +52,7 @@ public:
 
     LdpInstance(LdpParameters<>& configParameters);
      LdpInstance(LdpParameters<>& configParameters,disjointPaths::CompleteStructure<>& cs);
+     LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
