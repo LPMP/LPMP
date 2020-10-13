@@ -1,12 +1,32 @@
 ## Lifted Disjoint Paths
 
+
+
 ### Problem
 
- define problem
+### Compilation and Running
+After running `cmake` for the whole LPMP project, go to your build directory, than to `src/lifted-disjoint-paths` and run `make` here.  
+Now, you can either run the solver from the command line and use input from specific input files 
+```
+./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt 
+``` 
+
+Another possibility is to use python script for running the solver on an example instance in. Here, no input files are needed. The whole problem instance is specified directly in the python script.
+```
+python3 solveFromVectors.py
+```
 
 ### File format
+In case of running from command line, you have to provide several input files. The main input file `inputFile.txt` passed to the solver as the command line argument has the following structure:
+
+```
+INPUT_GRAPH=/path/to/your/input/problemDesc
+INPUT_FRAMES=/path/to/your/input/problemDesc_frames
+INPUT_PARAMS=/path/to/your/input/params_sequence.ini
+```
 
 ### Parameters
+Parameters of the problem instance are either passed to the solver in the file `params_sequence.ini` in case of running from the command line or are specified in a python dictionary in case of running from python (see `solveFromVectors.py` for an example).
    
   - `SPARSIFY = 1`  
     Expects value 0/1. If set to 0, no sparsification is done, so parameters related to sparsificatioin are not needed. If set to 1, sparsification is done. Default and recommended value is 1.
@@ -62,7 +82,4 @@
 code here
 ```
 
-### Run from python
-
-description
 
