@@ -31,8 +31,10 @@ paramsMap["MAX_TIMEGAP_COMPLETE"]="60"
 pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of the solver
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10","-v","0"]
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","-v","0"]
 
+#Command line parameters of the solver with tightening enabled
+#solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10","--tightenInterval","4","--tightenIteration","8","-v","1"]
 
 #Initializes structure for holding solver parameters. It expects a string to string map (dictionary) as an input. ParametersParser.get_parsed_params() can be alternatively used for providing such map.
 params=ldpMP.LdpParams(paramsMap)
