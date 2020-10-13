@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lifted_disjoint_paths/ldp_config.hxx>
+#include <lifted_disjoint_paths/ldp_parameters.hxx>
 #include <lifted_disjoint_paths/ldp_instance.hxx>
 #include <lifted_disjoint_paths/ldp_functions.hxx>
 

@@ -43,7 +43,7 @@ std::vector<std::string> split(
 
 
 template<class T = size_t>
-class ConfigDisjoint {
+class LdpParameters {
 public:
 
 //	~ConfigDisjoint(){
@@ -55,8 +55,8 @@ public:
 //	}
 
 
-    ConfigDisjoint(const std::string& inputFileName);
-    ConfigDisjoint(std::map<std::string,std::string>& parameters);
+    LdpParameters(const std::string& inputFileName);
+    LdpParameters(std::map<std::string,std::string>& parameters);
 
 
 	const std::string& getGraphFileName() const {
@@ -169,8 +169,8 @@ public:
 
 
 private:
-	ConfigDisjoint<T>(const ConfigDisjoint<T>&);
-	ConfigDisjoint();
+    LdpParameters<T>(const LdpParameters<T>&);
+    LdpParameters();
 
     void init(std::map<std::string,std::string>& parameters);
 
@@ -233,7 +233,7 @@ private:
 //}
 
 template<class T>
-inline ConfigDisjoint<T>::ConfigDisjoint(const std::string &inputFileName){
+inline LdpParameters<T>::LdpParameters(const std::string &inputFileName){
     disjointPaths::ParametersParser parser;
     std::string fileName=inputFileName;
     parser.initFromFile(fileName,false);
@@ -248,12 +248,12 @@ inline ConfigDisjoint<T>::ConfigDisjoint(const std::string &inputFileName){
 }
 
 template<class T>
-inline ConfigDisjoint<T>::ConfigDisjoint(std::map<std::string,std::string>& parameters){
+inline LdpParameters<T>::LdpParameters(std::map<std::string,std::string>& parameters){
     init(parameters);
 }
 
 template<class T>
-inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameters){
+inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters){
 
 
     if(parameters.count("INPUT_FRAMES")>0){

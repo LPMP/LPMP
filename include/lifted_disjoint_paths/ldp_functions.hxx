@@ -16,7 +16,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <andres/graph/digraph.hxx>
-#include <lifted_disjoint_paths/ldp_config.hxx>
+#include <lifted_disjoint_paths/ldp_parameters.hxx>
 #include <stack>
 #include <unordered_set>
 #include <iterator>
@@ -55,21 +55,21 @@ namespace lifted_disjoint_paths {
 
 template<class T=char>
  std::vector<std::string> split(
-		std::string inputString, T delim) {
-	size_t occurence = 0;
-	size_t newOccurence = 0;
-	std::vector<std::string> strings;
-	while (newOccurence < inputString.size()) {
-		newOccurence = std::min(inputString.find_first_of(delim, occurence),
-				inputString.size());
+        std::string inputString, T delim) {
+    size_t occurence = 0;
+    size_t newOccurence = 0;
+    std::vector<std::string> strings;
+    while (newOccurence < inputString.size()) {
+        newOccurence = std::min(inputString.find_first_of(delim, occurence),
+                inputString.size());
 
-		std::string newString(inputString, occurence, newOccurence - occurence);
-		strings.push_back(newString);
-		newOccurence = newOccurence + 1;
-		occurence = newOccurence;
-	}
+        std::string newString(inputString, occurence, newOccurence - occurence);
+        strings.push_back(newString);
+        newOccurence = newOccurence + 1;
+        occurence = newOccurence;
+    }
 
-	return strings;
+    return strings;
 }
 
 

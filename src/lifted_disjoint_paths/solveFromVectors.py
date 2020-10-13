@@ -6,7 +6,7 @@ Created on Fri Jul 10 11:37:09 2020
 @author: fuksova
 """
 
-import ldpMessagePassing as ldpMP
+import ldpMessagePassingPy as ldpMP
 import numpy as np
 
 

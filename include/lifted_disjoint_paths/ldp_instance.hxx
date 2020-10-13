@@ -15,7 +15,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <andres/graph/digraph.hxx>
-#include <lifted_disjoint_paths/ldp_config.hxx>
+#include <lifted_disjoint_paths/ldp_parameters.hxx>
 #include <stack>
 #include <unordered_set>
 #include <iterator>
@@ -49,8 +49,8 @@ class LdpInstance {
 public:
 
 
-    LdpInstance(ConfigDisjoint<>& configParameters);
-     LdpInstance(ConfigDisjoint<>& configParameters,disjointPaths::CompleteStructure<>& cs);
+    LdpInstance(LdpParameters<>& configParameters);
+     LdpInstance(LdpParameters<>& configParameters,disjointPaths::CompleteStructure<>& cs);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
@@ -183,7 +183,7 @@ public:
     bool isStrongBase(size_t v,size_t w) const;
 
 
-    ConfigDisjoint<>& parameters;
+    LdpParameters<>& parameters;
     disjointPaths::VertexGroups<size_t> vertexGroups;
 	size_t minV=0;
 	size_t maxV=0;

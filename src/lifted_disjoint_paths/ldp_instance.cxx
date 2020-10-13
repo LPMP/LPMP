@@ -9,7 +9,7 @@ namespace lifted_disjoint_paths {
 
 
 
-LdpInstance::LdpInstance(ConfigDisjoint<> &configParameters, disjointPaths::CompleteStructure<>& cs):
+LdpInstance::LdpInstance(LdpParameters<> &configParameters, disjointPaths::CompleteStructure<>& cs):
     parameters(configParameters)
 {
 
@@ -28,7 +28,7 @@ LdpInstance::LdpInstance(ConfigDisjoint<> &configParameters, disjointPaths::Comp
 
 
 
-LdpInstance::LdpInstance( ConfigDisjoint<>& configParameters):
+LdpInstance::LdpInstance( LdpParameters<>& configParameters):
     parameters(configParameters)
 {
     char delim=',';
