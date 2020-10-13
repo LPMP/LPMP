@@ -1,8 +1,9 @@
 ## Lifted Disjoint Paths
 
-
-
 ### Problem
+Lifted Disjoint Paths problem was introduced in [1]. Its original implementation including example input files is available here [LifT_Solver](https://github.com/AndreaHor/LifT_Solver).
+
+
 
 ### Compilation and Running
 After running `cmake` for the whole LPMP project, go to your build directory, than to `src/lifted-disjoint-paths` and run `make` here.  
@@ -24,9 +25,10 @@ INPUT_GRAPH=/path/to/your/input/problemDesc
 INPUT_FRAMES=/path/to/your/input/problemDesc_frames
 INPUT_PARAMS=/path/to/your/input/params_sequence.ini
 ```
+Example input files can be downloaded [here](https://github.com/AndreaHor/LifT_Solver/tree/master/data/exampleSolverILP). Most of the parameters listed in `params_sequence.ini` are not applicable for this solver. The list of relevant parameters is written below. Detailed description of the format of the other two files can be found [here](https://github.com/AndreaHor/LifT_Solver/tree/master/solverILP).
 
 ### Parameters
-Parameters of the problem instance are either passed to the solver in the file `params_sequence.ini` in case of running from the command line or are specified in a python dictionary in case of running from python (see `solveFromVectors.py` for an example).
+Parameters of the problem instance are either passed to the solver in the file `params_sequence.ini` in case of running from the command line or are specified in a python dictionary in case of running from python (see `solveFromVectors.py` for an example). Do not forget the keyword `[SOLVER]` in your file `params_sequence.ini`.
    
   - `SPARSIFY = 1`  
     Expects value 0/1. If set to 0, no sparsification is done, so parameters related to sparsificatioin are not needed. If set to 1, sparsification is done. Default and recommended value is 1.
@@ -77,9 +79,5 @@ Parameters of the problem instance are either passed to the solver in the file `
   - `LONGER_LIFTED_INTERVAL = 4`  
     Expects a positive integer. Influences lifted edges with time gap between `DENSE_TIMEGAP_LIFTED` and `MAX_TIMEGAP_LIFTED`. If set to value \(n\), only every \(n\)-th time gap will be used for adding lifted edges.
     
-
-```
-code here
-```
-
-
+### References
+[1]: `A. Hornakova, R. Henschel, B. Rosenhahn, P. Swoboda. Lifted Disjoint Paths with Application in Multiple Object Tracking, ICML 2020`
