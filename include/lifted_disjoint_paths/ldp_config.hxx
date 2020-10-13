@@ -17,6 +17,7 @@
 #include <map>
 #include <limits>
 #include "disjoint-paths/parametersParser.hxx"
+#include <config.hxx>
 
 namespace LPMP{
 namespace lifted_disjoint_paths {
@@ -45,12 +46,13 @@ template<class T = size_t>
 class ConfigDisjoint {
 public:
 
-	~ConfigDisjoint(){
-		std::cout<<"config disjoint destructor"<<std::endl;
-        //infoFile()<<"config disjoint destructor"<<std::endl;
-        //(*pInfoFile).close();
-        //delete pInfoFile;
-	}
+//	~ConfigDisjoint(){
+//        controlOutput<<"config disjoint destructor"<<std::endl;
+//        writeControlOutput();
+//        //infoFile()<<"config disjoint destructor"<<std::endl;
+//        //(*pInfoFile).close();
+//        //delete pInfoFile;
+//	}
 
 
     ConfigDisjoint(const std::string& inputFileName);
@@ -153,7 +155,7 @@ public:
 
 
     void writeControlOutput(){
-           std::cout<<controlOutput.str();
+          if(diagnostics()) std::cout<<controlOutput.str();
 
 //            if(controlOutputFiles){
 //                infoFile()<<controlOutput.str();
@@ -260,7 +262,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         timeFileName="problemDesc_frames";
     }
-    std::cout<<"input frames "<<timeFileName<<std::endl;
+    controlOutput<<"input frames "<<timeFileName<<std::endl;
+    writeControlOutput();
     //paramsFile<<"input frames "<<timeFileName<<std::endl;
 
 
@@ -271,8 +274,9 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
         graphFileName="";
         //throw std::runtime_error("File with the input graph was not specified in the config file");
     }
-    std::cout<<"input graph "<<graphFileName<<std::endl;
+    controlOutput<<"input graph "<<graphFileName<<std::endl;
 
+    writeControlOutput();
 
 //    if(pathParameters.count("INPUT_PARAMS")>0){
 //        inputParamsFileName=pathParameters["INPUT_PARAMS"];
@@ -300,16 +304,13 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
 
     outputFileName=parameters["OUTPUT_PATH"]+parameters["OUTPUT_PREFIX"];
     paramsFileName=outputFileName+"-params.txt";
-    std::ofstream paramsFile(paramsFileName.data(),std::ofstream::out);
 
-
-    paramsFile<<"input graph "<<graphFileName<<std::endl;
-    paramsFile<<"output files "<<outputFileName<<std::endl;
 
     std::string infoFileName=outputFileName+"-info.txt";
   //  pInfoFile=new std::ofstream(infoFileName.data(),std::ofstream::out);
 
-    std::cout<<"output files "<<outputFileName<<std::endl;
+    controlOutput<<"output files "<<outputFileName<<std::endl;
+    writeControlOutput();
 
 
     if(parameters.count("DEBUG_OUTPUT_FILES")>0){
@@ -318,9 +319,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         debugOutputFiles=0;
     }
-    std::cout<<"debug output files "<<debugOutputFiles<<std::endl;
-    paramsFile<<"debug output files "<<debugOutputFiles<<std::endl;
-
+    controlOutput<<"debug output files "<<debugOutputFiles<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("SPARSIFY")>0){
         sparsify=std::stoi(parameters["SPARSIFY"]);
@@ -328,9 +328,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         sparsify=1;
     }
-    std::cout<<"sparsify "<<sparsify<<std::endl;
-    paramsFile<<"sparsify "<<sparsify<<std::endl;
-
+    controlOutput<<"sparsify "<<sparsify<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("MAX_TIMEGAP")>0){
         maxTimeFrame=std::stoul(parameters["MAX_TIMEGAP"]);
@@ -340,8 +339,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
         restrictFrames=0;
         maxTimeFrame=std::numeric_limits<size_t>::max();
     }
-    std::cout<<"max time frame "<<maxTimeFrame<<std::endl;
-    paramsFile<<"max time frame "<<maxTimeFrame<<std::endl;
+    controlOutput<<"max time frame "<<maxTimeFrame<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("INPUT_COST")>0){
         inputCost=std::stod(parameters["INPUT_COST"]);
@@ -349,8 +348,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         inputCost=0;
     }
-    std::cout<<"input cost "<<inputCost<<std::endl;
-    paramsFile<<"input cost "<<inputCost<<std::endl;
+    controlOutput<<"input cost "<<inputCost<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("OUTPUT_COST")>0){
         outputCost=std::stod(parameters["OUTPUT_COST"]);
@@ -358,8 +357,9 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         outputCost=0;
     }
-    std::cout<<"output cost "<<outputCost<<std::endl;
-    paramsFile<<"output cost "<<outputCost<<std::endl;
+    controlOutput<<"output cost "<<outputCost<<std::endl;
+    writeControlOutput();
+
 
     if(parameters.count("MAX_TIMEGAP_BASE")>0){
         maxTimeBase=std::stoul(parameters["MAX_TIMEGAP_BASE"]);
@@ -367,8 +367,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         maxTimeBase=60;
     }
-    std::cout<<"max time gap base "<<maxTimeBase<<std::endl;
-    paramsFile<<"max time gap base "<<maxTimeBase<<std::endl;
+    controlOutput<<"max time gap base "<<maxTimeBase<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("KNN_GAP")>0){
         knnTimeGap=std::stoul(parameters["KNN_GAP"]);
@@ -376,8 +376,9 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         knnTimeGap=3;
     }
-    std::cout<<"KNN time gap "<<knnTimeGap<<std::endl;
-    paramsFile<<"KNN time gap "<<knnTimeGap<<std::endl;
+    controlOutput<<"KNN time gap "<<knnTimeGap<<std::endl;
+    writeControlOutput();
+
 
     if(parameters.count("KNN_K")>0){
         knnK=std::stoul(parameters["KNN_K"]);
@@ -385,8 +386,9 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         knnK=3;
     }
-    std::cout<<"KNN k "<<knnK<<std::endl;
-    paramsFile<<"KNN k "<<knnK<<std::endl;
+    controlOutput<<"KNN k "<<knnK<<std::endl;
+    writeControlOutput();
+
 
     if(parameters.count("BASE_THRESHOLD")>0){
         baseUpperThreshold=std::stod(parameters["BASE_THRESHOLD"]);
@@ -394,8 +396,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         baseUpperThreshold=0;
     }
-    std::cout<<"base upper threshold "<<baseUpperThreshold<<std::endl;
-    paramsFile<<"base upper threshold "<<baseUpperThreshold<<std::endl;
+    controlOutput<<"base upper threshold "<<baseUpperThreshold<<std::endl;
+    writeControlOutput();
 
 
     if(parameters.count("MAX_TIMEGAP_LIFTED")>0){
@@ -404,8 +406,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         maxTimeLifted=60;
     }
-    std::cout<<"max time gap lifted "<<maxTimeLifted<<std::endl;
-    paramsFile<<"max time gap lifted "<<maxTimeLifted<<std::endl;
+    controlOutput<<"max time gap lifted "<<maxTimeLifted<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("DENSE_TIMEGAP_LIFTED")>0){
         denseTimeLifted=std::stoul(parameters["DENSE_TIMEGAP_LIFTED"]);
@@ -413,8 +415,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         denseTimeLifted=20;
     }
-    std::cout<<"dense time gap lifted "<<denseTimeLifted<<std::endl;
-    paramsFile<<"dense time gap lifted "<<denseTimeLifted<<std::endl;
+    controlOutput<<"dense time gap lifted "<<denseTimeLifted<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("NEGATIVE_THRESHOLD_LIFTED")>0){
         negativeThresholdLifted=std::stod(parameters["NEGATIVE_THRESHOLD_LIFTED"]);
@@ -422,8 +424,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         negativeThresholdLifted=-1;
     }
-    std::cout<<"negative threshold lifted "<<negativeThresholdLifted<<std::endl;
-    paramsFile<<"negative threshold lifted "<<negativeThresholdLifted<<std::endl;
+    controlOutput<<"negative threshold lifted "<<negativeThresholdLifted<<std::endl;
+    writeControlOutput();
 
     if(parameters.count("POSITIVE_THRESHOLD_LIFTED")>0){
         positiveThresholdLifted=std::stod(parameters["POSITIVE_THRESHOLD_LIFTED"]);
@@ -431,8 +433,9 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         positiveThresholdLifted=1;
     }
-    std::cout<<"positive threshold lifted "<<positiveThresholdLifted<<std::endl;
-    paramsFile<<"positive threshold lifted "<<positiveThresholdLifted<<std::endl;
+    controlOutput<<"positive threshold lifted "<<positiveThresholdLifted<<std::endl;
+    writeControlOutput();
+
 
     if(parameters.count("LONGER_LIFTED_INTERVAL")>0){
         longerIntervalLifted=std::stoul(parameters["LONGER_LIFTED_INTERVAL"]);
@@ -440,8 +443,9 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         longerIntervalLifted=4;
     }
-    std::cout<<"longer interval lifted "<<longerIntervalLifted<<std::endl;
-    paramsFile<<"longer interval lifted "<<longerIntervalLifted<<std::endl;
+    controlOutput<<"longer interval lifted "<<longerIntervalLifted<<std::endl;
+    writeControlOutput();
+
 
 
     if(parameters.count("MAX_TIMEGAP_COMPLETE")>0){
@@ -450,13 +454,8 @@ inline void ConfigDisjoint<T>::init(std::map<std::string,std::string>& parameter
     else{
         maxTimeGapComplete=maxTimeFrame;
     }
-    std::cout<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
-    paramsFile<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
-
-
-    paramsFile.close();
-
-
+    controlOutput<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
+    writeControlOutput();
 
 
 }

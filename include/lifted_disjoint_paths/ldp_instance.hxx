@@ -38,6 +38,7 @@
 //#include <pybind11/numpy.h>
 #include <disjoint-paths/disjointPathsMethods.hxx>
 #include <disjoint-paths/completeStructure.hxx>
+#include "config.hxx"
 
 namespace LPMP{
 namespace lifted_disjoint_paths {

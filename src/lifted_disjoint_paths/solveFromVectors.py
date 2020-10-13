@@ -48,13 +48,12 @@ paramsMap["OUTPUT_PATH"]="../data/exampleSolverILP/"
 pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of the solver
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10"]
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10","-v","0"]
 
 
 #Initializes structure for holding solver parameters. It expects a string to string map (dictionary) as an input. ParametersParser.get_parsed_params() can be alternatively used for providing such map.
 params=ldpMP.LdpParams(paramsMap)
 
-print("params read")
 
 #Constructor of structure for holding the mapping between time frames and graph vertices
 timeFrames=ldpMP.TimeFramesToVertices()
@@ -95,18 +94,18 @@ edgeLabels=completeGraphStructure.get_edge_labels(paths)
 
 
 
-for edge in edgeLabels:
-  print(edge)
+#for edge in edgeLabels:
+#  print(edge)
   
 #for edge in usedEdgesVector:
 #   for v in edge:
 #      print(v,end =" ")
 #   print("")
 
-for path in paths:
-  for v in path:
-    print(v, end =" ")
-  print("")
+#for path in paths:
+#  for v in path:
+#    print(v, end =" ")
+#  print("")
 
 
 

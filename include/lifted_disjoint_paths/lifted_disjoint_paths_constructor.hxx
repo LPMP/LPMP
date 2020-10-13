@@ -553,7 +553,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         }
     }
     bool isFeasible=this->checkFeasibilityBaseInSnc();
-    std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
+    if(diagnostics()) std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
     assert(isFeasible);
     adjustLiftedLabels();
     isFeasible=this->checkFeasibilityLiftedInSnc();
@@ -591,7 +591,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 //    best_primal_solution = ...;
 
-    std::cout<<"primal value: "<<primalValue<<std::endl;
+    if(diagnostics()) std::cout<<"primal value: "<<primalValue<<std::endl;
 }
 
 //std::vector<size_t> get_best_solution() const
@@ -604,7 +604,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 {
     //TODO: Remember triangles that have already been added!
 
-    std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
+    if(diagnostics()) std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
 
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
     const andres::graph::Digraph<>& baseGraph=instance.getGraph();
@@ -786,7 +786,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         }
     }
 
-    std::cout<<"triangle factors candidates"<<std::endl;
+    if(diagnostics()) std::cout<<"triangle factors candidates"<<std::endl;
 
     size_t counter=0;
     //for(auto iter=candidateFactors.rbegin();iter!=candidateFactors.rend()&&counter<nr_constraints_to_add;iter++){
@@ -800,7 +800,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     //}
 
     double expectedImprovement=0;
-    std::cout<<"candidate size "<<candidates.size()<<std::endl;
+    if(diagnostics()) std::cout<<"candidate size "<<candidates.size()<<std::endl;
 
 
     size_t triangleFactorsOrigSize=triangle_factors_.size();
@@ -955,7 +955,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         counter++;
     }
 
-    std::cout<<"used triangles size "<<usedTriangles.size()<<std::endl;
+    if(diagnostics()) std::cout<<"used triangles size "<<usedTriangles.size()<<std::endl;
 
     //TODO update cost in SNC factors that were used for creating the triangle factors!
 
@@ -1038,7 +1038,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
 
     }
-    std::cout<<"tighten finished"<<std::endl;
+    if(diagnostics()) std::cout<<"tighten finished"<<std::endl;
 
 
 
@@ -1057,7 +1057,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     //    andres::graph::Digraph<> graph; //TODO initialize this: Actually, it is needed lifted with some base edges. Maybe copy of lifted, add some edges?
     //    components.build(graph,costs);
     //    //for all edges with positive costs whose vertices belong to the same component: add triangle (priority queue)
-    std::cout<<"tighten expected improvement "<<expectedImprovement<<", added constraints "<<counter<<std::endl;
+    if(diagnostics()) std::cout<<"tighten expected improvement "<<expectedImprovement<<", added constraints "<<counter<<std::endl;
     adjustTriangleLabels(triangleFactorsOrigSize);
     return counter;
 
@@ -1085,7 +1085,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     std::vector<std::unordered_map<size_t,double>> costsFromTriangles(nr_nodes());
 
 
-    std::cout<<"triangle factors size "<<triangle_factors_.size()<<std::endl;
+    if(debug()) std::cout<<"triangle factors size "<<triangle_factors_.size()<<std::endl;
     for(size_t i=0;i<triangle_factors_.size();i++){
         auto * trFactor=triangle_factors_[i]->get_factor();
         size_t v1=trFactor->getV1();
@@ -1299,10 +1299,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     const double primal_cost_before = this->lp_->EvaluatePrimal();
     read_in_mcf_costs(true);
     mcf_->solve();
-    std::cout << "mcf cost = " << mcf_->objective() << "\n";
+   if(diagnostics())  std::cout << "mcf cost = " << mcf_->objective() << "\n";
     write_back_mcf_costs();
     const double primal_cost_after = this->lp_->EvaluatePrimal();
-    std::cout << "primal cost before = " << primal_cost_before << ", primal cost after = " << primal_cost_after << "\n";
+    if(diagnostics()) std::cout << "primal cost before = " << primal_cost_before << ", primal cost after = " << primal_cost_after << "\n";
     assert(std::abs(primal_cost_before - primal_cost_after) <= 1e-6);
 }
 
