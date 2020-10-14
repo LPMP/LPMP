@@ -48,14 +48,21 @@ LdpInstance::LdpInstance( LdpParameters<>& configParameters):
 
 
 
-LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
-    disjointPaths::CompleteStructure<> csBase(*twoGraphsIS.myPvg);
-    vertexGroups=*twoGraphsIS.myPvg;
+//LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
+    std::cout<<"constructor of ldp instance"<<std::endl;
+    disjointPaths::CompleteStructure<> csBase(pvg);
+    std::cout<<"cs base"<<std::endl;
+    vertexGroups=pvg;
+    std::cout<<"vw ok"<<std::endl;
 
-    csBase.addEdgesFromVectorsAll(*twoGraphsIS.pBaseEdges,*twoGraphsIS.pBaseCosts);
-    size_t maxVertex=twoGraphsIS.myPvg->getMaxVertex();
+
+     std::cout<<"first unchecked ok"<<std::endl;
+
+    csBase.addEdgesFromVectorsAll(baseEdges,baseCosts);
+    size_t maxVertex=vertexGroups.getMaxVertex();
     graph_=andres::graph::Digraph<>(maxVertex+3);
-    graph_.reserveEdges(csBase.completeGraph.numberOfEdges()+2*csBase.completeGraph.numberOfVertices());
+   // graph_.reserveEdges(csBase.completeGraph.numberOfEdges()+2*csBase.completeGraph.numberOfVertices());
     for (size_t i = 0; i < csBase.completeGraph.numberOfEdges(); ++i) {
          size_t v=csBase.completeGraph.vertexOfEdge(i,0);
          size_t w=csBase.completeGraph.vertexOfEdge(i,1);
@@ -63,6 +70,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::
     }
     edgeScore=csBase.completeScore;
 
+    std::cout<<"edges added"<<std::endl;
     s_=maxVertex+1;
     t_=s_+1;
     for (size_t i = 0; i <= maxVertex; ++i) {
@@ -71,16 +79,19 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::
         graph_.insertEdge(i,t_);
         edgeScore.push_back(configParameters.getOutputCost());
     }
+    std::cout<<"st edges added"<<std::endl;
 
-    disjointPaths::CompleteStructure<> csLifted(*twoGraphsIS.myPvg);
-    csLifted.addEdgesFromVectorsAll(*twoGraphsIS.pLiftedEdges,*twoGraphsIS.pLiftedCosts);
+    disjointPaths::CompleteStructure<> csLifted(vertexGroups);
+    csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
     graphLifted_=csLifted.completeGraph;
     liftedEdgeScore=csLifted.completeScore;
 
+    std::cout<<"lifted graph created"<<std::endl;
     if(configParameters.isSparsify()){
         disjointPaths::createKnnBaseGraph(*this,configParameters);
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
-        disjointPaths::keepFractionOfLifted(*this,configParameters);
+        //disjointPaths::keepFractionOfLifted(*this,configParameters);
+        sparsifyLiftedGraph();
     }
     else{
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
@@ -128,7 +139,8 @@ void LdpInstance::init(){
         //sparsifyBaseGraph();
         disjointPaths::createKnnBaseGraph(*this,parameters);
         reachable=initReachableSet(graph_,parameters,&vertexGroups);
-        disjointPaths::keepFractionOfLifted(*this,parameters);
+       // disjointPaths::keepFractionOfLifted(*this,parameters);
+        sparsifyLiftedGraph();
         initLiftedStructure();
       //  sparsifyLiftedGraph();
 
@@ -352,12 +364,118 @@ void LdpInstance::initLiftedStructure(){
 
 
 
+void LdpInstance::sparsifyLiftedGraph(){
+
+
+     parameters.getControlOutput()<<"Sparsify lifted graph"<<std::endl;
+    parameters.writeControlOutput();
+    //TODO run automaticLifted to find candidates first
+
+    double negMaxValue=0;
+    double posMinValue=0;
+
+    std::vector<double> newLiftedCosts;
+
+    andres::graph::Digraph<> tempGraphLifted=(graph_.numberOfVertices());
+
+
+    negMaxValue=parameters.getNegativeThresholdLifted();
+    posMinValue=parameters.getPositiveThresholdLifted();
+
+
+    std::unordered_map<size_t,std::set<size_t>> liftedEdges;
+    for (size_t v = 0; v < graphLifted_.numberOfVertices()-2; ++v) {
+        std::unordered_set<size_t> alternativePath;
+        for (size_t i = 0; i < graph_.numberOfEdgesFromVertex(v); ++i) {
+            size_t w=graph_.vertexFromVertex(v,i);
+            for(size_t u:reachable[w]){
+                if(u!=w){
+                    alternativePath.insert(u);
+                }
+            }
+        }
+        for (size_t i = 0; i < graph_.numberOfEdgesFromVertex(v); ++i) {
+            size_t w=graph_.vertexFromVertex(v,i);
+            if(alternativePath.count(w)==0){
+                strongBaseEdges.at(v).insert(w);
+            }
+        }
+
+        for (size_t i = 0; i < graphLifted_.numberOfEdgesFromVertex(v); ++i) {
+            size_t w=graphLifted_.vertexFromVertex(v,i);
+            if(w!=t_){
+                if(alternativePath.count(w)>0) liftedEdges[v].insert(w);
+
+            }
+        }
+    }
+
+
+
+    parameters.getControlOutput()<<"done"<<std::endl;
+   parameters.writeControlOutput();
+
+
+    for (int i = 0; i < graphLifted_.numberOfEdges(); ++i) {
+        size_t v0=graphLifted_.vertexOfEdge(i,0);
+        size_t v1=graphLifted_.vertexOfEdge(i,1);
+        int l0=vertexGroups.getGroupIndex(v0);
+        int l1=vertexGroups.getGroupIndex(v1);
+        double cost=getLiftedEdgeScore(i);
+        bool goodCost=(cost<negMaxValue)||(cost>posMinValue);
+        if(isReachable(v0,v1)){
+
+            int timeGapDiff=l1-l0-parameters.getDenseTimeLifted();
+            bool timeConstraint=l1-l0<=parameters.getDenseTimeLifted()||((l1-l0)<=parameters.getMaxTimeLifted()&&(timeGapDiff%parameters.getLongerIntervalLifted())==0);
+            if(timeConstraint&&goodCost){
+                if(liftedEdges[v0].count(v1)>0){
+                    tempGraphLifted.insertEdge(v0,v1);
+                    newLiftedCosts.push_back(cost);
+                }
+                else{
+                    auto edgeTest=graph_.findEdge(v0,v1);
+                    if(edgeTest.first){
+                        edgeScore[edgeTest.second]+=cost;  //Compensate that the lifted edge has been removed
+                    }
+
+                }
+
+            }
+        }
+
+    }
+
+
+
+    liftedEdgeScore=newLiftedCosts;
+
+    graphLifted_=tempGraphLifted;
+      parameters.getControlOutput()<<"Left "<<newLiftedCosts.size()<<" lifted edges."<<std::endl;
+    parameters.writeControlOutput();
+    if(graphLifted_.numberOfEdges()!=newLiftedCosts.size()){
+         parameters.getControlOutput()<<"lifted edge number mismatch, lifted graph: "<<graphLifted_.numberOfEdges()<<", cost vector "<<newLiftedCosts.size()<<std::endl;
+        parameters.getControlOutput()<<"lifted edge number mismatch, lifted graph: "<<graphLifted_.numberOfEdges()<<", cost vector "<<newLiftedCosts.size()<<std::endl;
+    }
+    else{
+         parameters.getControlOutput()<<"lifted edge number and lifted graph size match "<<std::endl;
+        parameters.getControlOutput()<<"lifted edge number and lifted graph size match "<<std::endl;
+
+    }
+   parameters.writeControlOutput();
+    initLiftedStructure();
+
+}
 
 bool LdpInstance::isStrongBase(size_t v,size_t w) const{
     bool isStrong= strongBaseEdges.at(v).count(w)>0;
     return isStrong;
    // return false;
 }
+
+
+
+
+
 
 
 

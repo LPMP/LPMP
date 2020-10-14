@@ -32,15 +32,16 @@
 #include <list>
 #include "ldp_functions.hxx"
 #include <utility>
-//#include <pybind11/pybind11.h>
-//#include <pybind11/stl.h>
-//#include <pybind11/operators.h>
-//#include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/operators.h>
+#include <pybind11/numpy.h>
 #include <disjoint-paths/disjointPathsMethods.hxx>
 #include <disjoint-paths/completeStructure.hxx>
 #include <disjoint-paths/twoGraphsInputStructure.hxx>
 #include "config.hxx"
 
+namespace py = pybind11;
 namespace LPMP{
 namespace lifted_disjoint_paths {
 
@@ -52,7 +53,8 @@ public:
 
     LdpInstance(LdpParameters<>& configParameters);
      LdpInstance(LdpParameters<>& configParameters,disjointPaths::CompleteStructure<>& cs);
-     LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS);
+//     LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS);
+     LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
@@ -180,6 +182,7 @@ public:
 
     bool isStrongBase(size_t v,size_t w) const;
 
+    void sparsifyLiftedGraph();
 
     LdpParameters<>& parameters;
     disjointPaths::VertexGroups<size_t> vertexGroups;
