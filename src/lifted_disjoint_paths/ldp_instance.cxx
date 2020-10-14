@@ -50,14 +50,11 @@ LdpInstance::LdpInstance( LdpParameters<>& configParameters):
 
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
 LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
-    std::cout<<"constructor of ldp instance"<<std::endl;
+
     disjointPaths::CompleteStructure<> csBase(pvg);
-    std::cout<<"cs base"<<std::endl;
+
     vertexGroups=pvg;
-    std::cout<<"vw ok"<<std::endl;
 
-
-     std::cout<<"first unchecked ok"<<std::endl;
 
     csBase.addEdgesFromVectorsAll(baseEdges,baseCosts);
     size_t maxVertex=vertexGroups.getMaxVertex();
@@ -70,7 +67,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     }
     edgeScore=csBase.completeScore;
 
-    std::cout<<"edges added"<<std::endl;
+
     s_=maxVertex+1;
     t_=s_+1;
     for (size_t i = 0; i <= maxVertex; ++i) {
@@ -79,14 +76,14 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
         graph_.insertEdge(i,t_);
         edgeScore.push_back(configParameters.getOutputCost());
     }
-    std::cout<<"st edges added"<<std::endl;
+
 
     disjointPaths::CompleteStructure<> csLifted(vertexGroups);
     csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
     graphLifted_=csLifted.completeGraph;
     liftedEdgeScore=csLifted.completeScore;
 
-    std::cout<<"lifted graph created"<<std::endl;
+
     if(configParameters.isSparsify()){
         disjointPaths::createKnnBaseGraph(*this,configParameters);
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
