@@ -48,21 +48,57 @@ LdpInstance::LdpInstance( LdpParameters<>& configParameters):
 
 
 
-//LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
-//    disjointPaths::CompleteStructure<> csBase(*twoGraphsIS.myPvg);
-//    //TODO pointer to VG cannot be constant!
-//    csBase.addEdgesFromVectorsAll(*twoGraphsIS.pBaseEdges,*twoGraphsIS.pBaseCosts);
-//    graph_=csBase.completeGraph;
-//    edgeScore=csBase.completeScore;
-//    //TODO base graph needs s,t edges and scores!
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
+    disjointPaths::CompleteStructure<> csBase(*twoGraphsIS.myPvg);
+    vertexGroups=*twoGraphsIS.myPvg;
 
-//    disjointPaths::CompleteStructure<> csLifted(*twoGraphsIS.myPvg);
-//    csLifted.addEdgesFromVectorsAll(*twoGraphsIS.pLiftedEdges,*twoGraphsIS.pLiftedCosts);
-//    graphLifted_=csLifted.completeGraph;
-//    liftedEdgeScore=csLifted.completeScore;
+    csBase.addEdgesFromVectorsAll(*twoGraphsIS.pBaseEdges,*twoGraphsIS.pBaseCosts);
+    size_t maxVertex=twoGraphsIS.myPvg->getMaxVertex();
+    graph_=andres::graph::Digraph<>(maxVertex+3);
+    graph_.reserveEdges(csBase.completeGraph.numberOfEdges()+2*csBase.completeGraph.numberOfVertices());
+    for (size_t i = 0; i < csBase.completeGraph.numberOfEdges(); ++i) {
+         size_t v=csBase.completeGraph.vertexOfEdge(i,0);
+         size_t w=csBase.completeGraph.vertexOfEdge(i,1);
+         graph_.insertEdge(v,w);
+    }
+    edgeScore=csBase.completeScore;
 
-//    //TODO set all remaining global variables
-//}
+    s_=maxVertex+1;
+    t_=s_+1;
+    for (size_t i = 0; i <= maxVertex; ++i) {
+        graph_.insertEdge(s_,i);
+        edgeScore.push_back(configParameters.getInputCost());
+        graph_.insertEdge(i,t_);
+        edgeScore.push_back(configParameters.getOutputCost());
+    }
+
+    disjointPaths::CompleteStructure<> csLifted(*twoGraphsIS.myPvg);
+    csLifted.addEdgesFromVectorsAll(*twoGraphsIS.pLiftedEdges,*twoGraphsIS.pLiftedCosts);
+    graphLifted_=csLifted.completeGraph;
+    liftedEdgeScore=csLifted.completeScore;
+
+    if(configParameters.isSparsify()){
+        disjointPaths::createKnnBaseGraph(*this,configParameters);
+        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+        disjointPaths::keepFractionOfLifted(*this,configParameters);
+    }
+    else{
+        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+    }
+
+
+    initLiftedStructure();
+
+    numberOfVertices=graph_.numberOfVertices();
+    numberOfLiftedEdges=graphLifted_.numberOfEdges();
+    numberOfEdges=graph_.numberOfEdges();
+    vertexScore=std::vector<double>(graph_.numberOfVertices()-2);
+
+    minV=0;
+    maxV=maxVertex;
+
+
+}
 
 void LdpInstance::init(){
 
@@ -106,6 +142,7 @@ void LdpInstance::init(){
     numberOfVertices=graph_.numberOfVertices();
     numberOfEdges=graph_.numberOfEdges();
     numberOfLiftedEdges=graphLifted_.numberOfEdges();
+
 }
 
 void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs){

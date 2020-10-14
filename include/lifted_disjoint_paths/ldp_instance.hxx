@@ -156,10 +156,6 @@ public:
 	}
 
 
-	bool isTimeFramesEnabled()const {
-		return useTimeFrames;
-	}
-
 	size_t getEdgeVarIndex(size_t edgeIndex)const {
 		return edgeIndex+numberOfVertices;
 	}
@@ -221,7 +217,6 @@ private:
    // void sparsifyBaseGraph();
    // void sparsifyLiftedGraph();
     void initLiftedStructure();
-	bool useTimeFrames;
 
     std::vector<ShiftedVector<bool>> liftedStructure;
 
