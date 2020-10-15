@@ -27,8 +27,8 @@ paramsMap["MAX_TIMEGAP_COMPLETE"]="60"
 
 
 
-pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
-#pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
+#pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
+pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of LPMP
 solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","-v","0"]
@@ -46,6 +46,7 @@ timeFrames=ldpMP.TimeFramesToVertices()
 #This array contains information about how many detections are in each time frame. The array must contain non-negative integer values. 
 #Numbering of graph vertices in time frames: Frame 1: 0,1,2; Frame 2: 3,4; Frame 3: 4,5,6
 vect= np.array([3, 2, 3])
+numberOfVertices=8;
 
 #Initalizing the structure from a file
 timeFrames.init_from_vector(vect)
@@ -63,21 +64,26 @@ completeGraphStructure.add_edges_from_vectors_all(edgeVector,costVector)
 #Alternative method where either MAX_TIMEGAP_COMPLETE or the maximum from MAX_TIMEGAP_BASE and MAX_TIMEGAP_LIFTED applies for selection of edges. 
 #completeGraphStructure.add_edges_from_vectors(edgeVector,costVector,params)
 
+#Create the problem instance.
 instance=ldpMP.LdpInstance(params,completeGraphStructure)
 
+#Construct the solver.
 solver=ldpMP.Solver(solverParameters)
 
+#Run problem constructor using the solver and problem instance.
 ldpMP.construct(solver,instance)
 
+#Run the message passing solver.
 solver.solve()
 
+#Extract the resulting paths from the best primal solution.
 paths=solver.get_best_primal()
 
-edgeLabels=completeGraphStructure.get_edge_labels(paths)
+#Obtaining edge labels based on the obtained paths. Label 1 (True) is given iff endpoints of the respective edge belong to the same path.
+edgeLabels=ldpMP.get_lifted_edge_labels(edgeVector,paths,numberOfVertices)
 
-
-
-
+#An alternative method gives labels to the edges actually used in the input graph.
+#edgeLabels=completeGraphStructure.get_edge_labels(paths)
 
 #for edge in edgeLabels:
 #  print(edge)
