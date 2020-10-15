@@ -12,10 +12,15 @@ Now, you can either run the solver from the command line and use input from spec
 ./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt 
 ``` 
 
-Another possibility is to use python script for running the solver on an example instance in. Here, no input files are needed. The whole problem instance is specified directly in the python script.
+Another possibility is to use python script for running the solver on an example instance. Here, no input files are needed. The whole problem instance is specified directly in the python script. It is possible to use one graph structure as an input. The solver will extract the base graph and the lifted graph from it. You can run the respective example script by running
 ```
 python3 solveFromVectors.py
 ```
+Alternatively, you can directly specify the base graph and the lifted graph separately. You can run the respective example script by running
+```
+python3 solveFromVectorsTwoGraphs.py
+```
+
 You can use other command line parameters that are applicable for other problems in LPMP. You can display their full list by running 
 ```
 ./lifted_disjoint_paths_text_input --help
