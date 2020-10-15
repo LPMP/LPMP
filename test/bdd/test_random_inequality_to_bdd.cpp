@@ -101,7 +101,7 @@ double exp_sum_impl(LHS_ITERATOR lhs_begin, LHS_ITERATOR lhs_end, const inequali
     }
 
     const double zero_cost = exp_sum_impl(lhs_begin+1, lhs_end, ineq, rhs, cost_begin+1, cost_end, partial_sum);
-    const double one_cost = exp_sum_impl(lhs_begin+1, lhs_end, ineq, rhs - *lhs_begin, cost_begin+1, cost_end, partial_sum + *cost_begin);
+    const double one_cost = exp_sum_impl(lhs_begin+1, lhs_end, ineq, rhs - *lhs_begin, cost_begin+1, cost_end, partial_sum - *cost_begin);
 
     return zero_cost + one_cost;
 }
@@ -110,7 +110,7 @@ template<typename LHS_ITERATOR, typename COST_ITERATOR>
 double log_exp(LHS_ITERATOR lhs_begin, LHS_ITERATOR lhs_end, const inequality_type ineq, const int rhs, COST_ITERATOR cost_begin, COST_ITERATOR cost_end)
 {
     const double sum = exp_sum_impl(lhs_begin, lhs_end, ineq, rhs, cost_begin, cost_end, 0.0);
-    return std::log(sum);
+    return -std::log(sum);
 } 
 
 template<typename BDD_SOLVER>
@@ -195,9 +195,12 @@ void test_random_inequality_log_exp()
             std::cout << x << " ";
         std::cout << "\n"; 
         bdds.set_costs(costs.begin(), costs.end());
-        const double backward_lb = bdds.compute_lower_bound();
+        const double backward_lb = bdds.compute_smooth_lower_bound();
+        bdds.forward_run();
+        const double forward_lb = bdds.compute_smooth_lower_bound_forward();
         const double enumeration_lb = log_exp(coefficients.begin(), coefficients.end(), ineq, rhs, costs.begin(), costs.end());
-        std::cout << "enumeration lb = " << enumeration_lb << ", backward lb = " << backward_lb << "\n";
+        std::cout << "enumeration lb = " << enumeration_lb << ", backward lb = " << backward_lb << ", forward lb = " << forward_lb << "\n";
+        test(std::abs(backward_lb - forward_lb) <= 1e-8);
         test(std::abs(backward_lb - enumeration_lb) <= 1e-8);
     } 
 }

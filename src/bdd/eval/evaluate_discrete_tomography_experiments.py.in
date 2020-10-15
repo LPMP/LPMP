@@ -1,0 +1,8 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+from data_discrete_tomography import *
+import BDD_evaluate_log
+  
+BDD_evaluate_log.evaluate_experiments(synthetic_246_instance_list, algorithms, opts_names, output_dir, 'discrete_tomography_246')
+# BDD_evaluate_log.evaluate_experiments(logan_instance_list, algorithms, opts_names, output_dir, 'discrete_tomography_logan')

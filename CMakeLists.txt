@@ -1,19 +1,8 @@
 project(LPMP)
 
 cmake_minimum_required(VERSION 2.8.12)
-# cmake_policy(SET CMP0074 NEW)
 
-# C++17
-set(CMAKE_CXX_FLAGS "-std=c++17")
-#set(CMAKE_CXX_FLAGS "-fuse-ld=gold")
-
-# compiler options
-add_definitions(-march=native)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-#linker options
-#set(CMAKE_SHARED_LINKER_FLAGS "--compress-debug-sections=zlib")
-#add_link_options("--compress-debug-sections=zlib")
 
 # information for e.g. YouCompleteMe
 SET( CMAKE_EXPORT_COMPILE_COMMANDS ON )
@@ -42,29 +31,24 @@ target_include_directories(LPMP INTERFACE external/tsl-robin-map/include)
 target_include_directories(LPMP INTERFACE external/cpp-taskflow) 
 target_include_directories(LPMP INTERFACE external/pybind11)
 target_include_directories(LPMP INTERFACE external/LifT_Solver/solverILP/include)
-#target_include_directories(LPMP INTERFACE external/LifT_Solver/solverILP/external)
-add_custom_target(
-    Cudd_lib
-    COMMAND ""#"autoreconf -f -i && ./configure --enable-obj --enable-shared && make"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/"
+
+include(ExternalProject)
+ExternalProject_Add(Cudd_external
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/"
+    BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/"
+    PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/
+    CONFIGURE_COMMAND autoreconf -f -i && ./configure --enable-obj
+    BUILD_COMMAND make
+    INSTALL_COMMAND ""
     )
 add_library(Cudd INTERFACE)
-add_dependencies(Cudd Cudd_lib)
-target_link_libraries(Cudd INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/cudd/.libs/libcudd.a")
-#ExternalProject_Add(Cudd_project
-#    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/"
-#    PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/
-#    CONFIGURE_COMMAND "./configure --enable-obj"
-#    BUILD_COMMAND "make"
-#    )
-#    -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/cudd
-#    -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
-#    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-#    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-#    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-#add_library(Cudd STATIC IMPORTED)
-#set_property(TARGET Cudd PROPERTY IMPORTED_LOCATION ${install_dir}/lib/libluajit-5.1.a)
-#add_dependencies(Cudd Cudd_project)
+add_dependencies(Cudd Cudd_external)
+target_link_libraries(Cudd INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/cudd/.libs/libcudd.a)
+target_include_directories(Cudd INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/cudd)
+
+target_compile_features(LPMP INTERFACE cxx_std_17)
+target_compile_options(LPMP INTERFACE -march=native)
+
 target_include_directories(LPMP INTERFACE external/cudd/cudd)
 target_include_directories(LPMP INTERFACE external/cudd/cplusplus) 
 target_link_libraries(LPMP INTERFACE pthread)

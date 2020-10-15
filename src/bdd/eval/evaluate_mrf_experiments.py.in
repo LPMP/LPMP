@@ -1,0 +1,12 @@
+#!/usr/bin/python
+import sys
+sys.path.append('@EVAL_MODULE_PATH@')
+from data_mrf import *
+import BDD_evaluate_log
+  
+# BDD_evaluate_log.evaluate_experiments(protein_folding_instance_list, algorithms, opts_names, output_dir, 'protein-folding')
+BDD_evaluate_log.evaluate_experiments(object_seg_instance_list, algorithms, opts_names, output_dir, 'object-seg')
+# BDD_evaluate_log.evaluate_experiments(photomontage_instance_list, algorithms, opts_names, output_dir, 'mrf-photomontage')
+BDD_evaluate_log.evaluate_experiments(color_seg_instance_list, algorithms, opts_names, output_dir, 'color-seg')
+BDD_evaluate_log.evaluate_experiments(color_seg_n4_instance_list, algorithms, opts_names, output_dir, 'color-seg-n4')
+BDD_evaluate_log.evaluate_experiments(color_seg_n8_instance_list, algorithms, opts_names, output_dir, 'color-seg-n8')

@@ -64,7 +64,6 @@ namespace LPMP {
             std::vector<BDD_BRANCH_NODE> bdd_branch_nodes_;
             two_dim_variable_array<BDD_VARIABLE> bdd_variables_;
 
-        private:
             void init_branch_nodes();
 
             bdd_storage bdd_storage_;
@@ -101,7 +100,8 @@ namespace LPMP {
     void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init(const ILP_input& input)
     {
         Cudd bdd_mgr;
-        bdd_storage_ = bdd_storage(input, bdd_mgr);
+        // last parameter for recording primal fixations
+        bdd_storage_ = bdd_storage(input, bdd_mgr, false);
         init_branch_nodes();
     }
 
@@ -256,7 +256,7 @@ namespace LPMP {
 
                 //if(!bdd.low_outgoing->is_terminal()) { assert(variable_index(bdd) < variable_index(*bdd.low_outgoing)); }
                 //if(!bdd.high_outgoing->is_terminal()) { assert(variable_index(bdd) < variable_index(*bdd.high_outgoing)); }
-                check_bdd_branch_node(bdd, v+1 == nr_variables(), v == 0);
+                //check_bdd_branch_node(bdd, v+1 == nr_variables(), v == 0); // TODO: cannot be enabled because not all pointers are set yet.
                 //check_bdd_branch_instruction_level(bdd_level, v+1 == nr_variables(), v == 0);
                 ++nr_bdd_nodes_per_variable[v]; 
                 ++bdd_offset_per_variable[v];
@@ -447,7 +447,7 @@ namespace LPMP {
         assert(bdd_index < bdd_variables_[var].size());
         assert(bdd_node_index < bdd_variables_(var,bdd_index).nr_bdd_nodes());
         return bdd_branch_nodes_[ bdd_variables_(var,bdd_index).first_node_index + bdd_node_index ];
-    } 
+    }
 
     ////////////////////////////////////////////////////
     // Min-Marginal Averaging Solver
@@ -457,6 +457,9 @@ namespace LPMP {
         bdd_min_marginal_averaging_options(int argc, char** argv);
         bdd_min_marginal_averaging_options() {}
         enum class averaging_type {classic, SRMP} averaging_type = averaging_type::classic;
+        enum class variable_order {input, bfs, cuthill, mindegree} variable_order = variable_order::input;
+        enum class fixing_order {marginals_absolute, marginals_up, marginals_down, marginals_reduction} fixing_order = fixing_order::marginals_up;
+        enum class fixing_value {marginal, reduction, one, zero} fixing_value = fixing_value::marginal;
     };
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -488,7 +491,6 @@ namespace LPMP {
         double lower_bound_forward(const std::size_t var, const std::size_t bdd_index);
 
         double compute_upper_bound(const std::vector<char> &primal_solution) const;
-        std::vector<double> total_min_marginals();
 
         void min_marginal_averaging_iteration();
         void min_marginal_averaging_forward();
@@ -526,18 +528,57 @@ namespace LPMP {
 
    bdd_min_marginal_averaging_options::bdd_min_marginal_averaging_options(int argc, char** argv)
         {
-            TCLAP::CmdLine cmd("Command line parser for bdd min marginal averation options", ' ', " ");
-            TCLAP::ValueArg<std::string> reweighting_arg("o","order","reweighting scheme",false,"","{classic|SRMP}");
-            cmd.add(reweighting_arg);
+            TCLAP::CmdLine cmd("Command line parser for bdd min marginal averaging options", ' ', " ");
+            TCLAP::ValueArg<std::string> averaging_arg("a","averaging","averaging type",false,"classic","{classic|SRMP}");
+            TCLAP::ValueArg<std::string> order_arg("o","order","variable order",false,"input","{input|bfs|cuthill|mindegree}");
+            TCLAP::ValueArg<std::string> fixing_order_arg("f","fixing","variable fixing order",false,"up","{abs|up|down|reduction}");
+            TCLAP::ValueArg<std::string> fixing_value_arg("v","value","variable fixing preferred value",false,"marginal","{marginal|reduction|one|zero}");
+            cmd.add(averaging_arg);
+            cmd.add(order_arg);
+            cmd.add(fixing_order_arg);
+            cmd.add(fixing_value_arg);
 
             cmd.parse(argc, argv);
 
-            if(reweighting_arg.getValue() == "classic")
+            if(averaging_arg.getValue() == "classic")
                 averaging_type = bdd_min_marginal_averaging_options::averaging_type::classic;
-            else if(reweighting_arg.getValue() == "SRMP")
+            else if(averaging_arg.getValue() == "SRMP")
                 averaging_type = bdd_min_marginal_averaging_options::averaging_type::SRMP;
             else
-                throw std::runtime_error("direction not recognized");
+                throw std::runtime_error("averaging type not recognized");
+
+            if(order_arg.getValue() == "input")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::input;
+            else if(order_arg.getValue() == "bfs")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::bfs;
+            else if(order_arg.getValue() == "cuthill")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::cuthill;
+            else if(order_arg.getValue() == "mindegree")
+                variable_order = bdd_min_marginal_averaging_options::variable_order::mindegree;
+            else
+                throw std::runtime_error("variable order not recognized");
+
+            if(fixing_order_arg.getValue() == "abs")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_absolute;
+            else if(fixing_order_arg.getValue() == "up")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_up;
+            else if(fixing_order_arg.getValue() == "down")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_down;
+            else if(fixing_order_arg.getValue() == "reduction")
+                fixing_order = bdd_min_marginal_averaging_options::fixing_order::marginals_reduction;
+            else
+                throw std::runtime_error("variable fixing order not recognized");
+
+            if(fixing_value_arg.getValue() == "marginal")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::marginal;
+            else if(fixing_value_arg.getValue() == "reduction")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::reduction;
+            else if(fixing_value_arg.getValue() == "one")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::one;
+            else if(fixing_value_arg.getValue() == "zero")
+                fixing_value = bdd_min_marginal_averaging_options::fixing_value::zero;
+            else
+                throw std::runtime_error("variable fixing preferred value not recognized");
         }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -712,55 +753,16 @@ namespace LPMP {
     }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-    std::vector<double> bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::total_min_marginals()
-    {
-        std::vector<double> total_min_marginals;
-        std::vector<double> current_marginals;
-        size_t nr_conflicts = 0;
-        for(std::size_t var=0; var<this->nr_variables(); ++var)
-        {
-            auto sign = [](const double x) -> int {
-                if (x > 0.0) return 1;
-                if (x < 0.0) return -1;
-                return 0;
-            };
-            current_marginals.clear();
-            double total_min_marg = 0;
-            double total_abs_marg = 0;
-            for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index)
-            {
-                this->forward_step(var,bdd_index);
-                std::array<double,2> min_marg = min_marginal(var,bdd_index);
-                total_min_marg += (min_marg[1] - min_marg[0]);
-                total_abs_marg += std::abs(total_min_marg);
-                current_marginals.push_back(min_marg[1] - min_marg[0]);
-            }
-
-            total_min_marginals.push_back(total_min_marg);
-
-            // for(std::size_t i=0; i+1<current_marginals.size(); ++i) 
-            //     if(sign(current_marginals[i]) != sign(current_marginals[i+1])) {
-            //         total_min_marginals.back() = 0.0;
-            //         ++nr_conflicts;
-            //         continue;
-            //     }
-        }
-        // std::cout << "#conflicts in min-marginals = " << nr_conflicts << "\n";
-        this->backward_run();
-        return total_min_marginals;
-    }
-
-    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::min_marginal_averaging_iteration()
     {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward();
         const auto after_forward = std::chrono::steady_clock::now();
-        std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
+        // std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
         const auto before_backward = std::chrono::steady_clock::now();
         min_marginal_averaging_backward();
         const auto end_time = std::chrono::steady_clock::now();
-        std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
+        // std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -961,11 +963,11 @@ namespace LPMP {
         const auto begin_time = std::chrono::steady_clock::now();
         min_marginal_averaging_forward_SRMP();
         const auto after_forward = std::chrono::steady_clock::now();
-        std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
+        // std::cout << "forward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(after_forward - begin_time).count() << " ms, " << std::flush;
         const auto before_backward = std::chrono::steady_clock::now();
         min_marginal_averaging_backward_SRMP();
         const auto end_time = std::chrono::steady_clock::now();
-        std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
+        // std::cout << "backward " <<  std::chrono::duration_cast<std::chrono::milliseconds>(end_time - before_backward).count() << " ms, " << std::flush;
     }
 
 
@@ -997,7 +999,7 @@ namespace LPMP {
             for(std::size_t v=0; v<this->nr_variables(); ++v) {
                 assert(this->bdd_variables_[v].size() > 0);
                 for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(v); ++bdd_index) {
-                    assert(nr_bdds(v) > 0);
+                    assert(this->nr_bdds(v) > 0);
                     const double cost = v < std::distance(begin,end) ? *(begin+v)/this->nr_bdds(v) : 0.0; 
                     this->bdd_variables_(v,bdd_index).cost = cost;
                     assert(!std::isnan(this->bdd_variables_(v,bdd_index).cost));
@@ -1070,6 +1072,7 @@ namespace LPMP {
         void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::export_dot(STREAM& s) const
         {
             return this->bdd_storage_.export_dot(s);
+            /*
             s << "digraph bdd_min_marginal_averaging {\n";
 
             std::vector<char> bdd_node_visited(this->bdd_branch_nodes_.size(), false);
@@ -1091,571 +1094,8 @@ namespace LPMP {
             }
 
             s << "}\n"; 
+            */
         }
-
-    ////////////////////////////////////////////////////
-    // Variable Fixing
-    ////////////////////////////////////////////////////
-
-    struct log_entry
-    {
-        log_entry(char * var_value)
-        : var_value_(var_value) {}
-        log_entry(bdd_branch_node_fix * source, bdd_branch_node_fix * target, bool high)
-        : source_(source), target_(target), high_(high) {}
-
-        void restore();
-
-        char * var_value_ = nullptr;
-
-        bdd_branch_node_fix * source_;
-        bdd_branch_node_fix * target_;
-        bool high_;
-    };
-
-    void log_entry::restore()
-    {
-        if (var_value_ != nullptr)
-        {
-            *var_value_ = 2;
-            return;    
-        }
-
-        assert(target_ != bdd_branch_node_fix::terminal_0());
-        if (high_)
-        {
-            assert(source_->high_outgoing == bdd_branch_node_fix::terminal_0());
-            assert(source_->prev_high_incoming == nullptr);
-            assert(source_->next_high_incoming == nullptr);
-            source_->high_outgoing = target_;
-            source_->bdd_var->nr_feasible_high_arcs++;
-            if (bdd_branch_node_fix::is_terminal(target_))
-                return;
-            if (target_->first_high_incoming != nullptr)
-                target_->first_high_incoming->prev_high_incoming = source_;
-            source_->next_high_incoming = target_->first_high_incoming;
-            target_->first_high_incoming = source_;
-        }
-        else
-        {
-            assert(source_->low_outgoing == bdd_branch_node_fix::terminal_0());
-            assert(source_->prev_low_incoming == nullptr);
-            assert(source_->next_low_incoming == nullptr);
-            source_->low_outgoing = target_;
-            source_->bdd_var->nr_feasible_low_arcs++;
-            if (bdd_branch_node_fix::is_terminal(target_))
-                return;
-            if (target_->first_low_incoming != nullptr)
-                target_->first_low_incoming->prev_low_incoming = source_;
-            source_->next_low_incoming = target_->first_low_incoming;
-            target_->first_low_incoming = source_;
-        }
-    }
-
-    class bdd_mma_fixing : public bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix> {
-        public:
-            bool fix_variables();
-
-            bool fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values);
-            bool fix_variable(const size_t var, const char value);
-            bool is_fixed(const size_t var) const;
-
-            void init(const ILP_input& input);
-            void init();
-
-            void revert_changes(const size_t target_log_size);
-
-            void init_primal_solution() { primal_solution_.resize(nr_variables(), 2); }
-            const std::vector<char> & primal_solution() const { return primal_solution_; }
-            double compute_upper_bound();
-            const size_t log_size() const { return log_.size(); }
-
-        private:
-            void init_pointers();
-
-            bool remove_all_incoming_arcs(bdd_branch_node_fix & bdd_node);
-            void remove_all_outgoing_arcs(bdd_branch_node_fix & bdd_node);
-            void remove_outgoing_low_arc(bdd_branch_node_fix & bdd_node);
-            void remove_outgoing_high_arc(bdd_branch_node_fix & bdd_node);
-
-            std::vector<char> primal_solution_;
-            std::stack<log_entry, std::vector<log_entry>> log_;
-
-            // FOR INSPECTION
-            ILP_input input_;
-    };
-
-    double bdd_mma_fixing::compute_upper_bound()
-    {
-        return bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix>::compute_upper_bound(primal_solution());
-    }
-
-    void bdd_mma_fixing::init_pointers()
-    {
-        for (size_t var = 0; var < nr_variables(); var++)
-        {
-            for (size_t bdd_index = 0; bdd_index < nr_bdds(var); bdd_index++)
-            {
-                auto & bdd_var = bdd_variables_(var, bdd_index);
-                bdd_var.nr_feasible_low_arcs = 0;
-                bdd_var.nr_feasible_high_arcs = 0;
-                bdd_var.variable_index = var;
-                for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
-                {
-                    auto & bdd_node = bdd_branch_nodes_[node_index];
-                    if (bdd_node.low_outgoing != bdd_branch_node_fix::terminal_0())
-                        bdd_var.nr_feasible_low_arcs++;
-                    if (bdd_node.high_outgoing != bdd_branch_node_fix::terminal_0())
-                        bdd_var.nr_feasible_high_arcs++;
-
-                    bdd_node.bdd_var = & bdd_var;
-
-                    auto * low_incoming = bdd_node.first_low_incoming;
-                    while (low_incoming != nullptr && low_incoming->next_low_incoming != nullptr)
-                    {
-                        low_incoming->next_low_incoming->prev_low_incoming = low_incoming;
-                        low_incoming = low_incoming->next_low_incoming;
-                    }
-                    auto * high_incoming = bdd_node.first_high_incoming;
-                    while (high_incoming != nullptr && high_incoming->next_high_incoming != nullptr)
-                    {
-                        high_incoming->next_high_incoming->prev_high_incoming = high_incoming;
-                        high_incoming = high_incoming->next_high_incoming;
-                    }
-                }
-            }
-        }
-        init_primal_solution(); 
-    }
-
-    void bdd_mma_fixing::init(const ILP_input& input)
-    {
-        bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix>::init(input);
-        init_pointers();
-        input_ = input;
-    }
-
-    void bdd_mma_fixing::init()
-    {
-        bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix>::init();
-        init_pointers();
-    }
-
-    bool bdd_mma_fixing::fix_variable(const std::size_t var, const char value)
-    {
-        assert(0 <= value && value <= 1);
-        assert(primal_solution_.size() == nr_variables());
-        assert(var < primal_solution_.size());
-
-        // check if variable is already fixed
-        if (primal_solution_[var] == value)
-            return true;
-        else if (is_fixed(var))
-            return false;
-
-        // mark variable as fixed
-        primal_solution_[var] = value;
-        const log_entry entry(&primal_solution_[var]);
-        log_.push(entry);
-        std::vector<std::pair<size_t, char>> restrictions;
-
-        for (size_t bdd_index = 0; bdd_index < nr_bdds(var); bdd_index++)
-        {
-            auto & bdd_var = bdd_variables_(var, bdd_index);
-            for (size_t node_index = bdd_var.first_node_index; node_index < bdd_var.last_node_index; node_index++)
-            {
-                // auto & bdd_node = bdd_branch_nodes_[node_index];
-                auto & bdd_node = bdd_branch_nodes_.at(node_index);
-
-                // skip isolated branch nodes
-                if (bdd_node.is_first() && bdd_node.is_dead_end())
-                    continue;
-
-                if (value == 1)
-                    remove_outgoing_low_arc(bdd_node);
-                if (value == 0)
-                    remove_outgoing_high_arc(bdd_node);
-
-                // restructure parents if node is dead-end
-                if (bdd_node.is_dead_end())
-                {
-                    if (!remove_all_incoming_arcs(bdd_node))
-                        return false;
-                }
-            }
-
-            // check if other variables in BDD are now restricted
-            auto * cur = bdd_var.prev;
-            while (cur != nullptr)
-            {
-                if (is_fixed(cur->variable_index))
-                {
-                    cur = cur->prev;
-                    continue;
-                }
-                if (cur->nr_feasible_low_arcs == 0)
-                    restrictions.emplace_back(cur->variable_index, 1);
-                if (cur->nr_feasible_high_arcs == 0)
-                    restrictions.emplace_back(cur->variable_index, 0);
-                cur = cur->prev;
-            }
-            cur = bdd_var.next;
-            while (cur != nullptr)
-            {
-                if (is_fixed(cur->variable_index))
-                {
-                    cur = cur->next;
-                    continue;
-                }
-                if (cur->nr_feasible_low_arcs == 0)
-                    restrictions.emplace_back(cur->variable_index, 1);
-                if (cur->nr_feasible_high_arcs == 0)
-                    restrictions.emplace_back(cur->variable_index, 0);
-                cur = cur->next;
-            }
-        }
-
-        // fix implied restrictions
-        for (auto & restriction : restrictions)
-        {
-            if (!fix_variable(restriction.first, restriction.second))
-                return false;
-        }
-
-        return true;
-    }
-
-    bool bdd_mma_fixing::remove_all_incoming_arcs(bdd_branch_node_fix & bdd_node)
-    {
-        if (bdd_node.is_first())
-            return false;
-        // low arcs
-        {
-            auto * cur = bdd_node.first_low_incoming;
-            while (cur != nullptr)
-            {
-                // log change
-                assert(cur->low_outgoing == &bdd_node);
-                auto * temp = cur;
-                const log_entry entry(cur, &bdd_node, false);
-                log_.push(entry);
-                // remove arc
-                cur->low_outgoing = bdd_branch_node_fix::terminal_0();
-                assert(cur->bdd_var != nullptr);
-                cur->bdd_var->nr_feasible_low_arcs--;
-                bdd_node.first_low_incoming = cur->next_low_incoming;
-                cur = cur->next_low_incoming;
-                // remove list pointers
-                if (cur != nullptr)
-                {
-                    assert(cur->prev_low_incoming != nullptr);
-                    cur->prev_low_incoming->next_low_incoming = nullptr;
-                    cur->prev_low_incoming = nullptr;    
-                }
-                // recursive call if parent is dead-end
-                if (temp->is_dead_end())
-                {
-                    if (!remove_all_incoming_arcs(*temp))
-                        return false;
-                }
-            }
-        }
-        // high arcs
-        {
-            auto * cur = bdd_node.first_high_incoming;
-            while (cur != nullptr)
-            {
-                assert(cur->high_outgoing == &bdd_node);
-                auto * temp = cur;
-                const log_entry entry(cur, &bdd_node, true);
-                log_.push(entry);
-                cur->high_outgoing = bdd_branch_node_fix::terminal_0();
-                assert(cur->bdd_var != nullptr);
-                cur->bdd_var->nr_feasible_high_arcs--;
-                bdd_node.first_high_incoming = cur->next_high_incoming; 
-                cur = cur->next_high_incoming; 
-                if (cur != nullptr)
-                {
-                    assert(cur->prev_low_incoming != nullptr);
-                    cur->prev_high_incoming->next_high_incoming = nullptr;
-                    cur->prev_high_incoming = nullptr;    
-                }
-                if (temp->is_dead_end())
-                {
-                    if (!remove_all_incoming_arcs(*temp))
-                        return false;
-                }
-            }      
-        }
-        return true;
-    }
-
-    void bdd_mma_fixing::remove_all_outgoing_arcs(bdd_branch_node_fix & bdd_node)
-    {
-        remove_outgoing_low_arc(bdd_node);
-        remove_outgoing_high_arc(bdd_node);
-    }
-
-    void bdd_mma_fixing::remove_outgoing_low_arc(bdd_branch_node_fix & bdd_node)
-    {
-        if (!bdd_branch_node_fix::is_terminal(bdd_node.low_outgoing))
-        {
-            // change pointers
-            if (bdd_node.prev_low_incoming == nullptr)
-                bdd_node.low_outgoing->first_low_incoming = bdd_node.next_low_incoming;
-            else
-                bdd_node.prev_low_incoming->next_low_incoming = bdd_node.next_low_incoming;
-            if (bdd_node.next_low_incoming != nullptr)
-                bdd_node.next_low_incoming->prev_low_incoming = bdd_node.prev_low_incoming;
-            bdd_node.prev_low_incoming = nullptr;
-            bdd_node.next_low_incoming = nullptr;
-            // recursive call if child node is unreachable
-            if (bdd_node.low_outgoing->is_first())
-                remove_all_outgoing_arcs(*bdd_node.low_outgoing);
-        }
-        if (bdd_node.low_outgoing != bdd_branch_node_fix::terminal_0())
-        {
-            // log change
-            const log_entry entry(&bdd_node, bdd_node.low_outgoing, false);
-            log_.push(entry);
-            // remove arc
-            bdd_node.low_outgoing = bdd_branch_node_fix::terminal_0();
-            bdd_node.bdd_var->nr_feasible_low_arcs--;
-        } 
-    }
-
-    void bdd_mma_fixing::remove_outgoing_high_arc(bdd_branch_node_fix & bdd_node)
-    {
-        if (!bdd_branch_node_fix::is_terminal(bdd_node.high_outgoing))
-        {
-            if (bdd_node.prev_high_incoming == nullptr)
-                bdd_node.high_outgoing->first_high_incoming = bdd_node.next_high_incoming;
-            else
-                bdd_node.prev_high_incoming->next_high_incoming = bdd_node.next_high_incoming;
-            if (bdd_node.next_high_incoming != nullptr)
-                bdd_node.next_high_incoming->prev_high_incoming = bdd_node.prev_high_incoming;
-            bdd_node.prev_high_incoming = nullptr;
-            bdd_node.next_high_incoming = nullptr;
-            if (bdd_node.high_outgoing->is_first())
-                remove_all_outgoing_arcs(*bdd_node.high_outgoing);
-        }
-        if (bdd_node.high_outgoing != bdd_branch_node_fix::terminal_0())
-        {
-            const log_entry entry(&bdd_node, bdd_node.high_outgoing, true);
-            log_.push(entry);
-            bdd_node.high_outgoing = bdd_branch_node_fix::terminal_0();
-            bdd_node.bdd_var->nr_feasible_high_arcs--;
-        }
-    }
-
-    bool bdd_mma_fixing::fix_variables(const std::vector<size_t> & variables, const std::vector<char> & values)
-    {
-        assert(variables.size() == values.size());
-
-        init_primal_solution();
-
-        struct VarFix
-        {
-            VarFix(const size_t log_size, const size_t index, const char val)
-            : log_size_(log_size), index_(index), val_(val) {}
-            
-            const size_t log_size_;
-            const size_t index_;
-            const char val_;
-        };
-
-        std::stack<VarFix, std::vector<VarFix>> variable_fixes;
-        variable_fixes.emplace(log_.size(), 0, 1-values[0]);
-        variable_fixes.emplace(log_.size(), 0, values[0]);
-
-        size_t nfixes = 0;
-        size_t max_fixes = nr_variables();
-        std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-
-        while (!variable_fixes.empty())
-        {
-            nfixes++;
-            std::cout << "\rExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-            if (nfixes > max_fixes)
-                return false;
-
-            auto fix = variable_fixes.top();
-            variable_fixes.pop();
-            size_t index = fix.index_;
-
-            revert_changes(fix.log_size_);
-            bool feasible = fix_variable(variables[index], fix.val_);
-
-            if (!feasible)
-                continue;
-
-            while (is_fixed(variables[index]))
-            {
-                index++;
-                if (index >= variables.size())
-                    return true;
-            }
-
-            variable_fixes.emplace(log_.size(), index, 1-values[index]);
-            variable_fixes.emplace(log_.size(), index, values[index]);
-        }
-
-        return false;
-    }
-
-    bool bdd_mma_fixing::is_fixed(const size_t var) const
-    {
-        assert(primal_solution_.size() == nr_variables());
-        assert(var < primal_solution_.size());
-        return primal_solution_[var] < 2;
-    }
-
-    void bdd_mma_fixing::revert_changes(const size_t target_log_size)
-    {
-        while (log_.size() > target_log_size)
-        {
-            log_.top().restore();
-            log_.pop();
-        }
-    }
-
-    // bool bdd_mma_fixing::fix_variables()
-    // {
-    //     min_marginal_averaging_iteration();
-    //     std::vector<double> total_min_marginals = this->total_min_marginals();
-    //     std::vector<size_t> variables;
-    //     for (size_t i = 0; i < nr_variables(); i++)
-    //         variables.push_back(i);
-
-    //     // TODO change to more sensible ordering
-    //     auto order = [&](const size_t a, const size_t b)
-    //     {
-    //         if (total_min_marginals[a] >= 0.0 && total_min_marginals[b] >= 0.0)
-    //             return (total_min_marginals[a]) > (total_min_marginals[b]);
-    //         return (total_min_marginals[a]) < (total_min_marginals[b]);
-    //     };
-    //     std::sort(variables.begin(), variables.end(), order);
-
-    //     std::vector<char> values;
-    //     for (size_t i = 0; i < variables.size(); i++)
-    //     {
-    //         const char val = (total_min_marginals[variables[i]] < 0) ? 1 : 0;
-    //         values.push_back(val);
-    //     }
-
-    //     return fix_variables(variables, values);
-    // }
-
-    bool bdd_mma_fixing::fix_variables()
-    {
-        min_marginal_averaging_iteration();
-        init_primal_solution();
-
-        std::vector<double> total_min_marginals = this->total_min_marginals();
-
-        // struct VarFix
-        // {
-        //     VarFix(const size_t index, const double score, const size_t edition)
-        //     : index_(index), score_(score), edition_(edition) {}
-
-        //     const size_t index_;
-        //     const double score_;
-        //     const size_t edition_;
-
-        //     bool operator <(VarFix const & other) const
-        //     {
-        //         // TODO adjust
-        //         return score_ > other.score_;
-        //     }
-        // }
-
-        // std::priority_queue<VarFix> queue;
-        // std::vector<size_t> editions(nr_variables(), 0);
-        // for (size_t var = 0; var < nr_variables(); var++)
-        //     queue.emplace(var, total_min_marginals[var], 0);
-
-        // while (!queue.empty())
-        // {
-        //     const auto next = queue.top();
-        //     queue.pop();
-
-        //     const size_t var = next.index_;
-        //     const char val = (next.score_ < 0) ? 1 : 0;
-        //     const size_t edition = next.edition_;
-
-        //     if (bdd_fix_.is_fixed(var) || edition < editions[var])
-        //         continue;
-
-        //     const size_t log_size = bdd_fix_.log_size();
-        //     bool feasible = bdd_fix_.fix_variable(var, val);
-
-        //     if (feasible)
-        //     {
-        //         // update total min marginals
-        //         const double fixed_cost = (val == 1) ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
-        //         bdd_mma_.set_cost(var, fixed_cost);
-        //         // TODO
-        //     }
-        //     else
-        //         // TODO enable backtracking
-        //         return false;
-
-        // }
-
-        // size_t nfixes = 0;
-        // size_t max_fixes = nr_variables();
-        // std::cout << "\nExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-
-        while (true)
-        {
-            // nfixes++;
-            // std::cout << "\rExpanded " << nfixes << " out of " << max_fixes << " search tree nodes.." << std::flush;
-            // if (nfixes > max_fixes)
-            //     return false;
-
-            double min_score = std::numeric_limits<double>::infinity();
-            double max_score = -min_score;
-            double prev_min_score = min_score;
-            size_t min_var;
-            size_t max_var;
-            for (size_t var = 0; var < nr_variables(); var++)
-            {
-                if (is_fixed(var))
-                    continue;
-
-                if (total_min_marginals[var] < min_score)
-                {
-                    min_score = total_min_marginals[var];
-                    min_var = var;
-                }
-                if (total_min_marginals[var] > max_score)
-                {
-                    max_score = total_min_marginals[var];
-                    max_var = var;
-                }
-            }
-
-            if (min_score == -std::numeric_limits<double>::infinity())
-                std::cout << "Min score is -inf" << std::endl;
-
-            if (min_score == std::numeric_limits<double>::infinity())
-                return true;
-
-            const char val = (min_score < 0) ? 1 : 0;
-            const size_t best_var = (min_score < 0) ? min_var : max_var;
-            bool feasible = fix_variable(best_var, val);
-
-            std::cout << "Fixed var " << best_var << " (" << input_.get_var_name(best_var) << ")" << " to " << (int) val << ". score = " << min_score << std::endl;
-
-            // TODO enable backtracking
-            if (!feasible)
-                return false;
-
-            // update min marginals
-            total_min_marginals = this->total_min_marginals();
-        }
-    }
-
 
 
     ////////////////////////////////////////////////////

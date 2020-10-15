@@ -1,0 +1,102 @@
+import os
+
+protein_folding_instance_list = [
+   'protein-folding/1CKK.lp',
+   'protein-folding/1CM1.lp',
+   'protein-folding/1SY9.lp',
+   'protein-folding/2BBN.lp',
+   'protein-folding/2BCX.lp',
+   'protein-folding/2BE6.lp',
+   'protein-folding/2F3Y.lp',
+   'protein-folding/2FOT.lp',
+   'protein-folding/2HQW.lp',
+   'protein-folding/2O60.lp',
+   'protein-folding/3BXL.lp',
+   'protein-folding/pdb1b25.lp',
+   'protein-folding/pdb1d2e.lp',
+   'protein-folding/pdb1fmj.lp',
+   'protein-folding/pdb1i24.lp',
+   'protein-folding/pdb1iqc.lp',
+   'protein-folding/pdb1jmx.lp',
+   'protein-folding/pdb1kgn.lp',
+   'protein-folding/pdb1kwh.lp',
+   'protein-folding/pdb1m3y.lp',
+   'protein-folding/pdb1qks.lp'
+]
+
+object_seg_instance_list = [
+   'object-seg/objseg-349.lp',
+   'object-seg/objseg-353.lp',
+   'object-seg/objseg-358.lp',
+   'object-seg/objseg-416.lp',
+   'object-seg/objseg-552.lp'
+]
+
+photomontage_instance_list = [
+   'mrf-photomontage/family-gm.lp',
+   'mrf-photomontage/pano-gm.lp'
+]
+
+color_seg_instance_list = [
+   'color-seg/colseg-cow3.lp',
+   'color-seg/colseg-cow4.lp',
+   'color-seg/colseg-garden4.lp'
+]
+
+color_seg_n4_instance_list = [
+   'color-seg-n4/clownfish-small.lp',
+   'color-seg-n4/crops-small.lp',
+   'color-seg-n4/fourcolors.lp',
+   'color-seg-n4/lake-small.lp',
+   'color-seg-n4/palm-small.lp',
+   'color-seg-n4/penguin-small.lp',
+   'color-seg-n4/pfau-small.lp',
+   'color-seg-n4/snail.lp',
+   'color-seg-n4/strawberry-glass-2-small.lp'
+]
+
+color_seg_n8_instance_list = [
+   'color-seg-n8/clownfish-small.lp',
+   'color-seg-n8/crops-small.lp',
+   'color-seg-n8/fourcolors.lp',
+   'color-seg-n8/lake-small.lp',
+   'color-seg-n8/palm-small.lp',
+   'color-seg-n8/penguin-small.lp',
+   'color-seg-n8/pfau-small.lp',
+   'color-seg-n8/snail.lp',
+   'color-seg-n8/strawberry-glass-2-small.lp'
+]
+
+algorithms = [
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input',
+   'bdd_min_marginal_averaging_text_input'
+]
+
+solver_options = [
+   "-a classic -o input",
+   "-a classic -o cuthill",
+   "-a classic -o bfs",
+   "-a SRMP -o input",
+   "-a SRMP -o cuthill",
+   "-a SRMP -o bfs"
+]
+
+opts_names = [
+   "classic_input",
+   "classic_cuthill",
+   "classic_bfs",
+   "srmp_input",
+   "srmp_cuthill",
+   "srmp_bfs"
+]
+
+executable_dir = os.path.join("@CMAKE_CURRENT_BINARY_DIR@", "../")
+
+instance_dir = "@MRF_INSTANCE_DIRECTORY@"
+output_dir = os.path.join("/BS/discrete_opt/nobackup/bdd_experiments/", "mrf/")

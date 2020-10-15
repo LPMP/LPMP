@@ -1,6 +1,8 @@
 add_library(cell_tracking_input cell_tracking_input.cpp)
 target_link_libraries(cell_tracking_input LPMP)
 
+add_executable(convert_cell_tracking_to_lp convert_cell_tracking_to_lp.cpp)
+target_link_libraries(convert_cell_tracking_to_lp cell_tracking_input LPMP)
 
 SET(SOURCE_FILES
   cell_tracking_mother_machine.cpp 
