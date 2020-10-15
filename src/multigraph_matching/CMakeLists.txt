@@ -21,8 +21,8 @@ target_link_libraries(multigraph_matching_factors INTERFACE transform_multigraph
 add_library(multigraph_matching_input multigraph_matching_input.cpp)
 target_link_libraries(multigraph_matching_input LPMP graph_matching_input)
 
-add_executable(multigraph_matching_universe_fw multigraph_matching_universe_fw.cpp)
-target_link_libraries(multigraph_matching_universe_fw LPMP multigraph_matching_input) 
+#add_executable(multigraph_matching_universe_fw multigraph_matching_universe_fw.cpp)
+#target_link_libraries(multigraph_matching_universe_fw LPMP multigraph_matching_input) 
 
 SET(MGM_SOURCE_FILES
       multigraph_matching_mp.cpp

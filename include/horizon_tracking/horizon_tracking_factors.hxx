@@ -175,10 +175,10 @@ private:
 
 public:
     // TODO: use move semantics
-    max_potential_on_multiple_chains(std::vector<three_dimensional_variable_array<REAL>>& linearPotentials,
-                                     std::vector<three_dimensional_variable_array<REAL>>& maxPotentials, 
-                                     std::vector<std::vector<INDEX>>& numLabels,
-                                     two_dim_variable_array<INDEX>& chainNodeToOriginalNode,
+    max_potential_on_multiple_chains(const std::vector<three_dimensional_variable_array<REAL>>& linearPotentials,
+                                     const std::vector<three_dimensional_variable_array<REAL>>& maxPotentials, 
+                                     const std::vector<std::vector<INDEX>>& numLabels,
+                                     const two_dim_variable_array<INDEX>& chainNodeToOriginalNode,
                                      bool solveChainsIndependently = false) 
        : LinearPotentials(linearPotentials), 
         MaxPotentials(maxPotentials),
