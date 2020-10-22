@@ -337,7 +337,7 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 
 
 void LdpInstance::initLiftedStructure(){
-    liftedStructure=std::vector<ShiftedVector<bool>>(graphLifted_.numberOfVertices());
+    liftedStructure=std::vector<ShiftedVector<char>>(graphLifted_.numberOfVertices());
     for (size_t i = 0; i < graphLifted_.numberOfVertices(); ++i) {
         size_t maxVertex=0;
         size_t minVertex=graphLifted_.numberOfVertices();
@@ -350,10 +350,10 @@ void LdpInstance::initLiftedStructure(){
                maxVertex=vertex2;
            }
         }
-        liftedStructure[i]=ShiftedVector<bool>(minVertex,maxVertex,false);
+        liftedStructure[i]=ShiftedVector<char>(minVertex,maxVertex,false);
         for (size_t j = 0; j < graphLifted_.numberOfEdgesFromVertex(i); ++j) {
            size_t vertex2=graphLifted_.vertexFromVertex(i,j);
-           liftedStructure[i].setValue(vertex2,true);
+           liftedStructure[i][vertex2]=1;
         }
     }
 }

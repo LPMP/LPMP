@@ -172,7 +172,7 @@ public:
 	}
 
     bool existLiftedEdge(const size_t v,const size_t w)const{
-        bool value=liftedStructure.at(v).isWithinBounds(w)&&liftedStructure.at(v).getValue(w);
+        bool value=liftedStructure.at(v).isWithinBounds(w)&&liftedStructure.at(v)[w]>0;
         return value;
     }
 
@@ -221,7 +221,7 @@ private:
    // void sparsifyLiftedGraph();
     void initLiftedStructure();
 
-    std::vector<ShiftedVector<bool>> liftedStructure;
+    std::vector<ShiftedVector<char>> liftedStructure;
 
 
 };

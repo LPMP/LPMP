@@ -507,17 +507,17 @@ public:
         return myVector[shiftedIndex];
     }
 
-    void setValue(size_t index,T value){
-        assert(index>=minVertex&&index<=maxVertex);
-        myVector[index-minVertex]=value;
+//    void setValue(size_t index,T value){
+//        assert(index>=minVertex&&index<=maxVertex);
+//        myVector[index-minVertex]=value;
 
-    }
+//    }
 
-    T getValue(size_t idx)const {
-        assert(idx>=minVertex&&idx<=maxVertex);
-        size_t shiftedIndex=idx-minVertex;
-        return myVector[shiftedIndex];
-    }
+//    T getValue(size_t idx)const {
+//        assert(idx>=minVertex&&idx<=maxVertex);
+//        size_t shiftedIndex=idx-minVertex;
+//        return myVector[shiftedIndex];
+//    }
 
     const T& operator [](size_t idx) const {
         if(debug()&&( idx<minVertex||idx>maxVertex)) std::cout<<"out of bounds, index "<<idx<<", interval "<<minVertex<<","<<maxVertex<<std::endl;
