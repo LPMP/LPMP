@@ -190,6 +190,8 @@ public:
 	size_t maxV=0;
 
     mutable std::vector<size_t> sncNeighborStructure;
+    mutable std::vector<size_t> sncBUNeighborStructure;
+
     mutable std::vector<double> sncTDStructure;
     mutable std::vector<double> sncBUStructure;
     mutable std::vector<char> sncClosedVertices;

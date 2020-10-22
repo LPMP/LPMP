@@ -343,6 +343,7 @@ void LdpInstance::initLiftedStructure(){
     size_t n=numberOfVertices-2;
 
     sncNeighborStructure=std::vector<size_t>(n);
+    sncBUNeighborStructure=std::vector<size_t>(n);
     sncTDStructure=std::vector<double>(n);
     sncBUStructure=std::vector<double>(n);
     sncClosedVertices=std::vector<char>(n);
