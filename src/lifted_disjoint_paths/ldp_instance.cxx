@@ -77,6 +77,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
         edgeScore.push_back(configParameters.getOutputCost());
     }
 
+    numberOfVertices=graph_.numberOfVertices();
 
     disjointPaths::CompleteStructure<> csLifted(vertexGroups);
     csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
@@ -93,6 +94,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     else{
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
     }
+
 
 
     initLiftedStructure();
@@ -123,6 +125,7 @@ void LdpInstance::init(){
 
         }
     }
+    numberOfVertices=graph_.numberOfVertices();
     if(debug()) std::cout<<"done"<<std::endl;
    // parameters.infoFile()<<"done"<<std::endl;
   //  parameters.infoFile().flush();
@@ -337,10 +340,17 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 
 
 void LdpInstance::initLiftedStructure(){
-    liftedStructure=std::vector<ShiftedVector<char>>(graphLifted_.numberOfVertices());
-    for (size_t i = 0; i < graphLifted_.numberOfVertices(); ++i) {
+    size_t n=numberOfVertices-2;
+
+    sncNeighborStructure=std::vector<size_t>(n);
+    sncTDStructure=std::vector<double>(n);
+    sncBUStructure=std::vector<double>(n);
+    sncClosedVertices=std::vector<char>(n);
+
+    liftedStructure=std::vector<ShiftedVector<char>>(n);
+    for (size_t i = 0; i < n; ++i) {
         size_t maxVertex=0;
-        size_t minVertex=graphLifted_.numberOfVertices();
+        size_t minVertex=n;
         for (size_t j = 0; j < graphLifted_.numberOfEdgesFromVertex(i); ++j) {
            size_t vertex2=graphLifted_.vertexFromVertex(i,j);
            if(vertex2<minVertex){

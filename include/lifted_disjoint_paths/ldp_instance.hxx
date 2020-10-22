@@ -189,6 +189,11 @@ public:
 	size_t minV=0;
 	size_t maxV=0;
 
+    mutable std::vector<size_t> sncNeighborStructure;
+    mutable std::vector<double> sncTDStructure;
+    mutable std::vector<double> sncBUStructure;
+    mutable std::vector<char> sncClosedVertices;
+
 
 private:
 
@@ -214,6 +219,7 @@ private:
 	size_t numberOfVertices;
 	size_t numberOfEdges;
 	size_t numberOfLiftedEdges;
+
 
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
     void readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs);

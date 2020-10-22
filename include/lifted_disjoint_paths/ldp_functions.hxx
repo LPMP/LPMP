@@ -472,7 +472,12 @@ template<class T=char>
 
 
 
-
+template<typename T>
+void fillWithValue(std::vector<T>& myVector,size_t first,size_t last, T value){
+    for(size_t i=first;i<last;i++){
+        myVector[i]=value;
+    }
+}
 
 
 
