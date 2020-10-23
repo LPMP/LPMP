@@ -44,23 +44,39 @@ public:
         //Need to sort within edges?
     }
 
-    LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts){
+    LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts,double inCost,double outCost){
+
+        bool addST=inCost<=std::numeric_limits<double>::max();
 
         std::vector<std::size_t> adjacencyForward;
         std::vector<std::size_t> adjacencyBackward;
 
 
+
         // first determine size for adjacency_list
         for(const std::array<size_t,2>& e:edges){
             size_t i=e[0];
-            size_t j=e[j];
+            size_t j=e[1];
             size_t size=std::max({i+1,j+1,adjacencyForward.size()});
             adjacencyBackward.resize(size);
             adjacencyForward.resize(size);
             adjacencyForward[i]++;
             adjacencyBackward[j]++;
         }
+        size_t numberOfVertices=adjacencyForward.size();
 
+        if(addST){
+            for(size_t i=0;i<numberOfVertices;i++){
+                adjacencyForward[i]++;
+                adjacencyBackward[i]++;
+            }
+
+            adjacencyForward.push_back(numberOfVertices); //for s
+            adjacencyBackward.push_back(0);
+            adjacencyForward.push_back(0);  //for t
+            adjacencyBackward.push_back(numberOfVertices);
+
+        }
         forwardEdges.resize(adjacencyForward.begin(),adjacencyForward.end());
         forwardCost.resize(adjacencyForward.begin(),adjacencyForward.end());
         backwardEdges.resize(adjacencyBackward.begin(),adjacencyBackward.end());
@@ -71,7 +87,6 @@ public:
          std::fill(adjacencyBackward.begin(), adjacencyBackward.end(), 0);
 
 
-        size_t numberOfVertices=adjacencyForward.size();
         for(size_t i=0;i<edges.size();i++){
             size_t v=edges[i][0];
             size_t w=edges[i][1];
@@ -82,12 +97,25 @@ public:
             backwardCost[w][adjacencyBackward[w]]=inputEdgeCosts[i];
             adjacencyBackward[w]++;
         }
+        if(addST){
+            size_t s=numberOfVertices;
+            size_t t=numberOfVertices+1;
+
+            for(size_t i=0;i<numberOfVertices;i++){
+                forwardEdges[i][adjacencyForward[i]]=t;
+                forwardCost[i][adjacencyForward[i]]=outCost;
+                backwardEdges[i][adjacencyBackward[i]]=s;
+                backwardCost[i][adjacencyBackward[i]]=inCost;
+            }
+            numberOfVertices+=2;
+        }
 
         //Need to sort within edges?
     }
 
-    LdpDirectedGraph(std::vector<std::array<size_t,2>> edges, std::vector<double> inputEdgeCosts,double inCost,double outCost){
+    LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts){
         //TODO the same as in the previous constructor but addd s and t nodes and edges with given cost
+        LdpDirectedGraph(edges,inputEdgeCosts,std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
     }
 
 
