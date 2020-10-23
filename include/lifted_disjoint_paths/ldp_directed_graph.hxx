@@ -8,7 +8,7 @@ namespace LPMP {
 
 class LdpDirectedGraph{
 public:
-    LdpDirectedGraph(andres::graph::Digraph<> inputGraph, std::vector<double> inputEdgeCosts){
+    LdpDirectedGraph(const andres::graph::Digraph<>& inputGraph,const std::vector<double>& inputEdgeCosts){
         size_t numberOfVertices=inputGraph.numberOfVertices();
         std::vector<std::size_t> adjacencyForward(numberOfVertices);
         std::vector<std::size_t> adjacencyBackward(numberOfVertices);
@@ -44,14 +44,14 @@ public:
         //Need to sort within edges?
     }
 
-    LdpDirectedGraph(std::vector<std::array<size_t,2>> edges, std::vector<double> inputEdgeCosts){
+    LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts){
 
         std::vector<std::size_t> adjacencyForward;
         std::vector<std::size_t> adjacencyBackward;
 
 
         // first determine size for adjacency_list
-        for(std::array<size_t,2>& e:edges){
+        for(const std::array<size_t,2>& e:edges){
             size_t i=e[0];
             size_t j=e[j];
             size_t size=std::max({i+1,j+1,adjacencyForward.size()});
@@ -86,6 +86,11 @@ public:
         //Need to sort within edges?
     }
 
+    LdpDirectedGraph(std::vector<std::array<size_t,2>> edges, std::vector<double> inputEdgeCosts,double inCost,double outCost){
+        //TODO the same as in the previous constructor but addd s and t nodes and edges with given cost
+    }
+
+
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
         return forwardCost[vertex][neighborIndex];
@@ -94,6 +99,38 @@ public:
 
     double getBackwardEdgeCost(size_t vertex,size_t neighborIndex) const{
         return backwardCost[vertex][neighborIndex];
+    }
+
+    const size_t * forwardNeighborsBegin(size_t i)const {
+        return forwardEdges[i].begin();
+    }
+
+    const size_t * forwardNeighborsEnd(size_t i)const {
+        return forwardEdges[i].end();
+    }
+
+    const size_t * backwardNeighborsBegin(size_t i)const {
+        return backwardEdges[i].begin();
+    }
+
+    const size_t * backwardNeighborsEnd(size_t i)const {
+        return backwardEdges[i].end();
+    }
+
+    const double * forwardCostBegin(size_t i)const {
+        return forwardCost[i].begin();
+    }
+
+    const double * forwardCostEnd(size_t i)const {
+        return forwardCost[i].end();
+    }
+
+    const double * backwardCostBegin(size_t i)const {
+        return backwardCost[i].begin();
+    }
+
+    const double * backwardCostEnd(size_t i)const {
+        return backwardCost[i].end();
     }
 
     //iterator for(double *it=forwardCost[i].begin();it!=forwardCost[i].end();it++)
