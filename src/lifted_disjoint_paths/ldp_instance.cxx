@@ -157,6 +157,8 @@ void LdpInstance::init(){
 
 }
 
+
+
 void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs){
 
 	andres::graph::Digraph<>& completeGraph=cs->completeGraph;

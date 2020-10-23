@@ -197,9 +197,13 @@ public:
     mutable std::vector<char> sncClosedVertices;
 
 
+    size_t getNumberOfVertices() const{
+        return numberOfVertices;
+    }
+
 private:
 
-	//LdpInstance(const LdpInstance& ldpI);
+    //LdpInstance(const LdpInstance& ldpI);
     void init();
 
 	size_t s_;

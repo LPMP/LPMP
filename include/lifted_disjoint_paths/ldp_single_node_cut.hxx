@@ -181,8 +181,8 @@ public:
 
 private:
     //Methods used in computing lower bound or min marginals
-    ShiftedVector<char> topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr, const size_t vertexIDToIgnore) const;
-    ShiftedVector<char> topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr) const;
+    void topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr, const size_t vertexIDToIgnore) const;
+    void topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr) const;
     std::unordered_map<size_t,double> bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr, const size_t vertex, const ShiftedVector<char> &verticesInScope, bool onlyOne)const;
     void updateOptimal() const;
 
@@ -710,23 +710,43 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TOD
 
 //TODO make this separate from standard update
 template<class LDP_INSTANCE>
-inline ShiftedVector<char> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr) const{
-    return topDownUpdate(myStr,getVertexToReach());
+void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr) const{
+     topDownUpdate(myStr,getVertexToReach());
 }
 
 
 template<class LDP_INSTANCE>
-inline ShiftedVector<char> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertexIDToIgnore) const{
+void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertexIDToIgnore) const{
 
-    ShiftedVector<char> closedVertices(nodeID,mostDistantNeighborID);
+    //ShiftedVector<char> closedVertices(nodeID,mostDistantNeighborID);
 
+    //fillWithValue<char>(ldpInstance.sncClosedVertices,minVertex,maxVertex+1,0);
 
     bool vertexToIgnoreSet=false;
     size_t lastVertex=mostDistantNeighborID;
     if(vertexIDToIgnore!=getVertexToReach()){
         vertexToIgnoreSet=true;
         lastVertex=vertexIDToIgnore;
+        size_t minV=0;
+        size_t maxV=0;
+        if(isOutFlow){
+            minV=vertexIDToIgnore;
+            maxV=mostDistantNeighborID+1;
+            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
+            fillWithValue<char>(ldpInstance.sncClosedVertices,nodeID,minV,0);
+        }
+        else{
+            minV=mostDistantNeighborID;
+            maxV=vertexIDToIgnore+1;
+            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
+            fillWithValue<char>(ldpInstance.sncClosedVertices,maxV,nodeID+1,0);
+
+        }
+
 	}
+    else{
+        fillWithValue<char>(ldpInstance.sncClosedVertices,minVertex,maxVertex+1,0);
+    }
 
 
     if(vertexToIgnoreSet){
@@ -749,7 +769,7 @@ inline ShiftedVector<char> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
 	while(!nodeStack.empty()){
 		size_t currentNode=nodeStack.top();
 
-        if(closedVertices[currentNode]){
+        if(ldpInstance.sncClosedVertices[currentNode]){
 			nodeStack.pop();
 		}
 		else{
@@ -767,7 +787,7 @@ inline ShiftedVector<char> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
                 if(isInGivenInterval(desc,mostDistantNeighborID)){
 
                     assert(desc<baseGraph.numberOfVertices());
-                    if(closedVertices[desc]||(vertexToIgnoreSet&&!isInGivenInterval(desc, vertexIDToIgnore))){  //descendant closed
+                    if(ldpInstance.sncClosedVertices[desc]){  //descendant closed
                         if(descClosed){
                             //double value=myStr.topDownValuesStructure[desc];
                             double value=ldpInstance.sncTDStructure[desc];
@@ -829,7 +849,7 @@ inline ShiftedVector<char> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
                     ldpInstance.sncTDStructure[currentNode]+=bestDescValue;
                     ldpInstance.sncNeighborStructure[currentNode]=bestDescVertexID;
 
-                    closedVertices[currentNode]=1; //marking the node as closed.
+                    ldpInstance.sncClosedVertices[currentNode]=1; //marking the node as closed.
 
 				}
 				nodeStack.pop();
@@ -840,7 +860,7 @@ inline ShiftedVector<char> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
 	}
  //   std::cout<<"update values finished"<<std::endl;
 
-    return closedVertices;
+   // return closedVertices;
 
 }
 
@@ -849,11 +869,12 @@ inline ShiftedVector<char> ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpda
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(size_t indexOfLiftedEdge)const{
     assert(indexOfLiftedEdge<liftedCosts.size());
-    std::cout<<"One lifted min marginal"<<std::endl;
+    //std::cout<<"One lifted min marginal"<<std::endl;
 
 
     StrForTopDownUpdate strForUpdateValues(baseCosts,liftedCosts,ldpInstance,nodeID,mostDistantNeighborID,getVertexToReach());
-    ShiftedVector<char> verticesInScope= topDownUpdate(strForUpdateValues);
+    topDownUpdate(strForUpdateValues);
+    ShiftedVector<char> verticesInScope(minVertex,maxVertex,ldpInstance.sncClosedVertices);
     double origOptValue=strForUpdateValues.optValue;
 
    // std::cout<<"one lifted min marginal"<<std::endl;
@@ -1151,7 +1172,9 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 //    myStr.topDownVertexIDStructure.fillWith(getVertexToReach());
     fillWithValue<double>(ldpInstance.sncTDStructure,minVertex,maxVertex+1,0);
     fillWithValue<size_t>(ldpInstance.sncNeighborStructure,minVertex,maxVertex+1,getVertexToReach());
-    ShiftedVector<char> verticesInScope= topDownUpdate(myStr);
+    topDownUpdate(myStr);
+    ShiftedVector<char> verticesInScope(minVertex,maxVertex,ldpInstance.sncClosedVertices);
+
 
     assert(currentOptValue+minMarginalsImproving-origOptValue>-eps); //lower bound not decreasing
     assert(std::abs(currentOptValue-myStr.optValue)<eps);  //found optimal value as expected after changes of lifted costs

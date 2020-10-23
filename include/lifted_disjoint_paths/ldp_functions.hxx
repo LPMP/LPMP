@@ -493,6 +493,16 @@ public:
         //myVector = new T[size];
         myVector=std::vector<T>(maxVertex-minVertex+1,value);
     }
+    ShiftedVector<T>(size_t boundary1,size_t boundary2,const std::vector<T>& sourceVector): //inclusive both min and max vertex
+    minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
+    {
+        assert(sourceVector.size()>maxVertex);
+        auto itBegin=sourceVector.begin();
+        itBegin+=minVertex;
+        auto itEnd=sourceVector.begin();
+        itEnd+=maxVertex+1;
+        myVector=std::vector<T>(itBegin,itEnd);
+    }
     ShiftedVector<T>(size_t boundary1,size_t boundary2): //inclusive both min and max vertex
     minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
     {
