@@ -39,6 +39,7 @@
 #include <disjoint-paths/disjointPathsMethods.hxx>
 #include <disjoint-paths/completeStructure.hxx>
 #include <disjoint-paths/twoGraphsInputStructure.hxx>
+#include "lifted_disjoint_paths/ldp_directed_graph.hxx"
 #include "config.hxx"
 
 namespace py = pybind11;
@@ -201,6 +202,14 @@ public:
         return numberOfVertices;
     }
 
+    const LdpDirectedGraph& getMyGraph() const{
+        return myGraph;
+    }
+
+    const LdpDirectedGraph& getMyGraphLifted() const{
+        return myGraphLifted;
+    }
+
 private:
 
     //LdpInstance(const LdpInstance& ldpI);
@@ -217,6 +226,9 @@ private:
 
 	andres::graph::Digraph<> graph_;
 	andres::graph::Digraph<> graphLifted_;
+
+    LdpDirectedGraph myGraph;
+    LdpDirectedGraph myGraphLifted;
 
     std::vector<std::unordered_set<size_t>> strongBaseEdges;
 

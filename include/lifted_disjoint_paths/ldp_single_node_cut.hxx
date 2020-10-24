@@ -7,6 +7,7 @@
 #include <list>
 #include <set>
 #include <config.hxx>
+#include "ldp_directed_graph.hxx"
 #include<lifted_disjoint_paths/ldp_functions.hxx>
 
 namespace LPMP {
@@ -23,23 +24,15 @@ struct StrForTopDownUpdate{
     solutionCosts(bCosts.size()+1),
 	optValue(0),
     nodeID(centralNodeID)
-   // topDownValuesStructure(centralNodeID,mostDistantNodeID,0),
- //   topDownVertexIDStructure(centralNodeID,mostDistantNodeID,vertexToReach)
+
 	{
         size_t first=std::min(centralNodeID,mostDistantNodeID);
         size_t last=std::max(centralNodeID,mostDistantNodeID)+1;
-//        for(size_t i=first;i<last;i++){
-//            instance.sncNeighborStructure[i]=0;
-//            instance.sncTDStructure[i]=0;
-//            instance.sncBUStructure[i]=0;
-//            instance.sncClosedVertices[i]=0;
 
-//        }
 
         fillWithValue<size_t>(instance.sncNeighborStructure,first,last,vertexToReach);
         fillWithValue<double>(instance.sncTDStructure,first,last,0);
-       // fillWithValue<double>(instance.sncBUStructure,first,last,0);
-        //fillWithValue<char>(instance.sncClosedVertices,first,last,0);
+
 
         optBaseIndex=bCosts.size();
 	}
@@ -49,9 +42,6 @@ struct StrForTopDownUpdate{
     const std::vector<double>& liftedCosts;
 
     std::vector<double> solutionCosts;
-   // ShiftedVector<double> topDownValuesStructure;
-  //  ShiftedVector<size_t> topDownVertexIDStructure;
-
     size_t optBaseIndex;
     double optValue;
 
@@ -189,42 +179,35 @@ private:
     //Obtain IDs of vertices of lifted edges that are part of a found optimal solution
     std::list<size_t> getOptLiftedFromIndexStr(const StrForTopDownUpdate<LDP_INSTANCE>& myStr)const;
 
-//    template<typename T>
-//    void fillWithValue(std::vector<T>& myVector,size_t first,size_t last, T value){
-//        for(size_t i=first;i<last;i++){
-//            myVector[i]=value;
-//        }
-//    }
-
 
     //Methods for exploring graph structures
-    size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex) const{
-		assert(firstNode < baseGraph.numberOfVertices());
-		if(isOutFlow){
-			return baseGraph.vertexFromVertex(firstNode,neighborIndex);
-		}
-		else{
-			return baseGraph.vertexToVertex(firstNode,neighborIndex);
-		}
-	}
-	size_t numberOfNeighborsBase(const size_t nodeIndex) const {
-		assert(nodeIndex < baseGraph.numberOfVertices());
-		if(isOutFlow){
-			return baseGraph.numberOfEdgesFromVertex(nodeIndex);
-		}
-		else{
-			return baseGraph.numberOfEdgesToVertex(nodeIndex);
-		}
-	}
-	size_t numberOfNeighborsBaseRev(const size_t nodeIndex) const {
-		assert(nodeIndex < baseGraph.numberOfVertices());
-		if(!isOutFlow){
-			return baseGraph.numberOfEdgesFromVertex(nodeIndex);
-		}
-		else{
-			return baseGraph.numberOfEdgesToVertex(nodeIndex);
-		}
-	}
+//    size_t getNeighborBaseVertex(size_t firstNode,size_t neighborIndex) const{
+//        assert(firstNode < baseGraph.numberOfVertices());
+//        if(isOutFlow){
+//            return baseGraph.vertexFromVertex(firstNode,neighborIndex);
+//        }
+//        else{
+//            return baseGraph.vertexToVertex(firstNode,neighborIndex);
+//        }
+//    }
+//    size_t numberOfNeighborsBase(const size_t nodeIndex) const {
+//        assert(nodeIndex < baseGraph.numberOfVertices());
+//        if(isOutFlow){
+//            return baseGraph.numberOfEdgesFromVertex(nodeIndex);
+//        }
+//        else{
+//            return baseGraph.numberOfEdgesToVertex(nodeIndex);
+//        }
+//    }
+    size_t numberOfNeighborsBaseRev(const size_t nodeIndex) const {
+        assert(nodeIndex < baseGraph.numberOfVertices());
+        if(!isOutFlow){
+            return baseGraph.numberOfEdgesFromVertex(nodeIndex);
+        }
+        else{
+            return baseGraph.numberOfEdgesToVertex(nodeIndex);
+        }
+    }
 
 
     bool isInGivenInterval(const size_t nodeIndex,const size_t boundaryIndex) const {
@@ -237,23 +220,60 @@ private:
         }
     }
 
-	size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex)const{
-		if(isOutFlow){
-			return baseGraph.edgeFromVertex(firstNode,neighborIndex);
-		}
-		else{
-			return baseGraph.edgeToVertex(firstNode,neighborIndex);
-		}
-	}
+//    size_t getNeighborBaseEdge(size_t firstNode,size_t neighborIndex)const{
+//        if(isOutFlow){
+//            return baseGraph.edgeFromVertex(firstNode,neighborIndex);
+//        }
+//        else{
+//            return baseGraph.edgeToVertex(firstNode,neighborIndex);
+//        }
+//    }
 
-	size_t getNeighborBaseVertexRev(size_t firstNode,size_t neighborIndex)const{
-		if(!isOutFlow){
-			return baseGraph.vertexFromVertex(firstNode,neighborIndex);
-		}
-		else{
-			return baseGraph.vertexToVertex(firstNode,neighborIndex);
-		}
-	}
+    size_t getNeighborBaseVertexRev(size_t firstNode,size_t neighborIndex)const{
+        if(!isOutFlow){
+            return baseGraph.vertexFromVertex(firstNode,neighborIndex);
+        }
+        else{
+            return baseGraph.vertexToVertex(firstNode,neighborIndex);
+        }
+    }
+
+    const size_t* neighborsBegin(const size_t& nodeIndex)const{
+        if(isOutFlow){
+            return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
+        }
+        else {
+            return ldpBaseGraph.backwardNeighborsBegin(nodeIndex);
+        }
+    }
+
+    const size_t* neighborsEnd(const size_t& nodeIndex)const{
+        if(isOutFlow){
+            return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
+        }
+        else {
+            return ldpBaseGraph.backwardNeighborsEnd(nodeIndex);
+        }
+    }
+
+    const size_t* neighborsRevBegin(const size_t& nodeIndex)const{
+        if(!isOutFlow){
+            return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
+        }
+        else {
+            return ldpBaseGraph.backwardNeighborsBegin(nodeIndex);
+        }
+    }
+
+    const size_t* neighborsRevEnd(const size_t& nodeIndex)const{
+        if(!isOutFlow){
+            return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
+        }
+        else {
+            return ldpBaseGraph.backwardNeighborsEnd(nodeIndex);
+        }
+    }
+
 	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex)const {
 		if(isOutFlow){
 			return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
@@ -325,6 +345,8 @@ private:
      const andres::graph::Digraph<>& baseGraph;
      const andres::graph::Digraph<>& liftedGraph;
      const LDP_INSTANCE& ldpInstance;
+     const LdpDirectedGraph& ldpBaseGraph;
+     const LdpDirectedGraph& ldpLiftedGraph;
 
      //costs
      std::vector<double> baseCosts;
@@ -369,7 +391,9 @@ baseGraph(ldpInst.getGraph()),
 liftedGraph(ldpInst.getGraphLifted()),
 nodeID(nID),
 ldpInstance(ldpInst),
-isOutFlow(isOut)
+isOutFlow(isOut),
+ldpBaseGraph(ldpInst.getMyGraph()),
+ldpLiftedGraph(ldpInst.getMyGraphLifted())
 
 {
 
@@ -628,31 +652,64 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
 	liftedCosts=std::vector<double>();
 	liftedIDs=std::vector<size_t>();
 	liftedIDToOrder.clear();
-	if(fractionLifted==0){
-		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
-			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
-            if(neighborID!=getVertexToReach()){
-                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+    const LdpDirectedGraph& myLiftedGraph=ldpInstance.getMyGraphLifted();
+
+    if(isOutFlow){
+        const double* costIt=myLiftedGraph.forwardCostBegin(nodeID);
+        const size_t* edgeIt=myLiftedGraph.forwardNeighborsBegin(nodeID);
+        size_t counter=0;
+        for (;edgeIt!=myLiftedGraph.forwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
+            assert(costIt!=myLiftedGraph.forwardCostEnd(nodeID));
+            liftedCosts.push_back((*costIt)*fractionLifted);
+            liftedIDs.push_back(*edgeIt);
+            liftedIDToOrder[*edgeIt]=counter;
+            if(*edgeIt!=ldpInstance.getTerminalNode()){
+                mostDistantNeighborID=std::max(mostDistantNeighborID,*edgeIt);
             }
-			//liftedCosts[neighborID]=0;
-			liftedCosts.push_back(0);
-			liftedIDs.push_back(neighborID);
-			liftedIDToOrder[neighborID]=i;
-		}
-	}
-	else{
-		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
-			size_t edgeID=getNeighborLiftedEdge(nodeID,i);
-			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
-            if(neighborID!=getVertexToReach()){
-                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+            counter++;
+        }
+    }
+    else{
+        const double* costIt=myLiftedGraph.backwardCostBegin(nodeID);
+        const size_t* edgeIt=myLiftedGraph.backwardNeighborsBegin(nodeID);
+        size_t counter=0;
+        for (;edgeIt!=myLiftedGraph.backwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
+            assert(costIt!=myLiftedGraph.backwardCostEnd(nodeID));
+            liftedCosts.push_back((*costIt)*fractionLifted);
+            liftedIDs.push_back(*edgeIt);
+            liftedIDToOrder[*edgeIt]=counter;
+            if(*edgeIt!=ldpInstance.getSourceNode()){
+                mostDistantNeighborID=std::min(mostDistantNeighborID,*edgeIt);
             }
-			double cost=ldpInstance.getLiftedEdgeScore(edgeID);
-			liftedCosts.push_back(fractionLifted*cost);
-			liftedIDs.push_back(neighborID);
-			liftedIDToOrder[neighborID]=i;
-		}
-	}
+            counter++;
+        }
+    }
+
+//	if(fractionLifted==0){
+//		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+//			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+//            if(neighborID!=getVertexToReach()){
+//                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+//            }
+//			//liftedCosts[neighborID]=0;
+//			liftedCosts.push_back(0);
+//			liftedIDs.push_back(neighborID);
+//			liftedIDToOrder[neighborID]=i;
+//		}
+//	}
+//	else{
+//		for (int i = 0; i < numberOfNeighborsLifted(nodeID); ++i) {
+//			size_t edgeID=getNeighborLiftedEdge(nodeID,i);
+//			size_t neighborID=getNeighborLiftedVertex(nodeID,i);
+//            if(neighborID!=getVertexToReach()){
+//                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+//            }
+//			double cost=ldpInstance.getLiftedEdgeScore(edgeID);
+//			liftedCosts.push_back(fractionLifted*cost);
+//			liftedIDs.push_back(neighborID);
+//			liftedIDToOrder[neighborID]=i;
+//		}
+//	}
 
     optValueUpToDate=false;
     solutionCostsUpToDate=false;
@@ -664,32 +721,70 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 	baseCosts=std::vector<double>();
 	baseIDs=std::vector<size_t>();
     baseIDToIndex.clear();
-	if(fractionBase==0){
-		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
-			size_t neighborID=getNeighborBaseVertex(nodeID,i);
-            if(neighborID!=getVertexToReach()){
-                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
-            }
-			baseCosts.push_back(0);
-			baseIDs.push_back(neighborID);
-            baseIDToIndex[neighborID]=i;
-		}
-	}
-	else{
-		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
-			size_t edgeID=getNeighborBaseEdge(nodeID,i);
-			size_t neighborID=getNeighborBaseVertex(nodeID,i);
-            if(neighborID!=getVertexToReach()){
-                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
-            }
-			double cost=ldpInstance.getEdgeScore(edgeID);
-            baseCosts.push_back(fractionBase*cost);
-			baseIDs.push_back(neighborID);
-            baseIDToIndex[neighborID]=i;
 
-		}
 
-	}
+    const LdpDirectedGraph& myBaseGraph=ldpInstance.getMyGraph();
+
+    if(isOutFlow){
+        const double* costIt=myBaseGraph.forwardCostBegin(nodeID);
+        const size_t* edgeIt=myBaseGraph.forwardNeighborsBegin(nodeID);
+        size_t counter=0;
+        for (;edgeIt!=myBaseGraph.forwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
+            assert(costIt!=myBaseGraph.forwardCostEnd(nodeID));
+            baseCosts.push_back((*costIt)*fractionBase);
+            baseIDs.push_back(*edgeIt);
+            baseIDToIndex[*edgeIt]=counter;
+            if(*edgeIt!=ldpInstance.getTerminalNode()){
+                mostDistantNeighborID=std::max(mostDistantNeighborID,*edgeIt);
+            }
+            counter++;
+        }
+    }
+    else{
+        const double* costIt=myBaseGraph.backwardCostBegin(nodeID);
+        const size_t* edgeIt=myBaseGraph.backwardNeighborsBegin(nodeID);
+        size_t counter=0;
+        for (;edgeIt!=myBaseGraph.backwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
+            assert(costIt!=myBaseGraph.backwardCostEnd(nodeID));
+            baseCosts.push_back((*costIt)*fractionBase);
+            baseIDs.push_back(*edgeIt);
+            baseIDToIndex[*edgeIt]=counter;
+            if(*edgeIt!=ldpInstance.getSourceNode()){
+                mostDistantNeighborID=std::min(mostDistantNeighborID,*edgeIt);
+            }
+            counter++;
+        }
+    }
+
+
+
+
+//	if(fractionBase==0){
+//		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
+//			size_t neighborID=getNeighborBaseVertex(nodeID,i);
+//            if(neighborID!=getVertexToReach()){
+//                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+//            }
+//			baseCosts.push_back(0);
+//			baseIDs.push_back(neighborID);
+//            baseIDToIndex[neighborID]=i;
+//		}
+//	}
+//	else{
+//		for (int i = 0; i < numberOfNeighborsBase(nodeID); ++i) {
+//			size_t edgeID=getNeighborBaseEdge(nodeID,i);
+//			size_t neighborID=getNeighborBaseVertex(nodeID,i);
+//            if(neighborID!=getVertexToReach()){
+//                mostDistantNeighborID=getMoreDistantNode(mostDistantNeighborID,neighborID);
+//            }
+//			double cost=ldpInstance.getEdgeScore(edgeID);
+//            baseCosts.push_back(fractionBase*cost);
+//			baseIDs.push_back(neighborID);
+//            baseIDToIndex[neighborID]=i;
+
+//		}
+
+//	}
     solutionCosts=std::vector<double>(baseCosts.size()+1);
 
     optValueUpToDate=false;
@@ -766,6 +861,8 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
 	std::stack<size_t> nodeStack;
 	nodeStack.push(nodeID);
 
+    const LdpDirectedGraph& ldpBaseGraph=ldpInstance.getMyGraphLifted();
+
 	while(!nodeStack.empty()){
 		size_t currentNode=nodeStack.top();
 
@@ -780,13 +877,20 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
 
             //Traverse all base neighbors in direction out from central node
             //Not closed vertices store to the stack. Search for best descendant in closed neighbors
-			for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
-				size_t desc=getNeighborBaseVertex(currentNode,i);
+            const size_t* vertexIt=neighborsBegin(currentNode);
+            const size_t* end=neighborsEnd(currentNode);
+
+         //   const double* costIt=ldpBaseGraph.forwardCostBegin(currentNode);
+            for (;vertexIt!=end;vertexIt++) {
+
+               size_t desc=*vertexIt;
+//			for (int i = 0; i < numberOfNeighborsBase(currentNode); ++i) {
+//				size_t desc=getNeighborBaseVertex(currentNode,i);
                 if(desc==vertexIDToIgnore||desc==getVertexToReach()) continue;
 
                 if(isInGivenInterval(desc,mostDistantNeighborID)){
 
-                    assert(desc<baseGraph.numberOfVertices());
+                    //assert(desc<baseGraph.numberOfVertices());
                     if(ldpInstance.sncClosedVertices[desc]){  //descendant closed
                         if(descClosed){
                             //double value=myStr.topDownValuesStructure[desc];

@@ -102,7 +102,11 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     numberOfVertices=graph_.numberOfVertices();
     numberOfLiftedEdges=graphLifted_.numberOfEdges();
     numberOfEdges=graph_.numberOfEdges();
+
     vertexScore=std::vector<double>(graph_.numberOfVertices()-2);
+
+    myGraph=LdpDirectedGraph(graph_,edgeScore);
+    myGraphLifted=LdpDirectedGraph(graphLifted_,liftedEdgeScore);
 
     minV=0;
     maxV=maxVertex;
@@ -150,6 +154,9 @@ void LdpInstance::init(){
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();
     }
+
+    myGraph=LdpDirectedGraph(graph_,edgeScore);
+    myGraphLifted=LdpDirectedGraph(graphLifted_,liftedEdgeScore);
 
     numberOfVertices=graph_.numberOfVertices();
     numberOfEdges=graph_.numberOfEdges();

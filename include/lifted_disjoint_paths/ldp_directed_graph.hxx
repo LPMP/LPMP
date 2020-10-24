@@ -8,6 +8,7 @@ namespace LPMP {
 
 class LdpDirectedGraph{
 public:
+    LdpDirectedGraph(){}
     LdpDirectedGraph(const andres::graph::Digraph<>& inputGraph,const std::vector<double>& inputEdgeCosts){
         size_t numberOfVertices=inputGraph.numberOfVertices();
         std::vector<std::size_t> adjacencyForward(numberOfVertices);
