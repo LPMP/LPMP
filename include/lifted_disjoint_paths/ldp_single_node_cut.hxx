@@ -211,7 +211,7 @@ private:
 
 
     bool isInGivenInterval(const size_t nodeIndex,const size_t boundaryIndex) const {
-        assert(nodeIndex < baseGraph.numberOfVertices());
+        assert(nodeIndex < ldpInstance.getNumberOfVertices());
         if(isOutFlow){
             return nodeIndex<=boundaryIndex;
         }
@@ -274,32 +274,32 @@ private:
         }
     }
 
-	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex)const {
-		if(isOutFlow){
-			return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
-		}
-		else{
-			return liftedGraph.edgeToVertex(firstNode,neighborIndex);
-		}
-	}
+//	size_t getNeighborLiftedEdge(size_t firstNode,size_t neighborIndex)const {
+//		if(isOutFlow){
+//			return liftedGraph.edgeFromVertex(firstNode,neighborIndex);
+//		}
+//		else{
+//			return liftedGraph.edgeToVertex(firstNode,neighborIndex);
+//		}
+//	}
 
-    size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex)const {
-		if(isOutFlow){
-			return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
-		}
-		else{
-			return liftedGraph.vertexToVertex(firstNode,neighborIndex);
-		}
-	}
+//    size_t getNeighborLiftedVertex(size_t firstNode,size_t neighborIndex)const {
+//		if(isOutFlow){
+//			return liftedGraph.vertexFromVertex(firstNode,neighborIndex);
+//		}
+//		else{
+//			return liftedGraph.vertexToVertex(firstNode,neighborIndex);
+//		}
+//	}
 
-	size_t numberOfNeighborsLifted(size_t nodeIndex)const {
-		if(isOutFlow){
-			return liftedGraph.numberOfEdgesFromVertex(nodeIndex);
-		}
-		else{
-			return liftedGraph.numberOfEdgesToVertex(nodeIndex);
-		}
-	}
+//	size_t numberOfNeighborsLifted(size_t nodeIndex)const {
+//		if(isOutFlow){
+//			return liftedGraph.numberOfEdgesFromVertex(nodeIndex);
+//		}
+//		else{
+//			return liftedGraph.numberOfEdgesToVertex(nodeIndex);
+//		}
+//	}
 
 	bool reachable(size_t firstVertex,size_t secondVertex)const{
 		if(isOutFlow){
@@ -342,8 +342,8 @@ private:
      size_t maxVertex;
 
      //References to graph structures
-     const andres::graph::Digraph<>& baseGraph;
-     const andres::graph::Digraph<>& liftedGraph;
+    // const andres::graph::Digraph<>& baseGraph;
+    // const andres::graph::Digraph<>& liftedGraph;
      const LDP_INSTANCE& ldpInstance;
      const LdpDirectedGraph& ldpBaseGraph;
      const LdpDirectedGraph& ldpLiftedGraph;
@@ -387,8 +387,8 @@ private:
 
 template<class LDP_INSTANCE>
 inline  ldp_single_node_cut_factor<LDP_INSTANCE>::ldp_single_node_cut_factor(const LDP_INSTANCE& ldpInst,size_t nID,bool isOut):
-baseGraph(ldpInst.getGraph()),
-liftedGraph(ldpInst.getGraphLifted()),
+//baseGraph(ldpInst.getGraph()),
+//liftedGraph(ldpInst.getGraphLifted()),
 nodeID(nID),
 ldpInstance(ldpInst),
 isOutFlow(isOut),
@@ -944,7 +944,7 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
                     //Close current node, store best node value and pointer to the best descendant
 
                     assert(!vertexToIgnoreSet||bestDescVertexID!=vertexIDToIgnore);
-                    assert(currentNode<baseGraph.numberOfVertices());
+                    assert(currentNode<ldpInstance.getNumberOfVertices());
 
                     //adding the descendant value to the already stored lifted cost of node
 //                    myStr.topDownValuesStructure[currentNode]+=bestDescValue;
@@ -1301,7 +1301,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     //The bottom up value for optimal vertices is known. It is obtained by subtracting the top down value of their descendants from the currentOptValue
     //Note that vertices closed in this for cycle will not have valid bottomUpVertexIDStructure entries
     for(size_t optVertex:isOneInOpt){
-        assert(optVertex<baseGraph.numberOfVertices());
+        assert(optVertex<ldpInstance.getNumberOfVertices());
         //size_t bestDesc=myStr.topDownVertexIDStructure[optVertex];
         size_t bestDesc=ldpInstance.sncNeighborStructure[optVertex];
         double toSubtract=0;
