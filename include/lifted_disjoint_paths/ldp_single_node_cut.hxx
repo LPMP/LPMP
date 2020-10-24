@@ -199,15 +199,15 @@ private:
 //            return baseGraph.numberOfEdgesToVertex(nodeIndex);
 //        }
 //    }
-    size_t numberOfNeighborsBaseRev(const size_t nodeIndex) const {
-        assert(nodeIndex < baseGraph.numberOfVertices());
-        if(!isOutFlow){
-            return baseGraph.numberOfEdgesFromVertex(nodeIndex);
-        }
-        else{
-            return baseGraph.numberOfEdgesToVertex(nodeIndex);
-        }
-    }
+//    size_t numberOfNeighborsBaseRev(const size_t nodeIndex) const {
+//        assert(nodeIndex < baseGraph.numberOfVertices());
+//        if(!isOutFlow){
+//            return baseGraph.numberOfEdgesFromVertex(nodeIndex);
+//        }
+//        else{
+//            return baseGraph.numberOfEdgesToVertex(nodeIndex);
+//        }
+//    }
 
 
     bool isInGivenInterval(const size_t nodeIndex,const size_t boundaryIndex) const {
@@ -229,14 +229,14 @@ private:
 //        }
 //    }
 
-    size_t getNeighborBaseVertexRev(size_t firstNode,size_t neighborIndex)const{
-        if(!isOutFlow){
-            return baseGraph.vertexFromVertex(firstNode,neighborIndex);
-        }
-        else{
-            return baseGraph.vertexToVertex(firstNode,neighborIndex);
-        }
-    }
+//    size_t getNeighborBaseVertexRev(size_t firstNode,size_t neighborIndex)const{
+//        if(!isOutFlow){
+//            return baseGraph.vertexFromVertex(firstNode,neighborIndex);
+//        }
+//        else{
+//            return baseGraph.vertexToVertex(firstNode,neighborIndex);
+//        }
+//    }
 
     const size_t* neighborsBegin(const size_t& nodeIndex)const{
         if(isOutFlow){
@@ -861,7 +861,6 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
 	std::stack<size_t> nodeStack;
 	nodeStack.push(nodeID);
 
-    const LdpDirectedGraph& ldpBaseGraph=ldpInstance.getMyGraphLifted();
 
 	while(!nodeStack.empty()){
 		size_t currentNode=nodeStack.top();
@@ -1069,8 +1068,12 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 		}
 		else{
 			bool predClosed=true;
-			for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) {
-				size_t pred=getNeighborBaseVertexRev(currentVertex,i);
+            const size_t* vertexIt=neighborsRevBegin(currentVertex);
+            const size_t* end=neighborsRevEnd(currentVertex);
+            for (;vertexIt!=end;vertexIt++) {
+                 size_t pred=*vertexIt;
+//			for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) {
+//				size_t pred=getNeighborBaseVertexRev(currentVertex,i);
                 if(pred==nodeID||!verticesInScope.isWithinBounds(pred)||!verticesInScope[pred]) continue;
                 if(!ldpInstance.sncClosedVertices[pred]){
 					predClosed=false;
@@ -1087,8 +1090,13 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
                     bestValue=ldpInstance.sncBUStructure[currentVertex]+nodeCost;
                     bestIndex=nodeID;
                 }
-                for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) { //Select the best possible neighbor
-                    size_t pred=getNeighborBaseVertexRev(currentVertex,i);
+                const size_t* vertexIt=neighborsRevBegin(currentVertex);
+                const size_t* end=neighborsRevEnd(currentVertex);
+                for (;vertexIt!=end;vertexIt++) {
+                    size_t pred=*vertexIt;
+
+//                for (int i = 0; i < numberOfNeighborsBaseRev(currentVertex); ++i) { //Select the best possible neighbor
+//                    size_t pred=getNeighborBaseVertexRev(currentVertex,i);
                     if(pred==nodeID||!verticesInScope.isWithinBounds(pred)||!verticesInScope[pred]) continue;
                     assert(ldpInstance.sncClosedVertices[pred]>0);
                    // double value=bottomUpValuesStructure[pred];
