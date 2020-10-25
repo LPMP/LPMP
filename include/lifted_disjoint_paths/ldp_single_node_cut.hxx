@@ -173,7 +173,7 @@ private:
     //Methods used in computing lower bound or min marginals
     void topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr, const size_t vertexIDToIgnore) const;
     void topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr) const;
-    std::unordered_map<size_t,double> bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr, const size_t vertex, const ShiftedVector<char> &verticesInScope, bool onlyOne)const;
+    std::unordered_map<size_t,double> bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr, const ShiftedVector<char> &verticesInScope, const size_t vertex)const;
     void updateOptimal() const;
     void initTraverseOrder();
 
@@ -897,27 +897,12 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
 template<class LDP_INSTANCE>
 void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertexIDToIgnore) const{
 
-//size_t vertexIDToIgnore=getVertexToReach();
+
     bool vertexToIgnoreSet=false;
     size_t lastVertex=mostDistantNeighborID;
     if(vertexIDToIgnore!=getVertexToReach()){
         vertexToIgnoreSet=true;
         lastVertex=vertexIDToIgnore;
-//        size_t minV=0;
-//        size_t maxV=0;
-//        if(isOutFlow){
-//            minV=vertexIDToIgnore;
-//            maxV=mostDistantNeighborID+1;
-//            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
-//            fillWithValue<char>(ldpInstance.sncClosedVertices,nodeID,minV,0);
-//        }
-//        else{
-//            minV=mostDistantNeighborID;
-//            maxV=vertexIDToIgnore+1;
-//            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
-//            fillWithValue<char>(ldpInstance.sncClosedVertices,maxV,nodeID+1,0);
-
-//        }
 
     }
     else{
@@ -936,15 +921,10 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         }
     }
 
-    size_t i=0;
 
-//    if(vertexToIgnoreSet){
-//        while(traverseOrder[i]!=vertexIDToIgnore){
-//            i++;
-//        }
-//        i++;
-//    }
-    for (; i < traverseOrder.size()-1; ++i) {
+
+
+    for (size_t i=0; i < traverseOrder.size()-1; ++i) {
 
         size_t currentNode=traverseOrder[i];
 
@@ -1077,7 +1057,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
         for(size_t i=0;i<traverseOrder.size();i++){
             verticesInScope[traverseOrder[i]]=1;
         }
-        std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,liftedIDs[indexOfLiftedEdge],verticesInScope,true);
+        std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,verticesInScope,liftedIDs[indexOfLiftedEdge]);
 
 		auto it =message.begin();
 		double messValue=it->second;
@@ -1095,9 +1075,10 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
 
 
 template<class LDP_INSTANCE>
-inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertex,const ShiftedVector<char>& verticesInScope,bool onlyOne)const{
+inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr,const ShiftedVector<char>& verticesInScope,const size_t vertex)const{
 
 	std::unordered_map<size_t,double> messages;
+    bool onlyOne=vertex!=nodeID;
 	if(onlyOne){
         fillWithValue<char>(ldpInstance.sncClosedVertices,minVertex,maxVertex+1,0);
     }
@@ -1306,7 +1287,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     //Compute min marginals for non-optimal nodes by finding best paths from the central node to these nodes
     //Traversing in bottom up order ensures that already computed values of bottom up structures remain valid
-            std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,0,verticesInScope,false);
+            std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,verticesInScope,nodeID);
             liftedMessages.insert(newMessages.begin(),newMessages.end());
             if(debug()){
                 for(auto pair:newMessages){
