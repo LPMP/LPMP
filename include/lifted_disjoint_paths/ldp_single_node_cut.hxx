@@ -1099,30 +1099,33 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
 
     //Start DFS from the input vertex in the direction towards the central node
-	std::stack<size_t> myStack;
-	myStack.push(vertex);
+    //std::stack<size_t> myStack;
+    //myStack.push(vertex);
 
-	while(!myStack.empty()){
-		size_t currentVertex=myStack.top();
 
-        if(ldpInstance.sncClosedVertices[currentVertex]){
-			myStack.pop();
-		}
-		else{
-			bool predClosed=true;
-            const size_t* vertexIt=neighborsRevBegin(currentVertex);
-            const size_t* end=neighborsRevEnd(currentVertex);
-            for (;vertexIt!=end;vertexIt++) {
-                 size_t pred=*vertexIt;
+    //while(!myStack.empty()){
+        //size_t currentVertex=myStack.top();
 
-                if(pred==nodeID||!verticesInScope.isWithinBounds(pred)||!verticesInScope[pred]) continue;
-                if(!ldpInstance.sncClosedVertices[pred]){
-					predClosed=false;
-					myStack.push(pred);
-				}
-			}
-            if(predClosed){
+    //    if(ldpInstance.sncClosedVertices[currentVertex]){
+        //	myStack.pop();
+    //	}
+    //	else{
+//			bool predClosed=true;
+//            const size_t* vertexIt=neighborsRevBegin(currentVertex);
+//            const size_t* end=neighborsRevEnd(currentVertex);
+//            for (;vertexIt!=end;vertexIt++) {
+//                 size_t pred=*vertexIt;
 
+//                if(pred==nodeID||!verticesInScope.isWithinBounds(pred)||!verticesInScope[pred]) continue;
+//                if(!ldpInstance.sncClosedVertices[pred]){
+//					predClosed=false;
+//					myStack.push(pred);
+//				}
+//			}
+//            if(predClosed){
+    for(size_t i=traverseOrder.size()-1;i>=1;i--){
+        size_t currentVertex=traverseOrder[i-1];
+         if(ldpInstance.sncClosedVertices[currentVertex]) continue;
                 size_t bestIndex=getVertexToReach();
                 double bestValue=std::numeric_limits<double>::infinity();
 
@@ -1172,10 +1175,10 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
                 ldpInstance.sncClosedVertices[currentVertex]=1;
                 ldpInstance.sncBUStructure[currentVertex]=bestValue;
-				myStack.pop();
+            //	myStack.pop();
 
-			}
-		}
+            //}
+        //}
 	}
 
 	return messages;
@@ -1320,9 +1323,10 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     //Compute min marginals for non-optimal nodes by finding best paths from the central node to these nodes
     //Traversing in bottom up order ensures that already computed values of bottom up structures remain valid
-	for(size_t vertexID:liftedIDs){
-        if(!ldpInstance.sncClosedVertices[vertexID]){
-            std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,vertexID,verticesInScope,false);
+//	for(size_t vertexID:liftedIDs){
+//        if(!ldpInstance.sncClosedVertices[vertexID]){
+            //std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,vertexID,verticesInScope,false);
+    std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,0,verticesInScope,false);
 			liftedMessages.insert(newMessages.begin(),newMessages.end());
             if(debug()){
                 for(auto pair:newMessages){
@@ -1331,8 +1335,8 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
                     localLiftedCosts.at(liftedIDToOrder.at(v))-=val;
                 }
             }
-		}
-	}
+//		}
+//	}
 
 
     //Storing values from messages to output vector
