@@ -740,148 +740,148 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TOD
 //}
 
 
-template<class LDP_INSTANCE>
-void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertexIDToIgnore) const{
+//template<class LDP_INSTANCE>
+//void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertexIDToIgnore) const{
 
 
-    bool vertexToIgnoreSet=false;
-    size_t lastVertex=mostDistantNeighborID;
-    if(vertexIDToIgnore!=getVertexToReach()){
-        vertexToIgnoreSet=true;
-        lastVertex=vertexIDToIgnore;
-        size_t minV=0;
-        size_t maxV=0;
-        if(isOutFlow){
-            minV=vertexIDToIgnore;
-            maxV=mostDistantNeighborID+1;
-            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
-            fillWithValue<char>(ldpInstance.sncClosedVertices,nodeID,minV,0);
-        }
-        else{
-            minV=mostDistantNeighborID;
-            maxV=vertexIDToIgnore+1;
-            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
-            fillWithValue<char>(ldpInstance.sncClosedVertices,maxV,nodeID+1,0);
+//    bool vertexToIgnoreSet=false;
+//    size_t lastVertex=mostDistantNeighborID;
+//    if(vertexIDToIgnore!=getVertexToReach()){
+//        vertexToIgnoreSet=true;
+//        lastVertex=vertexIDToIgnore;
+//        size_t minV=0;
+//        size_t maxV=0;
+//        if(isOutFlow){
+//            minV=vertexIDToIgnore;
+//            maxV=mostDistantNeighborID+1;
+//            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
+//            fillWithValue<char>(ldpInstance.sncClosedVertices,nodeID,minV,0);
+//        }
+//        else{
+//            minV=mostDistantNeighborID;
+//            maxV=vertexIDToIgnore+1;
+//            fillWithValue<char>(ldpInstance.sncClosedVertices,minV,maxV,1);
+//            fillWithValue<char>(ldpInstance.sncClosedVertices,maxV,nodeID+1,0);
 
-        }
+//        }
 
-    }
-    else{
-        fillWithValue<char>(ldpInstance.sncClosedVertices,minVertex,maxVertex+1,0);
-    }
-
-
-    if(vertexToIgnoreSet){
-        fillWithValue<double>(ldpInstance.sncTDStructure,std::min(nodeID,vertexIDToIgnore),std::max(nodeID,vertexIDToIgnore)+1,0);
-    }
-
-    //Store all lifted costs to top down values structure
-    for (int i = 0; i < liftedIDs.size(); ++i) {
-        if(!vertexToIgnoreSet||isInGivenInterval(liftedIDs.at(i),lastVertex)){
-            ldpInstance.sncTDStructure[liftedIDs.at(i)]=myStr.liftedCosts.at(i);
-        }
-    }
+//    }
+//    else{
+//        fillWithValue<char>(ldpInstance.sncClosedVertices,minVertex,maxVertex+1,0);
+//    }
 
 
-    std::stack<size_t> nodeStack;
-    nodeStack.push(nodeID);
+//    if(vertexToIgnoreSet){
+//        fillWithValue<double>(ldpInstance.sncTDStructure,std::min(nodeID,vertexIDToIgnore),std::max(nodeID,vertexIDToIgnore)+1,0);
+//    }
+
+//    //Store all lifted costs to top down values structure
+//    for (int i = 0; i < liftedIDs.size(); ++i) {
+//        if(!vertexToIgnoreSet||isInGivenInterval(liftedIDs.at(i),lastVertex)){
+//            ldpInstance.sncTDStructure[liftedIDs.at(i)]=myStr.liftedCosts.at(i);
+//        }
+//    }
 
 
-    while(!nodeStack.empty()){
-        size_t currentNode=nodeStack.top();
-
-        if(ldpInstance.sncClosedVertices[currentNode]){
-            nodeStack.pop();
-        }
-        else{
-
-            bool descClosed=true;
-            double bestDescValue=0;
-            size_t bestDescVertexID=getVertexToReach();
-
-            //Traverse all base neighbors in direction out from central node
-            //Not closed vertices store to the stack. Search for best descendant in closed neighbors
-            const size_t* vertexIt=neighborsBegin(currentNode);
-            const size_t* end=neighborsEnd(currentNode);
+//    std::stack<size_t> nodeStack;
+//    nodeStack.push(nodeID);
 
 
-            for (;vertexIt!=end;vertexIt++) {
+//    while(!nodeStack.empty()){
+//        size_t currentNode=nodeStack.top();
 
-               size_t desc=*vertexIt;
+//        if(ldpInstance.sncClosedVertices[currentNode]){
+//            nodeStack.pop();
+//        }
+//        else{
 
-                if(desc==vertexIDToIgnore||desc==getVertexToReach()) continue;
+//            bool descClosed=true;
+//            double bestDescValue=0;
+//            size_t bestDescVertexID=getVertexToReach();
 
-                if(isInGivenInterval(desc,mostDistantNeighborID)){
-
-                    if(ldpInstance.sncClosedVertices[desc]){  //descendant closed
-                        if(descClosed){
-                            double value=ldpInstance.sncTDStructure[desc];
-                            if(bestDescValue>value){
-                                bestDescValue=value;
-                                bestDescVertexID=desc;
-                            }
-                        }
-                    }
-                    else {  //descendant not closed
-                        nodeStack.push(desc);
-                        descClosed=false;
-                    }
-                }
+//            //Traverse all base neighbors in direction out from central node
+//            //Not closed vertices store to the stack. Search for best descendant in closed neighbors
+//            const size_t* vertexIt=neighborsBegin(currentNode);
+//            const size_t* end=neighborsEnd(currentNode);
 
 
-            }
-            if(descClosed){ //Close node if all descendants are closed
+//            for (;vertexIt!=end;vertexIt++) {
 
-                if(currentNode!=nodeID){
-                    //Close current node, store best node value and pointer to the best descendant
+//               size_t desc=*vertexIt;
 
-                    assert(!vertexToIgnoreSet||bestDescVertexID!=vertexIDToIgnore);
-                    assert(currentNode<ldpInstance.getNumberOfVertices());
+//                if(desc==vertexIDToIgnore||desc==getVertexToReach()) continue;
 
-                    //adding the descendant value to the already stored lifted cost of node
-                    ldpInstance.sncTDStructure[currentNode]+=bestDescValue;
-                    ldpInstance.sncNeighborStructure[currentNode]=bestDescVertexID;
+//                if(isInGivenInterval(desc,mostDistantNeighborID)){
 
-                    ldpInstance.sncClosedVertices[currentNode]=1; //marking the node as closed.
-
-                }
-                nodeStack.pop();
-
-            }
-        }
-
-    }
-      //all nodes closed, compute solution values
-        double bestSolutionValue=0;
-        size_t bestSolutionIndex=nodeNotActive;
-
-        myStr.solutionCosts[nodeNotActive]=0;
-        for (size_t i = 0; i < myStr.baseCosts.size(); ++i) {
-            double baseCost=myStr.baseCosts[i];
-            if(!vertexToIgnoreSet||baseIDs[i]!=vertexIDToIgnore){
-
-                double valueToAdd=0;
-                if(baseIDs[i]!=getVertexToReach()){
-                     valueToAdd=ldpInstance.sncTDStructure[baseIDs[i]];
-                }
-                double value=baseCost+nodeCost+valueToAdd;
-
-                myStr.solutionCosts.at(i)=value;
-                if(value<bestSolutionValue){
-                    bestSolutionValue=value;
-                    bestSolutionIndex=i;
-
-                }
-            }
-
-        }
-
-        myStr.optBaseIndex=bestSolutionIndex;
-        myStr.optValue=bestSolutionValue;
+//                    if(ldpInstance.sncClosedVertices[desc]){  //descendant closed
+//                        if(descClosed){
+//                            double value=ldpInstance.sncTDStructure[desc];
+//                            if(bestDescValue>value){
+//                                bestDescValue=value;
+//                                bestDescVertexID=desc;
+//                            }
+//                        }
+//                    }
+//                    else {  //descendant not closed
+//                        nodeStack.push(desc);
+//                        descClosed=false;
+//                    }
+//                }
 
 
+//            }
+//            if(descClosed){ //Close node if all descendants are closed
 
-}
+//                if(currentNode!=nodeID){
+//                    //Close current node, store best node value and pointer to the best descendant
+
+//                    assert(!vertexToIgnoreSet||bestDescVertexID!=vertexIDToIgnore);
+//                    assert(currentNode<ldpInstance.getNumberOfVertices());
+
+//                    //adding the descendant value to the already stored lifted cost of node
+//                    ldpInstance.sncTDStructure[currentNode]+=bestDescValue;
+//                    ldpInstance.sncNeighborStructure[currentNode]=bestDescVertexID;
+
+//                    ldpInstance.sncClosedVertices[currentNode]=1; //marking the node as closed.
+
+//                }
+//                nodeStack.pop();
+
+//            }
+//        }
+
+//    }
+//      //all nodes closed, compute solution values
+//        double bestSolutionValue=0;
+//        size_t bestSolutionIndex=nodeNotActive;
+
+//        myStr.solutionCosts[nodeNotActive]=0;
+//        for (size_t i = 0; i < myStr.baseCosts.size(); ++i) {
+//            double baseCost=myStr.baseCosts[i];
+//            if(!vertexToIgnoreSet||baseIDs[i]!=vertexIDToIgnore){
+
+//                double valueToAdd=0;
+//                if(baseIDs[i]!=getVertexToReach()){
+//                     valueToAdd=ldpInstance.sncTDStructure[baseIDs[i]];
+//                }
+//                double value=baseCost+nodeCost+valueToAdd;
+
+//                myStr.solutionCosts.at(i)=value;
+//                if(value<bestSolutionValue){
+//                    bestSolutionValue=value;
+//                    bestSolutionIndex=i;
+
+//                }
+//            }
+
+//        }
+
+//        myStr.optBaseIndex=bestSolutionIndex;
+//        myStr.optValue=bestSolutionValue;
+
+
+
+//}
 
 
 
@@ -890,14 +890,14 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
 //TODO make this separate from standard update
 template<class LDP_INSTANCE>
 void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr) const{
- //    topDownUpdate(myStr,getVertexToReach());
-//}
+     topDownUpdate(myStr,getVertexToReach());
+}
 
 
-//template<class LDP_INSTANCE>
-//void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertexIDToIgnore) const{
+template<class LDP_INSTANCE>
+void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr,const size_t vertexIDToIgnore) const{
 
-size_t vertexIDToIgnore=getVertexToReach();
+//size_t vertexIDToIgnore=getVertexToReach();
     bool vertexToIgnoreSet=false;
     size_t lastVertex=mostDistantNeighborID;
     if(vertexIDToIgnore!=getVertexToReach()){
@@ -938,17 +938,18 @@ size_t vertexIDToIgnore=getVertexToReach();
 
     size_t i=0;
 
-    if(vertexToIgnoreSet){
-        while(traverseOrder[i]!=vertexIDToIgnore){
-            i++;
-        }
-        i++;
-    }
+//    if(vertexToIgnoreSet){
+//        while(traverseOrder[i]!=vertexIDToIgnore){
+//            i++;
+//        }
+//        i++;
+//    }
     for (; i < traverseOrder.size()-1; ++i) {
 
         size_t currentNode=traverseOrder[i];
 
         if(currentNode==vertexIDToIgnore) continue;
+        if(!isInGivenInterval(currentNode,lastVertex)) continue;
         double bestDescValue=0;
         size_t bestDescVertexID=getVertexToReach();
 
