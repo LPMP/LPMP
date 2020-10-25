@@ -603,7 +603,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TR
 std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
     //TODO: Remember triangles that have already been added!
-
+/*
     if(diagnostics()) std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
 
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
@@ -1060,6 +1060,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     if(diagnostics()) std::cout<<"tighten expected improvement "<<expectedImprovement<<", added constraints "<<counter<<std::endl;
     adjustTriangleLabels(triangleFactorsOrigSize);
     return counter;
+    */
 
 }
 
@@ -1081,7 +1082,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     mcf_->reset_costs();
 
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
-    const andres::graph::Digraph<>& baseGraph=instance.getGraph();
+    //const andres::graph::Digraph<>& baseGraph=instance.getGraph();
     std::vector<std::unordered_map<size_t,double>> costsFromTriangles(nr_nodes());
 
 
