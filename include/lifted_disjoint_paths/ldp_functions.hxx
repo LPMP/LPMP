@@ -472,7 +472,12 @@ template<class T=char>
 
 
 
-
+template<typename T>
+void fillWithValue(std::vector<T>& myVector,size_t first,size_t last, T value){
+    for(size_t i=first;i<last;i++){
+        myVector[i]=value;
+    }
+}
 
 
 
@@ -487,6 +492,16 @@ public:
         //const size_t size = max - min + 1;
         //myVector = new T[size];
         myVector=std::vector<T>(maxVertex-minVertex+1,value);
+    }
+    ShiftedVector<T>(size_t boundary1,size_t boundary2,const std::vector<T>& sourceVector): //inclusive both min and max vertex
+    minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
+    {
+        assert(sourceVector.size()>maxVertex);
+        auto itBegin=sourceVector.begin();
+        itBegin+=minVertex;
+        auto itEnd=sourceVector.begin();
+        itEnd+=maxVertex+1;
+        myVector=std::vector<T>(itBegin,itEnd);
     }
     ShiftedVector<T>(size_t boundary1,size_t boundary2): //inclusive both min and max vertex
     minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
@@ -507,17 +522,17 @@ public:
         return myVector[shiftedIndex];
     }
 
-    void setValue(size_t index,T value){
-        assert(index>=minVertex&&index<=maxVertex);
-        myVector[index-minVertex]=value;
+//    void setValue(size_t index,T value){
+//        assert(index>=minVertex&&index<=maxVertex);
+//        myVector[index-minVertex]=value;
 
-    }
+//    }
 
-    T getValue(size_t idx)const {
-        assert(idx>=minVertex&&idx<=maxVertex);
-        size_t shiftedIndex=idx-minVertex;
-        return myVector[shiftedIndex];
-    }
+//    T getValue(size_t idx)const {
+//        assert(idx>=minVertex&&idx<=maxVertex);
+//        size_t shiftedIndex=idx-minVertex;
+//        return myVector[shiftedIndex];
+//    }
 
     const T& operator [](size_t idx) const {
         if(debug()&&( idx<minVertex||idx>maxVertex)) std::cout<<"out of bounds, index "<<idx<<", interval "<<minVertex<<","<<maxVertex<<std::endl;

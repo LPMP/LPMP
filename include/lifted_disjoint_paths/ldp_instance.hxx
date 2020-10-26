@@ -39,6 +39,7 @@
 #include <disjoint-paths/disjointPathsMethods.hxx>
 #include <disjoint-paths/completeStructure.hxx>
 #include <disjoint-paths/twoGraphsInputStructure.hxx>
+#include "lifted_disjoint_paths/ldp_directed_graph.hxx"
 #include "config.hxx"
 
 namespace py = pybind11;
@@ -172,7 +173,7 @@ public:
 	}
 
     bool existLiftedEdge(const size_t v,const size_t w)const{
-        bool value=liftedStructure.at(v).isWithinBounds(w)&&liftedStructure.at(v).getValue(w);
+        bool value=liftedStructure.at(v).isWithinBounds(w)&&liftedStructure.at(v)[w]>0;
         return value;
     }
 
@@ -189,10 +190,29 @@ public:
 	size_t minV=0;
 	size_t maxV=0;
 
+    mutable std::vector<size_t> sncNeighborStructure;
+    mutable std::vector<size_t> sncBUNeighborStructure;
+
+    mutable std::vector<double> sncTDStructure;
+    mutable std::vector<double> sncBUStructure;
+    mutable std::vector<char> sncClosedVertices;
+
+
+    size_t getNumberOfVertices() const{
+        return numberOfVertices;
+    }
+
+    const LdpDirectedGraph& getMyGraph() const{
+        return myGraph;
+    }
+
+    const LdpDirectedGraph& getMyGraphLifted() const{
+        return myGraphLifted;
+    }
 
 private:
 
-	//LdpInstance(const LdpInstance& ldpI);
+    //LdpInstance(const LdpInstance& ldpI);
     void init();
 
 	size_t s_;
@@ -207,6 +227,9 @@ private:
 	andres::graph::Digraph<> graph_;
 	andres::graph::Digraph<> graphLifted_;
 
+    LdpDirectedGraph myGraph;
+    LdpDirectedGraph myGraphLifted;
+
     std::vector<std::unordered_set<size_t>> strongBaseEdges;
 
 	std::vector<bool> baseEdgeLabels;
@@ -215,13 +238,14 @@ private:
 	size_t numberOfEdges;
 	size_t numberOfLiftedEdges;
 
+
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
     void readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs);
    // void sparsifyBaseGraph();
    // void sparsifyLiftedGraph();
     void initLiftedStructure();
 
-    std::vector<ShiftedVector<bool>> liftedStructure;
+    std::vector<ShiftedVector<char>> liftedStructure;
 
 
 };

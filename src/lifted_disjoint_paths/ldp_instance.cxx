@@ -50,7 +50,7 @@ LdpInstance::LdpInstance( LdpParameters<>& configParameters):
 
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
 LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
-
+//LdpInstance::LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& baseEdges,const std::vector<std::array<size_t,2>>& liftedEdges,const  std::vector<double>& baseCosts,const  std::vector<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
     disjointPaths::CompleteStructure<> csBase(pvg);
 
     vertexGroups=pvg;
@@ -77,6 +77,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
         edgeScore.push_back(configParameters.getOutputCost());
     }
 
+    numberOfVertices=graph_.numberOfVertices();
 
     disjointPaths::CompleteStructure<> csLifted(vertexGroups);
     csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
@@ -95,12 +96,17 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     }
 
 
+
     initLiftedStructure();
 
     numberOfVertices=graph_.numberOfVertices();
     numberOfLiftedEdges=graphLifted_.numberOfEdges();
     numberOfEdges=graph_.numberOfEdges();
+
     vertexScore=std::vector<double>(graph_.numberOfVertices()-2);
+
+    myGraph=LdpDirectedGraph(graph_,edgeScore);
+    myGraphLifted=LdpDirectedGraph(graphLifted_,liftedEdgeScore);
 
     minV=0;
     maxV=maxVertex;
@@ -123,6 +129,7 @@ void LdpInstance::init(){
 
         }
     }
+    numberOfVertices=graph_.numberOfVertices();
     if(debug()) std::cout<<"done"<<std::endl;
    // parameters.infoFile()<<"done"<<std::endl;
   //  parameters.infoFile().flush();
@@ -148,11 +155,16 @@ void LdpInstance::init(){
         initLiftedStructure();
     }
 
+    myGraph=LdpDirectedGraph(graph_,edgeScore);
+    myGraphLifted=LdpDirectedGraph(graphLifted_,liftedEdgeScore);
+
     numberOfVertices=graph_.numberOfVertices();
     numberOfEdges=graph_.numberOfEdges();
     numberOfLiftedEdges=graphLifted_.numberOfEdges();
 
 }
+
+
 
 void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs){
 
@@ -337,10 +349,18 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 
 
 void LdpInstance::initLiftedStructure(){
-    liftedStructure=std::vector<ShiftedVector<bool>>(graphLifted_.numberOfVertices());
-    for (size_t i = 0; i < graphLifted_.numberOfVertices(); ++i) {
+    size_t n=numberOfVertices-2;
+
+    sncNeighborStructure=std::vector<size_t>(n);
+    sncBUNeighborStructure=std::vector<size_t>(n);
+    sncTDStructure=std::vector<double>(n);
+    sncBUStructure=std::vector<double>(n);
+    sncClosedVertices=std::vector<char>(n);
+
+    liftedStructure=std::vector<ShiftedVector<char>>(n);
+    for (size_t i = 0; i < n; ++i) {
         size_t maxVertex=0;
-        size_t minVertex=graphLifted_.numberOfVertices();
+        size_t minVertex=n;
         for (size_t j = 0; j < graphLifted_.numberOfEdgesFromVertex(i); ++j) {
            size_t vertex2=graphLifted_.vertexFromVertex(i,j);
            if(vertex2<minVertex){
@@ -350,10 +370,10 @@ void LdpInstance::initLiftedStructure(){
                maxVertex=vertex2;
            }
         }
-        liftedStructure[i]=ShiftedVector<bool>(minVertex,maxVertex,false);
+        liftedStructure[i]=ShiftedVector<char>(minVertex,maxVertex,false);
         for (size_t j = 0; j < graphLifted_.numberOfEdgesFromVertex(i); ++j) {
            size_t vertex2=graphLifted_.vertexFromVertex(i,j);
-           liftedStructure[i].setValue(vertex2,true);
+           liftedStructure[i][vertex2]=1;
         }
     }
 }
