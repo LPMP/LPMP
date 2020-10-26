@@ -356,6 +356,7 @@ void LdpInstance::initLiftedStructure(){
     sncTDStructure=std::vector<double>(n);
     sncBUStructure=std::vector<double>(n);
     sncClosedVertices=std::vector<char>(n);
+    sncLiftedMessages=std::vector<double>(n);
 
     liftedStructure=std::vector<ShiftedVector<char>>(n);
     for (size_t i = 0; i < n; ++i) {

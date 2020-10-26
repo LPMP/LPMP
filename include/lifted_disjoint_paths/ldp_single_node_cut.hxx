@@ -173,7 +173,7 @@ private:
     //Methods used in computing lower bound or min marginals
     void topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr, const size_t vertexIDToIgnore) const;
     void topDownUpdate(StrForTopDownUpdate<LDP_INSTANCE>& myStr) const;
-    std::unordered_map<size_t,double> bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr, const ShiftedVector<char> &verticesInScope, const size_t vertex)const;
+    void bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr, const ShiftedVector<char> &verticesInScope, const size_t vertex)const;
     void updateOptimal() const;
     void initTraverseOrder();
 
@@ -904,10 +904,10 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
         for(size_t i=0;i<traverseOrder.size();i++){
             verticesInScope[traverseOrder[i]]=1;
         }
-        std::unordered_map<size_t,double> message=bottomUpUpdate(strForUpdateValues,verticesInScope,liftedIDs[indexOfLiftedEdge]);
+        bottomUpUpdate(strForUpdateValues,verticesInScope,liftedIDs[indexOfLiftedEdge]);
 
-		auto it =message.begin();
-		double messValue=it->second;
+        //auto it =message.begin();
+        double messValue=ldpInstance.sncLiftedMessages[liftedIDs[indexOfLiftedEdge]];
 
 		if(debug()){
 			if(messValue<-eps){
@@ -922,9 +922,9 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
 
 
 template<class LDP_INSTANCE>
-inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr,const ShiftedVector<char>& verticesInScope,const size_t vertex)const{
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrForTopDownUpdate<LDP_INSTANCE>& myStr,const ShiftedVector<char>& verticesInScope,const size_t vertex)const{
 
-	std::unordered_map<size_t,double> messages;
+    //std::unordered_map<size_t,double> messages;
     bool onlyOne=vertex!=nodeID;
 	if(onlyOne){
         fillWithValue<char>(ldpInstance.sncClosedVertices,minVertex,maxVertex+1,0);
@@ -975,7 +975,8 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
                 double delta=restrictedOpt-myStr.optValue;
                 bestValue=myStr.optValue-topDownValueOfDesc;  //Compute node's bottom up value after changing its lifted cost by delta
 
-                messages[currentVertex]=delta;
+                //messages[currentVertex]=delta;
+                ldpInstance.sncLiftedMessages[currentVertex]=delta;
 
                 if(onlyOne) break;
 
@@ -987,7 +988,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 
     }
 
-    return messages;
+    //return messages;
 
 
 }
@@ -996,7 +997,7 @@ inline std::unordered_map<size_t,double> ldp_single_node_cut_factor<LDP_INSTANCE
 template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(const std::vector<double>* pLocalBaseCosts) const{
 
-	std::unordered_map<size_t,double> liftedMessages;
+    //std::unordered_map<size_t,double> liftedMessages;
 
 
 	std::vector<double> localLiftedCosts=liftedCosts;
@@ -1026,6 +1027,11 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     double currentOptValue=myStr.optValue;
 
     auto listIt=isNotZeroInOpt.begin();
+
+
+    for(size_t v: liftedIDs){
+        ldpInstance.sncLiftedMessages[v]=0;
+    }
 
     //Obtaining min marginals for nodes that are active in all optimal solutions
     while(!isNotZeroInOpt.empty()){
@@ -1084,7 +1090,8 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
         size_t orderToClose=liftedIDToOrder.at(vertexToClose);
         localLiftedCosts[orderToClose]-=delta;
-        liftedMessages[vertexToClose]=delta;
+        //liftedMessages[vertexToClose]=delta;
+        ldpInstance.sncLiftedMessages[vertexToClose]=delta;
         minMarginalsImproving+=delta;
         currentOptValue=newOpt;
 
@@ -1134,21 +1141,22 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     //Compute min marginals for non-optimal nodes by finding best paths from the central node to these nodes
     //Traversing in bottom up order ensures that already computed values of bottom up structures remain valid
-            std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,verticesInScope,nodeID);
-            liftedMessages.insert(newMessages.begin(),newMessages.end());
-            if(debug()){
-                for(auto pair:newMessages){
-                    size_t v=pair.first;
-                    double val=pair.second;
-                    localLiftedCosts.at(liftedIDToOrder.at(v))-=val;
-                }
-            }
+            //std::unordered_map<size_t,double> newMessages=bottomUpUpdate(myStr,verticesInScope,nodeID);
+            bottomUpUpdate(myStr,verticesInScope,nodeID);
+//            liftedMessages.insert(newMessages.begin(),newMessages.end());
+//            if(debug()){
+//                for(auto pair:newMessages){
+//                    size_t v=pair.first;
+//                    double val=pair.second;
+//                    localLiftedCosts.at(liftedIDToOrder.at(v))-=val;
+//                }
+//            }
 
 
     //Storing values from messages to output vector
     std::vector<double> messagesToOutput=std::vector<double>(liftedCosts.size());
 	for (int i = 0; i < messagesToOutput.size(); ++i) {
-		messagesToOutput[i]=liftedMessages[liftedIDs[i]];
+        messagesToOutput[i]=ldpInstance.sncLiftedMessages[liftedIDs[i]];
 	}
 
     if(debug()){
