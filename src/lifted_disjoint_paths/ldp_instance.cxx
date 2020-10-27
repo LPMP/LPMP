@@ -146,7 +146,7 @@ void LdpInstance::init(){
        // disjointPaths::keepFractionOfLifted(*this,parameters);
         sparsifyLiftedGraph();
         initLiftedStructure();
-      //  sparsifyLiftedGraph();
+      //  sparsifyLiftedGraph();well
 
     }
     else{
@@ -351,7 +351,7 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 void LdpInstance::initLiftedStructure(){
     size_t n=numberOfVertices-2;
 
-    std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
+    //std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
     sncNeighborStructure=std::vector<size_t>(n+2);
     sncBUNeighborStructure=std::vector<size_t>(n+2);
     sncTDStructure=std::vector<double>(n+2);
