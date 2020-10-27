@@ -20,3 +20,4 @@ target_link_libraries(bdd_anisotropic_diffusion_text_input ILP_parser Cudd LPMP)
 
 add_executable(bdd_projected_subgradient_text_input bdd_projected_subgradient_text_input.cpp)
 target_link_libraries(bdd_projected_subgradient_text_input ILP_parser Cudd LPMP)
+

@@ -40,7 +40,7 @@
 	url = https://github.com/bjoern-andres/graph.git
 [submodule "external/Eigen"]
 	path = external/Eigen
-	url = https://github.com/eigenteam/eigen-git-mirror.git
+	url = https://gitlab.com/libeigen/eigen.git
 [submodule "external/tsl-robin-map"]
 	path = external/tsl-robin-map
 	url = https://github.com/Tessil/robin-map.git
@@ -54,3 +54,6 @@
 	path = external/cudd
 	url = https://github.com/ivmai/cudd.git
 	branch = release
+[submodule "LifT_Solver"]
+	path = external/LifT_Solver
+	url = https://github.com/AndreaHor/LifT_Solver.git

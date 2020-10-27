@@ -1801,7 +1801,7 @@ public:
 
    // do zrobienia: templatize cosntructor to allow for more general initialization of reparametrization storage and factor
    template<typename ...ARGS>
-   FactorContainer(ARGS... args) : factor_(args...) {}
+   FactorContainer(ARGS&&... args) : factor_(std::forward<ARGS>(args)...) {}
 
    FactorContainer(const FactorType&& factor) : factor_(std::move(factor)) {
       //INDEX status;
@@ -2739,13 +2739,30 @@ public:
       factor_.serialize_dual(ar);
    }
 
+   // add default operator+ for std::vector
+   template<typename T>
+   void operator_equal_plus(std::vector<T>& l, const std::vector<T>& r)
+   {
+       assert(l.size() == r.size());
+       for(size_t i=0; i<l.size(); ++i)
+           l[i] += r[i]; 
+   }
+
+   template<typename T>
+   void operator_equal_plus(vector<T>& l, const vector<T>& r)
+   {
+       assert(l.size() == r.size());
+       for(size_t i=0; i<l.size(); ++i)
+           l[i] += r[i]; 
+   }
+   
    virtual void add(FactorTypeAdapter* other) final
    {
        assert(dynamic_cast<FactorContainer*>(other) != nullptr);
        auto* o = static_cast<FactorContainer*>(other);
        auto vars = factor_.export_variables();
        auto other_vars = o->get_factor()->export_variables();
-       for_each_tuple_pair(vars, other_vars, [](auto& var_1, auto& var_2) { var_1 += var_2; });
+       for_each_tuple_pair(vars, other_vars, [&](auto& var_1, auto& var_2) { operator_equal_plus(var_1, var_2); });
    }
 
    virtual INDEX primal_size_in_bytes() final
