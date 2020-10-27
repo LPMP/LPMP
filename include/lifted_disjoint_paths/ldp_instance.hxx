@@ -196,6 +196,8 @@ public:
     mutable std::vector<double> sncTDStructure;
     mutable std::vector<double> sncBUStructure;
     mutable std::vector<char> sncClosedVertices;
+    mutable std::vector<double> sncLiftedMessages;
+    mutable std::vector<char> sncVerticesInScope;
 
 
     size_t getNumberOfVertices() const{

@@ -351,11 +351,14 @@ void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
 void LdpInstance::initLiftedStructure(){
     size_t n=numberOfVertices-2;
 
-    sncNeighborStructure=std::vector<size_t>(n);
-    sncBUNeighborStructure=std::vector<size_t>(n);
-    sncTDStructure=std::vector<double>(n);
-    sncBUStructure=std::vector<double>(n);
-    sncClosedVertices=std::vector<char>(n);
+    std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
+    sncNeighborStructure=std::vector<size_t>(n+2);
+    sncBUNeighborStructure=std::vector<size_t>(n+2);
+    sncTDStructure=std::vector<double>(n+2);
+    sncBUStructure=std::vector<double>(n+2);
+    sncClosedVertices=std::vector<char>(n+2);
+    sncLiftedMessages=std::vector<double>(n+2);
+    sncVerticesInScope=std::vector<char>(n+2);
 
     liftedStructure=std::vector<ShiftedVector<char>>(n);
     for (size_t i = 0; i < n; ++i) {
