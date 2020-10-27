@@ -357,6 +357,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
     while(!nodeStack.empty()){
         size_t currentNode=nodeStack.top();
 
+        assert(currentNode<ldpInstance.getNumberOfVertices());
         if(ldpInstance.sncClosedVertices[currentNode]){
             nodeStack.pop();
         }
@@ -372,6 +373,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
             for (;vertexIt!=end;vertexIt++) {
 
                size_t desc=*vertexIt;
+               assert(currentNode<ldpInstance.getNumberOfVertices());
 
                 if(desc==getVertexToReach()) continue;
 
@@ -387,6 +389,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
             }
             if(descClosed){
                 traverseOrder.push_back(currentNode);
+                assert(currentNode<ldpInstance.getNumberOfVertices());
                 ldpInstance.sncClosedVertices[currentNode]=1;
                 nodeStack.pop();
 
@@ -420,7 +423,8 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 
             }
 
-             vertexInOptimalPath=ldpInstance.sncNeighborStructure[vertexInOptimalPath];
+            assert(vertexInOptimalPath<ldpInstance.getNumberOfVertices());
+            vertexInOptimalPath=ldpInstance.sncNeighborStructure[vertexInOptimalPath];
 		}
         if(debug()) assert(std::abs(optValueComputed-myStr.optValue)<eps);
     }
@@ -479,6 +483,7 @@ template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>:: updateOptimal()const {
     if(!optValueUpToDate){
         if(solutionCostsUpToDate){
+            assert(solutionCosts.size()>0);
             optValue=solutionCosts[0];
             optBaseIndex=0;
             for(size_t i=0;i<solutionCosts.size();i++){
@@ -527,6 +532,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getNodeMinMarginal()cons
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMarginal(const size_t index)const{
 	assert(index<baseCosts.size());
+    assert(optBaseIndex<solutionCosts.size());
 
     updateOptimal();
     if(optBaseIndex!=index){
@@ -937,6 +943,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
         const size_t* end=neighborsRevEnd(currentVertex);
         for (;vertexIt!=end;vertexIt++) {
             size_t pred=*vertexIt;
+            assert(pred<ldpInstance.getNumberOfVertices());
 
             bool newConstraint=(pred==nodeID||!ldpInstance.sncVerticesInScope[pred]);
             if(newConstraint) continue;

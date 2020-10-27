@@ -200,7 +200,7 @@ public:
     mutable std::vector<char> sncVerticesInScope;
 
 
-    size_t getNumberOfVertices() const{
+    const size_t& getNumberOfVertices() const{
         return numberOfVertices;
     }
 
