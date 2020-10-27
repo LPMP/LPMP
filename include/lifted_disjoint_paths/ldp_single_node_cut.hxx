@@ -162,7 +162,7 @@ private:
     //Methods used in computing lower bound or min marginals
     void topDownUpdate(StrForTopDownUpdate& myStr, const size_t vertexIDToIgnore) const;
     void topDownUpdate(StrForTopDownUpdate& myStr) const;
-    void bottomUpUpdate(const StrForTopDownUpdate& myStr, const ShiftedVector<char> &verticesInScope, const size_t vertex)const;
+    void bottomUpUpdate(const StrForTopDownUpdate& myStr, const size_t vertex)const;
     void updateOptimal() const;
     void initTraverseOrder();
 
@@ -892,11 +892,11 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
             ldpInstance.sncBUStructure[baseIDs.at(i)]=baseCosts.at(i);
         }
 
-        ShiftedVector<char> verticesInScope(minVertex,maxVertex);
-        for(size_t i=0;i<traverseOrder.size();i++){
-            verticesInScope[traverseOrder[i]]=1;
-        }
-        bottomUpUpdate(strForUpdateValues,verticesInScope,liftedIDs[indexOfLiftedEdge]);
+//        ShiftedVector<char> verticesInScope(minVertex,maxVertex);
+//        for(size_t i=0;i<traverseOrder.size();i++){
+//            verticesInScope[traverseOrder[i]]=1;
+//        }
+        bottomUpUpdate(strForUpdateValues,liftedIDs[indexOfLiftedEdge]);
 
         //auto it =message.begin();
         double messValue=ldpInstance.sncLiftedMessages[liftedIDs[indexOfLiftedEdge]];
@@ -914,10 +914,14 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
 
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrForTopDownUpdate& myStr,const ShiftedVector<char>& verticesInScope,const size_t vertex)const{
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrForTopDownUpdate& myStr,const size_t vertex)const{
 
 
     bool onlyOne=vertex!=nodeID;
+    for(size_t i=0;i<traverseOrder.size();i++){
+        ldpInstance.sncVerticesInScope[traverseOrder[i]]=1;
+    }
+
 
     for(size_t i=traverseOrder.size()-1;i>=1;i--){
         size_t currentVertex=traverseOrder[i-1];
@@ -934,7 +938,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
         for (;vertexIt!=end;vertexIt++) {
             size_t pred=*vertexIt;
 
-            if(pred==nodeID||!verticesInScope.isWithinBounds(pred)||!verticesInScope[pred]) continue;
+            bool newConstraint=(pred==nodeID||!ldpInstance.sncVerticesInScope[pred]);
+            if(newConstraint) continue;
             assert(ldpInstance.sncClosedVertices[pred]>0);
             double value=ldpInstance.sncBUStructure[pred];
             if(value<bestValue){
@@ -975,6 +980,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
         ldpInstance.sncBUStructure[currentVertex]=bestValue;
 
     }
+    for(size_t i=0;i<traverseOrder.size();i++){
+        ldpInstance.sncVerticesInScope[traverseOrder[i]]=0;
+    }
+
 
 }
 
@@ -1084,10 +1093,10 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     //Compute topDown structure and optimal solution after the change of lifted costs
     topDownUpdate(myStr);
-    ShiftedVector<char> verticesInScope(minVertex,maxVertex);
-    for(size_t i=0;i<traverseOrder.size();i++){
-        verticesInScope[traverseOrder[i]]=1;
-    }
+//    ShiftedVector<char> verticesInScope(minVertex,maxVertex);
+//    for(size_t i=0;i<traverseOrder.size();i++){
+//        verticesInScope[traverseOrder[i]]=1;
+//    }
 
 
 
@@ -1124,7 +1133,7 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     //Compute min marginals for non-optimal nodes by finding best paths from the central node to these nodes
     //Traversing in bottom up order ensures that already computed values of bottom up structures remain valid
-    bottomUpUpdate(myStr,verticesInScope,nodeID);
+    bottomUpUpdate(myStr,nodeID);
 
 
     //Storing values from messages to output vector
