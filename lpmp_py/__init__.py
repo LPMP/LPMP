@@ -1,5 +1,8 @@
 #from .raw_solvers import gm_solver, mgm_solver
 
+import bindings.ldpMessagePassingPy as lpd
+
+
 try:
     import torch
 except ImportError as e:
