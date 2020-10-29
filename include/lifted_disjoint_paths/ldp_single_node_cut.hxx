@@ -181,7 +181,7 @@ private:
         }
     }
 
-    const size_t* neighborsBegin(const size_t& nodeIndex)const{
+    const std::pair<size_t,double>* neighborsBegin(const size_t& nodeIndex)const{
         if(isOutFlow){
             return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
         }
@@ -190,7 +190,7 @@ private:
         }
     }
 
-    const size_t* neighborsEnd(const size_t& nodeIndex)const{
+    const std::pair<size_t,double>* neighborsEnd(const size_t& nodeIndex)const{
         if(isOutFlow){
             return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
         }
@@ -199,7 +199,7 @@ private:
         }
     }
 
-    const size_t* neighborsRevBegin(const size_t& nodeIndex)const{
+    const std::pair<size_t,double>* neighborsRevBegin(const size_t& nodeIndex)const{
         if(!isOutFlow){
             return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
         }
@@ -208,7 +208,7 @@ private:
         }
     }
 
-    const size_t* neighborsRevEnd(const size_t& nodeIndex)const{
+    const std::pair<size_t,double>* neighborsRevEnd(const size_t& nodeIndex)const{
         if(!isOutFlow){
             return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
         }
@@ -365,13 +365,13 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
             bool descClosed=true;
              //Traverse all base neighbors in direction out from central node
             //Not closed vertices store to the stack.
-            const size_t* vertexIt=neighborsBegin(currentNode);
-            const size_t* end=neighborsEnd(currentNode);
+            const std::pair<size_t,double>* vertexIt=neighborsBegin(currentNode);
+            const std::pair<size_t,double>* end=neighborsEnd(currentNode);
 
 
             for (;vertexIt!=end;vertexIt++) {
 
-               size_t desc=*vertexIt;
+               size_t desc=vertexIt->first;
 
                 if(desc==getVertexToReach()) continue;
 
@@ -626,31 +626,34 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
     const LdpDirectedGraph& myLiftedGraph=ldpInstance.getMyGraphLifted();
 
     if(isOutFlow){
-        const double* costIt=myLiftedGraph.forwardCostBegin(nodeID);
-        const size_t* edgeIt=myLiftedGraph.forwardNeighborsBegin(nodeID);
+        const std::pair<size_t,double>* edgeIt=myLiftedGraph.forwardNeighborsBegin(nodeID);
+
         size_t counter=0;
-        for (;edgeIt!=myLiftedGraph.forwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
-            assert(costIt!=myLiftedGraph.forwardCostEnd(nodeID));
-            liftedCosts.push_back((*costIt)*fractionLifted);
-            liftedIDs.push_back(*edgeIt);
-            liftedIDToOrder[*edgeIt]=counter;
-            if(*edgeIt!=ldpInstance.getTerminalNode()){
-                mostDistantNeighborID=std::max(mostDistantNeighborID,*edgeIt);
+        for (;edgeIt!=myLiftedGraph.forwardNeighborsEnd(nodeID);edgeIt++) {
+            const size_t& node=edgeIt->first;
+            const double& cost=edgeIt->second;
+
+            liftedCosts.push_back((cost)*fractionLifted);
+            liftedIDs.push_back(node);
+            liftedIDToOrder[node]=counter;
+            if(node!=ldpInstance.getTerminalNode()){
+                mostDistantNeighborID=std::max(mostDistantNeighborID,node);
             }
             counter++;
         }
     }
     else{
-        const double* costIt=myLiftedGraph.backwardCostBegin(nodeID);
-        const size_t* edgeIt=myLiftedGraph.backwardNeighborsBegin(nodeID);
+        const std::pair<size_t,double>* edgeIt=myLiftedGraph.backwardNeighborsBegin(nodeID);
         size_t counter=0;
-        for (;edgeIt!=myLiftedGraph.backwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
-            assert(costIt!=myLiftedGraph.backwardCostEnd(nodeID));
-            liftedCosts.push_back((*costIt)*fractionLifted);
-            liftedIDs.push_back(*edgeIt);
-            liftedIDToOrder[*edgeIt]=counter;
-            if(*edgeIt!=ldpInstance.getSourceNode()){
-                mostDistantNeighborID=std::min(mostDistantNeighborID,*edgeIt);
+        for (;edgeIt!=myLiftedGraph.backwardNeighborsEnd(nodeID);edgeIt++) {
+            const size_t& node=edgeIt->first;
+            const double& cost=edgeIt->second;
+
+            liftedCosts.push_back((cost)*fractionLifted);
+            liftedIDs.push_back(node);
+            liftedIDToOrder[node]=counter;
+            if(node!=ldpInstance.getSourceNode()){
+                mostDistantNeighborID=std::min(mostDistantNeighborID,node);
             }
             counter++;
         }
@@ -672,31 +675,34 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
     const LdpDirectedGraph& myBaseGraph=ldpInstance.getMyGraph();
 
     if(isOutFlow){
-        const double* costIt=myBaseGraph.forwardCostBegin(nodeID);
-        const size_t* edgeIt=myBaseGraph.forwardNeighborsBegin(nodeID);
+        //const double* costIt=myBaseGraph.forwardCostBegin(nodeID);
+        const std::pair<size_t,double>* edgeIt=myBaseGraph.forwardNeighborsBegin(nodeID);
         size_t counter=0;
-        for (;edgeIt!=myBaseGraph.forwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
-            assert(costIt!=myBaseGraph.forwardCostEnd(nodeID));
-            baseCosts.push_back((*costIt)*fractionBase);
-            baseIDs.push_back(*edgeIt);
-            baseIDToIndex[*edgeIt]=counter;
-            if(*edgeIt!=ldpInstance.getTerminalNode()){
-                mostDistantNeighborID=std::max(mostDistantNeighborID,*edgeIt);
+        for (;edgeIt!=myBaseGraph.forwardNeighborsEnd(nodeID);edgeIt++) {
+            const size_t& node=edgeIt->first;
+            const double& cost=edgeIt->second;
+
+            baseCosts.push_back((cost)*fractionBase);
+            baseIDs.push_back(node);
+            baseIDToIndex[node]=counter;
+            if(node!=ldpInstance.getTerminalNode()){
+                mostDistantNeighborID=std::max(mostDistantNeighborID,node);
             }
             counter++;
         }
     }
     else{
-        const double* costIt=myBaseGraph.backwardCostBegin(nodeID);
-        const size_t* edgeIt=myBaseGraph.backwardNeighborsBegin(nodeID);
+        const std::pair<size_t,double>* edgeIt=myBaseGraph.backwardNeighborsBegin(nodeID);
         size_t counter=0;
-        for (;edgeIt!=myBaseGraph.backwardNeighborsEnd(nodeID);costIt++, edgeIt++) {
-            assert(costIt!=myBaseGraph.backwardCostEnd(nodeID));
-            baseCosts.push_back((*costIt)*fractionBase);
-            baseIDs.push_back(*edgeIt);
-            baseIDToIndex[*edgeIt]=counter;
-            if(*edgeIt!=ldpInstance.getSourceNode()){
-                mostDistantNeighborID=std::min(mostDistantNeighborID,*edgeIt);
+        for (;edgeIt!=myBaseGraph.backwardNeighborsEnd(nodeID); edgeIt++) {
+            const size_t& node=edgeIt->first;
+            const double& cost=edgeIt->second;
+
+            baseCosts.push_back((cost)*fractionBase);
+            baseIDs.push_back(node);
+            baseIDToIndex[node]=counter;
+            if(node!=ldpInstance.getSourceNode()){
+                mostDistantNeighborID=std::min(mostDistantNeighborID,node);
             }
             counter++;
         }
@@ -773,13 +779,13 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         size_t bestDescVertexID=getVertexToReach();
 
          //Search for best descendant
-        const size_t* vertexIt=neighborsBegin(currentNode);
-        const size_t* end=neighborsEnd(currentNode);
+        const std::pair<size_t,double>* vertexIt=neighborsBegin(currentNode);
+        const std::pair<size_t,double>* end=neighborsEnd(currentNode);
 
 
         for (;vertexIt!=end;vertexIt++) {
 
-            size_t desc=*vertexIt;
+            size_t desc=vertexIt->first;
 
             if(desc==vertexIDToIgnore||desc==getVertexToReach()) continue;
 
@@ -933,10 +939,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
             bestValue=ldpInstance.sncBUStructure[currentVertex]+nodeCost;
             bestIndex=nodeID;
         }
-        const size_t* vertexIt=neighborsRevBegin(currentVertex);
-        const size_t* end=neighborsRevEnd(currentVertex);
+        const std::pair<size_t,double>* vertexIt=neighborsRevBegin(currentVertex);
+        const std::pair<size_t,double>* end=neighborsRevEnd(currentVertex);
         for (;vertexIt!=end;vertexIt++) {
-            size_t pred=*vertexIt;
+            size_t pred=vertexIt->first;
 
             bool newConstraint=(pred==nodeID||!ldpInstance.sncVerticesInScope[pred]);
             if(newConstraint) continue;

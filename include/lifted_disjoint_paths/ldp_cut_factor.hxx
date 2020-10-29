@@ -77,7 +77,7 @@ ldp_cut_factor::ldp_cut_factor(size_t v_, size_t w_, double liftedCost, std::map
     }
     size_t counterInput=0;
 
-    baseCoveringLifted=edgeCounter; //meaining there is none
+    baseCoveringLifted=edgeCounter; //meaning there is none
 
     for(auto iter=inputEdges.begin();iter!=inputEdges.end();iter++){
         size_t v1=iter->first;
