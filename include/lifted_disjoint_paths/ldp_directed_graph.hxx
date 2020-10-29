@@ -10,7 +10,7 @@ class LdpDirectedGraph{
 public:
     LdpDirectedGraph(){}
     LdpDirectedGraph(const andres::graph::Digraph<>& inputGraph,const std::vector<double>& inputEdgeCosts){
-        size_t numberOfVertices=inputGraph.numberOfVertices();
+        numberOfVertices=inputGraph.numberOfVertices();
         std::vector<std::size_t> adjacencyForward(numberOfVertices);
         std::vector<std::size_t> adjacencyBackward(numberOfVertices);
 
@@ -40,6 +40,11 @@ public:
                 backwardEdges[i][j]={w,inputEdgeCosts[e]};
             }
         }
+
+        for (size_t i=0;i<numberOfVertices;i++) {
+            std::sort(forwardEdges[i].begin(),forwardEdges[i].end());
+            std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
+        }
         //Need to sort within edges?
     }
 
@@ -62,7 +67,7 @@ public:
             adjacencyForward[i]++;
             adjacencyBackward[j]++;
         }
-        size_t numberOfVertices=adjacencyForward.size();
+        numberOfVertices=adjacencyForward.size();
 
         if(addST){
             for(size_t i=0;i<numberOfVertices;i++){
@@ -106,6 +111,10 @@ public:
             numberOfVertices+=2;
         }
 
+        for (size_t i=0;i<numberOfVertices;i++) {
+            std::sort(forwardEdges[i].begin(),forwardEdges[i].end());
+            std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
+        }
         //Need to sort within edges?
     }
 
@@ -115,6 +124,16 @@ public:
     }
 
 
+    void setForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+        std::cout<<"Warning not synchronized with backward edges"<<std::endl;
+        forwardEdges[vertex][neighborIndex].second=value;
+    }
+
+
+    void setBackwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+        std::cout<<"Warning not synchronized with forward edges"<<std::endl;
+        backwardEdges[vertex][neighborIndex].second=value;
+    }
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
         return forwardEdges[vertex][neighborIndex].second;
@@ -123,6 +142,15 @@ public:
 
     double getBackwardEdgeCost(size_t vertex,size_t neighborIndex) const{
         return backwardEdges[vertex][neighborIndex].second;
+    }
+
+    size_t getForwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
+        return forwardEdges[vertex][neighborIndex].first;
+    }
+
+
+    size_t getBackwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
+        return backwardEdges[vertex][neighborIndex].first;
     }
 
     const std::pair<size_t,double> * forwardNeighborsBegin(size_t i)const {
@@ -139,6 +167,10 @@ public:
 
     const std::pair<size_t,double> * backwardNeighborsEnd(size_t i)const {
         return backwardEdges[i].end();
+    }
+
+    const size_t & getNumberOfVertices()const{
+        return numberOfVertices;
     }
 
 //    const double * forwardCostBegin(size_t i)const {
@@ -165,6 +197,7 @@ public:
 private:
     two_dim_variable_array<std::pair<size_t,double>> forwardEdges;
     two_dim_variable_array<std::pair<size_t,double>> backwardEdges;
+    size_t numberOfVertices;
     //two_dim_variable_array<double> forwardCost;
     //two_dim_variable_array<double> backwardCost;
 
