@@ -50,7 +50,9 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
      py::class_<problemSolver>(m,"Solver")
              .def(py::init<std::vector<std::string>&>())
              .def("solve",&problemSolver::Solve)
+             //.def("construct", [](problemSolver &solver,LPMP::lifted_disjoint_paths::LdpInstance& instance) {return solver.GetProblemConstructor().construct(instance); },"Returns paths obtained from best so far primal solution.")
              .def("get_best_primal", [](problemSolver &solver) {return solver.GetProblemConstructor().getBestPrimal(); },"Returns paths obtained from best so far primal solution.");
+
 
 
 

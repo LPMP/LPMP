@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include<andres/graph/components.hxx>
 #include<map>
-
+#include"ldp_cut_factor.hxx"
 #include <memory>
 
 namespace LPMP {
@@ -352,6 +352,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 {
     pInstance=&instance;
 
+
+
     // first construct minimum cost flow factor for base edges
     const std::size_t nr_base_graph_nodes = instance.getGraph().numberOfVertices() - 2;
     const std::size_t base_graph_source = instance.getSourceNode();
@@ -461,44 +463,30 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::sncDebug(size_t vertex,bool isOut)
 {
-    std::cout<<"print node "<<vertex<<std::endl;
-    auto* sncFactor=single_node_cut_factors_[vertex][isOut]->get_factor();
-    const std::vector<double>& baseCosts=sncFactor->getBaseCosts();
-    const std::vector<double>& liftedCosts=sncFactor->getLiftedCosts();
 
-    std::cout<<"base costs"<<std::endl;
+    //size_t numberOfInputs=5;
+    //size_t numberOfOutputs=4;
+//    std::map<size_t,std::map<size_t,double>> edges;
+//    edges[0][50]=-5;
+//    edges[0][70]=-1;
+//    edges[0][80]=2;
+//    edges[10][50]=-1;
+//    edges[10][60]=-3;
+//    edges[10][70]=2;
+//    edges[20][60]=-2;
+//    edges[20][70]=-3;
+//    edges[20][80]=2;
+//    edges[30][50]=1;
+//    edges[30][70]=3;
+//    edges[30][80]=-4;
+//    edges[40][50]=2;
+//    edges[40][60]=3;
+//    edges[40][80]=1;
 
-    for (int i = 0; i < baseCosts.size(); ++i) {
-        std::cout<<i<<": ";
-        std::cout<<(sncFactor->baseIDs[i])<<": "<<baseCosts[i];
-        std::cout<<std::endl;
-    }
-
-    std::cout<<std::endl;
-    std::cout<<"lifted costs"<<std::endl;
-    for (int i = 0; i < liftedCosts.size(); ++i) {
-        std::cout<<i<<": "<<(sncFactor->getLiftedIDs()[i])<<": ";
-        std::cout<<liftedCosts[i];
-        std::cout<<std::endl;
-    }
-
-
-
-    std::cout<<"getting all base min marginals"<<std::endl;
-
-    sncFactor->getAllBaseMinMarginals();
-    std::cout<<"isolated min marginals "<<std::endl;
-    for (int i = 0; i < baseCosts.size(); ++i) {
-        double value=sncFactor->getOneBaseEdgeMinMarginal(i);
-        std::cout<<i<<": "<<"("<<(sncFactor->baseIDs[i])<<")"<<value<<std::endl;
-    }
-
-
-
-    std::cout<<"computing lifted min marginal "<<std::endl;
-    double value=sncFactor->getOneLiftedMinMarginal(1);
-    //std::cout<<"lifted min marginal "<<value<<std::endl;
-    //	sncFactor->getAllLiftedMinMarginals();
+//    size_t v=5;
+//    size_t w=85;
+//    double liftedCost=-3;
+//    ldp_cut_factor<lifted_disjoint_paths::LdpInstance> cutFactor(v,w,liftedCost,edges);
 
 }
 

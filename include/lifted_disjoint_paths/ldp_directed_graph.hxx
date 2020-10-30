@@ -14,6 +14,7 @@ public:
         std::vector<std::size_t> adjacencyForward(numberOfVertices);
         std::vector<std::size_t> adjacencyBackward(numberOfVertices);
 
+        assert(inputGraph.numberOfEdges()==inputEdgeCosts.size());
         for(size_t i=0;i<numberOfVertices;i++){
             size_t neForward=inputGraph.numberOfEdgesFromVertex(i);
             adjacencyForward[i]=neForward;
@@ -56,6 +57,7 @@ public:
         std::vector<std::size_t> adjacencyBackward;
 
 
+        assert(edges.size()==inputEdgeCosts.size());
 
         // first determine size for adjacency_list
         for(const std::array<size_t,2>& e:edges){

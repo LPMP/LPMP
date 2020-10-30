@@ -13,6 +13,7 @@
 #include "graph_matching/graph_matching_input.h"
 #include "graph_matching/min_cost_flow_factor_ssp.hxx"
 #include "graph_matching/matching_problem_input.h"
+#include "ldp_two_layer_graph.hxx"
 
 namespace LPMP {
 
@@ -45,29 +46,33 @@ public:
 
     void updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value);
 
-    double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne);
+    double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne)const;
 
     LPMP::linear_assignment_problem_input createLAStandard()const;
     LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2)const ;
-    LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1,const size_t& v2)const;
+    LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1, const size_t& v2)const;
 
     double getOneEdgeMinMarginal(const size_t & index1,const size_t & neighborIndex) const;
 
+    LdpTwoLayerGraph cutGraph;
+
 private:
 //std::vector<double> costs;
-LdpDirectedGraph cutGraph;
+
 std::vector<size_t> inputVertices;
 std::vector<size_t> outputVertices;
 size_t v;
 size_t w;
 //double liftedEdgeCost;
 std::vector<size_t> primalSolution; //inputNodeIndex ->index of neighbor within cutGraph
-std::pair<size_t,size_t> baseCoveringLifted; //{input node index,index in output nodes+numberOfInput}
+std::array<size_t,2> baseCoveringLifted; //{input node index,index in output nodes+numberOfInput}
 size_t numberOfInput;
+size_t numberOfOutput;
 bool baseCoverLiftedExists;
 size_t unassignedLabel;
-std::vector<size_t> storeLabeling;
+mutable std::vector<size_t> storeLabeling;
 double liftedCost;
+mutable bool liftedActive;
 
 
 
@@ -108,6 +113,7 @@ inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double lif
     unassignedLabel=std::numeric_limits<size_t>::max();
     baseCoveringLifted={unassignedLabel,unassignedLabel};
     baseCoverLiftedExists=0;
+    liftedActive=false;
     size_t edgeCounter=0;
     for(auto iter=inputEdges.begin();iter!=inputEdges.end();iter++){
         size_t v1=iter->first;
@@ -121,11 +127,12 @@ inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double lif
     for(size_t vert:outVertices){
         outputVertices.push_back(vert);
     }
+    numberOfOutput=outVertices.size();
     size_t counterInput=0;
     std::vector<double> edgeCosts;
 
-    baseCoveringLifted=edgeCounter; //meaning there is none
     std::vector<std::array<size_t,2>> localEdges(edgeCounter);
+    edgeCounter=0;
 
     for(auto iter=inputEdges.begin();iter!=inputEdges.end();iter++){
         size_t v1=iter->first;
@@ -134,34 +141,38 @@ inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double lif
             auto it=neighbors.find(outputVertices[i]);
             if(it!=neighbors.end()){
                 if(v1==v&&it->first==w){
-                    baseCoveringLifted={counterInput,numberOfInput+i};
+                    baseCoveringLifted={counterInput,i};
                     baseCoverLiftedExists=1;
                 }
-                localEdges.push_back({counterInput,numberOfInput+i});
+                assert(edgeCounter<localEdges.size());
+                localEdges[edgeCounter]={counterInput,i};
+
+                edgeCounter++;
+                std::cout<<"adding edge "<<counterInput<<", "<<i<<std::endl;
                 edgeCosts.push_back(it->second);
             }
         }
         counterInput++;
     }
 
-    cutGraph=LdpDirectedGraph(localEdges,edgeCosts);
+    cutGraph=LdpTwoLayerGraph(localEdges,edgeCosts);
     primalSolution=std::vector<size_t>(inputVertices.size()+1,unassignedLabel); //plus one for lifted edge
 
-    if(diagnostics()){
-        size_t edgeCounter=0;
-        for (size_t v=0;v<cutGraph.getNumberOfVertices();v++) {
-            assert(localEdges[edgeCounter][0]==v);
-            const auto * it=cutGraph.forwardNeighborsBegin(v);
-            const auto * end=cutGraph.forwardNeighborsEnd(v);
-            for(;it!=end;it++){
-                assert(edgeCounter<localEdges.size());
-                assert(localEdges[edgeCounter][1]==it->first);
-                edgeCounter++;
-            }
-            if(edgeCounter>=localEdges.size()) break;
-        }
+//    if(diagnostics()){
+//        size_t edgeCounter=0;
+//        for (size_t v=0;v<cutGraph.getNumberOfVertices();v++) {
+//            assert(localEdges[edgeCounter][0]==v);
+//            const auto * it=cutGraph.forwardNeighborsBegin(v);
+//            const auto * end=cutGraph.forwardNeighborsEnd(v);
+//            for(;it!=end;it++){
+//                assert(edgeCounter<localEdges.size());
+//                assert(localEdges[edgeCounter][1]==it->first);
+//                edgeCounter++;
+//            }
+//            if(edgeCounter>=localEdges.size()) break;
+//        }
 
-    }
+//    }
     storeLabeling=std::vector<size_t>(numberOfInput+1,unassignedLabel);
 
 }
@@ -221,9 +232,9 @@ inline void ldp_cut_factor<INSTANCE>::setPrimal(const std::vector<size_t>& prima
         size_t counter=0;
         for(;it!=end;it++){
             size_t index=it->first;
-            int useIndex=int(index)-int(numberOfInput);
-            assert(useIndex>=0&&useIndex<outputVertices.size());
-            size_t neighborID=outputVertices[index-numberOfInput];
+
+            assert(index>=0&&index<outputVertices.size());
+            size_t neighborID=outputVertices[index];
             if(neighborID==primalDescendants[vertexID]){
                 assert(i<primalSolution.size());
                 primalSolution[i]=counter;
@@ -274,65 +285,76 @@ inline double ldp_cut_factor<INSTANCE>::EvaluatePrimal() const{
 
 
 template<class INSTANCE>
-inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,const size_t& neighborIndex,bool restrictToOne){
+inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,const size_t& index2,bool restrictToOne)const {
     // not restrictToOne .. block only edge
     // restrictToOne ... block both vertices
     //index1 .. index in inputVertices, index2.. index in outputVertices + numberOfInput
     LPMP::linear_assignment_problem_input lapInput;
     double minValue=0;
    std::fill(storeLabeling.begin(),storeLabeling.end(),unassignedLabel);
+   bool activeExists=false;
     //TODO: Assert of neighborIndex?
    //TODO add lifted edge to evaluation, based on
     if(index1==unassignedLabel){
         lapInput=createLAStandard();
     }
     else if(restrictToOne){
-        size_t index2=cutGraph[index1][neighborIndex];
         assert(index1<inputVertices.size());
-        index2=cutGraph.getForwardEdgeVertex(index1,neighborIndex);
         lapInput=laExcludeVertices(index1,index2);
-        minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
-        assert(index2>=numberOfInput&&index2-numberOfInput<outputVertices.size());
-        storeLabeling[index1]=index2-numberOfInput;
+        std::cout<<"lap input for one created "<<std::endl;
+        //minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
+        assert(index2<outputVertices.size());
+        bool found=false;
+        for (auto* it=cutGraph.forwardNeighborsBegin(index1);it!=cutGraph.forwardNeighborsEnd(index1);it++) {
+            if(it->first==index2){
+                minValue=it->second;
+                found=true;
+                break;
+            }
+        }
+        assert(found);
+        storeLabeling[index1]=index2;
+        activeExists=true;
 
     }
     else{//edge is restricted to zero
-        size_t index2=cutGraph[index1][neighborIndex];
         assert(index1<inputVertices.size());
         lapInput=laExcludeEdge(index1,index2);
+        std::cout<<"lap input for zero created "<<std::endl;
     }
     MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
     lapInput.initialize_mcf(mcf);
+
+    std::cout<<"mcf init"<<std::endl;
     minValue+=mcf.solve();
 
 
-//Unclear how to encode!
-//    if(baseCoverLiftedExists){
-//        if(storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
-//            storeLabeling.back()=baseCoveringLifted[1];
-//        }
-//        else{
-
-//        }
-
-//    }
-//    else if(liftedCost<0){
-//        storeLabeling.back()=baseCoveringLifted[1];
-//    }
-//    else{
-//        storeLabeling.back()=unassignedLabel;
-//    }
-
     for (int i = 0; i < mcf.no_edges(); ++i) {
-        if(mcf.flow(i)>0.5){
-            int label=mcf.head(i);
+        if(mcf.flow(i)>0.99){
+           // int label=mcf.head(i)-numberOfInput;
+            assert(lapInput.no_left_nodes==numberOfInput);
+             int label=mcf.head(i)-numberOfInput;
             int vertex=mcf.tail(i);
-            //	std::cout<<"label "<<label<<"vertex "<<vertex<<std::endl;
-            if(vertex<numberOfInput&&label<outputVertices.size()){
+            if(vertex<numberOfInput&&label<numberOfOutput){
+                std::cout<<"vertex "<<vertex<<", label "<<label<<std::endl;
                 storeLabeling[vertex]=label;
+                activeExists=true;
             }
         }
     }
+
+    liftedActive=false;
+    if(baseCoverLiftedExists&&storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
+        liftedActive=true; //cost already present in LAP
+        std::cout<<"lifted forced one"<<std::endl;
+    }
+    else if(activeExists&&liftedCost<0){
+        minValue+=liftedCost;
+        liftedActive=true;
+    }
+
+    std::cout<<"lifted active "<<liftedActive<<std::endl;
+
     return minValue;
 
 }
@@ -345,6 +367,7 @@ template<class INSTANCE>
 inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::createLAStandard() const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
+        lapInput.add_assignment(i,numberOfOutput,0.0);
         auto * it=cutGraph.forwardNeighborsBegin(i);
         auto * end=cutGraph.forwardNeighborsEnd(i);
         for(;it!=end;it++){
@@ -354,8 +377,9 @@ inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::createL
                 value+=liftedCost;
             }
             if(value<0){
-                assert((int(outputIndex)-int(numberOfInput)>=0)&&(int(outputIndex)-int(numberOfInput)<outputVertices.size()));
-                lapInput.add_assignment(i,outputIndex-numberOfInput,value);
+                assert(outputIndex<outputVertices.size());
+                std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
+                lapInput.add_assignment(i,outputIndex,value);
             }
         }
 
@@ -367,31 +391,41 @@ inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::createL
 template<class INSTANCE>
 inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExcludeEdge(const size_t& v1,const size_t& v2) const{
     LPMP::linear_assignment_problem_input lapInput;
+    bool edgeFound=false;
     for (size_t i = 0; i < numberOfInput; ++i) {
+        lapInput.add_assignment(i,numberOfOutput,0.0);
         auto * it=cutGraph.forwardNeighborsBegin(i);
-        auto * end=cutGraph.forwardNeighborsEnd(i);
+        auto * end=cutGraph.forwardNeighborsEnd(i);        
         for(;it!=end;it++){
             const size_t& outputIndex=it->first;
              double value=it->second;
              if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
                  value+=liftedCost;
              }
-            if(i==v1&&outputIndex==v2) continue;
+             if(i==v1&&outputIndex==v2){
+                 edgeFound=true;
+                 continue;
+             }
             if(value<0){
-                assert((int(outputIndex)-int(numberOfInput)>=0)&&(int(outputIndex)-int(numberOfInput)<outputVertices.size()));
-                lapInput.add_assignment(i,outputIndex-numberOfInput,value);
+                assert(outputIndex<outputVertices.size());
+                lapInput.add_assignment(i,outputIndex,value);
+                std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
             }
         }
 
     }
+    assert(edgeFound);
     return lapInput;
 }
 
 template<class INSTANCE>
-inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExcludeVertices(const size_t& v1,const size_t& v2) const{
+inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExcludeVertices(const size_t& v1, const size_t& v2) const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
-        if(i==v1) continue;
+        lapInput.add_assignment(i,numberOfOutput,0.0);
+        if(i==v1){
+            continue;
+        }
         auto * it=cutGraph.forwardNeighborsBegin(i);
         auto * end=cutGraph.forwardNeighborsEnd(i);
         for(;it!=end;it++){
@@ -402,10 +436,12 @@ inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExclu
             }
             if(outputIndex==v2) continue;
             if(value<0){
-                assert((int(outputIndex)-int(numberOfInput)>=0)&&(int(outputIndex)-int(numberOfInput)<outputVertices.size()));
-                lapInput.add_assignment(i,outputIndex-numberOfInput,value);
+                assert(outputIndex<outputVertices.size());
+                lapInput.add_assignment(i,outputIndex,value);
+                std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
             }
         }
+
 
     }
     return lapInput;
@@ -413,13 +449,14 @@ inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExclu
 
 template<class INSTANCE>
 inline double ldp_cut_factor<INSTANCE>::LowerBound() const{
-    return advancedMinimizer(unassignedLabel,unassignedLabel,false);
+    double value=advancedMinimizer(unassignedLabel,unassignedLabel,false);
+    return value;
 }
 
 template<class INSTANCE>
-inline double ldp_cut_factor<INSTANCE>::getOneEdgeMinMarginal(const size_t & index1,const size_t & neighborIndex) const{
-    double restrictOne= advancedMinimizer(index1,neighborIndex,true);
-    double restrictZero=advancedMinimizer(index1,neighborIndex,false);
+inline double ldp_cut_factor<INSTANCE>::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2) const{
+    double restrictOne= advancedMinimizer(index1,index2,true);
+    double restrictZero=advancedMinimizer(index1,index2,false);
     return restrictOne-restrictZero;
 }
 
