@@ -31,7 +31,7 @@ public:
     size_t Tighten(const std::size_t nr_constraints_to_add);
     void pre_iterate() { reparametrize_snc_factors(); }
 
-    const std::vector<std::vector<size_t>>& getBestPrimal()const { return bestPrimalSolution;}
+    std::vector<std::vector<size_t>> getBestPrimal()const { return bestPrimalSolution;}
 
 private:
     std::size_t mcf_node_to_graph_node(std::size_t i) const;
@@ -351,6 +351,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TR
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
 {
     pInstance=&instance;
+    bestPrimalValue=std::numeric_limits<double>::max();
 
 
 
@@ -554,6 +555,14 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             paths.push_back(path);
         }
         bestPrimalSolution=paths;
+        if(debug()){
+            for(auto path: bestPrimalSolution){
+                for(auto v:path){
+                    std::cout<<v<<" ";
+                }
+                std::cout<<std::endl;
+            }
+        }
     }
 //    best_primal_solution = ...;
 

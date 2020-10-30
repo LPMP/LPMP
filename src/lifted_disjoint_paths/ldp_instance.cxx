@@ -17,35 +17,105 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, disjointPaths::Compl
     size_t maxT=cs.maxTime+1;
     readGraphWithTime(minT,maxT,&cs);
 
+
+    if(parameters.isUseAdaptiveThreshold()){
+        if(diagnostics()) std::cout<<"using adaptive"<<std::endl;
+       initAdaptiveThresholds(&cs.completeScore,nullptr);
+    }
+    else{
+        baseThreshold=parameters.getBaseUpperThreshold();
+        positiveLiftedThreshold=parameters.getPositiveThresholdLifted();
+        negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
+    }
+
+
     init();
 
 }
 
 
+//LdpInstance::LdpInstance( LdpParameters<>& configParameters):
+//    parameters(configParameters)
+//{
+//    char delim=',';
+//    size_t maxVertex;
+
+//        vertexGroups=disjointPaths::VertexGroups<size_t>(parameters);
+//        maxVertex=vertexGroups.getMaxVertex();
+
+//    std::ifstream graphFile(parameters.getGraphFileName());
+//    readGraph(graphFile,maxVertex,delim);
+//    graphFile.close();
+
+//    init();
+
+//    //baseEdgeLabels=std::vector<bool>(numberOfEdges);
+//}
+
+void LdpInstance::initAdaptiveThresholds(const std::vector<double>* baseCosts,const std::vector<double>* liftedCosts){
+    std::vector<double> costsToSort;
+    if(liftedCosts!=nullptr){
+        costsToSort=*liftedCosts;
+    }
+    else{
+        costsToSort=*baseCosts;
+    }
+    assert(parameters.getPositiveThresholdLifted()>=0&&parameters.getPositiveThresholdLifted()<1);
+    assert(parameters.getNegativeThresholdLifted()>=0&&parameters.getNegativeThresholdLifted()<1);
+    assert(parameters.getBaseUpperThreshold()>=0&&parameters.getBaseUpperThreshold()<1);
+    std::sort(costsToSort.begin(),costsToSort.end());
+    size_t numberOfNegative=0;
+    while(costsToSort[numberOfNegative]<0){
+        numberOfNegative++;
+    }
+    if(diagnostics()) std::cout<<"number of negative "<<numberOfNegative<<std::endl;
+    size_t numberOfPositive=costsToSort.size()-numberOfNegative;
+
+    if(diagnostics()) std::cout<<"number of positive "<<numberOfPositive<<std::endl;
 
 
+    size_t indexForNegThreshold=size_t(std::round(numberOfNegative*(1.0-parameters.getNegativeThresholdLifted())));
+    if(indexForNegThreshold>0) indexForNegThreshold--;
+    assert(indexForNegThreshold<costsToSort.size());
+    negativeLiftedThreshold=costsToSort[indexForNegThreshold];
+    if(diagnostics())std::cout<<"negative threshold lifted "<<negativeLiftedThreshold<<", index "<<indexForNegThreshold<<std::endl;
 
+    size_t indexForPositiveThreshold=size_t(std::round(numberOfPositive*(parameters.getPositiveThresholdLifted())))+numberOfNegative;
+    if(indexForPositiveThreshold>0) indexForPositiveThreshold--;
+    assert(indexForPositiveThreshold<costsToSort.size());
+    positiveLiftedThreshold=costsToSort[indexForPositiveThreshold];
 
+    if(diagnostics())std::cout<<"positive threshold lifted "<<positiveLiftedThreshold<<", index "<<indexForPositiveThreshold<<std::endl;
 
+    if(liftedCosts!=nullptr){
+        costsToSort=*baseCosts;
+        std::sort(costsToSort.begin(),costsToSort.end());
+    }
+    size_t indexForBaseThreshold=size_t(std::round(costsToSort.size()*(1.0-parameters.getBaseUpperThreshold())));
+    if(indexForBaseThreshold>0) indexForBaseThreshold--;
+    assert(indexForBaseThreshold<costsToSort.size());
+    baseThreshold=costsToSort[indexForBaseThreshold];
 
-LdpInstance::LdpInstance( LdpParameters<>& configParameters):
-    parameters(configParameters)
-{
-    char delim=',';
-    size_t maxVertex;
+    if(diagnostics())std::cout<<"base thresholds "<<baseThreshold<<", index "<<indexForBaseThreshold<<std::endl;
 
-        vertexGroups=disjointPaths::VertexGroups<size_t>(parameters);
-        maxVertex=vertexGroups.getMaxVertex();
-
-    std::ifstream graphFile(parameters.getGraphFileName());
-    readGraph(graphFile,maxVertex,delim);
-    graphFile.close();
-
-    init();
-
-    //baseEdgeLabels=std::vector<bool>(numberOfEdges);
 }
 
+//LdpInstance::LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& completeEdges,const  std::vector<double>& completeCosts,disjointPaths::VertexGroups<>& pvg)
+//    :parameters(configParameters)
+//{
+
+//    vertexGroups=pvg;
+//    assert(completeCosts.size()==completeEdges.size());
+//    std::vector<double> costsToSort=completeCosts;
+
+//    if(configParameters.isUseAdaptiveThreshold()){
+
+
+//    }
+
+
+
+//}
 
 
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
@@ -86,7 +156,15 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 
 
     if(configParameters.isSparsify()){
-        disjointPaths::createKnnBaseGraph(*this,configParameters);
+        if(parameters.isUseAdaptiveThreshold()){
+           initAdaptiveThresholds(&csBase.completeScore,&csLifted.completeScore);
+        }
+        else{
+            baseThreshold=parameters.getBaseUpperThreshold();
+            positiveLiftedThreshold=parameters.getPositiveThresholdLifted();
+            negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
+        }
+        sparsifyBaseGraph();
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
         //disjointPaths::keepFractionOfLifted(*this,configParameters);
         sparsifyLiftedGraph();
@@ -117,8 +195,6 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 void LdpInstance::init(){
 
     if(debug()) std::cout<<"Adding automatic lifted edges"<<std::endl;
-  //  parameters.infoFile()<<"Adding automatic lifted edges"<<std::endl;
-   // parameters.infoFile().flush();
     for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
         size_t v0=graph_.vertexOfEdge(i,0);
         size_t v1=graph_.vertexOfEdge(i,1);
@@ -131,26 +207,22 @@ void LdpInstance::init(){
     }
     numberOfVertices=graph_.numberOfVertices();
     if(debug()) std::cout<<"done"<<std::endl;
-   // parameters.infoFile()<<"done"<<std::endl;
-  //  parameters.infoFile().flush();
-
 
    if(diagnostics())  std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
-  //  parameters.infoFile()<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
-  //  parameters.infoFile().flush();
-    strongBaseEdges=std::vector<std::unordered_set<size_t>>(graph_.numberOfVertices());
+   strongBaseEdges=std::vector<std::unordered_set<size_t>>(graph_.numberOfVertices());
     if(parameters.isSparsify()){
-        //sparsifyBaseGraph();
-        disjointPaths::createKnnBaseGraph(*this,parameters);
+
+
+        sparsifyBaseGraph();
         reachable=initReachableSet(graph_,parameters,&vertexGroups);
-       // disjointPaths::keepFractionOfLifted(*this,parameters);
+
         sparsifyLiftedGraph();
         initLiftedStructure();
-      //  sparsifyLiftedGraph();
+
 
     }
     else{
-        //desc=initReachable(graph_,parameters);
+
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();
     }
@@ -234,124 +306,124 @@ void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths:
 }
 
 
-void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
-	std::string line;
-	//	char delim = ' ';
-	size_t lineCounter=0;
-	std::getline(data, line);
-	lineCounter++;
-    if(debug()) std::cout << "called read graph" << std::endl;
-    //parameters.infoFile()<<"called read graph" << std::endl;
-	std::vector<std::string> strings = split(line, delim);
-	size_t numberOfVertices;
+//void LdpInstance::readGraph(std::ifstream& data,size_t maxVertex,char delim){
+//	std::string line;
+//	//	char delim = ' ';
+//	size_t lineCounter=0;
+//	std::getline(data, line);
+//	lineCounter++;
+//    if(debug()) std::cout << "called read graph" << std::endl;
+//    //parameters.infoFile()<<"called read graph" << std::endl;
+//	std::vector<std::string> strings = split(line, delim);
+//	size_t numberOfVertices;
 
-	if (strings.size() == 1) {
-		if(parameters.isRestrictFrames()){
-			numberOfVertices=maxVertex+3;
-		}
-		else{
-			numberOfVertices = stoul(strings[0]);
-			numberOfVertices += 2;  //to include s and t in the end of the list
-		}
-		s_ = numberOfVertices - 2;
-		t_ = numberOfVertices - 1;
+//	if (strings.size() == 1) {
+//		if(parameters.isRestrictFrames()){
+//			numberOfVertices=maxVertex+3;
+//		}
+//		else{
+//			numberOfVertices = stoul(strings[0]);
+//			numberOfVertices += 2;  //to include s and t in the end of the list
+//		}
+//		s_ = numberOfVertices - 2;
+//		t_ = numberOfVertices - 1;
 
-	} else {
-		std::string str="first row must contain 1 number, detected ";
-		str+=std::to_string(strings.size());
-		str+="numbers";
-		throw std::runtime_error(str);
-	}
-
-
-
-	graphLifted_ = andres::graph::Digraph<>(numberOfVertices);
-	graph_ = andres::graph::Digraph<>(numberOfVertices);
-	std::vector<double> inputCosts(numberOfVertices-2,parameters.getInputCost());
-	std::vector<double> outputCosts(numberOfVertices-2,parameters.getOutputCost());
+//	} else {
+//		std::string str="first row must contain 1 number, detected ";
+//		str+=std::to_string(strings.size());
+//		str+="numbers";
+//		throw std::runtime_error(str);
+//	}
 
 
-	// std::vector<std::pair<size_t,siz  Data<>e_t> > liftedEdges;
-	vertexScore = std::vector<double>(numberOfVertices, 0);
 
-    if(debug())std::cout<<"Reading vertices from file. "<<std::endl;
-//	parameters.infoFile()<<"Reading vertices from file. "<<std::endl;
-//	parameters.infoFile().flush();
-	//Vertices that are not found have score=0. Appearance and disappearance cost are read here.
-	while (std::getline(data, line) && !line.empty()) {
-		lineCounter++;
-		strings = split(line, delim);
-		if (strings.size() < 2) {
-			throw std::runtime_error(
-					std::string("Vertex and its score expected"));
-		}
+//	graphLifted_ = andres::graph::Digraph<>(numberOfVertices);
+//	graph_ = andres::graph::Digraph<>(numberOfVertices);
+//	std::vector<double> inputCosts(numberOfVertices-2,parameters.getInputCost());
+//	std::vector<double> outputCosts(numberOfVertices-2,parameters.getOutputCost());
 
 
-		unsigned int v = std::stoul(strings[0]);
-		if(v>graph_.numberOfVertices()-3) continue;
-		double score = std::stod(strings[1]);
-		vertexScore[v] = score;
+//	// std::vector<std::pair<size_t,siz  Data<>e_t> > liftedEdges;
+//	vertexScore = std::vector<double>(numberOfVertices, 0);
 
-		if(strings.size()==4){
-			inputCosts[v]=std::stod(strings[2]);
-			outputCosts[v]=std::stod(strings[3]);
-		}
+//    if(debug())std::cout<<"Reading vertices from file. "<<std::endl;
+////	parameters.infoFile()<<"Reading vertices from file. "<<std::endl;
+////	parameters.infoFile().flush();
+//	//Vertices that are not found have score=0. Appearance and disappearance cost are read here.
+//	while (std::getline(data, line) && !line.empty()) {
+//		lineCounter++;
+//		strings = split(line, delim);
+//		if (strings.size() < 2) {
+//			throw std::runtime_error(
+//					std::string("Vertex and its score expected"));
+//		}
 
-	}
 
-	for (int v = 0; v < numberOfVertices-2; ++v) {
-		graph_.insertEdge(s_,v);
-		edgeScore.push_back(inputCosts[v]);
-		graph_.insertEdge(v,t_);
-		edgeScore.push_back(outputCosts[v]);
-	}
+//		unsigned int v = std::stoul(strings[0]);
+//		if(v>graph_.numberOfVertices()-3) continue;
+//		double score = std::stod(strings[1]);
+//		vertexScore[v] = score;
 
-	size_t maxGap=parameters.getMaxTimeGapComplete();
+//		if(strings.size()==4){
+//			inputCosts[v]=std::stod(strings[2]);
+//			outputCosts[v]=std::stod(strings[3]);
+//		}
 
-    if(debug()) std::cout<<"Reading base edges from file. "<<std::endl;
-//	parameters.infoFile()<<"Reading base edges from file. "<<std::endl;
-//	parameters.infoFile().flush();
-	while (std::getline(data, line) && !line.empty()) {
-		lineCounter++;
-		strings = split(line, delim);
-		if (strings.size() < 3) {
-			throw std::runtime_error(
-					std::string("Edge vertices and score expected, line "+std::to_string(lineCounter)));
-		}
+//	}
 
-		unsigned int v = std::stoul(strings[0]);
-		unsigned int w = std::stoul(strings[1]);
+//	for (int v = 0; v < numberOfVertices-2; ++v) {
+//		graph_.insertEdge(s_,v);
+//		edgeScore.push_back(inputCosts[v]);
+//		graph_.insertEdge(v,t_);
+//		edgeScore.push_back(outputCosts[v]);
+//	}
 
-        if(v>numberOfVertices-3) break;
-        if(w>numberOfVertices-3) continue;
+//	size_t maxGap=parameters.getMaxTimeGapComplete();
 
-		size_t gv=vertexGroups.getGroupIndex(v);
-		size_t gw=vertexGroups.getGroupIndex(w);
-		if(gw-gv>maxGap) continue;
+//    if(debug()) std::cout<<"Reading base edges from file. "<<std::endl;
+////	parameters.infoFile()<<"Reading base edges from file. "<<std::endl;
+////	parameters.infoFile().flush();
+//	while (std::getline(data, line) && !line.empty()) {
+//		lineCounter++;
+//		strings = split(line, delim);
+//		if (strings.size() < 3) {
+//			throw std::runtime_error(
+//					std::string("Edge vertices and score expected, line "+std::to_string(lineCounter)));
+//		}
 
-		//if(v>=graph_.numberOfVertices()-2||w>=graph_.numberOfVertices()-2) continue;
-		double score = std::stod(strings[2]);
-		auto edgeTest=graph_.findEdge(v,w);
+//		unsigned int v = std::stoul(strings[0]);
+//		unsigned int w = std::stoul(strings[1]);
 
-		if(!edgeTest.first){  //if the edge does not exist
-			graph_.insertEdge(v, w);
-			edgeScore.push_back(score);
+//        if(v>numberOfVertices-3) break;
+//        if(w>numberOfVertices-3) continue;
 
-		}
-		else{  //if the edge already exists, only update the score
-			edgeScore[edgeTest.second]=score;
+//		size_t gv=vertexGroups.getGroupIndex(v);
+//		size_t gw=vertexGroups.getGroupIndex(w);
+//		if(gw-gv>maxGap) continue;
 
-		}
-	}
-    if(debug())std::cout<<"reading finished"<<std::endl;
-}
+//		//if(v>=graph_.numberOfVertices()-2||w>=graph_.numberOfVertices()-2) continue;
+//		double score = std::stod(strings[2]);
+//		auto edgeTest=graph_.findEdge(v,w);
+
+//		if(!edgeTest.first){  //if the edge does not exist
+//			graph_.insertEdge(v, w);
+//			edgeScore.push_back(score);
+
+//		}
+//		else{  //if the edge already exists, only update the score
+//			edgeScore[edgeTest.second]=score;
+
+//		}
+//	}
+//    if(debug())std::cout<<"reading finished"<<std::endl;
+//}
 
 
 
 void LdpInstance::initLiftedStructure(){
     size_t n=numberOfVertices-2;
 
-    std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
+    //std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
     sncNeighborStructure=std::vector<size_t>(n+2);
     sncBUNeighborStructure=std::vector<size_t>(n+2);
     sncTDStructure=std::vector<double>(n+2);
@@ -387,20 +459,13 @@ void LdpInstance::initLiftedStructure(){
 void LdpInstance::sparsifyLiftedGraph(){
 
 
-     parameters.getControlOutput()<<"Sparsify lifted graph"<<std::endl;
+    parameters.getControlOutput()<<"Sparsify lifted graph"<<std::endl;
     parameters.writeControlOutput();
     //TODO run automaticLifted to find candidates first
-
-    double negMaxValue=0;
-    double posMinValue=0;
 
     std::vector<double> newLiftedCosts;
 
     andres::graph::Digraph<> tempGraphLifted=(graph_.numberOfVertices());
-
-
-    negMaxValue=parameters.getNegativeThresholdLifted();
-    posMinValue=parameters.getPositiveThresholdLifted();
 
 
     std::unordered_map<size_t,std::set<size_t>> liftedEdges;
@@ -442,7 +507,7 @@ void LdpInstance::sparsifyLiftedGraph(){
         int l0=vertexGroups.getGroupIndex(v0);
         int l1=vertexGroups.getGroupIndex(v1);
         double cost=getLiftedEdgeScore(i);
-        bool goodCost=(cost<negMaxValue)||(cost>posMinValue);
+        bool goodCost=(cost<negativeLiftedThreshold)||(cost>positiveLiftedThreshold);
         if(isReachable(v0,v1)){
 
             int timeGapDiff=l1-l0-parameters.getDenseTimeLifted();
@@ -485,6 +550,149 @@ void LdpInstance::sparsifyLiftedGraph(){
     initLiftedStructure();
 
 }
+
+
+
+void LdpInstance::sparsifyBaseGraph(){
+     parameters.getControlOutput()<<"Sparsify base graph"<<std::endl;
+     parameters.writeControlOutput();
+
+     std::vector<double> newBaseCosts;
+     //std::vector<size_t> inOutEdges;
+     size_t k=parameters.getKnnK();
+     //std::vector<size_t> goodLongEdges;
+
+     andres::graph::Digraph<> tempGraph(graph_.numberOfVertices());
+
+
+
+     std::vector<bool> finalEdges(graph_.numberOfEdges(),false);
+     for (int v0 = 0; v0 < graph_.numberOfVertices(); ++v0) {
+         std::unordered_map<int,std::list<size_t>> edgesToKeep;
+         size_t l0=vertexGroups.getGroupIndex(v0);
+         for (size_t ne = 0; ne < graph_.numberOfEdgesFromVertex(v0); ++ne) {
+             size_t e=graph_.edgeFromVertex(v0,ne);
+             size_t v1=graph_.vertexFromVertex(v0,ne);
+ //			std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<problemGraph.getEdgeScore(e)<<std::endl;
+             if(v0==s_||v1==t_){
+                 //tempGraph.insertEdge(v0,v1);
+                 //newBaseCosts.push_back(edgeScore[e]);
+                 finalEdges[e]=true;
+             }
+             else{
+                 size_t l1=vertexGroups.getGroupIndex(v1);
+                 size_t gap=l1-l0;
+                 if(gap<=parameters.getMaxTimeBase()){
+                 //if(gap<=parameters.getKnnTimeGap()){
+                     //gap=std::min(parameters.getKnnTimeGap()+1,gap);
+                     double cost=edgeScore[e];
+                     if(edgesToKeep.count(gap)>0){
+                         std::list<size_t>& smallList=edgesToKeep[gap];
+                         auto it=smallList.begin();
+                         double bsf=edgeScore[*it];
+                         //std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<bsf<<std::endl;
+                         while(bsf>cost&&it!=smallList.end()){
+                             it++;
+                             size_t index=*it;
+                             if(it!=smallList.end()){
+                                 bsf=edgeScore[index];
+                                 //	std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<bsf<<std::endl;
+                             }
+                         }
+                         if(it!=smallList.begin()){
+                             smallList.insert(it,e);
+                             if(smallList.size()>k) smallList.pop_front();
+                         }
+                         else if(smallList.size()<k){
+                             smallList.push_front(e);
+                         }
+                     }
+                     else{
+                         edgesToKeep[gap].push_front(e);
+                     }
+                 }
+ //				else if(gap<=parameters.getMaxTimeBase()){
+ //					if(getEdgeScore(e)<=parameters.getBaseUpperThreshold()){
+ //						//tempGraph.insertEdge(v0,v1);
+ //						//newBaseCosts.push_back(getEdgeScore(e));
+ //						finalEdges[e]=true;
+ //					}
+ //
+ //				}
+             }
+         }
+         //std::cout.precision(4);
+         double bsf=0;
+         for (int gap = 0; gap <= parameters.getKnnTimeGap(); ++gap) {
+             if(edgesToKeep.count(gap)>0){
+                 auto& smallList=edgesToKeep[gap];
+                 for(size_t e:smallList){
+                     finalEdges[e]=true;
+                     if(edgeScore[e]<bsf){
+                         bsf=edgeScore[e];
+                     }
+                 }
+             }
+         }
+
+         for (int gap =  parameters.getKnnTimeGap()+1;gap<=parameters.getMaxTimeBase(); ++gap) {
+             if(edgesToKeep.count(gap)>0){
+                 auto& smallList=edgesToKeep[gap];
+                 for(size_t e:smallList){
+                     double score=edgeScore[e];
+                     if(score<=baseThreshold){
+                         finalEdges[e]=true;
+                     }
+                 }
+
+             }
+         }
+
+     }
+
+     for (int e = 0; e < graph_.numberOfEdges(); ++e) {
+         if(finalEdges[e]){
+             size_t v0=graph_.vertexOfEdge(e,0);
+             size_t v1=graph_.vertexOfEdge(e,1);
+             tempGraph.insertEdge(v0,v1);
+             newBaseCosts.push_back(edgeScore[e]);
+         }
+     }
+
+     if(newBaseCosts.size()!=tempGraph.numberOfEdges()){
+         throw std::runtime_error("Error in base graph sparsification.");
+     }
+
+
+
+     graph_=tempGraph;
+     edgeScore=newBaseCosts;
+
+
+     if(graph_.numberOfEdges()!=newBaseCosts.size()){
+         parameters.getControlOutput()<<"edge number mismatch, graph: "<<graph_.numberOfEdges()<<", cost vector "<<newBaseCosts.size()<<std::endl;
+         parameters.writeControlOutput();
+
+     }
+     else{
+
+         parameters.getControlOutput()<<"edge number and graph size match "<<std::endl;
+         parameters.writeControlOutput();
+     }
+
+     parameters.getControlOutput()<<"Left "<<newBaseCosts.size()<<" base edges"<<std::endl;
+     parameters.writeControlOutput();
+
+ }
+
+
+
+
+
+
+
+
+
 
 bool LdpInstance::isStrongBase(size_t v,size_t w) const{
     bool isStrong= strongBaseEdges.at(v).count(w)>0;

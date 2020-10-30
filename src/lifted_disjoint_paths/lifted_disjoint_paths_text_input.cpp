@@ -6,6 +6,7 @@
 #include "LP.h"
 #include "andres/graph/digraph.hxx"
 #include "lifted_disjoint_paths/ldp_parameters.hxx"
+#include "disjoint-paths/completeStructure.hxx"
 
 using namespace LPMP;
 
@@ -51,7 +52,9 @@ int main(int argc, char** argv) {
     std::string inputFileName=solver.get_input_file();
 
     LPMP::lifted_disjoint_paths::LdpParameters<> configParams(inputFileName);
-    LPMP::lifted_disjoint_paths::LdpInstance ldpInstance(configParams);
+
+    disjointPaths::CompleteStructure<> completeStructure(configParams);
+    LPMP::lifted_disjoint_paths::LdpInstance ldpInstance(configParams,completeStructure);
 
 
     solver.GetProblemConstructor().construct(ldpInstance);

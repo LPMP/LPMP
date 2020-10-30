@@ -16,22 +16,27 @@ paramsMap["OUTPUT_COST"]="0"
 paramsMap["SPARSIFY"]="1"
 paramsMap["KNN_GAP"]="3"
 paramsMap["KNN_K"]="3"
-paramsMap["BASE_THRESHOLD"]="-0.5"
+paramsMap["BASE_THRESHOLD"]="0.9"   #remove 90% of base edges
 paramsMap["DENSE_TIMEGAP_LIFTED"]="12"
-paramsMap["NEGATIVE_THRESHOLD_LIFTED"]="0"
-paramsMap["POSITIVE_THRESHOLD_LIFTED"]="0"
+paramsMap["NEGATIVE_THRESHOLD_LIFTED"]="0.1"  #remove 10% of negative lifted edges
+paramsMap["POSITIVE_THRESHOLD_LIFTED"]="0.1"  #remove 10% of positive lifted edges
 paramsMap["LONGER_LIFTED_INTERVAL"]="4"
 paramsMap["MAX_TIMEGAP_BASE"]="60"
 paramsMap["MAX_TIMEGAP_LIFTED"]="60"
 paramsMap["MAX_TIMEGAP_COMPLETE"]="60"
+paramsMap["USE_ADAPTIVE_THRESHOLDS"]="1"
 
 
 
-#pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
-pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
+pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
+#pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of LPMP
 solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","-v","0"]
+
+
+#Construct the solver.
+solver=ldpMP.Solver(solverParameters)
 
 #Command line parameters of the solver with tightening enabled
 #solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10","--tightenInterval","4","--tightenIteration","8","-v","1"]
@@ -67,8 +72,7 @@ completeGraphStructure.add_edges_from_vectors_all(edgeVector,costVector)
 #Create the problem instance.
 instance=ldpMP.LdpInstance(params,completeGraphStructure)
 
-#Construct the solver.
-solver=ldpMP.Solver(solverParameters)
+
 
 #Run problem constructor using the solver and problem instance.
 ldpMP.construct(solver,instance)

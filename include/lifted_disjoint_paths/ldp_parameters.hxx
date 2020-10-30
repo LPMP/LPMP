@@ -132,6 +132,11 @@ public:
 		return debugOutputFiles;
 	}
 
+    bool isUseAdaptiveThreshold() const{
+        return useAdaptiveThresholds;
+    }
+
+
 
 
 //	void setMaxTimeLifted(size_t maxTimeLifted) {
@@ -182,7 +187,7 @@ private:
     std::string graphFileName;  //file with input graph structure
 	std::string timeFileName;  //file with input time frames information
 
-        std::string inputParamsFileName; //file where input parameters are read
+    std::string inputParamsFileName; //file where input parameters are read
 	bool debugOutputFiles;  //use debugging output files
 
 	double inputCost;   //cost of input edges (starting a track)
@@ -193,6 +198,7 @@ private:
 	size_t maxTimeFrame;   //maximal time frame to be used
 	//size_t smallIntervals;
 
+    bool useAdaptiveThresholds;
 
 	size_t maxTimeBase;  //max timegap for base edges
 	double baseUpperThreshold;  //upper cost thereshold for base edges
@@ -412,6 +418,15 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
         maxTimeGapComplete=maxTimeFrame;
     }
     controlOutput<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
+
+    if(parameters.count("USE_ADAPTIVE_THRESHOLDS")){
+        useAdaptiveThresholds=std::stoi(parameters["USE_ADAPTIVE_THRESHOLDS"]);
+    }
+    else {
+        useAdaptiveThresholds=false;
+    }
+     controlOutput<<"adaptive thresholds "<<useAdaptiveThresholds<<std::endl;
+
     writeControlOutput();
 
 

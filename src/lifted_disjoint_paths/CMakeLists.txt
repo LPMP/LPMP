@@ -13,6 +13,7 @@ target_link_libraries(ldpMessagePassingPy PRIVATE ldp_instance LPMP pybind11::mo
 configure_file(solveFromFiles.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromFiles.py)
 configure_file(solveFromVectors.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromVectors.py)
 configure_file(solveFromVectorsTwoGraphs.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromVectorsTwoGraphs.py)
+#configure_file(solveFromExamples.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromExamples.py)
 
 
 
