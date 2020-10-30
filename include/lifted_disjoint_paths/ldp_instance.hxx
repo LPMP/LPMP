@@ -52,10 +52,11 @@ class LdpInstance {
 public:
 
 
-    LdpInstance(LdpParameters<>& configParameters);
+  //  LdpInstance(LdpParameters<>& configParameters);
      LdpInstance(LdpParameters<>& configParameters,disjointPaths::CompleteStructure<>& cs);
 //     LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS);
      LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg);
+    // LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& completeEdges,const  std::vector<double>& completeCosts,disjointPaths::VertexGroups<>& pvg);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
@@ -183,7 +184,7 @@ public:
 
     bool isStrongBase(size_t v,size_t w) const;
 
-    void sparsifyLiftedGraph();
+
 
     LdpParameters<>& parameters;
     disjointPaths::VertexGroups<size_t> vertexGroups;
@@ -215,7 +216,10 @@ public:
 private:
 
     //LdpInstance(const LdpInstance& ldpI);
+    void initAdaptiveThresholds(const std::vector<double>* baseCosts,const std::vector<double>* liftedCosts);
     void init();
+    void sparsifyBaseGraph();
+    void sparsifyLiftedGraph();
 
 	size_t s_;
 	size_t t_;
@@ -240,6 +244,10 @@ private:
 	size_t numberOfEdges;
 	size_t numberOfLiftedEdges;
 
+
+    double negativeLiftedThreshold;
+    double positiveLiftedThreshold;
+    double baseThreshold;
 
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
     void readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs);
