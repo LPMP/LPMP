@@ -464,29 +464,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TR
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::sncDebug(size_t vertex,bool isOut)
 {
 
-    //size_t numberOfInputs=5;
-    //size_t numberOfOutputs=4;
-//    std::map<size_t,std::map<size_t,double>> edges;
-//    edges[0][50]=-5;
-//    edges[0][70]=-1;
-//    edges[0][80]=2;
-//    edges[10][50]=-1;
-//    edges[10][60]=-3;
-//    edges[10][70]=2;
-//    edges[20][60]=-2;
-//    edges[20][70]=-3;
-//    edges[20][80]=2;
-//    edges[30][50]=1;
-//    edges[30][70]=3;
-//    edges[30][80]=-4;
-//    edges[40][50]=2;
-//    edges[40][60]=3;
-//    edges[40][80]=1;
 
-//    size_t v=5;
-//    size_t w=85;
-//    double liftedCost=-3;
-//    ldp_cut_factor<lifted_disjoint_paths::LdpInstance> cutFactor(v,w,liftedCost,edges);
 
 }
 
@@ -591,7 +569,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TR
 std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
     //TODO: Remember triangles that have already been added!
-/*
+
     if(diagnostics()) std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
 
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
@@ -1048,7 +1026,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     if(diagnostics()) std::cout<<"tighten expected improvement "<<expectedImprovement<<", added constraints "<<counter<<std::endl;
     adjustTriangleLabels(triangleFactorsOrigSize);
     return counter;
-    */
+
 
 }
 

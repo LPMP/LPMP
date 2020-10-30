@@ -29,7 +29,7 @@ public:
 
     double EvaluatePrimal() const;
 
-    void setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t> &vertexLabels);
+    void setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t> &vertexLabels,bool setLiftedActive);
 
     const std::vector<size_t>& getPrimal();
 
@@ -42,35 +42,57 @@ public:
 
    // std::array<double,3> getAllMinMarginals();
 
-    double getOneMinMarginal(size_t edgeId) const;
 
     void updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value);
 
+
+    double getOneEdgeMinMarginal(const size_t & index1,const size_t & neighborIndex) const;
+
+
+    const LdpTwoLayerGraph& getCutGraph()const {
+        return cutGraph;
+    }
+
+    const std::vector<size_t>& getInputVertices()const{
+        return inputVertices;
+    }
+
+    const std::vector<size_t>& getOutputVertices()const{
+        return outputVertices;
+    }
+
+    const size_t& getNumberOfInputs()const{
+        return numberOfInput;
+    }
+
+    const size_t& getNumberOfOutputs()const{
+        return numberOfOutput;
+    }
+
+private:
     double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne)const;
 
     LPMP::linear_assignment_problem_input createLAStandard()const;
     LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2)const ;
     LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1, const size_t& v2)const;
 
-    double getOneEdgeMinMarginal(const size_t & index1,const size_t & neighborIndex) const;
 
-    LdpTwoLayerGraph cutGraph;
-
-private:
 //std::vector<double> costs;
 
 std::vector<size_t> inputVertices;
 std::vector<size_t> outputVertices;
+ LdpTwoLayerGraph cutGraph;
 size_t v;
 size_t w;
 //double liftedEdgeCost;
 std::vector<size_t> primalSolution; //inputNodeIndex ->index of neighbor within cutGraph
+bool liftedActiveInPrimal;
 std::array<size_t,2> baseCoveringLifted; //{input node index,index in output nodes+numberOfInput}
 size_t numberOfInput;
 size_t numberOfOutput;
 bool baseCoverLiftedExists;
 size_t unassignedLabel;
-mutable std::vector<size_t> storeLabeling;
+mutable std::vector<size_t> storeLabeling;  //index to index
 double liftedCost;
 mutable bool liftedActive;
 
@@ -114,6 +136,7 @@ inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double lif
     baseCoveringLifted={unassignedLabel,unassignedLabel};
     baseCoverLiftedExists=0;
     liftedActive=false;
+    liftedActiveInPrimal=false;
     size_t edgeCounter=0;
     for(auto iter=inputEdges.begin();iter!=inputEdges.end();iter++){
         size_t v1=iter->first;
@@ -220,11 +243,11 @@ inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double lif
 
 //}
 
-
+//Returning neighbors indices, not output indices!
+//Last entry for lifted edge, different encoding
 template<class INSTANCE>
-inline void ldp_cut_factor<INSTANCE>::setPrimal(const std::vector<size_t>& primalDescendants,const std::vector<size_t>& vertexLabels) {
-    //TODO: missing lifted edge label!
-    for(size_t i=0;i<inputVertices.size();i++){
+inline void ldp_cut_factor<INSTANCE>::setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t>& vertexLabels, bool setLiftedActive) {
+   for(size_t i=0;i<inputVertices.size();i++){
         const size_t& vertexID=inputVertices[i];
         primalSolution[i]=unassignedLabel;
         const auto* it=cutGraph.forwardNeighborsBegin(i);
@@ -243,12 +266,17 @@ inline void ldp_cut_factor<INSTANCE>::setPrimal(const std::vector<size_t>& prima
         }
     }
     assert(v<vertexLabels.size()&&w<vertexLabels.size());
-    if(vertexLabels[v]==vertexLabels[w]){
+
+    //Is it a proper encoding?
+    if(setLiftedActive){
+        liftedActiveInPrimal=true;
         primalSolution.back()=w;
     }
     else{
+        liftedActiveInPrimal=false;
         primalSolution.back()=unassignedLabel;
     }
+
 
 }
 
@@ -280,6 +308,7 @@ inline double ldp_cut_factor<INSTANCE>::EvaluatePrimal() const{
             value+=cutGraph.getForwardEdgeCost(i,primalSolution[i]);
         }
     }
+    if(primalSolution.back()==w) value+=liftedCost;  //meaning lifted edge is active
     return value;
 }
 
