@@ -119,7 +119,7 @@ void LdpInstance::initAdaptiveThresholds(const std::vector<double>* baseCosts,co
 
 
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
-LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,const  py::array_t<double>& verticesCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& baseEdges,const std::vector<std::array<size_t,2>>& liftedEdges,const  std::vector<double>& baseCosts,const  std::vector<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
     disjointPaths::CompleteStructure<> csBase(pvg);
 
@@ -151,6 +151,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 
     disjointPaths::CompleteStructure<> csLifted(vertexGroups);
     csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
+
     graphLifted_=csLifted.completeGraph;
     liftedEdgeScore=csLifted.completeScore;
 
@@ -266,17 +267,22 @@ void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths:
 	vToGroup[s_]=0;
 	vToGroup[t_]=maxTime-minTime+1;
 
+    vertexScore = std::vector<double>(numberOfVertices, 0);
+    const std::vector<double>& verticesScoreComplete=cs->verticesScore;
 	for (int gi = minTime; gi < maxTime; ++gi) {
 		//groups[gi-minTime+1]=std::vector<size_t>();
 		for(size_t v:vg.getGroupVertices(gi)){
 			size_t vertex=v-minVertex;
+            assert(v<verticesScoreComplete.size());
+            assert(vertex<vertexScore.size());
+            vertexScore[vertex]=verticesScoreComplete[v];
 			groups[gi-minTime+1].push_back(vertex);
 			vToGroup[vertex]=gi-minTime+1;
 		}
 	}
 
     vertexGroups=disjointPaths::VertexGroups<>(groups,vToGroup);
-	vertexScore = std::vector<double>(numberOfVertices, 0);
+
 	graphLifted_ = andres::graph::Digraph<>(numberOfVertices);
 	graph_ = andres::graph::Digraph<>(numberOfVertices);
 

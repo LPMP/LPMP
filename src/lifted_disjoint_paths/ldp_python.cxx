@@ -37,11 +37,12 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
              .def("add_edges_from_vectors", &disjointPaths::CompleteStructure<>::addEdgesFromVectors<LPMP::lifted_disjoint_paths::LdpParameters<>>, "Initializes edges of the graph from an Nx2 array of size_t with edge vertices and an Nx1 array of doubles with costs. Restrictions on maximal vertex and maximal time gap from parameters apply.")
              .def("add_edges_from_vectors_all", &disjointPaths::CompleteStructure<>::addEdgesFromVectorsAll, "Initializes edges of the graph from an Nx2 array of size_t with edge vertices and an Nx1 array of doubles with costs. All edges added. No restriction on maximal timegap. ")
              .def("get_edge_labels",&disjointPaths::CompleteStructure<>::getGraphEdgeLabels,"Returns 0/1 labels of all input edges w.r.t. given set of paths. Label one is given iff detections belong to the same path." )
+             .def("set_score_of_vertices",&disjointPaths::CompleteStructure<>::setVerticesCosts,"Expects array with score of all graph vertices.")
              .def("get_edge_list",&disjointPaths::CompleteStructure<>::getEdgeList,"Return list of edges present in this graph structure.");
 
      py::class_<LPMP::lifted_disjoint_paths::LdpInstance>(m, "LdpInstance")
              .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<size_t> &,disjointPaths::CompleteStructure<>&>())
-             .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<>&,const py::array_t<size_t>&,const py::array_t<size_t>&,const  py::array_t<double>& ,const  py::array_t<double>&,disjointPaths::VertexGroups<>&>()) ;
+             .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<>&,const py::array_t<size_t>&,const py::array_t<size_t>&,const  py::array_t<double>& ,const  py::array_t<double>&,const  py::array_t<double>&,disjointPaths::VertexGroups<>&>()) ;
 
      py::class_<disjointPaths::TwoGraphsInputStructure>(m,"TwoGraphsStructure")
              .def(py::init<const py::array_t<size_t>&,const py::array_t<size_t>&,const  py::array_t<double>& ,const  py::array_t<double>&,disjointPaths::VertexGroups<>&>());
@@ -50,7 +51,8 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
      py::class_<problemSolver>(m,"Solver")
              .def(py::init<std::vector<std::string>&>())
              .def("solve",&problemSolver::Solve)
-             //.def("construct", [](problemSolver &solver,LPMP::lifted_disjoint_paths::LdpInstance& instance) {return solver.GetProblemConstructor().construct(instance); },"Returns paths obtained from best so far primal solution.")
+             .def("get_lower_bound",&problemSolver::lower_bound,"Returns lower bound")
+             .def("get_best_primal_value",&problemSolver::primal_cost,"returns best primal value")
              .def("get_best_primal", [](problemSolver &solver) {return solver.GetProblemConstructor().getBestPrimal(); },"Returns paths obtained from best so far primal solution.");
 
 
