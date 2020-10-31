@@ -406,9 +406,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         auto* incoming_snc = lp_->template add_factor<SINGLE_NODE_CUT_FACTOR>(instance, i, false);
         incoming_snc->get_factor()->initBaseCosts(0.5);
         incoming_snc->get_factor()->initLiftedCosts(0.5);
+        incoming_snc->get_factor()->initNodeCost(0.5);
         auto* outgoing_snc = lp_->template add_factor<SINGLE_NODE_CUT_FACTOR>(instance, i, true);
         outgoing_snc->get_factor()->initBaseCosts(0.5);
         outgoing_snc->get_factor()->initLiftedCosts(0.5);
+        outgoing_snc->get_factor()->initNodeCost(0.5);
         single_node_cut_factors_.push_back({incoming_snc, outgoing_snc});
     }
 

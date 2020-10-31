@@ -32,7 +32,7 @@ pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput
 #pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of LPMP
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","-v","0"]
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","5","-v","1"]
 
 
 #Construct the solver.
@@ -62,9 +62,11 @@ completeGraphStructure=ldpMP.GraphStructure(timeFrames)
 #Edge vector. Each edge is represented by a pair of vertices. Vertices ar numbered from zero
 edgeVector=np.array([[0,3],[0,4],[1,3],[1,4],[2,3],[2,4],[3,5],[3,6],[3,7],[4,5],[4,6],[4,7],[0,5],[0,6],[0,7],[1,5],[1,6],[1,7],[2,6],[2,7]])
 costVector=np.array([-2.2,-1,-1,-2.2,-1,-1,-2.2,-1,-1,-1,-2.2,-1,  -2.2,-1,-1, -1,-2.2,-1, -1,-2.2])
+verticesScore=np.array([0.0,-10,-20,0,-10,-2,0,0.5])
 
 #Adding edges to graph structure from vectors. This method adds all edges regardles restrictions given in params.
 completeGraphStructure.add_edges_from_vectors_all(edgeVector,costVector)
+completeGraphStructure.set_score_of_vertices(verticesScore)
 
 #Alternative method where either MAX_TIMEGAP_COMPLETE or the maximum from MAX_TIMEGAP_BASE and MAX_TIMEGAP_LIFTED applies for selection of edges. 
 #completeGraphStructure.add_edges_from_vectors(edgeVector,costVector,params)
