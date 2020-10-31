@@ -329,9 +329,10 @@ ldpLiftedGraph(ldpInst.getMyGraphLifted())
 
 	primalBase_=nodeNotActive;  //corresponds to no edge active
     optBaseIndex=nodeNotActive;
-	nodeCost=0;
+   // nodeCost=0.5;
 	optValue=0;
 
+    nodeCost=0;
     optValueUpToDate=false;
     solutionCostsUpToDate=false;
 
@@ -453,6 +454,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
     }
     else{
         double value=nodeCost;
+        std::cout<<"node cost "<<nodeID<<": "<<nodeCost<<std::endl;
         value+=baseCosts.at(primalBase_);
 
         for(size_t node:primalLifted_){
@@ -610,6 +612,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateEdgeCost(const doubl
 		baseCosts[vertexIndex]+=value;
 		solutionCosts[vertexIndex]+=value;
         optValueUpToDate=false;
+        std::cout<<"update edge cost "<<nodeID<<" "<<baseIDs[vertexIndex]<<": "<<value<<std::endl;
 	}
 	else{ //update in lifted edge
 
