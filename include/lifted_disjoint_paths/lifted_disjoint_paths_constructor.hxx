@@ -579,27 +579,71 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 
     std::vector<std::vector<size_t>> paths; //TODO swap order and use these paths for adjusting lifted and triangle labels
-    if(primalValue < bestPrimalValue){
-        bestPrimalValue=primalValue;
-        for (size_t i = 0; i < startingNodes.size(); ++i) {
-            std::vector<size_t> path;
-            size_t currentNode=startingNodes[i];
-            while(currentNode!=base_graph_terminal_node()){
-                path.push_back(currentNode);
-                currentNode=descendants[currentNode];
-            }
-            paths.push_back(path);
-        }
-        bestPrimalSolution=paths;
-        if(debug()){
-            for(auto path: bestPrimalSolution){
-                for(auto v:path){
-                    std::cout<<v<<" ";
+
+
+
+        if(primalValue < bestPrimalValue){
+
+            bestPrimalValue=primalValue;
+
+            double toAdd=0;
+            std::vector<size_t>  labels(nr_nodes());
+            for (size_t i = 0; i < startingNodes.size(); ++i) {
+                std::vector<size_t> path;
+                size_t currentNode=startingNodes[i];
+
+                while(currentNode!=base_graph_terminal_node()){
+                    path.push_back(currentNode);
+                    currentNode=descendants[currentNode];
                 }
-                std::cout<<std::endl;
+                paths.push_back(path);
+            }
+            bestPrimalSolution=paths;
+
+
+        }
+        if(diagnostics()){
+           // std::cout<<"computed primal value "<<primalValue<<std::endl;
+            double controlPrimalValue=0;
+            std::vector<size_t> labels(nr_nodes());
+            for (size_t i = 0; i < startingNodes.size(); ++i) {
+                // std::cout<<"path "<<i<<std::endl;
+                size_t currentNode=startingNodes[i];
+
+                controlPrimalValue+=pInstance->getEdgeScore(pInstance->getSourceNode(),currentNode);
+                while(currentNode!=base_graph_terminal_node()){
+                    assert(currentNode<labels.size());
+                    labels[currentNode]=i+1;
+                    controlPrimalValue+=pInstance->getVertexScore(currentNode);
+                    controlPrimalValue+=pInstance->getEdgeScore(currentNode,descendants[currentNode]);
+                    currentNode=descendants[currentNode];
+                }
+
+            }
+
+            //std::cout<<"lifted edges"<<std::endl;
+            for(size_t e=0;e<pInstance->getGraphLifted().numberOfEdges();e++){
+                size_t v0=pInstance->getGraphLifted().vertexOfEdge(e,0);
+                size_t v1=pInstance->getGraphLifted().vertexOfEdge(e,1);
+                if(labels[v0]==labels[v1]&&labels[v0]!=0){
+
+                    controlPrimalValue+=pInstance->getLiftedEdgeScore(e);
+
+                }
+            }
+            assert(std::abs(primalValue-controlPrimalValue)<eps);
+
+
+            if(debug()){
+                for(auto path: bestPrimalSolution){
+                    for(auto v:path){
+                        std::cout<<v<<" ";
+                    }
+                    std::cout<<std::endl;
+                }
             }
         }
-    }
+
 //    best_primal_solution = ...;
 
     if(diagnostics()) std::cout<<"primal value: "<<primalValue<<std::endl;
@@ -1227,7 +1271,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     //incoming_snc->updateEdgeCost(- reduced_cost, base_graph_node(incoming_node), false);
                     //assert(vertex_index == incoming_snc->getBaseIDs().size()-1);
                     assert(incoming_snc->getBaseIDs()[vertex_index] == base_graph_node(incoming_node));
-                    incoming_snc->updateEdgeCost(- reduced_cost, vertex_index , false);
+                   // incoming_snc->updateEdgeCost(-orig_cost, vertex_index , false);
+                     incoming_snc->updateEdgeCost(-reduced_cost, vertex_index , false);
                     ++vertex_index;
                 }
                 else if (base_graph_node(incoming_node) != i) // regular edge
@@ -1238,7 +1283,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     if (flow == -1)
                         assert(reduced_cost >= -1e-8);
                     assert(incoming_snc->getBaseIDs()[vertex_index] == base_graph_node(incoming_node));
-                    incoming_snc->updateEdgeCost(-0.5 * reduced_cost, vertex_index, false);
+                   // incoming_snc->updateEdgeCost(-0.5 * orig_cost, vertex_index, false);
+                     incoming_snc->updateEdgeCost(-0.5 * reduced_cost, vertex_index, false);
                     ++vertex_index;
                 }
                 else // bottleneck edge
@@ -1275,6 +1321,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         assert(reduced_cost <= 1e-8);
                     //outgoing_snc->updateEdgeCost(reduced_cost, base_graph_node(outgoing_node), false);
                     assert(outgoing_snc->getBaseIDs()[vertex_index] == base_graph_node(outgoing_node));
+                    //outgoing_snc->updateEdgeCost(orig_cost, vertex_index , false);
                     outgoing_snc->updateEdgeCost(reduced_cost, vertex_index , false);
                     ++vertex_index;
                 }
@@ -1287,6 +1334,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                         assert(reduced_cost <= 1e-8);
                     //outgoing_snc->updateEdgeCost(0.5 * reduced_cost, base_graph_node(outgoing_node), false);
                     assert(outgoing_snc->getBaseIDs()[vertex_index] == base_graph_node(outgoing_node));
+                    //outgoing_snc->updateEdgeCost(0.5 * orig_cost, vertex_index, false);
                     outgoing_snc->updateEdgeCost(0.5 * reduced_cost, vertex_index, false);
                     ++vertex_index;
                 }
