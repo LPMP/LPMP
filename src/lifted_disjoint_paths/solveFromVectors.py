@@ -32,7 +32,7 @@ pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput
 #pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of LPMP
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","5","-v","1"]
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","5","-v","0"]
 
 
 #Construct the solver.
@@ -87,6 +87,15 @@ paths=solver.get_best_primal()
 
 #Obtaining edge labels based on the obtained paths. Label 1 (True) is given iff endpoints of the respective edge belong to the same path.
 edgeLabels=ldpMP.get_lifted_edge_labels(edgeVector,paths,numberOfVertices)
+
+#Get lower bound 
+lowerBound=solver.get_lower_bound()
+
+#Get primal value
+primalValue=solver.get_best_primal_value()
+
+print(lowerBound)
+print(primalValue)
 
 #An alternative method gives labels to the edges actually used in the input graph.
 #edgeLabels=completeGraphStructure.get_edge_labels(paths)
