@@ -788,13 +788,15 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
     std::cout<<"keep candidate lifted, closed nodes "<<nrClosedNodes<<std::endl;
 
-    //Registering weakest cut edges to given lifted edges
-    std::priority_queue<std::tuple<double,size_t,size_t>> leQueue;
+    std::priority_queue<std::pair<double,ldp_cut_factor<lifted_disjoint_paths::LdpInstance>*>> leQueue;   //improvement value, pointer to factor container
+   // std::vector<ldp_cut_factor<lifted_disjoint_paths::LdpInstance>*> candidateFactorsContainer;
+
     size_t nrOpenNodes=nr_nodes()-nrClosedNodes;
+    const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
     while(nrClosedNodes<nr_nodes()&&i<edgesToSort.size()){
         size_t v=std::get<1>(edgesToSort[i]);
         size_t w=std::get<2>(edgesToSort[i]);
-        // std::cout<<"v"<<", "<<w<<":"<<cost<<std::endl;
+       //  std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
         if(predecessors[w].count(v)>0){
             i++;
             continue;
@@ -803,123 +805,256 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         assert(cost>0);
 
 
+      //  std::tuple<double,size_t,size_t> bestLiftedEdge;  //lb improvement, cost, vertices
+      //  double bestLiftedCost=0;
       //  std::cout<<"compute"<<cost<<std::endl;
         for(auto& pred: predecessors[v]){
             if(closedNodes[pred]) continue;
-           // std::cout<<"process "<<pred<<cost<<std::endl;
-            bool superiorExists=false;
-            std::tuple<double,size_t,size_t> bestEdge;
-            double bestValue=0.0;
-            std::map<size_t,double>& neighbors=liftedEdgesWithCosts[pred]; //TODO improve: neighbors and reachable nodes are both sorted. Can be traversed linearly!
             std::map<size_t,double> edgesToKeep;
-            for(auto it=neighbors.begin();it!=neighbors.end();it++){
-                size_t endNode=it->first;
+            for(auto it=liftedEdgesWithCosts[pred].begin();it!=liftedEdgesWithCosts[pred].end();it++){
+                size_t node=it->first;
+                double lCost=it->second;
+                //std::cout<<pred<<","<<node<<": "<<lCost<<std::endl;
+                if(descendants[pred].count(it->first)>0){
+                    if(it->second<0.0){   //maybe add all and add and group all factors added in the same round, they are contradicting
+                        std::map<size_t,std::map<size_t,double>> cutEdges;
+                        size_t v1=pred;
+                        size_t v2=it->first;
+                        double improvementValue=std::min(abs(it->second),cost);
 
-                double liftedCost=it->second;
-             //   std::cout<<"neighbor "<<endNode<<": "<<liftedCost<<std::endl;
-                if(abs(liftedCost)<bestValue) continue;
-                bool belongsToCut=pInstance->isReachable(w,endNode);
-                if(superiorExists){
-               //     std::cout<<"superior exist"<<std::endl;
-                    if(!belongsToCut&&abs(liftedCost)>cost){
-                 //       std::cout<<"is good too"<<std::endl;
-                        edgesToKeep[endNode]=liftedCost;
+                        for(auto& d:descendants[v1]){              //or break if d is in used vertices for cuts and w is reachable from d
+                             const auto* it=baseGraph.forwardNeighborsBegin(d);
+                             const auto* end=baseGraph.forwardNeighborsEnd(d);
+                             for(;it!=end;it++){               //can be probably a linear iteration
+                                 size_t d2=it->first;
+                                 if(descendants[v1].count(d2)==0&&pInstance->isReachable(d2,w)){  //candidate cut edge (d,d2), leaves component and w is reachable
+                                      cutEdges[d][d2]=baseEdgesWithCosts[d][d2];
+                                 }
+                             }
+
+                        }
+                        ldp_cut_factor<lifted_disjoint_paths::LdpInstance>* pCutF=new ldp_cut_factor<lifted_disjoint_paths::LdpInstance>(v1,v2,it->second,cutEdges);
+                        leQueue.push(std::pair(improvementValue,pCutF));
                     }
-
                 }
                 else{
-                    //std::cout<<"no superior so far"<<std::endl;
-                    double myValue=std::min(abs(liftedCost),cost);
-                    if(belongsToCut||abs(liftedCost)<=cost){
-                      //  std::cout<<"belongs to cut or abs lower than cost"<<std::endl;
-                        if(myValue>bestValue){
-                        //    std::cout<<"my value > best value"<<std::endl;
-                            bestEdge=std::tuple(myValue,pred,endNode); //Priority queue takes highest first
-                            bestValue=myValue;
-                        }
-                        else{
-                          //  std::cout<<"my value <= bestValue"<<std::endl;
-                        }
-                    }
-                    else{
-                         superiorExists=true;
-                         //std::cout<<"superior found"<<std::endl;
-                         edgesToKeep[endNode]=liftedCost;
-                         bestValue=cost;
-                    }
+                   // std::cout<<" process later"<<std::endl;
+
+                    edgesToKeep[it->first]=it->second;
                 }
             }
-            if(superiorExists){
-                liftedEdgesWithCosts[pred]=edgesToKeep;
-            }
-            else if(bestValue>0){
-                nrClosedNodes++;
+            liftedEdgesWithCosts[pred]=edgesToKeep;
+            if(edgesToKeep.empty()){
                 closedNodes[pred]=1;
-                leQueue.push(bestEdge);
-               // std::cout<<"closing "<<pred<<std::endl;
+                nrClosedNodes++;
             }
-            else{
-                std::cout<<"nothing found, error"<<std::endl;
-                assert(false);
+//            if(bestLiftedCost<0){
+//                std::map<size_t,std::map<size_t,double>> cutEdges;
+//                size_t v1=std::get<1>(bestLiftedEdge);
+//                size_t v2=std::get<2>(bestLiftedEdge);
+//                double improvementValue=std::get<0>(bestLiftedEdge);
 
+//                for(auto& d:descendants[v1]){              //or break if d is in used vertices for cuts and w is reachable from d
+//                     const auto* it=baseGraph.forwardNeighborsBegin(d);
+//                     const auto* end=baseGraph.forwardNeighborsEnd(d);
+//                     for(;it!=end;it++){               //can be probably a linear iteration
+//                         size_t d2=it->first;
+//                         if(descendants[v1].count(d2)==0&&pInstance->isReachable(d2,w)){  //candidate cut edge (d,d2), leaves component and w is reachable
+//                              cutEdges[d][d2]=baseEdgesWithCosts[d][d2];
+//                         }
+//                     }
+
+//                }
+//                ldp_cut_factor<lifted_disjoint_paths::LdpInstance>* pCutF=new ldp_cut_factor<lifted_disjoint_paths::LdpInstance>(v1,v2,bestLiftedCost,cutEdges);
+//                leQueue.push(std::pair(improvementValue,pCutF));
+
+//              }
+        }
+
+        for(auto& desc:descendants[w]){   //can be linear
+            for(auto &pred:predecessors[v]){
+                predecessors[desc].insert(pred);
+                descendants[pred].insert(desc);
             }
         }
         i++;
     }
 
-    std::cout<<"closed nodes "<<nrClosedNodes<<std::endl;
-
-
-
-    std::cout<<"edges to queue added "<<leQueue.size()<<std::endl;
-
+    std::cout<<"queue size "<<leQueue.size()<<std::endl;
     size_t addedCuts=0;
-    std::vector<char> usedNodesForCuts(nr_nodes()); //maybe this would be enough
-    //std::vector<std::set<size_t>> usedEdgesForCuts(nr_nodes());
-    const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
-    while(!leQueue.empty()&&addedCuts<nr_constraints_to_add){
-        const std::tuple<double,size_t,size_t>& bestEdge=leQueue.top();
-        size_t v=std::get<1>(bestEdge);
-        size_t w=std::get<2>(bestEdge);
-        bool isFree=true;
-        std::map<size_t,std::map<size_t,double>> cutEdges;
-        for(auto& d:descendants[v]){              //or break if d is in used vertices for cuts and w is reachable from d
-            if(usedNodesForCuts[d]&&pInstance->isReachable(d,w)){
-                isFree=false; //Maybe it is not a problem if the descendant is not used for the cut in the end!
-                break;
+    std::map<size_t,std::set<size_t>> usedCutEdges;  //TODO make 2dim array of char?
+    while(!leQueue.empty()){
+
+        bool canAdd=true;
+        ldp_cut_factor<lifted_disjoint_paths::LdpInstance>* pCutFactor=leQueue.top().second;
+        auto& cutGraph=pCutFactor->getCutGraph();
+        for(size_t i=0;i<pCutFactor->getNumberOfInputs();i++){
+            size_t a=pCutFactor->getInputVertices()[i];
+            auto * iter=cutGraph.forwardNeighborsBegin(i);
+            auto * end=cutGraph.forwardNeighborsEnd(i);
+            for(;iter!=end;iter++){
+                size_t b=pCutFactor->getOutputVertices()[iter->first];
+                if(usedCutEdges[a].count(b)>0){
+                    canAdd=false;
+                    break;
+                }
+                else{
+                    usedCutEdges[a].insert(b);
+                }
             }
-             const auto* it=baseGraph.forwardNeighborsBegin(d);
-             const auto* end=baseGraph.forwardNeighborsEnd(d);
-             for(;it!=end;it++){               //can be probably a linear iteration
-                 size_t d2=it->first;
-                 if(descendants[v].count(d2)==0&&pInstance->isReachable(d2,w)){  //candidate cut edge (d,d2), leaves component and w is reachable
-//                      if(usedEdgesForCuts[d].count(d2)>0){
-//                          isFree=false;
-//                          break;
-//                      }
-//                      else{
-                          cutEdges[d][d2]=baseEdgesWithCosts[d][d2];
-                      //}
-                 }
-             }
-             //if(!isFree) break;
         }
-        if(isFree){
-            double leCost=liftedEdgesWithCostsAll[v][w];
-            ldp_cut_factor<lifted_disjoint_paths::LdpInstance> cutF(v,w,leCost,cutEdges);
-            for(auto iter=cutEdges.begin();iter!=cutEdges.end();iter++){
-                usedNodesForCuts[iter->first]=1;
-            }
-            cutF.print();
+        if(canAdd){
+            pCutFactor->print();
             addedCuts++;
             std::cout<<"added cuts "<<addedCuts<<std::endl;
+            //TODO add to factor container
+
 
         }
-
+        else{
+            std::cout<<"cannot add"<<std::endl;
+        }
         leQueue.pop();
-    }
+        delete pCutFactor;
+        pCutFactor=nullptr;
 
-    std::cout<<"done"<<std::endl;
+    }
+    return 0;
+}
+
+
+//    //Registering weakest cut edges to given lifted edges
+//    std::priority_queue<std::tuple<double,size_t,size_t>> leQueue;
+//    size_t nrOpenNodes=nr_nodes()-nrClosedNodes;
+//    while(nrClosedNodes<nr_nodes()&&i<edgesToSort.size()){
+//        size_t v=std::get<1>(edgesToSort[i]);
+//        size_t w=std::get<2>(edgesToSort[i]);
+//        // std::cout<<"v"<<", "<<w<<":"<<cost<<std::endl;
+//        if(predecessors[w].count(v)>0){
+//            i++;
+//            continue;
+//        }
+//        double cost=std::get<0>(edgesToSort[i]);
+//        assert(cost>0);
+
+
+//      //  std::cout<<"compute"<<cost<<std::endl;
+//        for(auto& pred: predecessors[v]){
+//            if(closedNodes[pred]) continue;
+//           // std::cout<<"process "<<pred<<cost<<std::endl;
+//            bool superiorExists=false;
+//            std::tuple<double,size_t,size_t> bestEdge;
+//            double bestValue=0.0;
+//            std::map<size_t,double>& neighbors=liftedEdgesWithCosts[pred]; //TODO improve: neighbors and reachable nodes are both sorted. Can be traversed linearly!
+//            std::map<size_t,double> edgesToKeep;
+//            for(auto it=neighbors.begin();it!=neighbors.end();it++){
+//                size_t endNode=it->first;
+
+//                double liftedCost=it->second;
+//             //   std::cout<<"neighbor "<<endNode<<": "<<liftedCost<<std::endl;
+//                if(abs(liftedCost)<bestValue) continue;
+//                bool belongsToCut=pInstance->isReachable(w,endNode);
+//                if(superiorExists){
+//               //     std::cout<<"superior exist"<<std::endl;
+//                    if(!belongsToCut&&abs(liftedCost)>cost){
+//                 //       std::cout<<"is good too"<<std::endl;
+//                        edgesToKeep[endNode]=liftedCost;
+//                    }
+
+//                }
+//                else{
+//                    //std::cout<<"no superior so far"<<std::endl;
+//                    double myValue=std::min(abs(liftedCost),cost);
+//                    if(belongsToCut||abs(liftedCost)<=cost){
+//                      //  std::cout<<"belongs to cut or abs lower than cost"<<std::endl;
+//                        if(myValue>bestValue){
+//                        //    std::cout<<"my value > best value"<<std::endl;
+//                            bestEdge=std::tuple(myValue,pred,endNode); //Priority queue takes highest first
+//                            bestValue=myValue;
+//                        }
+//                        else{
+//                          //  std::cout<<"my value <= bestValue"<<std::endl;
+//                        }
+//                    }
+//                    else{
+//                         superiorExists=true;
+//                         //std::cout<<"superior found"<<std::endl;
+//                         edgesToKeep[endNode]=liftedCost;
+//                         bestValue=cost;
+//                    }
+//                }
+//            }
+//            if(superiorExists){
+//                liftedEdgesWithCosts[pred]=edgesToKeep;
+//            }
+//            else if(bestValue>0){
+//                nrClosedNodes++;
+//                closedNodes[pred]=1;
+//                leQueue.push(bestEdge);
+//               // std::cout<<"closing "<<pred<<std::endl;
+//            }
+//            else{
+//                std::cout<<"nothing found, error"<<std::endl;
+//                assert(false);
+
+//            }
+//        }
+//        i++;
+//    }
+
+  //  std::cout<<"closed nodes "<<nrClosedNodes<<std::endl;
+
+
+
+//    std::cout<<"edges to queue added "<<leQueue.size()<<std::endl;
+
+//    size_t addedCuts=0;
+//    std::vector<char> usedNodesForCuts(nr_nodes()); //maybe this would be enough
+//    //std::vector<std::set<size_t>> usedEdgesForCuts(nr_nodes());
+
+//    while(!leQueue.empty()&&addedCuts<nr_constraints_to_add){
+//        const std::tuple<double,size_t,size_t>& bestEdge=leQueue.top();
+//        size_t v=std::get<1>(bestEdge);
+//        size_t w=std::get<2>(bestEdge);
+//        bool isFree=true;
+//        std::map<size_t,std::map<size_t,double>> cutEdges;
+//        for(auto& d:descendants[v]){              //or break if d is in used vertices for cuts and w is reachable from d
+//            if(usedNodesForCuts[d]&&pInstance->isReachable(d,w)){
+//                isFree=false; //Maybe it is not a problem if the descendant is not used for the cut in the end!
+//                break;
+//            }
+//             const auto* it=baseGraph.forwardNeighborsBegin(d);
+//             const auto* end=baseGraph.forwardNeighborsEnd(d);
+//             for(;it!=end;it++){               //can be probably a linear iteration
+//                 size_t d2=it->first;
+//                 if(descendants[v].count(d2)==0&&pInstance->isReachable(d2,w)){  //candidate cut edge (d,d2), leaves component and w is reachable
+////                      if(usedEdgesForCuts[d].count(d2)>0){
+////                          isFree=false;
+////                          break;
+////                      }
+////                      else{
+//                          cutEdges[d][d2]=baseEdgesWithCosts[d][d2];
+//                      //}
+//                 }
+//             }
+//             //if(!isFree) break;
+//        }
+//        if(isFree){
+//            double leCost=liftedEdgesWithCostsAll[v][w];
+//            ldp_cut_factor<lifted_disjoint_paths::LdpInstance> cutF(v,w,leCost,cutEdges);
+//            for(auto iter=cutEdges.begin();iter!=cutEdges.end();iter++){
+//                usedNodesForCuts[iter->first]=1;
+//            }
+//            cutF.print();
+//            addedCuts++;
+//            std::cout<<"added cuts "<<addedCuts<<std::endl;
+
+//        }
+
+//        leQueue.pop();
+//    }
+
+ //   std::cout<<"done"<<std::endl;
 
 
 
@@ -982,9 +1117,9 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
 
 
-        return 0;
+//        return 0;
 
-}
+//}
 
         // std::cout<<"lifted min marginals out "<<i<<std::endl;
 
