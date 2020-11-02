@@ -69,6 +69,7 @@ public:
         return numberOfOutput;
     }
 
+    void print()const ;
 private:
     double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne)const;
 
@@ -171,7 +172,7 @@ inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double lif
                 localEdges[edgeCounter]={counterInput,i};
 
                 edgeCounter++;
-                std::cout<<"adding edge "<<counterInput<<", "<<i<<std::endl;
+               // std::cout<<"adding edge "<<counterInput<<", "<<i<<std::endl;
                 edgeCosts.push_back(it->second);
             }
         }
@@ -294,6 +295,22 @@ inline const std::vector<size_t>& ldp_cut_factor<INSTANCE>::getPrimal() {
 }
 
 template<class INSTANCE>
+inline void ldp_cut_factor<INSTANCE>::print()const {
+    std::cout<<"CUT "<<v<<", "<<w<<":"<<liftedCost<<std::endl;
+    for (size_t i = 0; i < numberOfInput; ++i) {
+
+        auto * it=cutGraph.forwardNeighborsBegin(i);
+        auto * end=cutGraph.forwardNeighborsEnd(i);
+        for(;it!=end;it++){
+            const size_t& outputIndex=it->first;
+             double value=it->second;
+            std::cout<<inputVertices[i]<<", "<<outputVertices[outputIndex]<<": "<<value<<std::endl;
+        }
+
+    }
+}
+
+template<class INSTANCE>
 inline void ldp_cut_factor<INSTANCE>::updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
     double oldValue=cutGraph.getForwardEdgeCost(inputVertexIndex,neighborIndex);
     cutGraph.setForwardEdgeCost(inputVertexIndex,neighborIndex,oldValue+value);
@@ -330,7 +347,7 @@ inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,c
     else if(restrictToOne){
         assert(index1<inputVertices.size());
         lapInput=laExcludeVertices(index1,index2);
-        std::cout<<"lap input for one created "<<std::endl;
+        //std::cout<<"lap input for one created "<<std::endl;
         //minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
         assert(index2<outputVertices.size());
         bool found=false;
@@ -349,12 +366,12 @@ inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,c
     else{//edge is restricted to zero
         assert(index1<inputVertices.size());
         lapInput=laExcludeEdge(index1,index2);
-        std::cout<<"lap input for zero created "<<std::endl;
+       // std::cout<<"lap input for zero created "<<std::endl;
     }
     MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
     lapInput.initialize_mcf(mcf);
 
-    std::cout<<"mcf init"<<std::endl;
+  //  std::cout<<"mcf init"<<std::endl;
     minValue+=mcf.solve();
 
 
@@ -365,7 +382,7 @@ inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,c
              int label=mcf.head(i)-numberOfInput;
             int vertex=mcf.tail(i);
             if(vertex<numberOfInput&&label<numberOfOutput){
-                std::cout<<"vertex "<<vertex<<", label "<<label<<std::endl;
+              //  std::cout<<"vertex "<<vertex<<", label "<<label<<std::endl;
                 storeLabeling[vertex]=label;
                 activeExists=true;
             }
@@ -375,14 +392,14 @@ inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,c
     liftedActive=false;
     if(baseCoverLiftedExists&&storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
         liftedActive=true; //cost already present in LAP
-        std::cout<<"lifted forced one"<<std::endl;
+        //std::cout<<"lifted forced one"<<std::endl;
     }
     else if(activeExists&&liftedCost<0){
         minValue+=liftedCost;
         liftedActive=true;
     }
 
-    std::cout<<"lifted active "<<liftedActive<<std::endl;
+   // std::cout<<"lifted active "<<liftedActive<<std::endl;
 
     return minValue;
 

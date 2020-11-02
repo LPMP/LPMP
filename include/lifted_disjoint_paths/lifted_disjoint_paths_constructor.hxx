@@ -29,6 +29,8 @@ public:
     void WritePrimal(std::stringstream& strStream)const;
 
     size_t Tighten(const std::size_t nr_constraints_to_add);
+      size_t separateTriangles(const std::size_t nr_constraints_to_add);
+        size_t separateCuts(const std::size_t nr_constraints_to_add);
     void pre_iterate() { reparametrize_snc_factors(); }
 
     std::vector<std::vector<size_t>> getBestPrimal()const { return bestPrimalSolution;}
@@ -620,8 +622,386 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 //    return best_primal_solution;
 //}
 
+
+
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::separateCuts(const std::size_t nr_constraints_to_add)
+{
+
+    if(diagnostics()) std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
+
+    const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
+
+    std::map<size_t,std::set<size_t>> baseEdgeUsed;
+    std::map<size_t,std::set<size_t>> liftedEdgeUsed;
+
+    std::map<size_t,std::map<size_t,double>> baseEdgesWithCosts;  //TODO: can be vector of maps
+    std::vector<std::vector<size_t>> baseEdgesIn(nr_nodes());  //can be two dim array
+    std::vector<std::vector<size_t>> baseEdgesOut(nr_nodes());
+
+    std::vector<std::vector<size_t>> liftedEdgesIn(nr_nodes());
+    std::vector<std::vector<size_t>> liftedEdgesOut(nr_nodes());
+    //std::multimap<double,ldp_triangle_factor> candidateFactors;
+
+    std::vector<std::tuple<double,size_t,size_t>> edgesToSort;
+
+
+    andres::graph::Digraph<> connectivityGraph(nr_nodes());
+    std::vector<std::set<size_t>> descendants(nr_nodes());
+    std::vector<std::set<size_t>> predecessors(nr_nodes());
+
+    std::vector<std::map<size_t,double>> liftedEdgesWithCosts(nr_nodes());
+
+    //Getting the edge costs
+    for (size_t i = 0; i < nr_nodes(); ++i) {
+        // std::cout<<"node "<<i<<std::endl;
+
+        //TODO just half of the change for base!
+        const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
+        std::vector<double> minMarginalsIn=sncFactorIn->getAllBaseMinMarginals();
+        std::vector<double> localBaseCostsIn=sncFactorIn->getBaseCosts();
+
+        for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
+            minMarginalsIn[j]*=0.5;
+            baseEdgesIn[i].push_back(minMarginalsIn.at(j));
+            localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
+            baseEdgesWithCosts[sncFactorIn->getBaseIDs()[j]][i]+=minMarginalsIn[j];
+        }
+
+        //  std::cout<<"base min marginals in "<<i<<std::endl;
+
+        std::vector<double> minMarginalsLiftedIn=sncFactorIn->getAllLiftedMinMarginals(&localBaseCostsIn);
+        for (size_t j = 0; j < minMarginalsLiftedIn.size(); ++j) {
+           liftedEdgesIn[i].push_back(minMarginalsLiftedIn[j]);
+           liftedEdgesWithCosts[sncFactorIn->getLiftedIDs()[j]][i]+=minMarginalsLiftedIn[j];
+        }
+
+
+        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+        std::vector<double> localBaseCostsOut=sncFactorOut->getBaseCosts();
+        std::vector<double> minMarginalsOut=sncFactorOut->getAllBaseMinMarginals();
+
+        for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
+            minMarginalsOut[j]*=0.5;
+            baseEdgesOut[i].push_back(minMarginalsOut.at(j));
+            localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
+            baseEdgesWithCosts[i][sncFactorOut->getBaseIDs()[j]]+=minMarginalsOut[j];
+        }
+
+         std::vector<double> minMarginalsLiftedOut=sncFactorOut->getAllLiftedMinMarginals(&localBaseCostsOut);
+
+        for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
+            liftedEdgesOut[i].push_back(minMarginalsLiftedOut[j]);
+            liftedEdgesWithCosts[i][sncFactorOut->getLiftedIDs()[j]]+=minMarginalsLiftedOut[j];
+        }
+
+     }
+    std::vector<std::map<size_t,double>> liftedEdgesWithCostsAll=liftedEdgesWithCosts;
+
+    std::cout<<"getting edge costs"<<std::endl;
+
+
+    //list of base edges to be sorted
+    for(auto it=baseEdgesWithCosts.begin();it!=baseEdgesWithCosts.end();it++){
+        size_t vertex=it->first;
+        std::map<size_t,double>& neighbors=it->second;
+        for(auto it2=neighbors.begin();it2!=neighbors.end();it2++){
+            size_t w=it2->first;
+            double cost=it2->second;
+            //std::tuple<double,size_t,size_t> t(cost,v,w)
+            if(vertex!=pInstance->getSourceNode()&&w!=pInstance->getTerminalNode()){
+                edgesToSort.push_back(std::tuple<double,size_t,size_t>(cost,vertex,w));
+            }
+        }
+    }
+
+
+    std::sort(edgesToSort.begin(),edgesToSort.end());
+
+    std::cout<<"edges to sort created and sorted"<<std::endl;
+
+    //Structure for connecting negative (and small positive?) edges
+    for(size_t node=0;node<predecessors.size();node++){
+        predecessors[node].insert(node);
+        descendants[node].insert(node);
+    }
+
+    std::cout<<"init for descendants and predecessors"<<std::endl;
+    bool negative=true;
+    size_t i=0;
+    //TODO: do not need to compare against zero, small positive values ensures better cuts
+    //TODO: use some constraints from the next while
+    double cost=std::get<0>(edgesToSort[i]);
+    double epsilon=eps;
+    while(cost<epsilon){
+        size_t v=std::get<1>(edgesToSort[i]);
+        size_t w=std::get<2>(edgesToSort[i]);
+        //std::cout<<"edge "<<v<<", "<<w<<std::endl;
+        if(predecessors[w].count(v)>0){
+            i++;
+            continue;
+        }
+
+        for(auto& pred: predecessors[v]){
+            for(auto & desc:descendants[w]){
+                 //TODO if timegap > max gap continue!
+
+                size_t l0=pInstance->vertexGroups.getGroupIndex(pred);
+                size_t l1=pInstance->vertexGroups.getGroupIndex(desc);
+                if(l1-l0<=pInstance->parameters.getMaxTimeLifted()){
+                    descendants[pred].insert(desc);
+                    predecessors[desc].insert(pred);
+                    //std::cout<<pred<<"->"<<desc<<std::endl;
+                }
+                //std::cout<<pred<<"->"<<desc<<std::endl;
+                //This eventually removes a lifted edge from the set of candidate edges
+                //Maybe, do the merge operation until there are enough good lifted edges left? - maybe hard to check? Or some epsilon  as required dual improvement
+            }
+        }
+
+        i++;
+        cost=std::get<0>(edgesToSort[i]);
+    }
+
+    std::cout<<"negative edges merged"<<std::endl;
+
+    //Removing lifted edges that cannot be used: positive and connected
+    size_t nrClosedNodes=0;
+    std::vector<char> closedNodes(nr_nodes());
+    for (size_t i=0;i<nr_nodes();i++) {
+        std::map<size_t,double>& neighbors=liftedEdgesWithCosts[i];
+        std::map<size_t,double> neighborsToKeep;
+        for(auto it=neighbors.begin();it!=neighbors.end();it++){  //TODO: improve descendants and neighbors are sorted, can be done linearly!
+            if(it->second<-eps){
+                auto f=descendants[i].find(it->first);
+                if(f==descendants[i].end()){
+                    neighborsToKeep[it->first]=it->second;
+                }
+            }
+        }
+        liftedEdgesWithCosts[i]=neighborsToKeep;
+        if(liftedEdgesWithCosts[i].size()==0){
+            closedNodes[i]=1;
+            nrClosedNodes++;
+        }
+    }
+
+    std::cout<<"keep candidate lifted, closed nodes "<<nrClosedNodes<<std::endl;
+
+    //Registering weakest cut edges to given lifted edges
+    std::priority_queue<std::tuple<double,size_t,size_t>> leQueue;
+    size_t nrOpenNodes=nr_nodes()-nrClosedNodes;
+    while(nrClosedNodes<nr_nodes()&&i<edgesToSort.size()){
+        size_t v=std::get<1>(edgesToSort[i]);
+        size_t w=std::get<2>(edgesToSort[i]);
+        // std::cout<<"v"<<", "<<w<<":"<<cost<<std::endl;
+        if(predecessors[w].count(v)>0){
+            i++;
+            continue;
+        }
+        double cost=std::get<0>(edgesToSort[i]);
+        assert(cost>0);
+
+
+      //  std::cout<<"compute"<<cost<<std::endl;
+        for(auto& pred: predecessors[v]){
+            if(closedNodes[pred]) continue;
+           // std::cout<<"process "<<pred<<cost<<std::endl;
+            bool superiorExists=false;
+            std::tuple<double,size_t,size_t> bestEdge;
+            double bestValue=0.0;
+            std::map<size_t,double>& neighbors=liftedEdgesWithCosts[pred]; //TODO improve: neighbors and reachable nodes are both sorted. Can be traversed linearly!
+            std::map<size_t,double> edgesToKeep;
+            for(auto it=neighbors.begin();it!=neighbors.end();it++){
+                size_t endNode=it->first;
+
+                double liftedCost=it->second;
+             //   std::cout<<"neighbor "<<endNode<<": "<<liftedCost<<std::endl;
+                if(abs(liftedCost)<bestValue) continue;
+                bool belongsToCut=pInstance->isReachable(w,endNode);
+                if(superiorExists){
+               //     std::cout<<"superior exist"<<std::endl;
+                    if(!belongsToCut&&abs(liftedCost)>cost){
+                 //       std::cout<<"is good too"<<std::endl;
+                        edgesToKeep[endNode]=liftedCost;
+                    }
+
+                }
+                else{
+                    //std::cout<<"no superior so far"<<std::endl;
+                    double myValue=std::min(abs(liftedCost),cost);
+                    if(belongsToCut||abs(liftedCost)<=cost){
+                      //  std::cout<<"belongs to cut or abs lower than cost"<<std::endl;
+                        if(myValue>bestValue){
+                        //    std::cout<<"my value > best value"<<std::endl;
+                            bestEdge=std::tuple(myValue,pred,endNode); //Priority queue takes highest first
+                            bestValue=myValue;
+                        }
+                        else{
+                          //  std::cout<<"my value <= bestValue"<<std::endl;
+                        }
+                    }
+                    else{
+                         superiorExists=true;
+                         //std::cout<<"superior found"<<std::endl;
+                         edgesToKeep[endNode]=liftedCost;
+                         bestValue=cost;
+                    }
+                }
+            }
+            if(superiorExists){
+                liftedEdgesWithCosts[pred]=edgesToKeep;
+            }
+            else if(bestValue>0){
+                nrClosedNodes++;
+                closedNodes[pred]=1;
+                leQueue.push(bestEdge);
+               // std::cout<<"closing "<<pred<<std::endl;
+            }
+            else{
+                std::cout<<"nothing found, error"<<std::endl;
+                assert(false);
+
+            }
+        }
+        i++;
+    }
+
+    std::cout<<"closed nodes "<<nrClosedNodes<<std::endl;
+
+
+
+    std::cout<<"edges to queue added "<<leQueue.size()<<std::endl;
+
+    size_t addedCuts=0;
+    std::vector<char> usedNodesForCuts(nr_nodes()); //maybe this would be enough
+    //std::vector<std::set<size_t>> usedEdgesForCuts(nr_nodes());
+    const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
+    while(!leQueue.empty()&&addedCuts<nr_constraints_to_add){
+        const std::tuple<double,size_t,size_t>& bestEdge=leQueue.top();
+        size_t v=std::get<1>(bestEdge);
+        size_t w=std::get<2>(bestEdge);
+        bool isFree=true;
+        std::map<size_t,std::map<size_t,double>> cutEdges;
+        for(auto& d:descendants[v]){              //or break if d is in used vertices for cuts and w is reachable from d
+            if(usedNodesForCuts[d]&&pInstance->isReachable(d,w)){
+                isFree=false; //Maybe it is not a problem if the descendant is not used for the cut in the end!
+                break;
+            }
+             const auto* it=baseGraph.forwardNeighborsBegin(d);
+             const auto* end=baseGraph.forwardNeighborsEnd(d);
+             for(;it!=end;it++){               //can be probably a linear iteration
+                 size_t d2=it->first;
+                 if(descendants[v].count(d2)==0&&pInstance->isReachable(d2,w)){  //candidate cut edge (d,d2), leaves component and w is reachable
+//                      if(usedEdgesForCuts[d].count(d2)>0){
+//                          isFree=false;
+//                          break;
+//                      }
+//                      else{
+                          cutEdges[d][d2]=baseEdgesWithCosts[d][d2];
+                      //}
+                 }
+             }
+             //if(!isFree) break;
+        }
+        if(isFree){
+            double leCost=liftedEdgesWithCostsAll[v][w];
+            ldp_cut_factor<lifted_disjoint_paths::LdpInstance> cutF(v,w,leCost,cutEdges);
+            for(auto iter=cutEdges.begin();iter!=cutEdges.end();iter++){
+                usedNodesForCuts[iter->first]=1;
+            }
+            cutF.print();
+            addedCuts++;
+            std::cout<<"added cuts "<<addedCuts<<std::endl;
+
+        }
+
+        leQueue.pop();
+    }
+
+    std::cout<<"done"<<std::endl;
+
+
+
+
+        //Or iterate over lifted edges (from the smallest one that is not connected via path) and create the cut from its component without trying to find the best cut?
+        //That is: no more connections via edges of small values
+        //Once cut for lifted edge vw has been added, check all predecessors prv of v and remove all lifted eges from all prv from candidates
+        //How to store hash of cut constraint? Edge vw plus all descendants of v (they uniquely define cut edges for vw)
+
+
+       //TODO: remove but use some parts from it in the previous while
+//        while(i<edgesToSort.size()){
+//            size_t v=std::get<1>(edgesToSort[i]);
+//            size_t w=std::get<2>(edgesToSort[i]);
+
+//            if(predecessors[w].count(v)>0) continue;
+
+//            size_t bestLiftedV=nr_nodes();
+//            size_t bestLiftedW=nr_nodes();
+//            double bestLiftedValue=0;
+
+//            for(auto& pred: predecessors[v]){
+//                for(auto & desc:descendants[w]){
+
+//                    auto f=descendants[pred].find(desc);
+//                    if(f==descendants[pred].end()){
+//                        auto f2=liftedEdgesWithCosts[pred].find(desc);
+//                        if(f2!=liftedEdgesWithCosts[pred].end()){
+//                            double value=f2->second;
+//                            if(value<bestLiftedValue){
+//                                bestLiftedValue=value;
+//                                bestLiftedV=pred;
+//                                bestLiftedW=desc;
+//                            }
+//                        }
+//                    }
+//                    else{
+//                        //Error!
+//                    }
+
+//                }
+//            }
+//            if(bestLiftedValue<0){
+//                //create cut factor for lifted edge: for all descendants d of blv: for all edges (a,b) from d: if blw reachable from b, add to cut
+//                //How? mark used cut edges as unavailable for cut. Fine are edges that lead from descendants of blv to predecessors of blw
+//                //They should be connected via an active path already
+//                //Problems are edges that lead to different "components"
+//                //Maybe discard all vertices used as start vertices. These are all descendants of blv. So, if a vertex has blv in its
+//                // descendant set, it should not be processed again
+//            }
+//            for(auto& pred: predecessors[v]){
+//                for(auto & desc:descendants[w]){
+//                    predecessors[desc].insert(pred);
+//                    descendants[pred].insert(desc);
+//                }
+
+//            }
+//            i++;
+//        }
+
+
+
+        return 0;
+
+}
+
+        // std::cout<<"lifted min marginals out "<<i<<std::endl;
+
+
+
+
+
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
 std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
+{
+    //return separateTriangles(nr_constraints_to_add);
+    return separateCuts(nr_constraints_to_add);
+}
+
+
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class TRIANGLE_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, TRIANGLE_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::separateTriangles(const std::size_t nr_constraints_to_add)
 {
     //TODO: Remember triangles that have already been added!
 

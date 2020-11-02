@@ -38,7 +38,7 @@ public:
             size_t v=edges[i][0];
             size_t w=edges[i][1];
             forwardEdges[v][adjacencyForward[v]]={w,inputEdgeCosts[i]};
-            std::cout<<"add edge to layer graph "<<v<<", "<<w<<std::endl;
+            //std::cout<<"add edge to layer graph "<<v<<", "<<w<<std::endl;
             adjacencyForward[v]++;
         }
 

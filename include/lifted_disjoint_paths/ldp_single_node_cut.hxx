@@ -458,7 +458,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
     else{
        // std::cout<<"node cost "<<nodeID<<": "<<nodeCost<<std::endl;
         double value=nodeCost;
-        std::cout<<"node cost "<<nodeID<<": "<<nodeCost<<std::endl;
+       // std::cout<<"node cost "<<nodeID<<": "<<nodeCost<<std::endl;
         value+=baseCosts.at(primalBase_);
 
         for(size_t node:primalLifted_){
@@ -618,7 +618,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateEdgeCost(const doubl
 		baseCosts[vertexIndex]+=value;
 		solutionCosts[vertexIndex]+=value;
         optValueUpToDate=false;
-        std::cout<<"update edge cost "<<nodeID<<" "<<baseIDs[vertexIndex]<<": "<<value<<std::endl;
+      //  std::cout<<"update edge cost "<<nodeID<<" "<<baseIDs[vertexIndex]<<": "<<value<<std::endl;
 	}
 	else{ //update in lifted edge
 
@@ -637,7 +637,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateEdgeCost(const doubl
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initNodeCost(double fractionNode){
     nodeCost=fractionNode*ldpInstance.getVertexScore(nodeID);
-    if(diagnostics()) std::cout<<"node cost of "<<nodeID<<": "<<nodeCost<<std::endl;
+   // if(diagnostics()) std::cout<<"node cost of "<<nodeID<<": "<<nodeCost<<std::endl;
 }
 
 template<class LDP_INSTANCE>
