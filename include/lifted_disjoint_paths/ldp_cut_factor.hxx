@@ -8,7 +8,7 @@
 #include<array>
 #include<set>
 #include<map>
-#include "ldp_directed_graph.hxx"
+//#include "ldp_directed_graph.hxx"
 #include <config.hxx>
 #include "graph_matching/graph_matching_input.h"
 #include "graph_matching/min_cost_flow_factor_ssp.hxx"
@@ -17,7 +17,7 @@
 
 namespace LPMP {
 
-template<class INSTANCE>
+
 class ldp_cut_factor
 {
 public:
@@ -45,7 +45,10 @@ public:
 
     void updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value);
 
+    void updateCostLifted(const double& value);
 
+
+    double getLiftedMinMarginal() const;
     double getOneEdgeMinMarginal(const size_t & index1,const size_t & neighborIndex) const;
 
 
@@ -125,8 +128,8 @@ mutable bool liftedActive;
 
 //}
 
-template<class INSTANCE>
-inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double liftedCost_, std::map<size_t,std::map<size_t,double>> inputEdges):
+
+ldp_cut_factor::ldp_cut_factor(size_t v_, size_t w_, double liftedCost_, std::map<size_t,std::map<size_t,double>> inputEdges):
     v(v_),
     w(w_),
     liftedCost(liftedCost_)
@@ -246,8 +249,7 @@ inline ldp_cut_factor<INSTANCE>::ldp_cut_factor(size_t v_, size_t w_, double lif
 
 //Returning neighbors indices, not output indices!
 //Last entry for lifted edge, different encoding
-template<class INSTANCE>
-inline void ldp_cut_factor<INSTANCE>::setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t>& vertexLabels, bool setLiftedActive) {
+void ldp_cut_factor::setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t>& vertexLabels, bool setLiftedActive) {
    for(size_t i=0;i<inputVertices.size();i++){
         const size_t& vertexID=inputVertices[i];
         primalSolution[i]=unassignedLabel;
@@ -281,21 +283,20 @@ inline void ldp_cut_factor<INSTANCE>::setPrimal(const std::vector<size_t>& prima
 
 }
 
-template <class INSTANCE>
-inline void ldp_cut_factor<INSTANCE>::init_primal(){
+
+void ldp_cut_factor::init_primal(){
     for(size_t& v :primalSolution){
         v=unassignedLabel;
     }
 }
 
 
-template<class INSTANCE>
-inline const std::vector<size_t>& ldp_cut_factor<INSTANCE>::getPrimal() {
+const std::vector<size_t>& ldp_cut_factor::getPrimal() {
     return primalSolution;
 }
 
-template<class INSTANCE>
-inline void ldp_cut_factor<INSTANCE>::print()const {
+
+void ldp_cut_factor::print()const {
     std::cout<<"CUT "<<v<<", "<<w<<":"<<liftedCost<<std::endl;
     for (size_t i = 0; i < numberOfInput; ++i) {
 
@@ -310,15 +311,20 @@ inline void ldp_cut_factor<INSTANCE>::print()const {
     }
 }
 
-template<class INSTANCE>
-inline void ldp_cut_factor<INSTANCE>::updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
+
+void ldp_cut_factor::updateCostLifted(const double& value){
+    liftedCost+=value;
+}
+
+
+
+void ldp_cut_factor::updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
     double oldValue=cutGraph.getForwardEdgeCost(inputVertexIndex,neighborIndex);
     cutGraph.setForwardEdgeCost(inputVertexIndex,neighborIndex,oldValue+value);
 }
 
 
-template<class INSTANCE>
-inline double ldp_cut_factor<INSTANCE>::EvaluatePrimal() const{
+double ldp_cut_factor::EvaluatePrimal() const{
     double value=0;
     for(size_t i=0;i<primalSolution.size()-1;i++){
         if(primalSolution[i]!=unassignedLabel){
@@ -330,8 +336,7 @@ inline double ldp_cut_factor<INSTANCE>::EvaluatePrimal() const{
 }
 
 
-template<class INSTANCE>
-inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,const size_t& index2,bool restrictToOne)const {
+double ldp_cut_factor::advancedMinimizer(const size_t& index1,const size_t& index2,bool restrictToOne)const {
     // not restrictToOne .. block only edge
     // restrictToOne ... block both vertices
     //index1 .. index in inputVertices, index2.. index in outputVertices + numberOfInput
@@ -407,10 +412,7 @@ inline double ldp_cut_factor<INSTANCE>::advancedMinimizer(const size_t& index1,c
 
 
 
-
-
-template<class INSTANCE>
-inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::createLAStandard() const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard() const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
         lapInput.add_assignment(i,numberOfOutput,0.0);
@@ -434,8 +436,7 @@ inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::createL
 }
 
 
-template<class INSTANCE>
-inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExcludeEdge(const size_t& v1,const size_t& v2) const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size_t& v1,const size_t& v2) const{
     LPMP::linear_assignment_problem_input lapInput;
     bool edgeFound=false;
     for (size_t i = 0; i < numberOfInput; ++i) {
@@ -464,8 +465,8 @@ inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExclu
     return lapInput;
 }
 
-template<class INSTANCE>
-inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExcludeVertices(const size_t& v1, const size_t& v2) const{
+
+LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const size_t& v1, const size_t& v2) const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
         lapInput.add_assignment(i,numberOfOutput,0.0);
@@ -493,18 +494,189 @@ inline LPMP::linear_assignment_problem_input   ldp_cut_factor<INSTANCE>::laExclu
     return lapInput;
 }
 
-template<class INSTANCE>
-inline double ldp_cut_factor<INSTANCE>::LowerBound() const{
+
+double ldp_cut_factor::LowerBound() const{
     double value=advancedMinimizer(unassignedLabel,unassignedLabel,false);
     return value;
 }
 
-template<class INSTANCE>
-inline double ldp_cut_factor<INSTANCE>::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2) const{
+
+double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2) const{
     double restrictOne= advancedMinimizer(index1,index2,true);
     double restrictZero=advancedMinimizer(index1,index2,false);
     return restrictOne-restrictZero;
 }
+
+
+double ldp_cut_factor::getLiftedMinMarginal() const{
+    return 0;
+}
+
+
+class ldp_snc_cut_message
+{
+public:
+    ldp_snc_cut_message(  std::vector<size_t> _nodeIndicesInCut,  //empty if it is a message only for lifted edge
+                          std::vector<size_t> _nodeIndicesInSnc,
+                          size_t _sncNodeIDindexInCut,
+                          bool _sncIsOut,
+                          bool _containsLiftedEdge,
+                          size_t _nodeIndexOfLiftedEdge):
+        nodeIndicesInCut(_nodeIndicesInCut),  //empty if it is a message only for lifted edge
+        nodeIndicesInSnc(_nodeIndicesInSnc),
+        sncNodeIDindexInCut(_sncNodeIDindexInCut),
+        sncIsOut(_sncIsOut),   //if true, central node is in inputs, other nodes in outputs
+        containsLiftedEdge(_containsLiftedEdge),
+        nodeIndexOfLiftedEdge(_nodeIndexOfLiftedEdge){
+
+    }
+
+    template<typename CUT_FACTOR>
+    void RepamLeft(CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
+    {
+       if(debug()){
+          std::cout<<"triangle repam left ";
+          l.print();
+       }
+//       printIndices();
+
+      // std::cout<<std::endl;
+        assert(msg_dim <=nodeIndicesInCut.size());
+       if(msg_dim==nodeIndicesInCut.size()){
+           l.updateCostLifted(msg);
+       }
+       else{
+           if(sncIsOut){
+               l.updateCostBase(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
+           }
+           else{
+               l.updateCostBase(nodeIndicesInCut.at(msg_dim),sncNodeIDindexInCut,msg);
+           }
+       }//std::cout<<"index to update "<<indicesInTriangle.at(msg_dim);
+
+     }
+
+    template<typename SINGLE_NODE_CUT_FACTOR>
+    void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
+    {
+        if(debug()){
+            std::cout<<"triangle repam right "<<std::endl;
+            r.print();
+        }
+        assert(msg_dim <=nodeIndicesInSnc.size());
+        if(msg_dim==nodeIndicesInSnc.size()){
+            {
+                assert(containsLiftedEdge);
+                r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
+            }
+        }
+        else{
+                r.updateEdgeCost(msg,nodeIndicesInSnc.at(msg_dim),false);
+        }
+
+    }
+
+    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
+    void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
+    {
+        if(debug()) std::cout<<"triangle send one to left ";
+        //printIndices();
+        //for (size_t i=0;i<1;i++) {
+        size_t i=0;
+        double delta=0;
+        for (;i<nodeIndicesInSnc.size();i++) {
+
+            delta = r.getOneLiftedMinMarginal(nodeIndicesInSnc[i]);
+
+            msg[i] -= omega * delta;
+        }
+        if(containsLiftedEdge){
+            delta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge);
+            msg[i]-=omega * delta;
+
+        }
+
+        //  std::cout<<" done "<<std::endl;
+    }
+
+    template<typename CUT_FACTOR, typename MSG>
+    void send_message_to_right(const CUT_FACTOR& l, MSG& msg, const double omega)
+    {
+        if(debug()) std::cout<<"triangle send one to right"<<std::endl;
+        //for (size_t i=0;i<1;i++) {
+        double delta;
+        size_t i=0;
+        for (;i<nodeIndicesInCut.size();i++) {
+            if(sncIsOut){
+                delta = l.getOneEdgeMinMarginal(sncNodeIDindexInCut,nodeIndicesInCut[i]);
+            }
+            else{
+                delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut);
+            }
+            msg[i] -= omega * delta;
+        }
+        if(containsLiftedEdge){
+            delta=l.getLiftedMinMarginal();
+            msg[i]-=omega*delta;
+        }
+    }
+
+
+
+//    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
+//    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+//    {
+//        if(debug()) std::cout<<"triangle send all to left"<<std::endl;
+
+//        //TODO take only one half from the base min marginals!
+//        std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
+//        std::vector<double> localBaseCost=r.getBaseCosts();
+//        for (size_t i = 0; i < localBaseCost.size(); ++i) {
+//            msg_vec_base[i]=0.5*msg_vec_base[i];
+//            localBaseCost[i]-=msg_vec_base[i];
+//        }
+//        const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);
+
+//        for(auto it=msg_begin; it!=msg_end; ++it)
+//        {
+//            auto& msg = (*it).GetMessageOp();
+//            for (int i = 0; i <msg.verticesInSnc.size(); ++i) {
+//                const size_t vertex = msg.verticesInSnc.at(i);
+//                bool lifted=msg.isLifted.at(i);
+//                if(lifted){
+//                    (*it)[i] -=  omega * msg_vec_lifted.at(vertex);
+//                }
+//                else{
+//                    (*it)[i] -= omega * msg_vec_base.at(vertex);
+//                }
+
+//            }
+//        }
+//    }
+
+
+
+
+
+    template<typename SINGLE_NODE_CUT_FACTOR,typename CUT_FACTOR>
+    bool check_primal_consistency(const CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
+    {
+        return true;
+
+    }
+
+private:
+
+
+    std::vector<size_t> nodeIndicesInCut;  //empty if it is a message only for lifted edge
+    std::vector<size_t> nodeIndicesInSnc;
+    size_t sncNodeIDindexInCut;
+    bool sncIsOut;   //if true, central node is in inputs, other nodes in outputs
+    bool containsLiftedEdge;
+    size_t nodeIndexOfLiftedEdge;
+};
+
+
 
 
 
