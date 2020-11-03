@@ -72,6 +72,13 @@ public:
         return numberOfOutput;
     }
 
+    const size_t& getLiftedInputVertex() const{
+        return v;
+    }
+    const size_t& getLiftedOutputVertex() const{
+        return w;
+    }
+
     void print()const ;
 private:
     double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne)const;
@@ -567,6 +574,7 @@ public:
         if(msg_dim==nodeIndicesInSnc.size()){
             {
                 assert(containsLiftedEdge);
+                //std::cout<<"node index of lifted edge "<<nodeIndexOfLiftedEdge<<std::endl;
                 r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
             }
         }
@@ -668,12 +676,12 @@ public:
 private:
 
 
-    std::vector<size_t> nodeIndicesInCut;  //empty if it is a message only for lifted edge
-    std::vector<size_t> nodeIndicesInSnc;
-    size_t sncNodeIDindexInCut;
-    bool sncIsOut;   //if true, central node is in inputs, other nodes in outputs
-    bool containsLiftedEdge;
-    size_t nodeIndexOfLiftedEdge;
+    const std::vector<size_t> nodeIndicesInCut;  //empty if it is a message only for lifted edge
+    const std::vector<size_t> nodeIndicesInSnc;
+    const size_t sncNodeIDindexInCut;
+    const bool sncIsOut;   //if true, central node is in inputs, other nodes in outputs
+    const bool containsLiftedEdge;
+    const size_t nodeIndexOfLiftedEdge;
 };
 
 

@@ -13,7 +13,7 @@
 
 namespace LPMP {
 
-template<class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
+template<class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
 class lifted_disjoint_paths_constructor
 {
 public:
@@ -68,17 +68,18 @@ private:
    // std::vector<CUT_FACTOR_CONT*> triangle_factors_;
     std::vector<CUT_FACTOR_CONT*> cut_factors_;
     std::vector<SINGLE_NODE_CUT_LIFTED_MESSAGE*> snc_lifted_messages_;
-   // std::vector<SNC_TRIANGLE_MESSAGE*> snc_triangle_messages_;
-     std::vector<SNC_TRIANGLE_MESSAGE*> snc_triangle_messages_;
+   // std::vector<SNC_CUT_MESSAGE*> snc_triangle_messages_;
+     std::vector<SNC_CUT_MESSAGE*> snc_cut_messages_;
     //std::vector<std::vector<std::unordered_set<size_t>>> usedTriangles;
     const lifted_disjoint_paths::LdpInstance * pInstance;
     double bestPrimalValue;
+    std::map<size_t,std::set<size_t>> addedCutFactorLiftedEdges;
     std::vector<std::vector<size_t>> bestPrimalSolution;
 
 };
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_TRIANGLE_MESSAGE>
-std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_TRIANGLE_MESSAGE>::base_graph_node(const std::size_t mcf_node) const
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_CUT_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_CUT_MESSAGE>::base_graph_node(const std::size_t mcf_node) const
 {
     assert(mcf_node < mcf_->no_nodes());
     if(mcf_node == mcf_source_node())
@@ -88,8 +89,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     return mcf_node / 2;
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::checkFeasibilityInSnc(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::checkFeasibilityInSnc(){
     bool isFeasible=checkFeasibilityBaseInSnc();
     if(isFeasible){
         isFeasible=checkFeasibilityLiftedInSnc();
@@ -98,8 +99,8 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::WritePrimal(std::stringstream& strStream) const{
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::WritePrimal(std::stringstream& strStream) const{
 
     for (int i = 0; i < nr_nodes(); ++i) {
         size_t vertex=i;
@@ -117,8 +118,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::checkFeasibilityLiftedInSnc(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::checkFeasibilityLiftedInSnc(){
   //Assumes primal feasible solution w.r.t. base edges and node labels
     bool isFeasible=true;
 
@@ -209,8 +210,8 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::checkFeasibilityBaseInSnc(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::checkFeasibilityBaseInSnc(){
 
     //Check flow conservation
     bool isFeasible=true;
@@ -252,8 +253,8 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::adjustLiftedLabels(){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::adjustLiftedLabels(){
 //Assumes primal feasible solution w.r.t. base edges and node labels
     for (int i = 0; i < nr_nodes(); ++i) {
         size_t vertex=i;
@@ -302,8 +303,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
 /*
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::adjustTriangleLabels(size_t firstIndex){
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::adjustTriangleLabels(size_t firstIndex){
 //Assumes primal feasible solution w.r.t. base edges and node labels and adjusted lifted labels
     for (size_t i = firstIndex; i < triangle_factors_.size(); ++i) {
         auto * trFactor=triangle_factors_[i]->get_factor();
@@ -353,8 +354,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
 {
     pInstance=&instance;
     bestPrimalValue=std::numeric_limits<double>::max();
@@ -434,7 +435,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     // get outgoing factor container -> left_snc, left_node
     // get incoming factor container -> right_snc, right_node
 
-    //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>(left_snc, right_snc, left_node, right_node);
+    //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>(left_snc, right_snc, left_node, right_node);
 
     for (int vertex1 = 0; vertex1 < single_node_cut_factors_.size(); ++vertex1) {
         auto* left_snc=single_node_cut_factors_[vertex1][1];
@@ -470,8 +471,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::sncDebug(size_t vertex,bool isOut)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::sncDebug(size_t vertex,bool isOut)
 {
 
 
@@ -479,8 +480,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::ComputePrimal()
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::ComputePrimal()
 {
     read_in_mcf_costs();
     mcf_->solve();
@@ -629,8 +630,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::separateCuts(const std::size_t nr_constraints_to_add)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::separateCuts(const std::size_t nr_constraints_to_add)
 {
 
     if(diagnostics()) std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
@@ -869,6 +870,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     std::cout<<"queue size "<<leQueue.size()<<std::endl;
     size_t addedCuts=0;
     std::map<size_t,std::set<size_t>> usedCutEdges;  //TODO make 2dim array of char?
+    std::map<size_t,std::set<size_t>> usedLiftedEdges;
     while(!leQueue.empty()){
 
         bool canAdd=true;
@@ -890,21 +892,89 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             }
         }
         if(canAdd){
+            size_t v=pCutFactor->getLiftedInputVertex();
+            size_t w=pCutFactor->getLiftedOutputVertex();
+            usedLiftedEdges[v].insert(w);
             pCutFactor->print();
             addedCuts++;
-            std::cout<<"added cuts "<<addedCuts<<std::endl;
-            //TODO add to factor container
+            auto* newCutFactor = lp_->template add_factor<CUT_FACTOR_CONT>(*pCutFactor);
+            cut_factors_.push_back(newCutFactor);
+            const std::vector<size_t>& inputs=pCutFactor->getInputVertices();
+            const std::vector<size_t>& outputs=pCutFactor->getOutputVertices();
+            const auto& cutGraph=pCutFactor->getCutGraph();
+            //TODO what if lifted has not been added in the for!
+            bool liftedAdded=false;
+            for(size_t i=0;i<inputs.size();i++){
+                std::vector<size_t> _nodeIndicesInCut;
+                std::vector<size_t> _nodeIndicesInSnc;
+                size_t _sncNodeIDindexInCut;
+                //bool _sncIsOut;
+                bool _containsLiftedEdge=false;
+                size_t _nodeIndexOfLiftedEdge;
 
 
+                size_t inputVertex=inputs[i];
+                auto * snc=single_node_cut_factors_[inputVertex][1];
+                auto * sncFactorOut=snc->get_factor();
+                auto iterCut=cutGraph.forwardNeighborsBegin(i);
+                auto iterEnd=cutGraph.forwardNeighborsEnd(i);
+
+                auto iterSnc=baseGraph.forwardNeighborsBegin(inputVertex);
+                auto iterSncEnd=baseGraph.forwardNeighborsEnd(inputVertex);
+                if(inputVertex==v){
+                    _containsLiftedEdge=true;
+                    _nodeIndexOfLiftedEdge=sncFactorOut->getLiftedIDToOrder(w);
+                    liftedAdded=true;
+                    //TODO lifted exists etc
+                }
+                size_t sncCounter=0;
+                size_t cutCounter=0;
+                while(iterCut!=iterEnd&&iterSnc!=iterSncEnd){
+                    if(iterCut->first<iterSnc->first){
+                        iterCut++;
+                        cutCounter++;
+                    }
+                    else if(iterSnc->first<iterCut->first){
+                        iterSnc++;
+                        sncCounter++;
+                    }
+                    else {
+                        assert(iterSnc->first==iterCut->first);
+                        _nodeIndicesInCut.push_back(cutCounter);
+                        _nodeIndicesInSnc.push_back(sncCounter);
+                        iterCut++;
+                        cutCounter++;
+                        iterSnc++;
+                        sncCounter++;
+                    }
+                }
+                auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,_nodeIndicesInCut,_nodeIndicesInSnc,i,true,_containsLiftedEdge,_nodeIndexOfLiftedEdge);
+                snc_cut_messages_.push_back(message1);
+            }
+            if(!liftedAdded){
+                std::vector<size_t> _nodeIndicesInCut;
+                std::vector<size_t> _nodeIndicesInSnc;
+                auto * snc=single_node_cut_factors_[v][1];
+                size_t _nodeIndexOfLiftedEdge=snc->get_factor()->getLiftedIDToOrder(w);
+                auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,_nodeIndicesInCut,_nodeIndicesInSnc,i,true,true,_nodeIndexOfLiftedEdge);
+                snc_cut_messages_.push_back(message1);
+            }
+
         }
-        else{
-            std::cout<<"cannot add"<<std::endl;
-        }
+//        else{
+//            std::cout<<"cannot add"<<std::endl;
+//        }
         leQueue.pop();
         delete pCutFactor;
         pCutFactor=nullptr;
 
     }
+
+
+    addedCutFactorLiftedEdges.insert(usedLiftedEdges.begin(),usedLiftedEdges.end());
+
+
+    //TODO traverse used cut edges and update costs in the respective node factors
     return 0;
 }
 
@@ -913,8 +983,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
     //return separateTriangles(nr_constraints_to_add);
    return separateCuts(nr_constraints_to_add);
@@ -922,8 +992,11 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 }
 
 /*
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::separateTriangles(const std::size_t nr_constraints_to_add)
+                //    triangle_factors_.push_back(triangleFactor);
+            std::cout<<"added cuts "<<addedCuts<<std::endl;
+            //TODO add to factor container
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::separateTriangles(const std::size_t nr_constraints_to_add)
 {
     //TODO: Remember triangles that have already been added!
 
@@ -975,7 +1048,10 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
         const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
         std::vector<double> localBaseCostsOut=sncFactorOut->getBaseCosts();
-        std::vector<double> minMarginalsOut=sncFactorOut->getAllBaseMinMarginals();
+        std::vector<double> minMarginalsOut=sncFactorOut->getAllBaseMinMarginals(
+                //    triangle_factors_.push_back(triangleFactor);
+            std::cout<<"added cuts "<<addedCuts<<std::endl;
+            //TODO add to factor container);
         assert(baseGraph.numberOfEdgesFromVertex(i)==minMarginalsOut.size());
         for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
             minMarginalsOut[j]*=0.5;
@@ -1098,6 +1174,9 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                         double improvement=std::min({std::abs(valueOut),std::abs(valueIn),std::abs(valueConnecting)});
                         std::array<size_t,3> toInsert={vertex,leIn+numberOfBaseIn,leOut+numberOfBaseOut};
                         candidates.emplace(improvement,toInsert);
+                //    triangle_factors_.push_back(triangleFactor);
+            std::cout<<"added cuts "<<addedCuts<<std::endl;
+            //TODO add to factor container
 
                     }
 
@@ -1312,7 +1391,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         std::vector<size_t> vertices={v2IndexInV1,v3IndexInV1};
         std::vector<bool> isLifted={!isv1v2Base,true};
 
-        auto * message1=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV1, trInd, vertices,isLifted);
+        auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(triangleFactor, sncOutV1, trInd, vertices,isLifted);
         snc_triangle_messages_.push_back(message1);
 
         trInd={0};
@@ -1325,8 +1404,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         }
         vertices={v1IndexInV2};
         isLifted={!isv1v2Base};
-        auto * message2=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV2, trInd, vertices,isLifted);
-        snc_triangle_messages_.push_back(message2);
+        auto * message2=lp_->template add_message<SNC_CUT_MESSAGE>(triangleFactor, sncInV2, trInd, vertices,isLifted);
+        SNC_CUT_MESSAGEs_.push_back(message2);
 
         trInd={1};
         size_t v3IndexInV2;
@@ -1338,8 +1417,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         }
         vertices={v3IndexInV2};
         isLifted={!isv2v3Base};
-        auto * message3=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncOutV2, trInd, vertices,isLifted);
-        snc_triangle_messages_.push_back(message3);
+        auto * message3=lp_->template add_message<SNC_CUT_MESSAGE>(triangleFactor, sncOutV2, trInd, vertices,isLifted);
+        SNC_CUT_MESSAGEs_.push_back(message3);
 
         trInd={1,2};
         size_t v2IndexInV3;
@@ -1352,7 +1431,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         size_t v1IndexInV3=sncInV3->get_factor()->getLiftedIDToOrder(v1);
         vertices={v2IndexInV3,v1IndexInV3};
         isLifted={!isv2v3Base,true};
-        auto * message4=lp_->template add_message<SNC_TRIANGLE_MESSAGE>(triangleFactor, sncInV3, trInd, vertices,isLifted);
+        auto * message4=lp_->template add_message<SNC_CUT_MESSAGE>(triangleFactor, sncInV3, trInd, vertices,isLifted);
         snc_triangle_messages_.push_back(message4);
 
         //    auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
@@ -1387,8 +1466,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
 }
 */
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::mcf_node_to_graph_node(std::size_t i) const
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::mcf_node_to_graph_node(std::size_t i) const
 {
     assert(i < mcf_->no_nodes());
     if(i == mcf_source_node())
@@ -1400,8 +1479,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 }
 
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_TRIANGLE_MESSAGE>::read_in_mcf_costs(const bool change_marginals)
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_CUT_MESSAGE>::read_in_mcf_costs(const bool change_marginals)
 {
     mcf_->reset_costs();
 
@@ -1513,8 +1592,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::write_back_mcf_costs()
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::write_back_mcf_costs()
 {
     assert(std::abs(mcf_->potential(mcf_source_node()) - mcf_->potential(mcf_terminal_node())) <= 1e-8);
     for(std::size_t i=0; i<nr_nodes(); ++i)
@@ -1623,8 +1702,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 }
 
-template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_TRIANGLE_MESSAGE>
-void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_TRIANGLE_MESSAGE>::reparametrize_snc_factors()
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::reparametrize_snc_factors()
 {
     const double primal_cost_before = this->lp_->EvaluatePrimal();
     read_in_mcf_costs(true);
