@@ -68,7 +68,7 @@ public:
 	void setBaseEdgeActive(size_t index);
 	void setNoBaseEdgeActive();
 
-	void setPrimalLifted(std::unordered_set<size_t>& verticesOfActiveEdges);
+    void setPrimalLifted(std::set<size_t>& verticesOfActiveEdges);
 
 	bool isNodeActive() const
 	{
@@ -85,7 +85,7 @@ public:
         return baseIDs.at(primalBase_);
 	}
 
-	const std::unordered_set<size_t>& getPrimalLiftedIndices() const {
+    const std::set<size_t>& getPrimalLiftedIndices() const {
 		return primalLifted_;
 	}
 
@@ -271,7 +271,7 @@ private:
 
      //Variables storing primal solutions
      size_t primalBase_;
-     std::unordered_set<size_t> primalLifted_;
+     std::set<size_t> primalLifted_;
 
      //ID of the node most distant from the central node that is contained in this factor
      std::size_t mostDistantNeighborID;
@@ -442,7 +442,7 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::unordered_set<size_t>& verticesOfActiveEdges) {
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::set<size_t> &verticesOfActiveEdges) {
 	primalLifted_=verticesOfActiveEdges;
 }
 
