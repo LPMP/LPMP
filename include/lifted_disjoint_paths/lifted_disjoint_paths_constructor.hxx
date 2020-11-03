@@ -53,6 +53,7 @@ private:
     std::size_t base_graph_terminal_node() const { return nr_nodes() + 1; }
 
     void adjustLiftedLabels();
+    void adjustCutLabels(size_t startPointer);
 //    void adjustTriangleLabels(size_t firstIndex=0);
 
     bool checkFeasibilityInSnc();
@@ -423,29 +424,29 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         auto* sncIn=single_node_cut_factors_[vertex][0]->get_factor();
         size_t centralNodeLabel=currentPrimalLabels[i];
         if(centralNodeLabel==0){
-            std::set<size_t> liftedIndices;
+            std::vector<size_t> liftedIndices;
             sncOut->setPrimalLifted(liftedIndices);
             sncIn->setPrimalLifted(liftedIndices);
         }
         else {
-            std::set<size_t> liftedIndicesOut;
+            std::vector<size_t> liftedIndicesOut;
             if(sncOut->getPrimalBaseVertexID()!=base_graph_terminal_node()) {
                 const std::vector<size_t>& liftedIDs= sncOut->getLiftedIDs();
                 for(size_t i=0;i<liftedIDs.size();i++){
                     if(currentPrimalLabels[liftedIDs[i]]==centralNodeLabel){
-                        liftedIndicesOut.insert(i);
+                        liftedIndicesOut.push_back(i);
                     }
                 }
 
             }
             sncOut->setPrimalLifted(liftedIndicesOut);
 
-            std::set<size_t> liftedIndicesIn;
+            std::vector<size_t> liftedIndicesIn;
             if(sncIn->getPrimalBaseVertexID()!=base_graph_source_node()) {
                 const std::vector<size_t>& liftedIDs= sncIn->getLiftedIDs();
                 for(size_t i=0;i<liftedIDs.size();i++){
                     if(currentPrimalLabels[liftedIDs[i]]==centralNodeLabel){
-                        liftedIndicesIn.insert(i);
+                        liftedIndicesIn.push_back(i);
                     }
                 }
 
@@ -460,6 +461,19 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 }
 
+
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::adjustCutLabels(size_t startPointer){
+    //Assumes primal feasible solution w.r.t. base edges and node labels
+    bool isFeasible=true;
+
+
+    for (int i = startPointer; i < cut_factors_.size(); ++i) {
+        auto * cutFactor=cut_factors_[i]->get_factor();
+        cutFactor->setPrimal(currentPrimalDescendants,currentPrimalLabels);
+    }
+
+}
 
 //template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE>
 //void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE>::adjustLiftedLabels(){
@@ -770,6 +784,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     isFeasible=this->checkFeasibilityLiftedInSnc();
   //  adjustTriangleLabels();
     assert(isFeasible);
+    adjustCutLabels(0);
     double primalValue=0;
     for (int i = 0; i < nr_nodes(); ++i) {
 
@@ -1004,7 +1019,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         for(auto it=neighbors.begin();it!=neighbors.end();it++){  //TODO: improve descendants and neighbors are sorted, can be done linearly!
             if(it->second<-eps){
                 auto f=descendants[i].find(it->first);
-                if(f==descendants[i].end()){
+                bool exists=addedCutFactorLiftedEdges[i].count(it->first)>0;
+                if(!exists&&f==descendants[i].end()){
                     neighborsToKeep[it->first]=it->second;
                 }
             }
@@ -1090,6 +1106,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         i++;
     }
 
+    size_t originalCutContrainerSize=cut_factors_.size();
     std::cout<<"queue size "<<leQueue.size()<<std::endl;
     size_t addedCuts=0;
     std::map<size_t,std::set<size_t>> usedCutEdges;  //TODO make 2dim array of char?
@@ -1194,6 +1211,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     }
 
 
+    adjustCutLabels(originalCutContrainerSize);
     addedCutFactorLiftedEdges.insert(usedLiftedEdges.begin(),usedLiftedEdges.end());
 
 

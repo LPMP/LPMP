@@ -68,7 +68,7 @@ public:
 	void setBaseEdgeActive(size_t index);
 	void setNoBaseEdgeActive();
 
-    void setPrimalLifted(std::set<size_t>& verticesOfActiveEdges);
+    void setPrimalLifted(std::vector<size_t> &verticesOfActiveEdges);
 
 	bool isNodeActive() const
 	{
@@ -85,14 +85,14 @@ public:
         return baseIDs.at(primalBase_);
 	}
 
-    const std::set<size_t>& getPrimalLiftedIndices() const {
+    const std::vector<size_t>& getPrimalLiftedIndices() const {
 		return primalLifted_;
 	}
 
-	const bool isActiveInPrimalLifted(size_t vertex) const {
-		return primalLifted_.count(vertex)>0;
-		//return primalLifted_.at(vertex);
-	}
+//	const bool isActiveInPrimalLifted(size_t vertex) const {
+//		return primalLifted_.count(vertex)>0;
+//		//return primalLifted_.at(vertex);
+//	}
 
 
     template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
@@ -271,7 +271,7 @@ private:
 
      //Variables storing primal solutions
      size_t primalBase_;
-     std::set<size_t> primalLifted_;
+     std::vector<size_t> primalLifted_;
 
      //ID of the node most distant from the central node that is contained in this factor
      std::size_t mostDistantNeighborID;
@@ -442,7 +442,7 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
 
 
 template<class LDP_INSTANCE>
-inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::set<size_t> &verticesOfActiveEdges) {
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::vector<size_t> &verticesOfActiveEdges) {
 	primalLifted_=verticesOfActiveEdges;
 }
 
@@ -1312,13 +1312,13 @@ public:
 
 
 
-	template<typename SINGLE_NODE_CUT_FACTOR>
-	bool check_primal_consistency(const SINGLE_NODE_CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
-	{
-		const bool left_snc_edge = l.isActiveInPrimalLifted(right_node);
-		const bool right_snc_edge = r.isActiveInPrimalLifted(left_node);
-		return left_snc_edge == right_snc_edge;
-	}
+//	template<typename SINGLE_NODE_CUT_FACTOR>
+//	bool check_primal_consistency(const SINGLE_NODE_CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
+//	{
+//		const bool left_snc_edge = l.isActiveInPrimalLifted(right_node);
+//		const bool right_snc_edge = r.isActiveInPrimalLifted(left_node);
+//		return left_snc_edge == right_snc_edge;
+//	}
 
 private:
 	std::size_t left_node;

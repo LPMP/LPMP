@@ -29,7 +29,7 @@ public:
 
     double EvaluatePrimal() const;
 
-    void setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t> &vertexLabels,bool setLiftedActive);
+    void setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t> &vertexLabels);
 
     const std::vector<size_t>& getPrimal();
 
@@ -81,11 +81,11 @@ public:
 
     void print()const ;
 private:
-    double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne)const;
+    double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne,bool addLiftedCost=false)const;
 
-    LPMP::linear_assignment_problem_input createLAStandard()const;
-    LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2)const ;
-    LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1, const size_t& v2)const;
+    LPMP::linear_assignment_problem_input createLAStandard(bool addLiftedCost=false)const;
+    LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2,bool addLiftedCost=false)const ;
+    LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1, const size_t& v2,bool addLiftedCost=false)const;
 
 
 //std::vector<double> costs;
@@ -256,7 +256,8 @@ ldp_cut_factor::ldp_cut_factor(size_t v_, size_t w_, double liftedCost_, std::ma
 
 //Returning neighbors indices, not output indices!
 //Last entry for lifted edge, different encoding
-void ldp_cut_factor::setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t>& vertexLabels, bool setLiftedActive) {
+void ldp_cut_factor::setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t>& vertexLabels) {
+   bool setLiftedActive=(vertexLabels[v]!=0&&vertexLabels[v]==vertexLabels[w]);
    for(size_t i=0;i<inputVertices.size();i++){
         const size_t& vertexID=inputVertices[i];
         primalSolution[i]=unassignedLabel;
@@ -343,7 +344,7 @@ double ldp_cut_factor::EvaluatePrimal() const{
 }
 
 
-double ldp_cut_factor::advancedMinimizer(const size_t& index1,const size_t& index2,bool restrictToOne)const {
+double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& index2, bool restrictToOne, bool addLiftedCost)const {
     // not restrictToOne .. block only edge
     // restrictToOne ... block both vertices
     //index1 .. index in inputVertices, index2.. index in outputVertices + numberOfInput
@@ -354,11 +355,11 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1,const size_t& inde
     //TODO: Assert of neighborIndex?
    //TODO add lifted edge to evaluation, based on
     if(index1==unassignedLabel){
-        lapInput=createLAStandard();
+        lapInput=createLAStandard(addLiftedCost);
     }
     else if(restrictToOne){
         assert(index1<inputVertices.size());
-        lapInput=laExcludeVertices(index1,index2);
+        lapInput=laExcludeVertices(index1,index2,addLiftedCost);
         //std::cout<<"lap input for one created "<<std::endl;
         //minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
         assert(index2<outputVertices.size());
@@ -377,7 +378,8 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1,const size_t& inde
     }
     else{//edge is restricted to zero
         assert(index1<inputVertices.size());
-        lapInput=laExcludeEdge(index1,index2);
+        assert(index2<outputVertices.size());
+        lapInput=laExcludeEdge(index1,index2,addLiftedCost);
        // std::cout<<"lap input for zero created "<<std::endl;
     }
     MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
@@ -403,8 +405,8 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1,const size_t& inde
 
     liftedActive=false;
     if(baseCoverLiftedExists&&storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
-        liftedActive=true; //cost already present in LAP
-        //std::cout<<"lifted forced one"<<std::endl;
+        liftedActive=true;
+        if(!addLiftedCost) minValue+=liftedCost;
     }
     else if(activeExists&&liftedCost<0){
         minValue+=liftedCost;
@@ -419,7 +421,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1,const size_t& inde
 
 
 
-LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard() const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard(bool addLiftedCost) const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
         lapInput.add_assignment(i,numberOfOutput,0.0);
@@ -428,12 +430,12 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard() const
         for(;it!=end;it++){
             const size_t& outputIndex=it->first;
             double value=it->second;
-            if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
+            if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
                 value+=liftedCost;
             }
             if(value<0){
                 assert(outputIndex<outputVertices.size());
-                std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
+               // std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
                 lapInput.add_assignment(i,outputIndex,value);
             }
         }
@@ -443,7 +445,7 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard() const
 }
 
 
-LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size_t& v1,const size_t& v2) const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size_t& v1, const size_t& v2, bool addLiftedCost) const{
     LPMP::linear_assignment_problem_input lapInput;
     bool edgeFound=false;
     for (size_t i = 0; i < numberOfInput; ++i) {
@@ -453,13 +455,14 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size
         for(;it!=end;it++){
             const size_t& outputIndex=it->first;
              double value=it->second;
-             if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
-                 value+=liftedCost;
-             }
              if(i==v1&&outputIndex==v2){
                  edgeFound=true;
                  continue;
              }
+             if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
+                 value+=liftedCost;
+             }
+
             if(value<0){
                 assert(outputIndex<outputVertices.size());
                 lapInput.add_assignment(i,outputIndex,value);
@@ -473,7 +476,7 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size
 }
 
 
-LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const size_t& v1, const size_t& v2) const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const size_t& v1, const size_t& v2, bool addLiftedCost) const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
         lapInput.add_assignment(i,numberOfOutput,0.0);
@@ -485,14 +488,14 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const 
         for(;it!=end;it++){
             const size_t& outputIndex=it->first;
             double value=it->second;
-            if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
+            if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
                 value+=liftedCost;
             }
             if(outputIndex==v2) continue;
             if(value<0){
                 assert(outputIndex<outputVertices.size());
                 lapInput.add_assignment(i,outputIndex,value);
-                std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
+              //  std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
             }
         }
 
@@ -503,20 +506,63 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const 
 
 
 double ldp_cut_factor::LowerBound() const{
-    double value=advancedMinimizer(unassignedLabel,unassignedLabel,false);
+    bool addLifted=(baseCoverLiftedExists&&liftedCost>0);
+    double value=advancedMinimizer(unassignedLabel,unassignedLabel,false,addLifted);
     return value;
 }
 
 
 double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2) const{
-    double restrictOne= advancedMinimizer(index1,index2,true);
-    double restrictZero=advancedMinimizer(index1,index2,false);
+    bool addLiftedCost=baseCoverLiftedExists&&liftedCost>0;
+    double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost);
+    double restrictZero=advancedMinimizer(index1,index2,false,addLiftedCost);
     return restrictOne-restrictZero;
 }
 
 
 double ldp_cut_factor::getLiftedMinMarginal() const{
-    return 0;
+    bool nonPositiveEdgeExists=false;
+    bool baseCoverCost=std::numeric_limits<double>::max();
+    double minValue=std::numeric_limits<double>::max();
+    for(size_t i=0;i<inputVertices.size();i++){
+        auto * iter=cutGraph.forwardNeighborsBegin(i);
+        auto *end=cutGraph.forwardNeighborsEnd(i);
+        for(;iter!=end;iter++){
+            if(iter->second<minValue){
+                minValue=iter->second;
+            }
+            if(i==baseCoveringLifted[0]&&iter->first==baseCoveringLifted[1]){
+                baseCoverCost=iter->second;
+            }
+        }
+    }
+    if(minValue>=0){
+        return liftedCost+minValue;
+    }
+    else if(baseCoverCost>=0){
+        return liftedCost;
+    }
+    else{
+        double lowerBound=advancedMinimizer(unassignedLabel,unassignedLabel,false,false); //some cut edge must be active
+        double restrictedOne=0;
+        double restrictedZero=0;
+        if(storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
+            assert(liftedActive);
+            restrictedOne=lowerBound;
+            restrictedZero=advancedMinimizer(baseCoveringLifted[0],baseCoveringLifted[1],false,false);
+            if(liftedActive) restrictedZero-=liftedCost;
+            return restrictedOne-restrictedZero;
+        }
+        else{
+            assert(lowerBound<0);
+            return liftedCost;
+        }
+    }
+
+
+
+
+
 }
 
 
