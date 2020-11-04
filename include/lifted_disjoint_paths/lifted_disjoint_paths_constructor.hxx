@@ -802,6 +802,12 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
     */
 
+    for (int i = 0; i < cut_factors_.size(); ++i) {
+            auto * cFactor=cut_factors_[i]->get_factor();
+            primalValue+=cFactor->EvaluatePrimal();
+
+        }
+
 //TODO swap order and use these paths for adjusting lifted and triangle labels
 
 
@@ -1074,12 +1080,14 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                              for(;it!=end;it++){               //can be probably a linear iteration
                                  size_t d2=it->first;
                                  if(descendants[v1].count(d2)==0&&pInstance->isReachable(d2,w)){  //candidate cut edge (d,d2), leaves component and w is reachable
-                                      cutEdges[d][d2]=baseEdgesWithCosts[d][d2];
+                                     // cutEdges[d][d2]=baseEdgesWithCosts[d][d2]; //TODO use cost after enabling cost update in BOTH snc factors
+                                      cutEdges[d][d2]=0;
                                  }
                              }
 
                         }
-                        ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,it->second,cutEdges);
+                       // ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,it->second,cutEdges); //TODO use this after solving upddate cost in snc
+                         ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,0.0,cutEdges);
                         leQueue.push(std::pair(improvementValue,pCutF));
                     }
                 }
@@ -1135,7 +1143,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t v=pCutFactor->getLiftedInputVertex();
             size_t w=pCutFactor->getLiftedOutputVertex();
             usedLiftedEdges[v].insert(w);
-            pCutFactor->print();
+            //pCutFactor->print();
             addedCuts++;
             auto* newCutFactor = lp_->template add_factor<CUT_FACTOR_CONT>(*pCutFactor);
             cut_factors_.push_back(newCutFactor);
@@ -1182,6 +1190,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                         assert(iterSnc->first==iterCut->first);
                         _nodeIndicesInCut.push_back(cutCounter);
                         _nodeIndicesInSnc.push_back(sncCounter);
+                        //snc->updateEdgeCost(-iterCut->second,sncCounter,false);
                         iterCut++;
                         cutCounter++;
                         iterSnc++;
@@ -1727,7 +1736,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
     //const andres::graph::Digraph<>& baseGraph=instance.getGraph();
-    std::vector<std::unordered_map<size_t,double>> costsFromTriangles(nr_nodes());
+    std::vector<std::unordered_map<size_t,double>> costsFromCuts(nr_nodes());
 
 
  /*   if(debug()) std::cout<<"triangle factors size "<<triangle_factors_.size()<<std::endl;
@@ -1748,6 +1757,17 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         }
     }
     */
+
+   for(size_t i=0;i<cut_factors_.size();i++){ //Does not do much
+        auto * cFactor=cut_factors_[i]->get_factor();
+        for(size_t j=0;j<cFactor->getNumberOfInputs();j++){
+            for(size_t k=0;k<cFactor->getNumberOfOutputs();k++){
+                double value=cFactor->getOneEdgeMinMarginal(j,k);
+                costsFromCuts[cFactor->getInputVertices()[j]][cFactor->getOutputVertices()[k]]=value;
+
+            }
+        }
+    }
 
 
     for(std::size_t i=0; i<nr_nodes(); ++i)
@@ -1817,8 +1837,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
                 assert(mcf_->lower_bound(e) == 0 && mcf_->upper_bound(e) == 1);
                 mcf_->update_cost(e, m);
-                auto iter=costsFromTriangles[i].find(j);
-                if(iter!=costsFromTriangles[i].end()){
+                auto iter=costsFromCuts[i].find(j);
+                if(iter!=costsFromCuts[i].end()){
                     mcf_->update_cost(e,iter->second);
                 }
             }

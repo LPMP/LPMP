@@ -288,10 +288,19 @@ void ldp_cut_factor::setPrimal(const std::vector<size_t>& primalDescendants, con
         liftedActiveInPrimal=false;
         primalSolution.back()=unassignedLabel;
     }
-
-
 }
 
+
+double ldp_cut_factor::EvaluatePrimal() const{
+    double value=0;
+    for(size_t i=0;i<primalSolution.size()-1;i++){
+        if(primalSolution[i]!=unassignedLabel){
+            value+=cutGraph.getForwardEdgeCost(i,primalSolution[i]);
+        }
+    }
+    if(primalSolution.back()==w) value+=liftedCost;  //meaning lifted edge is active
+    return value;
+}
 
 void ldp_cut_factor::init_primal(){
     for(size_t& v :primalSolution){
@@ -333,16 +342,7 @@ void ldp_cut_factor::updateCostBase(const size_t& inputVertexIndex, const size_t
 }
 
 
-double ldp_cut_factor::EvaluatePrimal() const{
-    double value=0;
-    for(size_t i=0;i<primalSolution.size()-1;i++){
-        if(primalSolution[i]!=unassignedLabel){
-            value+=cutGraph.getForwardEdgeCost(i,primalSolution[i]);
-        }
-    }
-    if(primalSolution.back()==w) value+=liftedCost;  //meaning lifted edge is active
-    return value;
-}
+
 
 
 double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& index2, bool restrictToOne, bool addLiftedCost)const {
@@ -351,120 +351,124 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
     //index1 .. index in inputVertices, index2.. index in outputVertices + numberOfInput
     LPMP::linear_assignment_problem_input lapInput;
     double minValue=0;
-   std::fill(storeLabeling.begin(),storeLabeling.end(),unassignedLabel);
-   liftedActive=false;
-   bool activeExists=false;
+    std::fill(storeLabeling.begin(),storeLabeling.end(),unassignedLabel);
+    liftedActive=false;
+    bool activeExists=false;
     //TODO: Assert of neighborIndex?
-   //TODO add lifted edge to evaluation, based on
+    //TODO add lifted edge to evaluation, based on
 
 
-   std::tuple<double,size_t,size_t,char> myTuple(0,0,0,0);
-   if(index1!=unassignedLabel&&!restrictToOne){
-       myTuple=minCutEdge(index1,index2);
-   }
-   else{
-       myTuple=minCutEdge(unassignedLabel,unassignedLabel);
-   }
-   double minCutValue=std::get<0>(myTuple);
-   if(minCutValue>=0){
-       if(restrictToOne){
-           double valueToReturn=0;
-           auto* iter=cutGraph.forwardNeighborsBegin(index1);
-           auto* end=cutGraph.forwardNeighborsEnd(index1);
-           bool found=false;
-           for(;iter!=end;iter++){
-               if(iter->first==index2){
-                   valueToReturn=iter->second;
-                   found=true;
-                   break;
-               }
-
-           }
-           storeLabeling[index1]=index2;
-           if(liftedCost<0) valueToReturn+=liftedCost;
-           return valueToReturn;
-       }
-       else{
-
-           double activeCost=liftedCost+minCutValue;
-           if(activeCost<0){
-               size_t vertex=std::get<1>(myTuple);
-               size_t label=std::get<2>(myTuple);
-               storeLabeling[vertex]=label;
-               liftedActive=true;
-               return activeCost;
-           }
-           else{
-               return 0;
-           }
-       }
-
-   }
-   else{
-
-       if(index1==unassignedLabel){
-           lapInput=createLAStandard(addLiftedCost);
+    std::tuple<double,size_t,size_t,char> myTuple;
+    if(index1!=unassignedLabel&&!restrictToOne){
+       if(debug()) std::cout<<"restric to zero"<<std::endl;
+        myTuple=minCutEdge(index1,index2);
     }
-    else if(restrictToOne){
-        assert(index1<inputVertices.size());
-        lapInput=laExcludeVertices(index1,index2,addLiftedCost);
-        //std::cout<<"lap input for one created "<<std::endl;
-        //minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
-        assert(index2<outputVertices.size());
-        bool found=false;
-        for (auto* it=cutGraph.forwardNeighborsBegin(index1);it!=cutGraph.forwardNeighborsEnd(index1);it++) {
-            if(it->first==index2){
-                minValue=it->second;
-                found=true;
-                break;
+    else{
+        myTuple=minCutEdge(unassignedLabel,unassignedLabel);
+    }
+    double minCutValue=std::get<0>(myTuple);
+    if(minCutValue>=0){
+    if(debug())    std::cout<<"simple method"<<std::endl;
+        if(restrictToOne){
+            if(debug())std::cout<<"restric to one"<<std::endl;
+            double valueToReturn=0;
+            auto* iter=cutGraph.forwardNeighborsBegin(index1);
+            auto* end=cutGraph.forwardNeighborsEnd(index1);
+            bool found=false;
+            for(;iter!=end;iter++){
+                if(iter->first==index2){
+                    valueToReturn=iter->second;
+                    found=true;
+                    break;
+                }
+
             }
+            storeLabeling[index1]=index2;
+            if(liftedCost<0||(index1==baseCoveringLifted[0]&&index2==baseCoveringLifted[1])) valueToReturn+=liftedCost;
+            return valueToReturn;
         }
-        assert(found);
-        storeLabeling[index1]=index2;
-        activeExists=true;
+        else{
+            if(debug())std::cout<<"not restric to one"<<std::endl;
 
-    }
-    else{//edge is restricted to zero
-        assert(index1<inputVertices.size());
-        assert(index2<outputVertices.size());
-        lapInput=laExcludeEdge(index1,index2,addLiftedCost);
-       // std::cout<<"lap input for zero created "<<std::endl;
-    }
-    MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
-    lapInput.initialize_mcf(mcf);
-
-  //  std::cout<<"mcf init"<<std::endl;
-    minValue+=mcf.solve();
-
-
-    for (int i = 0; i < mcf.no_edges(); ++i) {
-        if(mcf.flow(i)>0.99){
-           // int label=mcf.head(i)-numberOfInput;
-            assert(lapInput.no_left_nodes==numberOfInput);
-             int label=mcf.head(i)-numberOfInput;
-            int vertex=mcf.tail(i);
-            if(vertex<numberOfInput&&label<numberOfOutput){
-              //  std::cout<<"vertex "<<vertex<<", label "<<label<<std::endl;
+            double activeCost=liftedCost+minCutValue;
+            if(activeCost<0){
+                size_t vertex=std::get<1>(myTuple);
+                size_t label=std::get<2>(myTuple);
                 storeLabeling[vertex]=label;
-                activeExists=true;
+                liftedActive=true;
+                return activeCost;
+            }
+            else{
+                return 0;
             }
         }
+
     }
+    else{
+        if(debug())std::cout<<"advanced method"<<std::endl;
+        if(index1==unassignedLabel){
+            lapInput=createLAStandard(addLiftedCost);
+        }
+        else if(restrictToOne){
+            assert(index1<inputVertices.size());
+            lapInput=laExcludeVertices(index1,index2,addLiftedCost);
+            //std::cout<<"lap input for one created "<<std::endl;
+            //minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
+            assert(index2<outputVertices.size());
+            bool found=false;
+            for (auto* it=cutGraph.forwardNeighborsBegin(index1);it!=cutGraph.forwardNeighborsEnd(index1);it++) {
+                if(it->first==index2){
+                    minValue=it->second;
+                    found=true;
+                    break;
+                }
+            }
+            assert(found);
+            storeLabeling[index1]=index2;
+            activeExists=true;
+
+        }
+        else{//edge is restricted to zero
+            assert(index1<inputVertices.size());
+            assert(index2<outputVertices.size());
+            lapInput=laExcludeEdge(index1,index2,addLiftedCost);
+            // std::cout<<"lap input for zero created "<<std::endl;
+        }
+        MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
+        lapInput.initialize_mcf(mcf);
+
+        //  std::cout<<"mcf init"<<std::endl;
+        minValue+=mcf.solve();
 
 
-    if(baseCoverLiftedExists&&storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
-        liftedActive=true;
-        if(!addLiftedCost) minValue+=liftedCost;
+        for (int i = 0; i < mcf.no_edges(); ++i) {
+            if(mcf.flow(i)>0.99){
+                // int label=mcf.head(i)-numberOfInput;
+                assert(lapInput.no_left_nodes==numberOfInput);
+                int label=mcf.head(i)-numberOfInput;
+                int vertex=mcf.tail(i);
+                if(vertex<numberOfInput&&label<numberOfOutput){
+                    //  std::cout<<"vertex "<<vertex<<", label "<<label<<std::endl;
+                    storeLabeling[vertex]=label;
+                    activeExists=true;
+                }
+            }
+        }
+
+
+        if(baseCoverLiftedExists&&storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
+            liftedActive=true;
+            if(!addLiftedCost) minValue+=liftedCost;
+        }
+        else if(activeExists&&liftedCost<0){
+            minValue+=liftedCost;
+            liftedActive=true;
+        }
+
+        // std::cout<<"lifted active "<<liftedActive<<std::endl;
+
+        return minValue;
     }
-    else if(activeExists&&liftedCost<0){
-        minValue+=liftedCost;
-        liftedActive=true;
-    }
-
-   // std::cout<<"lifted active "<<liftedActive<<std::endl;
-
-    return minValue;
-   }
 
 }
 
@@ -515,7 +519,7 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size
             if(value<0){
                 assert(outputIndex<outputVertices.size());
                 lapInput.add_assignment(i,outputIndex,value);
-                std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
+                if(debug())std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
             }
         }
 
@@ -562,6 +566,7 @@ double ldp_cut_factor::LowerBound() const{
 
 
 double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2) const{
+    if(debug())std::cout<<"base edge min marginal in cut"<<std::endl;
     bool addLiftedCost=baseCoverLiftedExists&&liftedCost>0;
     double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost);
     double restrictZero=advancedMinimizer(index1,index2,false,addLiftedCost);
@@ -585,10 +590,11 @@ std::tuple<double,size_t,size_t,char> ldp_cut_factor::minCutEdge(size_t index1,s
                     v2=iter->first;
                 }
             }
+            if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&iter->first==baseCoveringLifted[1]){
+                cutCoverLiftedNegative=(iter->second<0);
+            }
         }
-        if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&iter->first==baseCoveringLifted[1]){
-            cutCoverLiftedNegative=iter->second<0;
-        }
+
     }
 
     std::tuple<double,size_t,size_t,char>t (minValue,v1,v2,cutCoverLiftedNegative);
@@ -597,6 +603,7 @@ std::tuple<double,size_t,size_t,char> ldp_cut_factor::minCutEdge(size_t index1,s
 
 
 double ldp_cut_factor::getLiftedMinMarginal() const{
+    if(debug())std::cout<<"cut lifted min marginal"<<std::endl;
 //    bool nonPositiveEdgeExists=false;
 //    bool baseCoverCost=std::numeric_limits<double>::min();
 //    double minValue=std::numeric_limits<double>::max();
@@ -621,21 +628,23 @@ double ldp_cut_factor::getLiftedMinMarginal() const{
     if(!baseCoverLiftedExists||!baseCoverNegative){
         if(minValue>=0){
             //assert(minValueSet);
-            std::cout<<"min value big"<<std::endl;
+            if(debug())std::cout<<"min value big"<<std::endl;
             double value=liftedCost+minValue;
-            std::cout<<value<<std::endl;
+            if(debug())std::cout<<value<<std::endl;
             return value;
         }
         else{
+            if(debug())std::cout<<"min value negative"<<std::endl;
             return liftedCost;
         }
     }
     else{
+        if(debug())std::cout<<" base cover lifted"<<std::endl;
         double lowerBound=advancedMinimizer(unassignedLabel,unassignedLabel,false,false); //some cut edge must be active
         double restrictedOne=0;
         double restrictedZero=0;
         if(storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
-            std::cout<<"base cover lifted "<<std::endl;
+            if(debug())std::cout<<"base cover lifted "<<std::endl;
             assert(liftedActive);
             restrictedOne=lowerBound;
             restrictedZero=advancedMinimizer(baseCoveringLifted[0],baseCoveringLifted[1],false,false);
@@ -643,7 +652,7 @@ double ldp_cut_factor::getLiftedMinMarginal() const{
             return restrictedOne-restrictedZero;
         }
         else{
-            std::cout<<"base cover lifted not active"<<std::endl;
+            if(debug())std::cout<<"base cover lifted not active"<<std::endl;
             assert(lowerBound<0);
             return liftedCost;
         }
@@ -679,9 +688,9 @@ public:
     template<typename CUT_FACTOR>
     void RepamLeft(CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
-        std::cout<<"snc repam left ";
+        if(debug())std::cout<<"cut repam left ";
         double before=l.LowerBound();
-        std::cout<<"before lb "<<before<<std::endl;
+        if(debug())std::cout<<"before lb "<<before<<std::endl;
        if(debug()){
 
           l.print();
@@ -703,25 +712,25 @@ public:
            }
        }//std::cout<<"index to update "<<indicesInTriangle.at(msg_dim);
        double after=l.LowerBound();
-       std::cout<<"after lb "<<after<<std::endl;
+       if(debug())std::cout<<"after lb "<<after<<std::endl;
 
      }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
-        std::cout<<"cut repam right "<<std::endl;
+        if(debug())std::cout<<"snc repam right "<<std::endl;
         double before=r.LowerBound();
-        std::cout<<"before lb "<<before<<std::endl;
+        if(debug())std::cout<<"before lb "<<before<<std::endl;
         if(debug()){
-            std::cout<<"cut repam right "<<std::endl;
+            std::cout<<"snc repam right "<<std::endl;
             r.print();
         }
         assert(msg_dim <=nodeIndicesInSnc.size());
         if(msg_dim==nodeIndicesInSnc.size()){
             {
                 assert(containsLiftedEdge);
-                std::cout<<"node id of lifted edge "<<r.getLiftedIDs()[nodeIndexOfLiftedEdge]<<std::endl;
+                if(debug())std::cout<<"node id of lifted edge "<<r.getLiftedIDs()[nodeIndexOfLiftedEdge]<<std::endl;
                 r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
             }
         }
@@ -729,14 +738,14 @@ public:
                 r.updateEdgeCost(msg,nodeIndicesInSnc.at(msg_dim),false);
         }
         double after=r.LowerBound();
-        std::cout<<"abter lb "<<after<<std::endl;
+        if(debug())std::cout<<"abter lb "<<after<<std::endl;
 
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
-         std::cout<<"snc send one to left "<<std::endl;
+         if(debug())std::cout<<"snc send one to left "<<std::endl;
         if(debug()) std::cout<<"triangle send one to left ";
         //printIndices();
         //for (size_t i=0;i<1;i++) {
@@ -760,22 +769,26 @@ public:
     template<typename CUT_FACTOR, typename MSG>
     void send_message_to_right(const CUT_FACTOR& l, MSG& msg, const double omega)
     {
-        std::cout<<"cut send one to right"<<std::endl;
+        if(debug())std::cout<<"cut send one to right"<<std::endl;
         if(debug()) std::cout<<"triangle send one to right"<<std::endl;
         //for (size_t i=0;i<1;i++) {
         double delta;
         size_t i=0;
         for (;i<nodeIndicesInCut.size();i++) {
             if(sncIsOut){
-                delta = l.getOneEdgeMinMarginal(sncNodeIDindexInCut,nodeIndicesInCut[i]);
+                size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[i]);
+                delta = l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex);
             }
-            else{
+            else{  //just for output nodes now
+                assert(false);
                 delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut);
             }
+            if(debug())std::cout<<"min marginal value "<<delta<<std::endl;
             msg[i] -= omega * delta;
         }
+
         if(containsLiftedEdge){
-            std::cout<<"send to lifted "<<l.getLiftedOutputVertex()<<std::endl;
+            if(debug())std::cout<<"send to lifted "<<l.getLiftedOutputVertex()<<std::endl;
             delta=l.getLiftedMinMarginal();
             msg[i]-=omega*delta;
         }
