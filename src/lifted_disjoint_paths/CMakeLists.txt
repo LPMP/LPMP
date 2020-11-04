@@ -11,6 +11,7 @@ target_link_libraries(lifted_disjoint_paths_text_input ldp_instance LPMP pybind1
 pybind11_add_module(ldpMessagePassingPy ldp_python.cxx)
 target_link_libraries(ldpMessagePassingPy PRIVATE ldp_instance LPMP pybind11::module)   
 configure_file(solveFromFiles.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromFiles.py)
+configure_file(solveFromFilesForBatch.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromFilesForBatch.py)
 configure_file(solveFromVectors.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromVectors.py)
 configure_file(solveFromVectorsTwoGraphs.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromVectorsTwoGraphs.py)
 #configure_file(solveFromExamples.py ${CMAKE_CURRENT_BINARY_DIR}/solveFromExamples.py)
