@@ -49,6 +49,8 @@ public:
         //Need to sort within edges?
     }
 
+
+
     LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts,double inCost,double outCost){
 
         bool addST=inCost<=std::numeric_limits<double>::max();
@@ -171,11 +173,44 @@ public:
         return backwardEdges[i].end();
     }
 
+    std::pair<size_t,double> * forwardNeighborsBegin(size_t i) {
+        return forwardEdges[i].begin();
+    }
+
+     std::pair<size_t,double> * forwardNeighborsEnd(size_t i) {
+        return forwardEdges[i].end();
+    }
+
+     std::pair<size_t,double> * backwardNeighborsBegin(size_t i) {
+        return backwardEdges[i].begin();
+    }
+
+     std::pair<size_t,double> * backwardNeighborsEnd(size_t i) {
+        return backwardEdges[i].end();
+    }
+
     const size_t & getNumberOfVertices()const{
         return numberOfVertices;
     }
 
-//    const double * forwardCostBegin(size_t i)const {
+  //  void setAllCostToZero();
+//{
+//        for(size_t i=0;i<numberOfVertices;i++){
+//            auto * iter=backwardEdges[i].begin();
+//            auto * end=backwardEdges[i].end();
+//            for(;iter!=end;iter++){
+//                iter->second=0;
+//            }
+//            iter=forwardEdges[i].begin();
+//            end=forwardEdges[i].end();
+//            for(;iter!=end;iter++){
+//                iter->second=0;
+//            }
+//        }
+
+//    }
+
+//    const double * forwardCostBegin(size_t i)const {LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts,double inCost,double outCost){
 //        return forwardCost[i].begin();
 //    }
 
@@ -204,6 +239,23 @@ private:
     //two_dim_variable_array<double> backwardCost;
 
 };
+
+//void LdpDirectedGraph::setAllCostToZero(){
+//    for(size_t i=0;i<numberOfVertices;i++){
+//        auto * iter=backwardEdges[i].begin();
+//        auto * end=backwardEdges[i].end();
+//        for(;iter!=end;iter++){
+//            iter->second=0;
+//        }
+//        iter=forwardEdges[i].begin();
+//        end=forwardEdges[i].end();
+//        for(;iter!=end;iter++){
+//            iter->second=0;
+//        }
+//    }
+
+//}
+
 
 }
 
