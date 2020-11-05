@@ -884,74 +884,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
     if(diagnostics()) std::cout<<"TIGHTEN "<<nr_constraints_to_add<<std::endl;
 
-//    const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
 
-//    std::map<size_t,std::set<size_t>> baseEdgeUsed;
-//    std::map<size_t,std::set<size_t>> liftedEdgeUsed;
-
-//    std::map<size_t,std::map<size_t,double>> baseEdgesWithCosts;  //TODO: can be vector of maps
-//    std::vector<std::vector<size_t>> baseEdgesIn(nr_nodes());  //can be two dim array
-//    std::vector<std::vector<size_t>> baseEdgesOut(nr_nodes());
-
-//    std::vector<std::vector<size_t>> liftedEdgesIn(nr_nodes());
-//    std::vector<std::vector<size_t>> liftedEdgesOut(nr_nodes());
-//    //std::multimap<double,ldp_triangle_factor> candidateFactors;
-
-//    std::vector<std::tuple<double,size_t,size_t>> edgesToSort;
-
-
-//    andres::graph::Digraph<> connectivityGraph(nr_nodes());
-//    std::vector<std::set<size_t>> descendants(nr_nodes());
-//    std::vector<std::set<size_t>> predecessors(nr_nodes());
-
-//    std::vector<std::map<size_t,double>> liftedEdgesWithCosts(nr_nodes());
-
-//    //Getting the edge costs
-//    for (size_t i = 0; i < nr_nodes(); ++i) {
-//        // std::cout<<"node "<<i<<std::endl;
-
-//        //TODO just half of the change for base!
-//        const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
-//        std::vector<double> minMarginalsIn=sncFactorIn->getAllBaseMinMarginals();
-//        std::vector<double> localBaseCostsIn=sncFactorIn->getBaseCosts();
-
-//        for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
-//            minMarginalsIn[j]*=0.5;
-//            baseEdgesIn[i].push_back(minMarginalsIn.at(j));
-//            localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
-//            baseEdgesWithCosts[sncFactorIn->getBaseIDs()[j]][i]+=minMarginalsIn[j];
-//        }
-
-//        //  std::cout<<"base min marginals in "<<i<<std::endl;
-
-//        std::vector<double> minMarginalsLiftedIn=sncFactorIn->getAllLiftedMinMarginals(&localBaseCostsIn);
-//        for (size_t j = 0; j < minMarginalsLiftedIn.size(); ++j) {
-//           liftedEdgesIn[i].push_back(minMarginalsLiftedIn[j]);
-//           liftedEdgesWithCosts[sncFactorIn->getLiftedIDs()[j]][i]+=minMarginalsLiftedIn[j];
-//        }
-
-
-//        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
-//        std::vector<double> localBaseCostsOut=sncFactorOut->getBaseCosts();
-//        std::vector<double> minMarginalsOut=sncFactorOut->getAllBaseMinMarginals();
-
-//        for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
-//            minMarginalsOut[j]*=0.5;
-//            baseEdgesOut[i].push_back(minMarginalsOut.at(j));
-//            localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
-//            baseEdgesWithCosts[i][sncFactorOut->getBaseIDs()[j]]+=minMarginalsOut[j];
-//        }
-
-//         std::vector<double> minMarginalsLiftedOut=sncFactorOut->getAllLiftedMinMarginals(&localBaseCostsOut);
-
-//        for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
-//            liftedEdgesOut[i].push_back(minMarginalsLiftedOut[j]);
-//            liftedEdgesWithCosts[i][sncFactorOut->getLiftedIDs()[j]]+=minMarginalsLiftedOut[j];
-//        }
-
-//     }
-
-//    std::vector<std::map<size_t,double>> liftedEdgesWithCostsAll=liftedEdgesWithCosts;
 
     minMarginalsExtractor.initMinMarginals();
      std::vector<std::map<size_t,double>>& baseEdgesWithCosts=minMarginalsExtractor.getBaseEdgesMinMarginals();
@@ -1233,6 +1166,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
     }
 
+    minMarginalsExtractor.clearMinMarginals();
 
     adjustCutLabels(originalCutContrainerSize);
     addedCutFactorLiftedEdges.insert(usedLiftedEdges.begin(),usedLiftedEdges.end());
