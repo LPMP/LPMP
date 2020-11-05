@@ -1079,7 +1079,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                              const auto* end=baseGraph.forwardNeighborsEnd(d);
                              for(;it!=end;it++){               //can be probably a linear iteration
                                  size_t d2=it->first;
-                                 if(descendants[v1].count(d2)==0&&pInstance->isReachable(d2,w)){  //candidate cut edge (d,d2), leaves component and w is reachable
+                                 if(descendants[v1].count(d2)==0&&pInstance->isReachable(d2,v2)){  //candidate cut edge (d,d2), leaves component and w is reachable
                                      // cutEdges[d][d2]=baseEdgesWithCosts[d][d2]; //TODO use cost after enabling cost update in BOTH snc factors
                                       cutEdges[d][d2]=0;
                                  }
@@ -1124,22 +1124,22 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         bool canAdd=true;
         ldp_cut_factor* pCutFactor=leQueue.top().second;
         auto& cutGraph=pCutFactor->getCutGraph();
-        for(size_t i=0;i<pCutFactor->getNumberOfInputs();i++){
-            size_t a=pCutFactor->getInputVertices()[i];
-            auto * iter=cutGraph.forwardNeighborsBegin(i);
-            auto * end=cutGraph.forwardNeighborsEnd(i);
-            for(;iter!=end;iter++){
-                size_t b=pCutFactor->getOutputVertices()[iter->first];
-                if(usedCutEdges[a].count(b)>0){
-                    canAdd=false;
-                    break;
-                }
-                else{
-                    usedCutEdges[a].insert(b);
-                }
-            }
-        }
-        if(canAdd){
+//        for(size_t i=0;i<pCutFactor->getNumberOfInputs();i++){
+//            size_t a=pCutFactor->getInputVertices()[i];
+//            auto * iter=cutGraph.forwardNeighborsBegin(i);
+//            auto * end=cutGraph.forwardNeighborsEnd(i);
+//            for(;iter!=end;iter++){
+//                size_t b=pCutFactor->getOutputVertices()[iter->first];
+//                if(usedCutEdges[a].count(b)>0){
+//                    canAdd=false;
+//                    break;
+//                }
+//                else{
+//                    usedCutEdges[a].insert(b);
+//                }
+//            }
+//        }
+//        if(canAdd){
             size_t v=pCutFactor->getLiftedInputVertex();
             size_t w=pCutFactor->getLiftedOutputVertex();
             usedLiftedEdges[v].insert(w);
@@ -1149,7 +1149,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             cut_factors_.push_back(newCutFactor);
             const std::vector<size_t>& inputs=pCutFactor->getInputVertices();
             const std::vector<size_t>& outputs=pCutFactor->getOutputVertices();
-            const auto& cutGraph=pCutFactor->getCutGraph();
+           // const auto& cutGraph=pCutFactor->getCutGraph();
             //TODO what if lifted has not been added in the for!
             bool liftedAdded=false;
             for(size_t i=0;i<inputs.size();i++){
@@ -1209,7 +1209,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                 snc_cut_messages_.push_back(message1);
             }
 
-        }
+        //}
 //        else{
 //            std::cout<<"cannot add"<<std::endl;
 //        }
