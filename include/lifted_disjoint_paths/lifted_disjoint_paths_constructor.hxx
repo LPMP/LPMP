@@ -1014,34 +1014,36 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                 size_t node=it->first;
                 double lCost=it->second;
                 //std::cout<<pred<<","<<node<<": "<<lCost<<std::endl;
-                if(descendants[pred].count(it->first)>0){
-                    if(it->second<0.0){   //maybe add all and add and group all factors added in the same round, they are contradicting
-                        std::map<size_t,std::map<size_t,double>> cutEdges;
-                        size_t v1=pred;
-                        size_t v2=it->first;
-                        double improvementValue=std::min(abs(it->second),cost);
+                if(descendants[pred].count(node)==0){
+                    if(descendants[w].count(node)>0){
+                        if(lCost<0.0){   //maybe add all and add and group all factors added in the same round, they are contradicting
+                            std::map<size_t,std::map<size_t,double>> cutEdges;
+                            double improvementValue=std::min(abs(lCost),cost);
 
-                        for(auto& d:descendants[v1]){              //or break if d is in used vertices for cuts and w is reachable from d
-                             const auto* it=baseGraph.forwardNeighborsBegin(d);
-                             const auto* end=baseGraph.forwardNeighborsEnd(d);
-                             for(;it!=end;it++){               //can be probably a linear iteration
-                                 size_t d2=it->first;
-                                 if(descendants[v1].count(d2)==0&&pInstance->isReachable(d2,v2)){  //candidate cut edge (d,d2), leaves component and w is reachable
-                                     // cutEdges[d][d2]=baseEdgesWithCosts[d][d2]; //TODO use cost after enabling cost update in BOTH snc factors
-                                      cutEdges[d][d2]=0;
-                                 }
-                             }
+                            for(auto& d:descendants[pred]){              //or break if d is in used vertices for cuts and w is reachable from d
+                                const auto* it=baseGraph.forwardNeighborsBegin(d);
+                                const auto* end=baseGraph.forwardNeighborsEnd(d);
+                                for(;it!=end;it++){               //can be probably a linear iteration
+                                    size_t d2=it->first;
 
+                                    if(descendants[pred].count(d2)==0&&pInstance->isReachable(d2,node)){  //candidate cut edge (d,d2), leaves component and w is reachable
+                                        // cutEdges[d][d2]=baseEdgesWithCosts[d][d2]; //TODO use cost after enabling cost update in BOTH snc factors
+                                        assert(baseEdgesWithCosts[d][d2]>=cost-eps);
+                                        cutEdges[d][d2]=0;
+                                    }
+                                }
+
+                            }
+                            // ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,it->second,cutEdges); //TODO use this after solving upddate cost in snc
+                            ldp_cut_factor* pCutF=new ldp_cut_factor(pred,node,0.0,cutEdges);
+                            leQueue.push(std::pair(improvementValue,pCutF));
                         }
-                       // ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,it->second,cutEdges); //TODO use this after solving upddate cost in snc
-                         ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,0.0,cutEdges);
-                        leQueue.push(std::pair(improvementValue,pCutF));
                     }
-                }
-                else{
-                   // std::cout<<" process later"<<std::endl;
+                    else{
+                        // std::cout<<" process later"<<std::endl;
 
-                    edgesToKeep[it->first]=it->second;
+                        edgesToKeep[it->first]=it->second;
+                    }
                 }
             }
             liftedEdgesWithCosts[pred]=edgesToKeep;
@@ -1066,7 +1068,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     size_t addedCuts=0;
     std::map<size_t,std::set<size_t>> usedCutEdges;  //TODO make 2dim array of char?
     std::map<size_t,std::set<size_t>> usedLiftedEdges;
-    while(!leQueue.empty()){
+    while(!leQueue.empty()&&addedCuts<nr_constraints_to_add){
+        std::cout<<"improvement value "<<leQueue.top().first<<std::endl;
 
         bool canAdd=true;
         ldp_cut_factor* pCutFactor=leQueue.top().second;
