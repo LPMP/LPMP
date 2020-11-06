@@ -21,11 +21,14 @@ public:
     {
 
         numberOfVertices=sncFactorContainer.size();
+        isInQueue=std::vector<char>(numberOfVertices);
+        predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
+        predInQueueIsLifted=std::vector<char>(numberOfVertices);
     }
 
     void separatePathInequalities(size_t maxConstraints);
     void createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
-    std::vector<size_t> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
+    std::list<std::pair<size_t,bool>> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
 
 
 private:
@@ -41,14 +44,73 @@ std::vector<std::map<size_t,double>> baseMM;
 std::vector<std::map<size_t,double>> liftedMM;
 std::vector<std::list<size_t>> predecessors;  //Can I use list? Maybe yes, just predecessors will not be sorted!
 std::vector<std::list<size_t>> descendants;
-
-
+ std::vector<std::vector<std::pair<size_t,bool>>> usedEdges;
+std::vector<char> isInQueue;
+std::vector<size_t> predInQueue;
+std::vector<char> predInQueueIsLifted;
 
 };
 
 template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
-inline std::vector<size_t> ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::findShortestPath(const size_t& firstVertex,const size_t& lastVertex){
-   std::vector<size_t> shortestPath;
+inline std::list<std::pair<size_t,bool>> ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::findShortestPath(const size_t& firstVertex,const size_t& lastVertex){
+   std::list<std::pair<size_t,bool>> shortestPath;
+   //BSF should work best
+   //I need a map of used edges
+   std::list<size_t> queue; //vertex and is lifted (between vertex and its predecessor in queue)
+
+   const auto& vg=pInstance->getVertexGroups();
+   size_t firstIndex=vg.getGroupIndex(firstVertex);
+   size_t lastIndex=vg.getGroupIndex(lastVertex);
+   queue.push_back(firstVertex) ;  //is lifted for the first does not matter
+   bool pathFound=false;
+   std::vector<size_t> toDeleteFromQueue;
+   toDeleteFromQueue.push_back(firstIndex);
+
+   //TODO I need pointers to predecessors
+   while(!queue.empty()&&!pathFound){
+       size_t& vertex=queue.front();
+
+       std::vector<std::pair<size_t,bool>>& neighbors=usedEdges[vertex];
+
+       for(size_t i=0;i<neighbors.size();i++){
+           std::pair<size_t,bool> p=neighbors[i];
+           size_t neighborOfVertex=p.first;
+           bool isLifted=p.second;
+           if(neighborOfVertex==lastVertex){
+               predInQueue[lastVertex]=vertex;
+               predInQueueIsLifted[lastVertex]=isLifted;
+               isInQueue[lastVertex]=1; //To be cleared
+
+               pathFound=true;
+               break;
+           }
+
+           size_t nodeTimeIndex=vg.getGroupIndex(neighborOfVertex);
+           if(nodeTimeIndex<lastIndex&&!isInQueue[neighborOfVertex]){
+               queue.push_back(neighborOfVertex);
+               isInQueue[neighborOfVertex]=1;
+               predInQueue[neighborOfVertex]=vertex;
+               predInQueueIsLifted[neighborOfVertex]=isLifted;
+           }
+       }
+       queue.pop_front();
+   }
+   assert(pathFound);
+
+   size_t currentVertex=lastVertex;
+   while(currentVertex!=firstVertex){  //path contains vertex and info about edge starting in it
+       size_t newVertex=predInQueue[currentVertex];
+       bool isEdgeLifted=predInQueueIsLifted[currentVertex];
+       shortestPath.push_front({newVertex,isEdgeLifted});
+       currentVertex=newVertex;
+   }
+
+   size_t maxValue=std::numeric_limits<size_t>::max();
+   for(auto& v:toDeleteFromQueue){
+       isInQueue[v]=0;
+       predInQueue[v]=maxValue;
+       predInQueueIsLifted[v]=0;
+   }
    return shortestPath;
 }
 
@@ -56,11 +118,38 @@ inline std::vector<size_t> ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, S
 
 template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
 inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::createPathFactor(const size_t& lv1, const size_t& lv2, const size_t &bv1, const size_t &bv2,bool isLifted){
-    std::vector<size_t> beginning=findShortestPath(lv1,bv1);
-    std::vector<size_t> ending=findShortestPath(bv2,lv2);
-    beginning.insert(beginning.end(),ending.begin(),ending.end());
-    std::vector<double> costs(beginning.size(),0); //last member is the lifted edge cost
-    auto* pathFactor = lp_->template add_factor<PATH_FACTOR>(beginning,costs,0);
+    std::list<std::pair<size_t,bool>> beginning=findShortestPath(lv1,bv1);
+    std::list<std::pair<size_t,bool>> ending=findShortestPath(bv2,lv2);
+    std::vector<size_t> pathVertices(beginning.size()+ending.size());
+    std::vector<char> liftedEdgesIndices(beginning.size()+ending.size());
+    auto iter=beginning.begin();
+    auto end=beginning.end();
+    size_t counter=0;
+    for (;iter!=end;iter++) {
+        size_t vertex=iter->first;
+        bool isLifted=iter->second;
+        pathVertices[counter]=vertex;
+        liftedEdgesIndices[counter]=isLifted;
+        counter++;
+    }
+    pathVertices[counter]=bv1;
+    liftedEdgesIndices[counter]=isLifted;
+    counter++;
+    //Careful with the bridge edge!
+    iter=ending.begin();
+    end=ending.end();
+    for(;iter!=end;iter++){
+        size_t vertex=iter->first;
+        bool isLifted=iter->second;
+        pathVertices[counter]=vertex;
+        liftedEdgesIndices[counter]=isLifted;
+        counter++;
+    }
+    pathVertices[counter]=lv2;
+    liftedEdgesIndices[counter]=true; //this relates to the big lifted edge connecting the first and the last path vertex
+
+    std::vector<double> costs(pathVertices.size(),0); //last member is the lifted edge cost
+    auto* pathFactor = lp_->template add_factor<PATH_FACTOR>(pathVertices,costs,liftedEdgesIndices);
     factorContainer.push_back(pathFactor);
 
 
@@ -124,6 +213,8 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
 
     }
 
+    usedEdges= std::vector<std::vector<std::pair<size_t,bool>>> (numberOfVertices);
+
     for(size_t i=0;i<edgesToSort.size();i++){
         std::tuple<double,size_t,size_t,bool>& edge=edgesToSort[i];
         size_t& vertex1=std::get<1>(edge);
@@ -144,7 +235,7 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
                     const size_t& descV2=*iterDescV2;
                     auto f=positiveLifted[pred].find(descV2);
                     if(f!=positiveLifted[pred].end()){  //Contradicting lifted edge exists!
-                        createPathFactor(pred,descV2);
+                        createPathFactor(pred,descV2,vertex1,vertex2); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
                     }
 
                     descendants[pred].insert(iterDescPred,descV2);
@@ -161,6 +252,9 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
                 }
             }
         }
+        usedEdges[vertex1].push_back(std::pair(vertex2,isLifted));
+
+        //TODO add predecessors and descendanta here
     }
 
     mmExtractor.clearMinMarginals();

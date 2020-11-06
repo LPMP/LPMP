@@ -1034,7 +1034,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                                 }
 
                             }
-                            // ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,it->second,cutEdges); //TODO use this after solving upddate cost in snc
+                            // ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,lCost,cutEdges); //TODO use this after solving upddate cost in snc
                             ldp_cut_factor* pCutF=new ldp_cut_factor(pred,node,0.0,cutEdges);
                             leQueue.push(std::pair(improvementValue,pCutF));
                         }

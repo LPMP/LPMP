@@ -15,7 +15,7 @@ public:
       listOfCosts(_listOfCosts),
       isLifted(_isLifted)
     {
-        assert(listOfCosts.size()==listOfVertices.size());
+        assert(listOfCosts.size()==listOfVertices.size()&&listOfCosts.size()==isLifted.size());
         numberOfEdges=listOfCosts.size();
         primalSolution=std::vector<char>(numberOfEdges);
     }
@@ -42,7 +42,7 @@ public:
    // std::array<double,3> getAllMinMarginals();
 
 
-    void updateEdgeCost(const size_t& edgeIndex);
+    void updateEdgeCost(const size_t& edgeIndex,const double& value);
 
     double getMinMarginal(const size_t& edgeIndex) const;
 
@@ -59,12 +59,21 @@ private:
     std::vector<char> primalSolution;
 
 };
+
+
 double ldp_path_factor::getMinMarginal(const size_t &edgeIndex) const{
    double restrictOne=minimize(edgeIndex,1);
    double restrictZero=minimize(edgeIndex,0);
    return restrictOne-restrictZero;
 }
 
+void ldp_path_factor::init_primal(){
+    std::fill(primalSolution.begin(),primalSolution.end(),0);
+}
+
+void ldp_path_factor::updateEdgeCost(const size_t& edgeIndex,const double& value){
+    listOfCosts[edgeIndex]+=value;
+}
 
 void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t> &vertexLabels){
 
@@ -167,6 +176,87 @@ double ldp_path_factor::LowerBound()const{
   return optValue;
 
 }
+
+
+class ldp_snc_path_message
+{
+public:
+    ldp_snc_path_message(const std::vector<size_t>& _edgeIndexInPath,  //Mostly one, two for the first and the last path vertices
+         const std::vector<size_t>& _vertexIndexInSnc,
+         const std::vector<char>& _isLifted):
+
+        edgeIndexInPath(_edgeIndexInPath),  //Mostly one, two for the first and the last path vertices
+        dimension(edgeIndexInPath.size()),
+        vertexIndexInSnc(_vertexIndexInSnc),
+        isLifted(_isLifted)
+        {
+            assert(dimension==1||dimension==2);
+            assert(vertexIndexInSnc.size()==dimenstion);
+            assert(isLifted.size()==dimenstion);
+
+        }
+
+    template<typename PATH_FACTOR>
+    void RepamLeft(PATH_FACTOR& l, const double msg, const std::size_t msg_dim) const
+    {
+       assert(msg_dim <dimension);
+       l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
+     }
+
+    template<typename SINGLE_NODE_CUT_FACTOR>
+    void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
+    {
+        r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
+    }
+
+    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
+    void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
+    {
+        double delta=0;
+        for (size_t i=0;i<dimension;i++) {
+            if(isLifted[i]){
+                delta = r.getOneLiftedMinMarginal(vertexIndexInSnc[i]);
+            }
+            else{
+                delta = r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i]);
+            }
+
+            msg[i] -= omega * delta;
+        }
+
+    }
+
+    template<typename PATH_FACTOR, typename MSG>
+    void send_message_to_right(const PATH_FACTOR& l, MSG& msg, const double omega)
+    {
+
+        double delta;
+
+        for (size_t i=0;i<dimension;i++) {
+            delta=l.getMinMarginal(edgeIndexInPath[i]);
+            msg[i] -= omega * delta;
+        }
+
+    }
+
+
+    template<typename SINGLE_NODE_CUT_FACTOR,typename CUT_FACTOR>
+    bool check_primal_consistency(const CUT_FACTOR& l, const SINGLE_NODE_CUT_FACTOR& r) const
+    {
+        return true;
+
+    }
+
+private:
+    std::vector<size_t> edgeIndexInPath;  //Mostly one, two for the first and the last path vertices
+    size_t dimension;
+    std::vector<size_t> vertexIndexInSnc;
+    std::vector<char> isLifted;
+
+};
+
+
+
 
 }
 
