@@ -17,6 +17,9 @@ namespace LPMP {
       //  using triangle_factor_container = FactorContainer<ldp_triangle_factor, lifted_disjoint_paths_FMC, 1>;
           using cut_factor_container = FactorContainer<ldp_cut_factor, lifted_disjoint_paths_FMC, 1>;
 
+          //using cut_factor_container = FactorContainer<ldp_cut_factor, lifted_disjoint_paths_FMC, 1>;
+
+
         using single_node_cut_lifted_edge_message_container = MessageContainer<ldp_snc_lifted_message, 0, 0, message_passing_schedule::only_send, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 0>;
 
        // using single_node_cut_node_message_container = MessageContainer<ldp_snc_node_message, 0, 0, message_passing_schedule::only_send, variableMessageNumber, variableMessageNumber, lifted_disjoint_paths_FMC, 1>;

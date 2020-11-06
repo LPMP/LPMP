@@ -136,6 +136,7 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
     liftedEdgesIndices[counter]=isLifted;
     counter++;
     //Careful with the bridge edge!
+    assert(ending[0]==bv2);
     iter=ending.begin();
     end=ending.end();
     for(;iter!=end;iter++){
@@ -149,8 +150,93 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
     liftedEdgesIndices[counter]=true; //this relates to the big lifted edge connecting the first and the last path vertex
 
     std::vector<double> costs(pathVertices.size(),0); //last member is the lifted edge cost
+    assert(pathVertices[0]==lv1);
+    assert(pathVertices.back()==lv2);
+
     auto* pathFactor = lp_->template add_factor<PATH_FACTOR>(pathVertices,costs,liftedEdgesIndices);
     factorContainer.push_back(pathFactor);
+
+    auto * pFactorOut=sncFactorContainer[lv1][1];
+    auto * pFactorOutFactor=pFactorOut->get_factor();
+
+    size_t numberOfVerticesInPath;
+    std::vector<size_t> indicesInSnc={0,0};
+    std::vector<char> isLiftedForFirstMessage={0,1};
+    std::vector<size_t> edgeIndicesInPath={0,pathVertices.size()-1};
+
+    //size_t secondPathVertexIndex;
+    if(liftedEdgesIndices[0]){
+        isLiftedForFirstMessage[0]=1;
+        indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices[1]);
+    }
+    else{
+        isLiftedForFirstMessage[0]=0;
+        indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[1]);
+    }
+    indicesInSnc[1]=pFactorOutFactor->getLiftedIDToOrder(lv2);
+
+    auto * message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOutFactor,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+    messageContainer.push_back(message);
+
+    auto * pFactorIn=sncFactorContainer[lv2][0];
+    auto * pFactorInFactor=pFactorOut->get_factor();
+
+    indicesInSnc={0,0};
+    isLiftedForFirstMessage={0,1};
+    edgeIndicesInPath={numberOfVerticesInPath-2,numberOfVerticesInPath-1};
+
+    if(liftedEdgesIndices[numberOfVerticesInPath-2]){
+        isLiftedForFirstMessage[0]=1;
+        indicesInSnc[0]=pFactorInFactor->getLiftedIDToOrder(pathVertices[numberOfVerticesInPath-2]);
+    }
+    else{
+        isLiftedForFirstMessage[0]=0;
+        indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[numberOfVerticesInPath-2]);
+    }
+    indicesInSnc[1]=pFactorInFactor->getLiftedIDToOrder(lv1);
+
+    auto * message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+    messageContainer.push_back(message2);
+
+    indicesInSnc={0};
+    isLiftedForFirstMessage={0};
+    edgeIndicesInPath={0};
+
+    for(size_t i=1;i<numberOfVerticesInPath-2;i++){
+        pFactorIn=sncFactorContainer[pathVertices[i]][0];
+        pFactorInFactor=pFactorOut->get_factor();
+
+        if(liftedEdgesIndices[i-1]){
+            isLiftedForFirstMessage[0]=1;
+            indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices[i-1]);
+        }
+        else{
+            isLiftedForFirstMessage[0]=0;
+            indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[i-1]);
+        }
+
+        message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOutFactor,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+        messageContainer.push_back(message);
+
+        pFactorOut=sncFactorContainer[pathVertices[i]][1];
+        pFactorOutFactor=pFactorOut->get_factor();
+
+        if(liftedEdgesIndices[i]){
+            isLiftedForFirstMessage[0]=1;
+            indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices[i+1]);
+        }
+        else{
+            isLiftedForFirstMessage[0]=0;
+            indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[i+1]);
+        }
+
+        message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+        messageContainer.push_back(message2);
+
+    }
+
+
+
 
 
 
