@@ -16,44 +16,42 @@ struct LdpPathMessageInputs{
 };
 
 
-template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT> //PATH_FACTOR is ldp_path_factor, SINGLE_NODE_CUT_FACTOR_CONT is the container wrapper
 class ldp_path_separator {
 
 public:
-    ldp_path_separator(std::vector<PATH_FACTOR*>& _factorContainer, std::vector<PATH_SNC_MESSAGE*>&  _messageContainer, std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>>& _sncFactorContainer, const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>& _mmExtractor,LPFMC *_lp):
-    factorContainer(_factorContainer),
-    messageContainer(_messageContainer),
+    ldp_path_separator(const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& _mmExtractor):
+
     pInstance(_pInstance),
-    sncFactorContainer(_sncFactorContainer),
      mmExtractor(_mmExtractor)
 
     {
-        lp_=_lp;
-
-        numberOfVertices=sncFactorContainer.size();
+        numberOfVertices=pInstance->getNumberOfVertices()-2;
         isInQueue=std::vector<char>(numberOfVertices);
         predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
         predInQueueIsLifted=std::vector<char>(numberOfVertices);
     }
 
-    size_t separatePathInequalities(size_t maxConstraints);
+    void separatePathInequalities(size_t maxConstraints);
 
-    LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* pathFactor,SINGLE_NODE_CUT_FACTOR* sncFactor,size_t index,bool isOut)const ;
+    std::priority_queue<std::pair<double,PATH_FACTOR*>>& getPriorityQueue(){
+        return pQueue;
+    }
+
+
+    LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
+    void clearPriorityQueue();
 
 
 private:
 
-    void createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
+    PATH_FACTOR* createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
     std::list<std::pair<size_t,bool>> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
 
-
-std::vector<PATH_FACTOR*>& factorContainer;
-std::vector<PATH_SNC_MESSAGE*>&  messageContainer;
 const lifted_disjoint_paths::LdpInstance * pInstance;
-std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>>& sncFactorContainer;
-ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>& mmExtractor;
+ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& mmExtractor;
 size_t numberOfVertices;
-LPFMC *lp_;
+
 
 std::vector<std::map<size_t,double>> baseMM;
 std::vector<std::map<size_t,double>> liftedMM;
@@ -63,17 +61,33 @@ std::vector<std::list<size_t>> descendants;
 std::vector<char> isInQueue;
 std::vector<size_t> predInQueue;
 std::vector<char> predInQueueIsLifted;
+std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
 
 };
 
-template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
-inline LdpPathMessageInputs ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::getMessageInputsToPathFactor(PATH_FACTOR* pathFactor,SINGLE_NODE_CUT_FACTOR* sncFactor,size_t index,bool isOut)const {
-    auto * myPathFactor=pathFactor->get_factor();
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
+    while(pQueue.empty()){
+        std::pair<double,PATH_FACTOR*> p=pQueue.top();
+        delete p.second;
+        pQueue.pop();
+    }
+
+}
+  //  auto * myPathFactor=pathFactor->get_factor();
+
+
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline LdpPathMessageInputs ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const {
+  //  auto * myPathFactor=pathFactor->get_factor();
+
+    bool isOut=sncFactor->get_factor()->isNodeOutFlow();
 
     size_t numberOfEdges=myPathFactor->getNumberOfEdges();
     assert(index<numberOfEdges);
 
     const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
+    assert(pathVertices.at(index)==sncFactor->get_factor()->nodeID);
     const std::vector<char>& liftedInfo=myPathFactor->getLiftedInfo();
 
     std::vector<size_t> indicesInSnc;
@@ -146,8 +160,8 @@ inline LdpPathMessageInputs ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, 
 }
 
 
-template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
-inline std::list<std::pair<size_t,bool>> ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::findShortestPath(const size_t& firstVertex,const size_t& lastVertex){
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::findShortestPath(const size_t& firstVertex,const size_t& lastVertex){
    assert(firstVertex!=lastVertex);
    std::list<std::pair<size_t,bool>> shortestPath;
    //BSF should work best
@@ -220,8 +234,8 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator< PATH_FACTOR,  PATH_
 
 
 
-template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
-inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::createPathFactor(const size_t& lv1, const size_t& lv2, const size_t &bv1, const size_t &bv2,bool isLifted){
+template  <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createPathFactor(const size_t& lv1, const size_t& lv2, const size_t &bv1, const size_t &bv2,bool isLifted){
 
     std::list<std::pair<size_t,bool>> beginning;
     if(lv1!=bv1) beginning=findShortestPath(lv1,bv1);
@@ -276,128 +290,15 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
     assert(pathVertices[0]==lv1);
     assert(pathVertices.back()==lv2);
 
-    auto* pathFactor = lp_->template add_factor<PATH_FACTOR>(pathVertices,costs,liftedEdgesIndices);
-    factorContainer.push_back(pathFactor);
-
-    assert(lv1<numberOfVertices);
-    auto * pFactorOut=sncFactorContainer[lv1][1];
-    auto * pFactorOutFactor=pFactorOut->get_factor();
-
-    std::vector<size_t> indicesInSnc={0,0};
-    std::vector<char> isLiftedForFirstMessage={0,1};
-    std::vector<size_t> edgeIndicesInPath={0,numberOfVerticesInPath-1};
-
-    //size_t secondPathVertexIndex;
-    if(liftedEdgesIndices[0]){
-        isLiftedForFirstMessage[0]=1;
-        indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices[1]);
-    }
-    else{
-        isLiftedForFirstMessage[0]=0;
-        indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[1]);
-    }
-    indicesInSnc[1]=pFactorOutFactor->getLiftedIDToOrder(lv2);
-
-   // std::cout<<"edge indices size "<<edgeIndicesInPath.size()<<std::endl;
-    ldp_snc_path_message myMessage(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-    //auto * message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOut,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-    auto * message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOut,myMessage);
-  //  std::cout<<"message start added, dimension "<<message->get_message()->dimension<<std::endl;
-    messageContainer.push_back(message);
-  //  std::cout<<"message in container, indices dimension "<<edgeIndicesInPath.size()<<std::endl;
-
-    assert(lv2<numberOfVertices);
-
-    auto * pFactorIn=sncFactorContainer[lv2][0];
-    auto * pFactorInFactor=pFactorIn->get_factor();
-
-   // std::cout<<"pointers set "<<std::endl;
-    indicesInSnc={0,0};
-    isLiftedForFirstMessage={0,1};
-    edgeIndicesInPath={numberOfVerticesInPath-2,numberOfVerticesInPath-1};
-
-   // std::cout<<"arrays set "<<std::endl;
-
-    if(liftedEdgesIndices[numberOfVerticesInPath-2]){
-      //  std::cout<<"last edge lifted"<<std::endl;
-        isLiftedForFirstMessage[0]=1;
-        indicesInSnc[0]=pFactorInFactor->getLiftedIDToOrder(pathVertices[numberOfVerticesInPath-2]);
-    }
-    else{
-      //  std::cout<<"last edge base"<<std::endl;
-        isLiftedForFirstMessage[0]=0;
-        indicesInSnc[0]=pFactorInFactor->getBaseIDToOrder(pathVertices[numberOfVerticesInPath-2]);
-    }
-   // std::cout<<"big edge is lifted "<<std::endl;
-    indicesInSnc[1]=pFactorInFactor->getLiftedIDToOrder(lv1);
-
-    //std::cout<<"try to add second message" <<std::endl;
-    //auto * message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-    ldp_snc_path_message myMessage2(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-    auto * message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,myMessage2);
-    messageContainer.push_back(message2);
-   // std::cout<<"message end added "<<std::endl;
-
-    indicesInSnc=std::vector<size_t>(1);
-    isLiftedForFirstMessage=std::vector<char>(1);
-    edgeIndicesInPath=std::vector<size_t>(1);
-
-
-    for(size_t i=1;i<numberOfVerticesInPath-1;i++){
-        pFactorIn=sncFactorContainer[pathVertices[i]][0];
-        pFactorInFactor=pFactorIn->get_factor();
-        edgeIndicesInPath[0]=i;
-        if(liftedEdgesIndices[i-1]){
-            isLiftedForFirstMessage[0]=1;
-            indicesInSnc[0]=pFactorInFactor->getLiftedIDToOrder(pathVertices[i-1]);
-        }
-        else{
-            isLiftedForFirstMessage[0]=0;
-            indicesInSnc[0]=pFactorInFactor->getBaseIDToOrder(pathVertices[i-1]);
-        }
-
-        ldp_snc_path_message myMessage3(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-        auto * message3=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,myMessage3);
-        messageContainer.push_back(message3);
-
-//        message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-//        messageContainer.push_back(message);
-
-     //   std::cout<<"message added "<<std::endl;
-        pFactorOut=sncFactorContainer[pathVertices[i]][1];
-        pFactorOutFactor=pFactorOut->get_factor();
-
-        if(liftedEdgesIndices[i]){
-            isLiftedForFirstMessage[0]=1;
-            indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices[i+1]);
-        }
-        else{
-            isLiftedForFirstMessage[0]=0;
-            indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[i+1]);
-        }
-
-        ldp_snc_path_message myMessage4(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-        auto * message4=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,myMessage4);
-        messageContainer.push_back(message4);
-
-//        message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOut,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-//        messageContainer.push_back(message2);
-
-    }
-
-
-
-
-    std::cout<<"message container size "<<messageContainer.size()<<std::endl;
-
-
+    PATH_FACTOR* pPathFactor=new PATH_FACTOR(pathVertices,costs,liftedEdgesIndices);
+    return pPathFactor;
 
 
 
 }
 
-template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
-inline size_t ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::separatePathInequalities(size_t maxConstraints){
+template  <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separatePathInequalities(size_t maxConstraints){
     mmExtractor.initMinMarginals();
     baseMM=mmExtractor.getBaseEdgesMinMarginals();
     liftedMM=mmExtractor.getLiftedEdgesMinMarginals();
@@ -453,11 +354,13 @@ inline size_t ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CU
 
     usedEdges= std::vector<std::vector<std::pair<size_t,bool>>> (numberOfVertices);
 
-    for(size_t i=0;i<edgesToSort.size()&&constraintsCounter<maxConstraints;i++){
+
+    for(size_t i=0;i<edgesToSort.size();i++){
         std::tuple<double,size_t,size_t,bool>& edge=edgesToSort[i];
         size_t& vertex1=std::get<1>(edge);
         size_t& vertex2=std::get<2>(edge);
         bool isLifted=std::get<3>(edge);
+        double edgeCost=std::get<0>(edge);
 
         auto iterPredV1=predecessors[vertex1].begin();
         auto endPredV1=predecessors[vertex1].end();
@@ -474,8 +377,12 @@ inline size_t ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CU
                    // std::cout<<"exists new descendant "<<std::endl;
                     auto f=positiveLifted[pred].find(descV2);
                     if(f!=positiveLifted[pred].end()){  //Contradicting lifted edge exists!
-                        createPathFactor(pred,descV2,vertex1,vertex2,isLifted); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
-                        constraintsCounter++;
+                        if(pred!=vertex1||descV2!=vertex2){
+                            PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+                            double improvementValue=std::min(abs(edgeCost),f->second);
+                            pQueue.push(std::pair(improvementValue,pPathFactor));
+                            constraintsCounter++;
+                        }
                     }
 
                     descendants[pred].insert(iterDescPred,descV2);
@@ -499,11 +406,7 @@ inline size_t ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CU
 
     mmExtractor.clearMinMarginals();
 
-    std::cout<<"path constraints "<<constraintsCounter<<std::endl;
-    return  constraintsCounter;
-
-
-
+    std::cout<<"candidate constraints "<<constraintsCounter<<std::endl;
 
 
 

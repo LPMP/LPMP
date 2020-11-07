@@ -142,6 +142,7 @@ double ldp_path_factor::EvaluatePrimal() const{
     for (size_t i=0;i<numberOfEdges-1;i++) {
         value+=listOfCosts[i]*primalSolution[i];
     }
+    return value;
 }
 
 double ldp_path_factor::minimize(size_t edgeIndex,bool edgeLabel)const{
@@ -217,12 +218,13 @@ public:
          vertexIndexInSnc=_vertexIndexInSnc;
         isLifted=_isLifted;
             dimension=_edgeIndexInPath.size();
-        //    std::cout<<"dimension in message "<<dimension<<std::endl;
+            std::cout<<"dimension in message "<<dimension<<std::endl;
 
          //   std::cout<<"dimension of edge indices "<<edgeIndexInPath.size()<<std::endl;
            assert(dimension==1||dimension==2);
           assert(vertexIndexInSnc.size()==dimension);
             assert(isLifted.size()==dimension);
+            assert(edgeIndexInPath.size()==dimension);
 
         }
 
@@ -230,13 +232,20 @@ public:
     void RepamLeft(PATH_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
       std::cout<<"repam left path "<<std::endl;
-       assert(msg_dim <dimension);
+      assert(dimension==1||dimension==2);
+     assert(vertexIndexInSnc.size()==dimension);
+       assert(isLifted.size()==dimension);
+       assert(edgeIndexInPath.size()==dimension);
        l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
      }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
+        assert(dimension==1||dimension==2);
+       assert(vertexIndexInSnc.size()==dimension);
+         assert(isLifted.size()==dimension);
+         assert(edgeIndexInPath.size()==dimension);
               std::cout<<"repam left path "<<std::endl;
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
     }
@@ -244,6 +253,10 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
+        assert(dimension==1||dimension==2);
+       assert(vertexIndexInSnc.size()==dimension);
+         assert(isLifted.size()==dimension);
+         assert(edgeIndexInPath.size()==dimension);
            std::cout<<"send messages to left path "<<std::endl;
               assert(isLifted.size()==dimension);
         assert(dimension==1||dimension==2);
@@ -271,6 +284,10 @@ public:
     void send_message_to_right(const PATH_FACTOR& l, MSG& msg, const double omega)
     {        std::cout<<"send messages to right path "<<std::endl;
         assert(dimension==1||dimension==2);
+             assert(dimension==1||dimension==2);
+            assert(vertexIndexInSnc.size()==dimension);
+              assert(isLifted.size()==dimension);
+              assert(edgeIndexInPath.size()==dimension);
 
 
         double delta;
@@ -290,7 +307,7 @@ public:
 
     }
 
-//private:
+private:
     std::vector<size_t> edgeIndexInPath;  //Mostly one, two for the first and the last path vertices
     size_t dimension;
     std::vector<size_t> vertexIndexInSnc;

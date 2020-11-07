@@ -75,6 +75,10 @@ public:
 		return primalBase_!=nodeNotActive;
 	}
 
+    bool isNodeOutFlow() const{
+        return isOutFlow;
+    }
+
 	size_t getPrimalBaseIndex() const {
 		return primalBase_;
 	}
