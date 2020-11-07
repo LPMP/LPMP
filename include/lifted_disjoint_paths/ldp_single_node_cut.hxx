@@ -540,6 +540,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMargina
 	assert(index<baseCosts.size());
     assert(optBaseIndex<solutionCosts.size());
 
+    std::cout<<"one base min marginal in snc"<<std::endl;
     updateOptimal();
     if(optBaseIndex!=index){
         return solutionCosts[index]-solutionCosts[optBaseIndex];
@@ -871,6 +872,7 @@ template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(size_t indexOfLiftedEdge)const{
     assert(indexOfLiftedEdge<liftedCosts.size());
 
+     std::cout<<"one lifted min marginal in snc"<<std::endl;
 
     StrForTopDownUpdate strForUpdateValues(baseCosts,liftedCosts);
     topDownUpdate(strForUpdateValues);

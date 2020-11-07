@@ -7,6 +7,15 @@
 
 namespace LPMP {
 
+
+struct LdpPathMessageInputs{
+    std::vector<size_t> edgeIndexInPath;  //Mostly one, two for the first and the last path vertices
+    std::vector<size_t> vertexIndexInSnc;
+    std::vector<char> isLifted;
+
+};
+
+
 template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
 class ldp_path_separator {
 
@@ -16,9 +25,10 @@ public:
     messageContainer(_messageContainer),
     pInstance(_pInstance),
     sncFactorContainer(_sncFactorContainer),
-     mmExtractor(_mmExtractor),
-      lp_(_lp)
+     mmExtractor(_mmExtractor)
+
     {
+        lp_=_lp;
 
         numberOfVertices=sncFactorContainer.size();
         isInQueue=std::vector<char>(numberOfVertices);
@@ -26,12 +36,17 @@ public:
         predInQueueIsLifted=std::vector<char>(numberOfVertices);
     }
 
-    void separatePathInequalities(size_t maxConstraints);
+    size_t separatePathInequalities(size_t maxConstraints);
+
+    LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* pathFactor,SINGLE_NODE_CUT_FACTOR* sncFactor,size_t index,bool isOut)const ;
+
+
+private:
+
     void createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
     std::list<std::pair<size_t,bool>> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
 
 
-private:
 std::vector<PATH_FACTOR*>& factorContainer;
 std::vector<PATH_SNC_MESSAGE*>&  messageContainer;
 const lifted_disjoint_paths::LdpInstance * pInstance;
@@ -52,15 +67,98 @@ std::vector<char> predInQueueIsLifted;
 };
 
 template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
+inline LdpPathMessageInputs ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::getMessageInputsToPathFactor(PATH_FACTOR* pathFactor,SINGLE_NODE_CUT_FACTOR* sncFactor,size_t index,bool isOut)const {
+    auto * myPathFactor=pathFactor->get_factor();
+
+    size_t numberOfEdges=myPathFactor->getNumberOfEdges();
+    assert(index<numberOfEdges);
+
+    const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
+    const std::vector<char>& liftedInfo=myPathFactor->getLiftedInfo();
+
+    std::vector<size_t> indicesInSnc;
+    std::vector<char> isLiftedForMessage;
+    std::vector<size_t> edgeIndicesInPath;
+    if(index==0){
+        assert(isOut);
+        auto * pFactorOutFactor=sncFactor->get_factor();
+        indicesInSnc={0,0};
+        isLiftedForMessage={liftedInfo.at(0),1};
+        edgeIndicesInPath={0,numberOfEdges-1};
+
+
+        //size_t secondPathVertexIndex;
+        if(liftedInfo.at(0)){
+            indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices.at(1));
+        }
+        else{
+            indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices.at(1));
+        }
+        indicesInSnc[1]=pFactorOutFactor->getLiftedIDToOrder(pathVertices.back());
+
+    }
+    else if(index==numberOfEdges-1){
+        assert(!isOut);
+        auto * pFactorInFactor=sncFactor->get_factor();
+        indicesInSnc={0,0};
+        isLiftedForMessage={liftedInfo.at(numberOfEdges-2),1};
+        edgeIndicesInPath={numberOfEdges-2,numberOfEdges-1};
+
+        if(liftedInfo.at(numberOfEdges-2)){
+            indicesInSnc[0]=pFactorInFactor->getLiftedIDToOrder(pathVertices.at(numberOfEdges-2));
+        }
+        else{
+            indicesInSnc[0]=pFactorInFactor->getBaseIDToOrder(pathVertices.at(numberOfEdges-2));
+        }
+        indicesInSnc[1]=pFactorInFactor->getLiftedIDToOrder(pathVertices.back());
+
+    }
+    else if(isOut){
+        auto * pFactorOutFactor=sncFactor->get_factor();
+        indicesInSnc={0};
+        isLiftedForMessage={liftedInfo.at(index)};
+        edgeIndicesInPath={index};
+        if(liftedInfo.at(index)){
+            indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices.at(index+1));
+        }
+        else{
+            indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices.at(index+1));
+        }
+
+
+    }
+    else {
+        auto * pFactorInFactor=sncFactor->get_factor();
+        indicesInSnc={0};
+        isLiftedForMessage={liftedInfo.at(index-1)};
+        edgeIndicesInPath={index-1};
+        if(liftedInfo.at(index-1)){
+            indicesInSnc[0]=pFactorInFactor->getLiftedIDToOrder(pathVertices.at(index-1));
+        }
+        else{
+            indicesInSnc[0]=pFactorInFactor->getBaseIDToOrder(pathVertices.at(index-1));
+        }
+    }
+
+    LdpPathMessageInputs messageInputs={edgeIndicesInPath,indicesInSnc,isLiftedForMessage};
+    return messageInputs;
+
+}
+
+
+template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
 inline std::list<std::pair<size_t,bool>> ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::findShortestPath(const size_t& firstVertex,const size_t& lastVertex){
+   assert(firstVertex!=lastVertex);
    std::list<std::pair<size_t,bool>> shortestPath;
    //BSF should work best
    //I need a map of used edges
    std::list<size_t> queue; //vertex and is lifted (between vertex and its predecessor in queue)
 
+  // std::cout<<"finding shortest path between "<<firstVertex<<", "<<lastVertex<<std::endl;
    const auto& vg=pInstance->getVertexGroups();
    size_t firstIndex=vg.getGroupIndex(firstVertex);
    size_t lastIndex=vg.getGroupIndex(lastVertex);
+ //  std::cout<<"time of last vertex "<<lastIndex<<std::endl;
    queue.push_back(firstVertex) ;  //is lifted for the first does not matter
    bool pathFound=false;
    std::vector<size_t> toDeleteFromQueue;
@@ -72,14 +170,18 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator< PATH_FACTOR,  PATH_
 
        std::vector<std::pair<size_t,bool>>& neighbors=usedEdges[vertex];
 
+      // std::cout<<"vertex in queue "<<vertex<<", neighbors "<<std::endl;
        for(size_t i=0;i<neighbors.size();i++){
            std::pair<size_t,bool> p=neighbors[i];
            size_t neighborOfVertex=p.first;
            bool isLifted=p.second;
+          // std::cout<<neighborOfVertex<<", "<<std::endl;
            if(neighborOfVertex==lastVertex){
+               //std::cout<<"is last vertex"<<std::endl;
                predInQueue[lastVertex]=vertex;
                predInQueueIsLifted[lastVertex]=isLifted;
                isInQueue[lastVertex]=1; //To be cleared
+               toDeleteFromQueue.push_back(lastVertex);
 
                pathFound=true;
                break;
@@ -87,10 +189,12 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator< PATH_FACTOR,  PATH_
 
            size_t nodeTimeIndex=vg.getGroupIndex(neighborOfVertex);
            if(nodeTimeIndex<lastIndex&&!isInQueue[neighborOfVertex]){
+             //  std::cout<<"gets to queue "<<std::endl;
                queue.push_back(neighborOfVertex);
                isInQueue[neighborOfVertex]=1;
                predInQueue[neighborOfVertex]=vertex;
                predInQueueIsLifted[neighborOfVertex]=isLifted;
+               toDeleteFromQueue.push_back(neighborOfVertex);
            }
        }
        queue.pop_front();
@@ -118,36 +222,55 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator< PATH_FACTOR,  PATH_
 
 template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
 inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::createPathFactor(const size_t& lv1, const size_t& lv2, const size_t &bv1, const size_t &bv2,bool isLifted){
-    std::list<std::pair<size_t,bool>> beginning=findShortestPath(lv1,bv1);
-    std::list<std::pair<size_t,bool>> ending=findShortestPath(bv2,lv2);
-    std::vector<size_t> pathVertices(beginning.size()+ending.size());
-    std::vector<char> liftedEdgesIndices(beginning.size()+ending.size());
+
+    std::list<std::pair<size_t,bool>> beginning;
+    if(lv1!=bv1) beginning=findShortestPath(lv1,bv1);
+    std::list<std::pair<size_t,bool>> ending;
+    if(bv2!=lv2) ending=findShortestPath(bv2,lv2);
+    if(lv1==bv1&&lv2==bv2) std::cout<<"base covering lifted for path "<<std::endl;
+    std::vector<size_t> pathVertices(beginning.size()+ending.size()+2);
+    std::vector<char> liftedEdgesIndices(beginning.size()+ending.size()+2);
+
+    size_t numberOfVerticesInPath=pathVertices.size();
+
     auto iter=beginning.begin();
     auto end=beginning.end();
     size_t counter=0;
+   // std::cout<<"path vertices"<<std::endl;
     for (;iter!=end;iter++) {
         size_t vertex=iter->first;
-        bool isLifted=iter->second;
+        bool isLiftedEdge=iter->second;
+       // std::cout<<vertex<<", "<<std::endl;
+      //  std::cout<<"lifted "<<isLiftedEdge<<std::endl;
         pathVertices[counter]=vertex;
-        liftedEdgesIndices[counter]=isLifted;
+        liftedEdgesIndices[counter]=isLiftedEdge;
         counter++;
     }
     pathVertices[counter]=bv1;
     liftedEdgesIndices[counter]=isLifted;
+  //  std::cout<<"central edge vertex "<<bv1<<", "<<std::endl;
+  //  std::cout<<"lifted "<<isLifted<<std::endl;
     counter++;
     //Careful with the bridge edge!
-    assert(ending[0]==bv2);
+    if(bv2!=lv2) assert(ending.front().first==bv2);
     iter=ending.begin();
     end=ending.end();
     for(;iter!=end;iter++){
         size_t vertex=iter->first;
-        bool isLifted=iter->second;
+        bool isLiftedEdge=iter->second;
+      //  std::cout<<vertex<<", "<<std::endl;
+      //  std::cout<<"lifted "<<isLiftedEdge<<std::endl;
         pathVertices[counter]=vertex;
-        liftedEdgesIndices[counter]=isLifted;
+        liftedEdgesIndices[counter]=isLiftedEdge;
         counter++;
     }
     pathVertices[counter]=lv2;
     liftedEdgesIndices[counter]=true; //this relates to the big lifted edge connecting the first and the last path vertex
+
+    assert(counter==numberOfVerticesInPath-1);
+
+   // std::cout<<lv2<<", "<<std::endl;
+    //std::cout<<"lifted "<<isLifted<<std::endl;
 
     std::vector<double> costs(pathVertices.size(),0); //last member is the lifted edge cost
     assert(pathVertices[0]==lv1);
@@ -156,13 +279,13 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
     auto* pathFactor = lp_->template add_factor<PATH_FACTOR>(pathVertices,costs,liftedEdgesIndices);
     factorContainer.push_back(pathFactor);
 
+    assert(lv1<numberOfVertices);
     auto * pFactorOut=sncFactorContainer[lv1][1];
     auto * pFactorOutFactor=pFactorOut->get_factor();
 
-    size_t numberOfVerticesInPath;
     std::vector<size_t> indicesInSnc={0,0};
     std::vector<char> isLiftedForFirstMessage={0,1};
-    std::vector<size_t> edgeIndicesInPath={0,pathVertices.size()-1};
+    std::vector<size_t> edgeIndicesInPath={0,numberOfVerticesInPath-1};
 
     //size_t secondPathVertexIndex;
     if(liftedEdgesIndices[0]){
@@ -175,49 +298,72 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
     }
     indicesInSnc[1]=pFactorOutFactor->getLiftedIDToOrder(lv2);
 
-    auto * message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOutFactor,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+   // std::cout<<"edge indices size "<<edgeIndicesInPath.size()<<std::endl;
+    ldp_snc_path_message myMessage(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+    //auto * message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOut,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+    auto * message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOut,myMessage);
+  //  std::cout<<"message start added, dimension "<<message->get_message()->dimension<<std::endl;
     messageContainer.push_back(message);
+  //  std::cout<<"message in container, indices dimension "<<edgeIndicesInPath.size()<<std::endl;
+
+    assert(lv2<numberOfVertices);
 
     auto * pFactorIn=sncFactorContainer[lv2][0];
-    auto * pFactorInFactor=pFactorOut->get_factor();
+    auto * pFactorInFactor=pFactorIn->get_factor();
 
+   // std::cout<<"pointers set "<<std::endl;
     indicesInSnc={0,0};
     isLiftedForFirstMessage={0,1};
     edgeIndicesInPath={numberOfVerticesInPath-2,numberOfVerticesInPath-1};
 
+   // std::cout<<"arrays set "<<std::endl;
+
     if(liftedEdgesIndices[numberOfVerticesInPath-2]){
+      //  std::cout<<"last edge lifted"<<std::endl;
         isLiftedForFirstMessage[0]=1;
         indicesInSnc[0]=pFactorInFactor->getLiftedIDToOrder(pathVertices[numberOfVerticesInPath-2]);
     }
     else{
+      //  std::cout<<"last edge base"<<std::endl;
         isLiftedForFirstMessage[0]=0;
-        indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[numberOfVerticesInPath-2]);
+        indicesInSnc[0]=pFactorInFactor->getBaseIDToOrder(pathVertices[numberOfVerticesInPath-2]);
     }
+   // std::cout<<"big edge is lifted "<<std::endl;
     indicesInSnc[1]=pFactorInFactor->getLiftedIDToOrder(lv1);
 
-    auto * message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+    //std::cout<<"try to add second message" <<std::endl;
+    //auto * message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+    ldp_snc_path_message myMessage2(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+    auto * message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,myMessage2);
     messageContainer.push_back(message2);
+   // std::cout<<"message end added "<<std::endl;
 
-    indicesInSnc={0};
-    isLiftedForFirstMessage={0};
-    edgeIndicesInPath={0};
+    indicesInSnc=std::vector<size_t>(1);
+    isLiftedForFirstMessage=std::vector<char>(1);
+    edgeIndicesInPath=std::vector<size_t>(1);
 
-    for(size_t i=1;i<numberOfVerticesInPath-2;i++){
+
+    for(size_t i=1;i<numberOfVerticesInPath-1;i++){
         pFactorIn=sncFactorContainer[pathVertices[i]][0];
-        pFactorInFactor=pFactorOut->get_factor();
-
+        pFactorInFactor=pFactorIn->get_factor();
+        edgeIndicesInPath[0]=i;
         if(liftedEdgesIndices[i-1]){
             isLiftedForFirstMessage[0]=1;
-            indicesInSnc[0]=pFactorOutFactor->getLiftedIDToOrder(pathVertices[i-1]);
+            indicesInSnc[0]=pFactorInFactor->getLiftedIDToOrder(pathVertices[i-1]);
         }
         else{
             isLiftedForFirstMessage[0]=0;
-            indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[i-1]);
+            indicesInSnc[0]=pFactorInFactor->getBaseIDToOrder(pathVertices[i-1]);
         }
 
-        message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOutFactor,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-        messageContainer.push_back(message);
+        ldp_snc_path_message myMessage3(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+        auto * message3=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,myMessage3);
+        messageContainer.push_back(message3);
 
+//        message=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+//        messageContainer.push_back(message);
+
+     //   std::cout<<"message added "<<std::endl;
         pFactorOut=sncFactorContainer[pathVertices[i]][1];
         pFactorOutFactor=pFactorOut->get_factor();
 
@@ -230,14 +376,19 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
             indicesInSnc[0]=pFactorOutFactor->getBaseIDToOrder(pathVertices[i+1]);
         }
 
-        message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
-        messageContainer.push_back(message2);
+        ldp_snc_path_message myMessage4(edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+        auto * message4=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorIn,myMessage4);
+        messageContainer.push_back(message4);
+
+//        message2=lp_->template add_message<PATH_SNC_MESSAGE>(pathFactor,pFactorOut,edgeIndicesInPath,indicesInSnc,isLiftedForFirstMessage);
+//        messageContainer.push_back(message2);
 
     }
 
 
 
 
+    std::cout<<"message container size "<<messageContainer.size()<<std::endl;
 
 
 
@@ -246,12 +397,13 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
 }
 
 template <class PATH_FACTOR, class PATH_SNC_MESSAGE, class SINGLE_NODE_CUT_FACTOR,class LPFMC>
-inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::separatePathInequalities(size_t maxConstraints){
+inline size_t ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_FACTOR,LPFMC>::separatePathInequalities(size_t maxConstraints){
     mmExtractor.initMinMarginals();
     baseMM=mmExtractor.getBaseEdgesMinMarginals();
     liftedMM=mmExtractor.getLiftedEdgesMinMarginals();
 
 
+    size_t constraintsCounter=0;
 
     std::vector<std::tuple<double,size_t,size_t,bool>> edgesToSort; //contains negative base and lifted edges: cost,vertex1,vertex2,isLifted
 
@@ -301,7 +453,7 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
 
     usedEdges= std::vector<std::vector<std::pair<size_t,bool>>> (numberOfVertices);
 
-    for(size_t i=0;i<edgesToSort.size();i++){
+    for(size_t i=0;i<edgesToSort.size()&&constraintsCounter<maxConstraints;i++){
         std::tuple<double,size_t,size_t,bool>& edge=edgesToSort[i];
         size_t& vertex1=std::get<1>(edge);
         size_t& vertex2=std::get<2>(edge);
@@ -316,12 +468,14 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
             const size_t& pred=*iterPredV1;
             auto iterDescPred=descendants[pred].begin();  //Put descendants of V2 into descendants of pred
             auto endDescPred=descendants[pred].end();
-            while(iterDescPred!=endDescPred&&iterDescV2!=endDescV2){
-                if(*iterDescV2<*iterDescPred){ //exists desc of v2 not contained in desc of pred
+            while(iterDescV2!=endDescV2){
+                if(iterDescPred==endDescPred||*iterDescV2<*iterDescPred){ //exists desc of v2 not contained in desc of pred
                     const size_t& descV2=*iterDescV2;
+                   // std::cout<<"exists new descendant "<<std::endl;
                     auto f=positiveLifted[pred].find(descV2);
                     if(f!=positiveLifted[pred].end()){  //Contradicting lifted edge exists!
-                        createPathFactor(pred,descV2,vertex1,vertex2); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+                        createPathFactor(pred,descV2,vertex1,vertex2,isLifted); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+                        constraintsCounter++;
                     }
 
                     descendants[pred].insert(iterDescPred,descV2);
@@ -344,6 +498,10 @@ inline void ldp_path_separator< PATH_FACTOR,  PATH_SNC_MESSAGE, SINGLE_NODE_CUT_
     }
 
     mmExtractor.clearMinMarginals();
+
+    std::cout<<"path constraints "<<constraintsCounter<<std::endl;
+    return  constraintsCounter;
+
 
 
 
