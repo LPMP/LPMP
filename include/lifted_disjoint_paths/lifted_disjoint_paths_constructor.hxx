@@ -58,6 +58,7 @@ private:
 
     void adjustLiftedLabels();
     void adjustCutLabels(size_t startPointer);
+    void adjustPathLabels(size_t startPointer);
 //    void adjustTriangleLabels(size_t firstIndex=0);
 
     bool checkFeasibilityInSnc();
@@ -470,6 +471,20 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
+void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::adjustPathLabels(size_t startPointer){
+    //Assumes primal feasible solution w.r.t. base edges and node labels
+    bool isFeasible=true;
+
+
+    for (int i = startPointer; i < path_factors_.size(); ++i) {
+        auto * pathFactorr=path_factors_[i]->get_factor();
+        pathFactorr->setPrimal(currentPrimalDescendants,currentPrimalLabels);
+    }
+
+}
+
+
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::adjustCutLabels(size_t startPointer){
     //Assumes primal feasible solution w.r.t. base edges and node labels
     bool isFeasible=true;
@@ -794,6 +809,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
   //  adjustTriangleLabels();
     assert(isFeasible);
     adjustCutLabels(0);
+    adjustPathLabels(0);
     double primalValue=0;
     for (int i = 0; i < nr_nodes(); ++i) {
 
@@ -812,10 +828,17 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     */
 
     for (int i = 0; i < cut_factors_.size(); ++i) {
-            auto * cFactor=cut_factors_[i]->get_factor();
-            primalValue+=cFactor->EvaluatePrimal();
+        auto * cFactor=cut_factors_[i]->get_factor();
+        primalValue+=cFactor->EvaluatePrimal();
 
-        }
+    }
+
+    for (int i = 0; i < path_factors_.size(); ++i) {
+        auto * pFactor=path_factors_[i]->get_factor();
+        primalValue+=pFactor->EvaluatePrimal();
+
+    }
+
 
 //TODO swap order and use these paths for adjusting lifted and triangle labels
 
@@ -1201,6 +1224,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     std::cout<<"queue filled "<<queueWithPaths.size()<<std::endl;
 
     size_t counterAdded=0;
+    size_t pathFactorsOriginalSize=path_factors_.size();
     while(!queueWithPaths.empty()&&counterAdded<nr_constraints_to_add){
        // std::pair<double,ldp_path_factor_type*>& p=queueWithPaths.top();
 
@@ -1233,6 +1257,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     }
 
     pathSeparator.clearPriorityQueue();
+    adjustPathLabels(pathFactorsOriginalSize);
 
      return counterAdded;
 
