@@ -219,6 +219,7 @@ private:
     void initAdaptiveThresholds(const std::vector<double>* baseCosts,const std::vector<double>* liftedCosts);
     void init();
     void sparsifyBaseGraph();
+    void sparsifyBaseGraphNew(andres::graph::Digraph<>& inputGraph);
     void sparsifyLiftedGraph();
 
 	size_t s_;
