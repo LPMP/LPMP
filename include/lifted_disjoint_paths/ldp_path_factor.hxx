@@ -34,9 +34,9 @@ public:
     }
 
     template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(); }
-    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(); }
+    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar(listOfCosts);}
 
-    auto export_variables() { return std::tie(); }
+    auto export_variables() { return std::tie(listOfCosts); }
 
     void init_primal();
 
@@ -172,7 +172,7 @@ double ldp_path_factor::minimize(size_t edgeIndex,bool edgeLabel)const{
             optimalValue=listOfCosts[edgeIndex];
         }
         else{
-            std::cout<<"minimize with restrict zero"<<edgeIndex<<std::endl;
+            std::cout<<"minimize with restrict zero "<<edgeIndex<<std::endl;
             numberOfPositive=1;
             indexOfPositive=edgeIndex;
         }
