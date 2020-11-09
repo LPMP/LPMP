@@ -67,9 +67,10 @@ std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
 
 template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
-    while(pQueue.empty()){
+    while(!pQueue.empty()){
         std::pair<double,PATH_FACTOR*> p=pQueue.top();
         delete p.second;
+        p.second=nullptr;
         pQueue.pop();
     }
 
@@ -124,7 +125,7 @@ inline LdpPathMessageInputs ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTO
         else{
             indicesInSnc[0]=pFactorInFactor->getBaseIDToOrder(pathVertices.at(numberOfEdges-2));
         }
-        indicesInSnc[1]=pFactorInFactor->getLiftedIDToOrder(pathVertices.back());
+        indicesInSnc[1]=pFactorInFactor->getLiftedIDToOrder(pathVertices[0]);
 
     }
     else if(isOut){
@@ -163,6 +164,7 @@ inline LdpPathMessageInputs ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTO
 template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::findShortestPath(const size_t& firstVertex,const size_t& lastVertex){
    assert(firstVertex!=lastVertex);
+
    std::list<std::pair<size_t,bool>> shortestPath;
    //BSF should work best
    //I need a map of used edges
@@ -245,6 +247,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     std::vector<size_t> pathVertices(beginning.size()+ending.size()+2);
     std::vector<char> liftedEdgesIndices(beginning.size()+ending.size()+2);
 
+
     size_t numberOfVerticesInPath=pathVertices.size();
 
     auto iter=beginning.begin();
@@ -282,6 +285,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     liftedEdgesIndices[counter]=true; //this relates to the big lifted edge connecting the first and the last path vertex
 
     assert(counter==numberOfVerticesInPath-1);
+        assert(pathVertices.front()<pInstance->getNumberOfVertices()-2&&pathVertices.back()<pInstance->getNumberOfVertices());
 
    // std::cout<<lv2<<", "<<std::endl;
     //std::cout<<"lifted "<<isLifted<<std::endl;
@@ -326,7 +330,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
             if(iter->second<0){
                 edgesToSort.push_back(std::tuple(iter->second,i,iter->first,true));
             }
-            else{
+            else if(iter->second>0){
                 positiveLifted[i][iter->first]=iter->second;
             }
         }

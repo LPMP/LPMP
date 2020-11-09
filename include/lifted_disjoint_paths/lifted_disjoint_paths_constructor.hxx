@@ -1229,10 +1229,12 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
        // std::pair<double,ldp_path_factor_type*>& p=queueWithPaths.top();
 
         ldp_path_factor_type* pPathFactor=queueWithPaths.top().second;
-        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
+        //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
+        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
         path_factors_.push_back(newPathFactor);
-        std::cout<<"factor added"<<std::endl;
+        std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
         delete pPathFactor;
+        pPathFactor=nullptr;
         queueWithPaths.pop();
         auto *myPathFactor=newPathFactor->get_factor();
         const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();

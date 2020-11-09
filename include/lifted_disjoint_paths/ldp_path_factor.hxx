@@ -87,8 +87,11 @@ double ldp_path_factor::getMinMarginal(const size_t &edgeIndex) const{
         std::cout<<"vertex "<<listOfVertices[i]<<std::endl;
         //std::cout<<"vertex "<<listOfVertices[i]<<std::endl;
     }
+
    double restrictOne=minimize(edgeIndex,1);
+   std::cout<<"restrict one "<<restrictOne<<std::endl;
    double restrictZero=minimize(edgeIndex,0);
+   std::cout<<"restrict zero "<<restrictZero<<std::endl;
    return restrictOne-restrictZero;
 }
 
@@ -98,6 +101,7 @@ void ldp_path_factor::init_primal(){
 
 void ldp_path_factor::updateEdgeCost(const size_t& edgeIndex,const double& value){
     assert(edgeIndex<listOfCosts.size());
+    std::cout<<"update edge cost, index "<<edgeIndex<<", value "<<value<<std::endl;
     listOfCosts[edgeIndex]+=value;
 }
 
@@ -139,7 +143,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
 
 double ldp_path_factor::EvaluatePrimal() const{
     double value=0;
-    for (size_t i=0;i<numberOfEdges-1;i++) {
+    for (size_t i=0;i<numberOfEdges;i++) {
         value+=listOfCosts[i]*primalSolution[i];
     }
     return value;
@@ -150,11 +154,25 @@ double ldp_path_factor::minimize(size_t edgeIndex,bool edgeLabel)const{
     size_t indexOfWeakestNegative=numberOfEdges;
     size_t numberOfPositive=0;
     size_t indexOfPositive=numberOfEdges;
+    std::cout<<"calling minimize, printing edge costs "<<std::endl;
+    for(size_t i=0;i<numberOfEdges;i++){
+        double c=listOfCosts[i];
+        size_t vertex=listOfVertices[i];
+        std::cout<<listOfVertices[i]<<": "<<c<<std::endl;
+
+    }
     if(edgeIndex<numberOfEdges){
+//        std::cout<<"printing edge costs "<<std::endl;
+//        for(auto& c:listOfCosts){
+//            std::cout<<c<<std::endl;
+//        }
+
         if(edgeLabel){
+            std::cout<<"minimize with restrict one "<<edgeIndex<<std::endl;
             optimalValue=listOfCosts[edgeIndex];
         }
         else{
+            std::cout<<"minimize with restrict zero"<<edgeIndex<<std::endl;
             numberOfPositive=1;
             indexOfPositive=edgeIndex;
         }
@@ -182,17 +200,24 @@ double ldp_path_factor::minimize(size_t edgeIndex,bool edgeLabel)const{
     }
     if(numberOfPositive==1){
         assert(indexOfWeakestNegative<numberOfEdges);
+        assert(indexOfPositive<numberOfEdges);
         if(edgeIndex<numberOfEdges&&!edgeLabel){  //must cut the edge
 
-            return optimalValue-listOfCosts[indexOfWeakestNegative];
+            double value=optimalValue-listOfCosts[indexOfWeakestNegative];
+            std::cout<<"restrict zero contradiction, return  "<<value<<std::endl;
+            return value;
         }
         else{ //can choose between cut one more edge or join all
+
             double allActive=optimalValue+listOfCosts[indexOfPositive];
+            if(edgeIndex<numberOfEdges)std::cout<<"all active cost "<<allActive<<std::endl;
             double cut=optimalValue-listOfCosts[indexOfWeakestNegative];
+            if(edgeIndex<numberOfEdges)std::cout<<"do cut cost "<<cut<<std::endl;
             return std::min(cut,allActive);
         }
     }
     else{  //no contradiction
+        if(edgeIndex<numberOfEdges) std::cout<<"no cotradiction "<<std::endl;
         return optimalValue;
     }
 
@@ -220,7 +245,7 @@ public:
             dimension=_edgeIndexInPath.size();
             std::cout<<"dimension in message "<<dimension<<std::endl;
 
-         //   std::cout<<"dimension of edge indices "<<edgeIndexInPath.size()<<std::endl;
+            std::cout<<"dimension of edge indices "<<edgeIndexInPath.size()<<std::endl;
            assert(dimension==1||dimension==2);
           assert(vertexIndexInSnc.size()==dimension);
             assert(isLifted.size()==dimension);
@@ -232,22 +257,33 @@ public:
     void RepamLeft(PATH_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
       std::cout<<"repam left path "<<std::endl;
+      double before=l.LowerBound();
+      std::cout<<"before lb "<<before<<std::endl;
       assert(dimension==1||dimension==2);
+      assert(msg_dim<dimension);
      assert(vertexIndexInSnc.size()==dimension);
        assert(isLifted.size()==dimension);
        assert(edgeIndexInPath.size()==dimension);
        l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
+       double after=l.LowerBound();
+       std::cout<<"after lb "<<after<<std::endl;
      }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
+        std::cout<<"snc repam right "<<std::endl;
+        double before=r.LowerBound();
+        std::cout<<"before lb "<<before<<std::endl;
         assert(dimension==1||dimension==2);
+        assert(msg_dim<dimension);
        assert(vertexIndexInSnc.size()==dimension);
          assert(isLifted.size()==dimension);
          assert(edgeIndexInPath.size()==dimension);
               std::cout<<"repam left path "<<std::endl;
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
+        double after=r.LowerBound();
+        std::cout<<"abter lb "<<after<<std::endl;
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
@@ -294,6 +330,7 @@ public:
 
         for (size_t i=0;i<dimension;i++) {
             delta=l.getMinMarginal(edgeIndexInPath[i]);
+            std::cout<<"sending "<<delta<<std::endl;
             msg[i] -= omega * delta;
         }
 
