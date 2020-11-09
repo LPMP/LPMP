@@ -33,6 +33,7 @@ public:
 
     std::vector<std::vector<size_t>> getBestPrimal()const { return bestPrimalSolution;}
 
+    double getBestPrimalValue()const { return bestPrimalValue;}
 private:
     std::size_t mcf_node_to_graph_node(std::size_t i) const;
     void read_in_mcf_costs(const bool change_marginals = false);
@@ -599,9 +600,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 paths.push_back(path);
             }
             bestPrimalSolution=paths;
-
-
         }
+
         if(diagnostics()){
            // std::cout<<"computed primal value "<<primalValue<<std::endl;
             double controlPrimalValue=0;

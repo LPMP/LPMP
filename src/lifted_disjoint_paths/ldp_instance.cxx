@@ -217,12 +217,17 @@ void LdpInstance::init(){
         sparsifyBaseGraph();
         reachable=initReachableSet(graph_,parameters,&vertexGroups);
 
+        if(parameters.isAllBaseZero()){
+            std::fill(edgeScore.begin(),edgeScore.end(),0);
+        }
         sparsifyLiftedGraph();
         initLiftedStructure();
 
 
     }
     else{
+        std::cout<<"Initialization of base and lifted graph from one graph without sparsification not supported"<<std::endl;
+        assert(false);
 
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();
@@ -558,7 +563,142 @@ void LdpInstance::sparsifyLiftedGraph(){
 }
 
 
+//It could get complete structure and directly output two dim array
+void LdpInstance::sparsifyBaseGraphNew(andres::graph::Digraph<> &inputGraph){
+     parameters.getControlOutput()<<"Sparsify base graph"<<std::endl;
+     parameters.writeControlOutput();
 
+     std::vector<double> newBaseCosts;
+     //std::vector<size_t> inOutEdges;
+     size_t k=parameters.getKnnK();
+     //std::vector<size_t> goodLongEdges;
+
+   //  andres::graph::Digraph<> tempGraph(graph_.numberOfVertices());
+
+
+     size_t nrVertices=inputGraph.numberOfVertices();
+     std::vector<std::array<size_t,2>> edgesForMyGraph;
+
+     std::vector<bool> finalEdges(inputGraph.numberOfEdges(),false);
+     for (int v0 = 0; v0 < nrVertices; ++v0) {
+         std::unordered_map<int,std::list<size_t>> edgesToKeep;
+         size_t l0=vertexGroups.getGroupIndex(v0);
+         for (size_t ne = 0; ne < inputGraph.numberOfEdgesFromVertex(v0); ++ne) {
+             size_t e=inputGraph.edgeFromVertex(v0,ne);
+             size_t v1=inputGraph.vertexFromVertex(v0,ne);
+ //			std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<problemGraph.getEdgeScore(e)<<std::endl;
+             if(v0==s_||v1==t_){
+                 //tempGraph.insertEdge(v0,v1);
+                 //newBaseCosts.push_back(edgeScore[e]);
+                 finalEdges[e]=true;
+             }
+             else{
+                 size_t l1=vertexGroups.getGroupIndex(v1);
+                 size_t gap=l1-l0;
+                 if(gap<=parameters.getMaxTimeBase()){
+                 //if(gap<=parameters.getKnnTimeGap()){
+                     //gap=std::min(parameters.getKnnTimeGap()+1,gap);
+                     double cost=edgeScore[e];
+                     if(edgesToKeep.count(gap)>0){
+                         std::list<size_t>& smallList=edgesToKeep[gap];
+                         auto it=smallList.begin();
+                         double bsf=edgeScore[*it];
+                         //std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<bsf<<std::endl;
+                         while(bsf>cost&&it!=smallList.end()){
+                             it++;
+                             size_t index=*it;
+                             if(it!=smallList.end()){
+                                 bsf=edgeScore[index];
+                                 //	std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<bsf<<std::endl;
+                             }
+                         }
+                         if(it!=smallList.begin()){
+                             smallList.insert(it,e);
+                             if(smallList.size()>k) smallList.pop_front();
+                         }
+                         else if(smallList.size()<k){
+                             smallList.push_front(e);
+                         }
+                     }
+                     else{
+                         edgesToKeep[gap].push_front(e);
+                     }
+                 }
+ //				else if(gap<=parameters.getMaxTimeBase()){
+ //					if(getEdgeScore(e)<=parameters.getBaseUpperThreshold()){
+ //						//tempGraph.insertEdge(v0,v1);
+ //						//newBaseCosts.push_back(getEdgeScore(e));
+ //						finalEdges[e]=true;
+ //					}
+ //
+ //				}
+             }
+         }
+         //std::cout.precision(4);
+         double bsf=0;
+         for (int gap = 0; gap <= parameters.getKnnTimeGap(); ++gap) {
+             if(edgesToKeep.count(gap)>0){
+                 auto& smallList=edgesToKeep[gap];
+                 for(size_t e:smallList){
+                     finalEdges[e]=true;
+                     if(edgeScore[e]<bsf){
+                         bsf=edgeScore[e];
+                     }
+                 }
+             }
+         }
+
+         for (int gap =  parameters.getKnnTimeGap()+1;gap<=parameters.getMaxTimeBase(); ++gap) {
+             if(edgesToKeep.count(gap)>0){
+                 auto& smallList=edgesToKeep[gap];
+                 for(size_t e:smallList){
+                     double score=edgeScore[e];
+                     if(score<=baseThreshold){
+                         finalEdges[e]=true;
+                     }
+                 }
+
+             }
+         }
+
+     }
+
+     for (int e = 0; e < inputGraph.numberOfEdges(); ++e) {
+         if(finalEdges[e]){
+             size_t v0=inputGraph.vertexOfEdge(e,0);
+             size_t v1=inputGraph.vertexOfEdge(e,1);
+             //tempGraph.insertEdge(v0,v1);
+             edgesForMyGraph.push_back({v0,v1});
+             newBaseCosts.push_back(edgeScore[e]);
+         }
+     }
+
+     assert(edgesForMyGraph.size()==newBaseCosts.size());
+
+     edgeScore=newBaseCosts;
+
+
+     if(edgesForMyGraph.size()!=newBaseCosts.size()){
+         parameters.getControlOutput()<<"edge number mismatch, edge vector: "<<edgesForMyGraph.size()<<", cost vector "<<newBaseCosts.size()<<std::endl;
+         parameters.writeControlOutput();
+
+     }
+     else{
+
+         parameters.getControlOutput()<<"edge number and graph size match "<<std::endl;
+         parameters.writeControlOutput();
+     }
+
+     parameters.getControlOutput()<<"Left "<<newBaseCosts.size()<<" base edges"<<std::endl;
+     parameters.writeControlOutput();
+
+     myGraph=LdpDirectedGraph(edgesForMyGraph,newBaseCosts);
+
+ }
+
+
+
+//It could get complete structure and directly output two dim array
 void LdpInstance::sparsifyBaseGraph(){
      parameters.getControlOutput()<<"Sparsify base graph"<<std::endl;
      parameters.writeControlOutput();

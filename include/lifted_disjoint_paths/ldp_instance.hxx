@@ -219,6 +219,7 @@ private:
     void initAdaptiveThresholds(const std::vector<double>* baseCosts,const std::vector<double>* liftedCosts);
     void init();
     void sparsifyBaseGraph();
+    void sparsifyBaseGraphNew(andres::graph::Digraph<>& inputGraph);
     void sparsifyLiftedGraph();
 
 	size_t s_;
@@ -231,7 +232,7 @@ private:
 	std::vector<std::unordered_set<size_t>> reachable;
 
 	andres::graph::Digraph<> graph_;
-	andres::graph::Digraph<> graphLifted_;
+    andres::graph::Digraph<> graphLifted_;
 
     LdpDirectedGraph myGraph;
     LdpDirectedGraph myGraphLifted;

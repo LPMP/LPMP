@@ -51,6 +51,9 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
      py::class_<problemSolver>(m,"Solver")
              .def(py::init<std::vector<std::string>&>())
              .def("solve",&problemSolver::Solve)
+             .def("get_lower_bound",&problemSolver::lower_bound,"Returns lower bound")
+             .def("get_best_primal_value",&problemSolver::primal_cost,"returns best primal value")
+            // .def("get_best_primal_value",[](problemSolver &solver) {return solver.GetProblemConstructor().getBestPrimalValue(); })
              .def("get_best_primal", [](problemSolver &solver) {return solver.GetProblemConstructor().getBestPrimal(); },"Returns paths obtained from best so far primal solution.");
 
 
