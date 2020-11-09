@@ -172,6 +172,13 @@ public:
 
 	//ConfigDisjoint<>& operator=(const ConfigDisjoint<>&);
 
+    bool isAllBaseZero()const {
+        return allBaseToZero;
+    }
+
+    bool isKeepRedundantLifted()const{
+        return keepRedundantLifted;
+    }
 
 private:
     LdpParameters<T>(const LdpParameters<T>&);
@@ -216,6 +223,8 @@ private:
 
      std::stringstream controlOutput;
 
+     bool allBaseToZero;
+     bool keepRedundantLifted;
 
 };
 
@@ -292,6 +301,37 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
         sparsify=1;
     }
     controlOutput<<"sparsify "<<sparsify<<std::endl;
+    writeControlOutput();
+
+    if(parameters.count("ALL_BASE_TO_ZERO")>0){
+        allBaseToZero=std::stoi(parameters["ALL_BASE_TO_ZERO"]);
+    }
+    else{
+        allBaseToZero=1;
+    }
+    controlOutput<<"all base to zero "<<allBaseToZero<<std::endl;
+    writeControlOutput();
+
+
+    if(parameters.count("KEEP_REDUNDANT_LIFTED")>0){
+        keepRedundantLifted=std::stoi(parameters["KEEP_REDUNDANT_LIFTED"]);
+    }
+    else{
+        keepRedundantLifted=1;
+    }
+    controlOutput<<"keep redundant lifted "<<keepRedundantLifted<<std::endl;
+    writeControlOutput();
+
+
+
+
+    if(parameters.count("ALL_BASE_TO_ZERO")>0){
+        allBaseToZero=std::stoi(parameters["ALL_BASE_TO_ZERO"]);
+    }
+    else{
+        allBaseToZero=1;
+    }
+    controlOutput<<"all base to zero "<<allBaseToZero<<std::endl;
     writeControlOutput();
 
     if(parameters.count("MAX_TIMEGAP")>0){

@@ -217,12 +217,17 @@ void LdpInstance::init(){
         sparsifyBaseGraph();
         reachable=initReachableSet(graph_,parameters,&vertexGroups);
 
+        if(parameters.isAllBaseZero()){
+            std::fill(edgeScore.begin(),edgeScore.end(),0);
+        }
         sparsifyLiftedGraph();
         initLiftedStructure();
 
 
     }
     else{
+        std::cout<<"Initialization of base and lifted graph from one graph without sparsification not supported"<<std::endl;
+        assert(false);
 
         reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();

@@ -232,7 +232,7 @@ private:
 	std::vector<std::unordered_set<size_t>> reachable;
 
 	andres::graph::Digraph<> graph_;
-	andres::graph::Digraph<> graphLifted_;
+    andres::graph::Digraph<> graphLifted_;
 
     LdpDirectedGraph myGraph;
     LdpDirectedGraph myGraphLifted;
