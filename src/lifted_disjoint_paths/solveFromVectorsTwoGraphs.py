@@ -27,11 +27,11 @@ paramsMap["MAX_TIMEGAP_COMPLETE"]="60"
 
 
 
-#pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
-pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
+pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
+#pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of LPMP
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","-v","0"]
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","-v","1"]
 
 #Command line parameters of the solver with tightening enabled
 #solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10","--tightenInterval","4","--tightenIteration","8","-v","1"]
@@ -47,6 +47,7 @@ timeFrames=ldpMP.TimeFramesToVertices()
 #Numbering of graph vertices in time frames: Frame 1: 0,1,2; Frame 2: 3,4; Frame 3: 4,5,6
 vect= np.array([3, 2, 3])
 numberOfVertices=8;
+scoreOfVertices=np.array([0,0,0,0,0,0,0,0])
 
 #Initalizing the structure from a file
 timeFrames.init_from_vector(vect)
@@ -60,7 +61,7 @@ liftedEdgesVector=np.array([[0,5],[0,6],[0,7],[1,5],[1,6],[1,7],[2,6],[2,7]])
 liftedCostVector=np.array([-2.2,-1,-1, -1,-2.2,-1, -1,-2.2])
 
 #Creating problem instance directly from the two given graphs. Sparsification is performed if SPARSIFY is set to 1.
-instance=ldpMP.LdpInstance(params,edgeVector,liftedEdgesVector,costVector,liftedCostVector,timeFrames)
+instance=ldpMP.LdpInstance(params,edgeVector,liftedEdgesVector,costVector,liftedCostVector,scoreOfVertices,timeFrames)
 
 #Construct the solver.
 solver=ldpMP.Solver(solverParameters)
@@ -93,10 +94,10 @@ baseEdgeLabels=ldpMP.get_base_edge_labels(edgeVector,paths,numberOfVertices)
 #      print(v,end =" ")
 #   print("")
 
-#for path in paths:
-#  for v in path:
-#    print(v, end =" ")
-#  print("")
+for path in paths:
+  for v in path:
+    print(v, end =" ")
+  print("")
 
 
 

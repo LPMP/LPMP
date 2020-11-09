@@ -150,6 +150,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     numberOfVertices=graph_.numberOfVertices();
 
     disjointPaths::CompleteStructure<> csLifted(vertexGroups);
+    csLifted.setVerticesCosts(verticesCosts);
     csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
 
     graphLifted_=csLifted.completeGraph;
@@ -182,7 +183,9 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     numberOfLiftedEdges=graphLifted_.numberOfEdges();
     numberOfEdges=graph_.numberOfEdges();
 
-    vertexScore=std::vector<double>(graph_.numberOfVertices()-2);
+   // vertexScore=std::vector<double>(graph_.numberOfVertices()-2);
+    vertexScore=csLifted.verticesScore;
+    assert(vertexScore.size()==numberOfVertices-2);
 
     myGraph=LdpDirectedGraph(graph_,edgeScore);
     myGraphLifted=LdpDirectedGraph(graphLifted_,liftedEdgeScore);
