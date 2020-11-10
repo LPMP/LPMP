@@ -16,7 +16,7 @@
 #include <vector>
 #include <map>
 #include <limits>
-#include "disjoint-paths/parametersParser.hxx"
+#include "ldp_parameter_parser.hxx"
 #include <config.hxx>
 
 namespace LPMP{
@@ -247,7 +247,7 @@ private:
 
 template<class T>
 inline LdpParameters<T>::LdpParameters(const std::string &inputFileName){
-    disjointPaths::ParametersParser parser;
+    ParametersParser parser;
     std::string fileName=inputFileName;
     parser.initFromFile(fileName,false);
     std::map<std::string,std::string>& pathsParameters=parser.getParsedStrings();

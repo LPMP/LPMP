@@ -9,7 +9,7 @@ namespace lifted_disjoint_paths {
 
 
 
-LdpInstance::LdpInstance(LdpParameters<> &configParameters, disjointPaths::CompleteStructure<>& cs):
+LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>& cs):
     parameters(configParameters)
 {
 
@@ -119,9 +119,9 @@ void LdpInstance::initAdaptiveThresholds(const std::vector<double>* baseCosts,co
 
 
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
-LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,const  py::array_t<double>& verticesCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,const  py::array_t<double>& verticesCosts,VertexGroups<>& pvg):parameters(configParameters){
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& baseEdges,const std::vector<std::array<size_t,2>>& liftedEdges,const  std::vector<double>& baseCosts,const  std::vector<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
-    disjointPaths::CompleteStructure<> csBase(pvg);
+    CompleteStructure<> csBase(pvg);
 
     vertexGroups=pvg;
 
@@ -149,7 +149,7 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 
     numberOfVertices=graph_.numberOfVertices();
 
-    disjointPaths::CompleteStructure<> csLifted(vertexGroups);
+    CompleteStructure<> csLifted(vertexGroups);
     csLifted.setVerticesCosts(verticesCosts);
     csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
 
@@ -167,12 +167,12 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
             negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
         }
         sparsifyBaseGraph();
-        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+        reachable=initReachableSet(graph_,parameters,&vertexGroups);
         //disjointPaths::keepFractionOfLifted(*this,configParameters);
         sparsifyLiftedGraph();
     }
     else{
-        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+        reachable=initReachableSet(graph_,parameters,&vertexGroups);
     }
 
 
@@ -232,7 +232,7 @@ void LdpInstance::init(){
         std::cout<<"Initialization of base and lifted graph from one graph without sparsification not supported"<<std::endl;
         assert(false);
 
-        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+        reachable=initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();
     }
 
@@ -247,11 +247,11 @@ void LdpInstance::init(){
 
 
 
-void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs){
+void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs){
 
 	andres::graph::Digraph<>& completeGraph=cs->completeGraph;
 	std::vector<double>& completeScore=cs->completeScore;
-    disjointPaths::VertexGroups<> vg=cs->getVertexGroups();
+    VertexGroups<> vg=cs->getVertexGroups();
 
 	std::unordered_map<size_t,std::vector<size_t>> groups;
 
@@ -289,7 +289,7 @@ void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths:
 		}
 	}
 
-    vertexGroups=disjointPaths::VertexGroups<>(groups,vToGroup);
+    vertexGroups=VertexGroups<>(groups,vToGroup);
 
 	graphLifted_ = andres::graph::Digraph<>(numberOfVertices);
 	graph_ = andres::graph::Digraph<>(numberOfVertices);
