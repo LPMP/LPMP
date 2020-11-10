@@ -27,7 +27,8 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
 
      py::class_<LPMP::VertexGroups<>>(m, "TimeFramesToVertices")
         .def(py::init<>())
-        .def("init_from_vector", &LPMP::VertexGroups<>::initFromVector, "Initializes vertices in time frames from a vector of size_t")
+        .def("init_from_vector", py::overload_cast<const std::vector<size_t>&>(&LPMP::VertexGroups<>::initFromVector), "Initializes vertices in time frames from a vector of size_t")
+        .def("init_from_vector_shift", py::overload_cast<const std::vector<size_t>&,size_t ,size_t>(&LPMP::VertexGroups<>::initFromVector), "Initializes vertices in time frames from a vector of size_t,time shift and vertex shift")
         .def("init_from_file", &LPMP::VertexGroups<>::initFromFile<LPMP::lifted_disjoint_paths::LdpParameters<>>, "Initializes vertices in time frames from a file");
 
      py::class_<LPMP::CompleteStructure<>>(m, "GraphStructure")

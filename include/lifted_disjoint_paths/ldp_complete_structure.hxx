@@ -288,10 +288,14 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
 
             unsigned int w = std::stoul(strings[1]);
 
+            if(v>vg.getMaxVertex()) break;
+
+            if(w>vg.getMaxVertex()) continue;
+
             size_t l0=vg.getGroupIndex(v);
             size_t l1=vg.getGroupIndex(w);
 
-            if(v>vg.getMaxVertex()||w>vg.getMaxVertex()) continue;
+            //if(v>vg.getMaxVertex()||w>vg.getMaxVertex()) continue;
 
             if(l1-l0<=params.getMaxTimeGapComplete()){
                 double score = std::stod(strings[2]);
