@@ -635,7 +635,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateEdgeCost(const doubl
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initNodeCost(double fractionNode){
     nodeCost=fractionNode*ldpInstance.getVertexScore(nodeID);
-    if(diagnostics()) std::cout<<"node cost of "<<nodeID<<": "<<nodeCost<<std::endl;
+    //if(diagnostics()) std::cout<<"node cost of "<<nodeID<<": "<<nodeCost<<std::endl;
 }
 
 template<class LDP_INSTANCE>

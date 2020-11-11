@@ -36,11 +36,11 @@
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <pybind11/numpy.h>
-#include <disjoint-paths/disjointPathsMethods.hxx>
-#include <disjoint-paths/completeStructure.hxx>
-#include <disjoint-paths/twoGraphsInputStructure.hxx>
 #include "lifted_disjoint_paths/ldp_directed_graph.hxx"
 #include "config.hxx"
+#include "lifted_disjoint_paths/ldp_complete_structure.hxx"
+#include "lifted_disjoint_paths/ldp_vertex_groups.hxx"
+#include "ldp_batch_process.hxx"
 
 namespace py = pybind11;
 namespace LPMP{
@@ -53,9 +53,10 @@ public:
 
 
   //  LdpInstance(LdpParameters<>& configParameters);
-     LdpInstance(LdpParameters<>& configParameters,disjointPaths::CompleteStructure<>& cs);
+     LdpInstance(LdpParameters<>& configParameters,CompleteStructure<>& cs);
+     LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP);
 //     LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS);
-     LdpInstance(LdpParameters<>& configParameters, const py::array_t<size_t>& baseEdges, const py::array_t<size_t>& liftedEdges, const  py::array_t<double>& baseCosts, const  py::array_t<double>& liftedCosts, const py::array_t<double> &verticesCosts, disjointPaths::VertexGroups<>& pvg);
+     LdpInstance(LdpParameters<>& configParameters, const py::array_t<size_t>& baseEdges, const py::array_t<size_t>& liftedEdges, const  py::array_t<double>& baseCosts, const  py::array_t<double>& liftedCosts, const py::array_t<double> &verticesCosts, VertexGroups<>& pvg);
     // LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& completeEdges,const  std::vector<double>& completeCosts,disjointPaths::VertexGroups<>& pvg);
    // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
@@ -151,7 +152,7 @@ public:
 		return vertexScore[v];
 	}
 
-    const disjointPaths::VertexGroups<size_t>& getVertexGroups()const {
+    const VertexGroups<size_t>& getVertexGroups()const {
         return vertexGroups;
 	}
 
@@ -187,7 +188,7 @@ public:
 
 
     LdpParameters<>& parameters;
-    disjointPaths::VertexGroups<size_t> vertexGroups;
+    LPMP::VertexGroups<size_t> vertexGroups;
 	size_t minV=0;
 	size_t maxV=0;
 
@@ -251,7 +252,7 @@ private:
     double baseThreshold;
 
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
-    void readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs);
+    void readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs);
    // void sparsifyBaseGraph();
    // void sparsifyLiftedGraph();
     void initLiftedStructure();

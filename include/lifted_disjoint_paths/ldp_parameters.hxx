@@ -16,7 +16,7 @@
 #include <vector>
 #include <map>
 #include <limits>
-#include "disjoint-paths/parametersParser.hxx"
+#include "ldp_parameter_parser.hxx"
 #include <config.hxx>
 
 namespace LPMP{
@@ -70,6 +70,10 @@ public:
 	size_t getMaxTimeFrame() const {
 		return maxTimeFrame;
 	}
+
+    size_t getMinTimeFrame() const {
+        return minTimeFrame;
+    }
 
 	const size_t getMaxTimeLifted() const {
 		//std::cout<<"getting max time lifted "<<maxTimeLifted<<std::endl;
@@ -203,6 +207,7 @@ private:
 	bool sparsify;     //use graph sparsification?
 	bool restrictFrames;  //is maximal number of frames given
 	size_t maxTimeFrame;   //maximal time frame to be used
+    size_t minTimeFrame;
 	//size_t smallIntervals;
 
     bool useAdaptiveThresholds;
@@ -247,7 +252,7 @@ private:
 
 template<class T>
 inline LdpParameters<T>::LdpParameters(const std::string &inputFileName){
-    disjointPaths::ParametersParser parser;
+    ParametersParser parser;
     std::string fileName=inputFileName;
     parser.initFromFile(fileName,false);
     std::map<std::string,std::string>& pathsParameters=parser.getParsedStrings();
@@ -344,6 +349,18 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
     }
     controlOutput<<"max time frame "<<maxTimeFrame<<std::endl;
     writeControlOutput();
+
+    if(parameters.count("MIN_TIME_FRAME")>0){
+        minTimeFrame=std::stoul(parameters["MIN_TIME_FRAME"]);
+
+    }
+    else{
+
+        minTimeFrame=1;
+    }
+    controlOutput<<"min time frame "<<maxTimeFrame<<std::endl;
+    writeControlOutput();
+
 
     if(parameters.count("INPUT_COST")>0){
         inputCost=std::stod(parameters["INPUT_COST"]);
