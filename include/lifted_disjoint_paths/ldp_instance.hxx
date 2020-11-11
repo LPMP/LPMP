@@ -40,6 +40,7 @@
 #include "config.hxx"
 #include "lifted_disjoint_paths/ldp_complete_structure.hxx"
 #include "lifted_disjoint_paths/ldp_vertex_groups.hxx"
+#include "ldp_batch_process.hxx"
 
 namespace py = pybind11;
 namespace LPMP{
@@ -53,6 +54,7 @@ public:
 
   //  LdpInstance(LdpParameters<>& configParameters);
      LdpInstance(LdpParameters<>& configParameters,CompleteStructure<>& cs);
+     LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP);
 //     LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS);
      LdpInstance(LdpParameters<>& configParameters, const py::array_t<size_t>& baseEdges, const py::array_t<size_t>& liftedEdges, const  py::array_t<double>& baseCosts, const  py::array_t<double>& liftedCosts, const py::array_t<double> &verticesCosts, VertexGroups<>& pvg);
     // LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& completeEdges,const  std::vector<double>& completeCosts,disjointPaths::VertexGroups<>& pvg);

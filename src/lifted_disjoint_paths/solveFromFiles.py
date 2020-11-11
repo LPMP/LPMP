@@ -13,15 +13,16 @@ import ldpMessagePassingPy as ldpMP
 pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of the solver
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10"]
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","50"]
 
-
+solver=ldpMP.Solver(solverParameters)
 
 #Create a parser for parameters
 paramsParser=ldpMP.ParametersParser()
 
 #Parses parameters from file
-paramsParser.init_from_file(pathToFiles+"params_sequence.ini")
+#paramsParser.init_from_file(pathToFiles+"params_sequence.ini")
+paramsParser.init_from_file(pathToFiles+"paramsToCompareOld.txt")
 
 #Initializes structure for holding solver parameters. It expects a string to string map (dictionary) as an input. ParametersParser.get_parsed_params() can be used for providing such map.
 params=ldpMP.LdpParams(paramsParser.get_parsed_params())
@@ -41,7 +42,7 @@ completeGraphStructure.add_edges_from_file(pathToFiles+"problemDesc",params)
 
 instance=ldpMP.LdpInstance(params,completeGraphStructure)
 
-solver=ldpMP.Solver(solverParameters)
+
 
 ldpMP.construct(solver,instance)
 

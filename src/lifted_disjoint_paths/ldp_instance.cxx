@@ -27,6 +27,63 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
         positiveLiftedThreshold=parameters.getPositiveThresholdLifted();
         negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
     }
+    if(debug()) std::cout<<"Adding automatic lifted edges"<<std::endl;
+    for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
+        size_t v0=graph_.vertexOfEdge(i,0);
+        size_t v1=graph_.vertexOfEdge(i,1);
+        if(v0!=s_&&v1!=t_){
+            //	if(secOrderDesc[v0][v1]){
+            graphLifted_.insertEdge(v0,v1);
+            liftedEdgeScore.push_back(edgeScore[i]);
+
+        }
+    }
+    numberOfVertices=graph_.numberOfVertices();
+
+    init();
+
+}
+
+
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
+    parameters(configParameters){
+    //std::cout<<"instance constructor"<<std::endl;
+    //graph_=BP.getOutputGraph();
+    edgeScore=BP.getEdgeScore();
+    vertexScore=BP.getVerticesScore();
+    //std::cout<<"edges and graph set, creating vg"<<std::endl;
+    BP.createLocalVG(vertexGroups);
+    //std::cout<<"created vg"<<std::endl;
+
+
+    numberOfVertices=BP.getOutputGraph().numberOfVertices()+2;
+    graph_=andres::graph::Digraph<>(numberOfVertices);
+    for (size_t i = 0; i < BP.getOutputGraph().numberOfEdges(); ++i) {
+        graph_.insertEdge(BP.getOutputGraph().vertexOfEdge(i,0),BP.getOutputGraph().vertexOfEdge(i,1));
+    }
+    s_=numberOfVertices-2;
+    t_=s_+1;
+
+
+    for (size_t v = 0; v < numberOfVertices-2; ++v) {
+        graph_.insertEdge(s_,v);
+        edgeScore.push_back(parameters.getInputCost());
+        graph_.insertEdge(v,t_);
+        edgeScore.push_back(parameters.getOutputCost());
+    }
+
+    graphLifted_ = BP.getOutputGraph();
+    liftedEdgeScore=BP.getEdgeScore();
+
+    if(parameters.isUseAdaptiveThreshold()){
+        if(diagnostics()) std::cout<<"using adaptive"<<std::endl;
+       initAdaptiveThresholds(&edgeScore,nullptr);
+    }
+    else{
+        baseThreshold=parameters.getBaseUpperThreshold();
+        positiveLiftedThreshold=parameters.getPositiveThresholdLifted();
+        negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
+    }
 
 
     init();
@@ -198,18 +255,8 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 
 void LdpInstance::init(){
 
-    if(debug()) std::cout<<"Adding automatic lifted edges"<<std::endl;
-    for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
-        size_t v0=graph_.vertexOfEdge(i,0);
-        size_t v1=graph_.vertexOfEdge(i,1);
-        if(v0!=s_&&v1!=t_){
-            //	if(secOrderDesc[v0][v1]){
-            graphLifted_.insertEdge(v0,v1);
-            liftedEdgeScore.push_back(edgeScore[i]);
 
-        }
-    }
-    numberOfVertices=graph_.numberOfVertices();
+
     if(debug()) std::cout<<"done"<<std::endl;
 
    if(diagnostics())  std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
@@ -221,8 +268,12 @@ void LdpInstance::init(){
         reachable=initReachableSet(graph_,parameters,&vertexGroups);
 
         if(parameters.isAllBaseZero()){
+            //std::cout<<"base to zero"<<std::endl;
             std::fill(edgeScore.begin(),edgeScore.end(),0);
         }
+//        else{
+//            std::cout<<"base cost preserved"<<std::endl;
+//        }
         sparsifyLiftedGraph();
         initLiftedStructure();
 

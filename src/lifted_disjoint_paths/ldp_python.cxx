@@ -29,7 +29,9 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
         .def(py::init<>())
         .def("init_from_vector", py::overload_cast<const std::vector<size_t>&>(&LPMP::VertexGroups<>::initFromVector), "Initializes vertices in time frames from a vector of size_t")
         .def("init_from_vector_shift", py::overload_cast<const std::vector<size_t>&,size_t ,size_t>(&LPMP::VertexGroups<>::initFromVector), "Initializes vertices in time frames from a vector of size_t,time shift and vertex shift")
+        .def("get_max_time",&LPMP::VertexGroups<>::getMaxTime,"returns maximal time")
         .def("init_from_file", &LPMP::VertexGroups<>::initFromFile<LPMP::lifted_disjoint_paths::LdpParameters<>>, "Initializes vertices in time frames from a file");
+
 
      py::class_<LPMP::CompleteStructure<>>(m, "GraphStructure")
              .def(py::init<LPMP::VertexGroups<> &>())
@@ -43,6 +45,7 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
 
      py::class_<LPMP::lifted_disjoint_paths::LdpInstance>(m, "LdpInstance")
              .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<size_t> &,LPMP::CompleteStructure<>&>())
+             .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<size_t>&,LPMP::LdpBatchProcess&>())
              .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<>&,const py::array_t<size_t>&,const py::array_t<size_t>&,const  py::array_t<double>& ,const  py::array_t<double>&,const  py::array_t<double>&,LPMP::VertexGroups<>&>()) ;
 
 
@@ -65,21 +68,16 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
 
      m.def("get_lifted_edge_labels",&LPMP::getLiftedEdgeLabels<std::vector<std::array<size_t,2>>>,"Given a vector of lifted edge vertices, vector of solution paths and the number of graph vertices, it returns labels to base edges.");
 
-//     py::class_<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>>(m,"Solver")
-//             .def(py::init<std::vector<std::string>&>())
-//             .def("solve",&LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>::Solve);
 
+     py::class_<LPMP::LdpBatchProcess>(m,"BatchProcess")
+             .def(py::init<LPMP::VertexGroups<>&, std::vector<std::array<size_t,2>>&, size_t, size_t, size_t, size_t>(),"TimeFramesToVertices,n x 2 vector of vertex ID->label, max used label, max time for using labels,min time of batch, max time of batch")
+             .def("init_edges_from_vectors",&LPMP::LdpBatchProcess::initEdgesFromVector,"Requires n x 2 vector of edge vertices and n x 1 vector of costs")
+             .def("init_vertices_from_vectors",&LPMP::LdpBatchProcess::initVertexScoreFromVector,"Requires n x 1 list of vertices and n x 1 list of their costs")
+             .def("init_from_file",&LPMP::LdpBatchProcess::initFromFile,"Initializes both edges and vectors from a file")
+             .def("decode_solution",&LPMP::LdpBatchProcess::decode,"Given paths resulting from solver, creates labels for new vertices in form: vector n x 2: vertexID->label")
+             .def("get_labels",&LPMP::LdpBatchProcess::getDecodedLabels,"Returns labels obtained from solution in form: vector n x 2: vertexID->label")
+             .def("get_max_used_label",&LPMP::LdpBatchProcess::getMaxLabelsSoFar,"Returns max used label, needed for constructor of next batch");
 
-//     m.def("construct",&LPMP::constructProblemFromSolver<LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>,LPMP::lifted_disjoint_paths::LdpInstance>,"constructing problem from instance");
-
-
-
-
-    // m.def("solve_ilp", py::overload_cast<disjointPaths::DisjointParams<>&, disjointPaths::CompleteStructure<>&>(&disjointPaths::solver_ilp_intervals<>), "Solve lifted disjoint paths");
-
-   //  m.def("solve_message_passing", &disjointPaths::solver_ilp<>, "Solve lifted disjoint paths");
-
-     //m.def("write_output_to_file", &disjointPaths::writeOutputToFile, "Write output tracks to a specified file");
 
 
 

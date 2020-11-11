@@ -43,6 +43,7 @@ public:
         pVertexGroups=new VertexGroups<>(configParameters);
         VertexGroups<>& vg=*pVertexGroups;
         maxTime=vg.getMaxTime();
+        assert(vg.getMinTime()==1);
 
         configParameters.getControlOutput()<<"max time "<<maxTime<<std::endl;
         completeGraph=andres::graph::Digraph<>(vg.getMaxVertex()+1);

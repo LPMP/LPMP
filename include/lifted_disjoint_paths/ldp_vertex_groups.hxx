@@ -62,7 +62,7 @@ public:
         size_t groupsSize=maxTime+2-timeShift;
         groups=std::vector<std::vector<size_t>>(groupsSize);
         for(auto pair:groups_){
-            assert(pair.first);
+            assert(pair.first<groupsSize);
             groups[pair.first]=pair.second;
         }
     }
@@ -97,11 +97,18 @@ public:
 
 
     size_t getGroupIndex(size_t v) const{
+        if(v<vertexShift){
+            std::cout<<"v "<<v<<", time shift "<<vertexShift<<std::endl;
+        }
+        if(v>maxVertex+2){
+            std::cout<<"v "<<v<<", max time "<<maxVertex<<std::endl;
+        }
         assert(v>=vertexShift&&v<=maxVertex+2);
         return vToGroup[v-vertexShift];
     }
 
     const std::vector<size_t>& getGroupVertices(size_t index)const{  //e.g. first layer 201 -> timeShift =200, normally first layer = 1
+
         assert(index>=timeShift&&index<=maxTime+1);
         return groups.at(index-timeShift);
     }
@@ -115,6 +122,37 @@ public:
     size_t getMaxTime() const {
         return maxTime;
     }
+
+    size_t getMinTime() const {
+        return timeShift+1;
+    }
+
+    size_t getMinVertex() const {
+        return vertexShift;
+    }
+
+    size_t getMinVertexInTime(size_t time){
+        assert(time<=maxTime);
+        assert(time>timeShift);
+        size_t i=time;
+        while(i<=maxTime&&groups.at(i-timeShift).size()==0){
+            i++;
+        }
+        if(i>maxTime) return std::numeric_limits<size_t>::max();
+        else return groups.at(i-timeShift).front();
+    }
+
+    size_t getMaxVertexInTime(size_t time){
+        assert(time<=maxTime);
+        assert(time>timeShift);
+        size_t i=time;
+        while(i>timeShift&&groups.at(i-timeShift).size()==0){
+            i--;
+        }
+        if(i==timeShift) return std::numeric_limits<size_t>::max();
+        else return groups.at(i-timeShift).back();
+    }
+
 
     std::vector<std::vector<size_t>> extractInnerPaths(const std::vector<std::vector<size_t> > &paths, const size_t minT,const size_t maxT) const;
 
@@ -218,9 +256,10 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
 
 
     size_t maxTimeToRead=parameters.getMaxTimeFrame();
-    size_t minTimeToRead=parameters.getMinTimeFrame();
-    assert(minTimeToRead<maxTimeToRead);
-    assert(minTimeToRead>0);
+//    size_t minTimeToRead=parameters.getMinTimeFrame();
+//    assert(minTimeToRead<maxTimeToRead);
+//    assert(minTimeToRead>0);
+    size_t minTimeToRead=1;
     timeShift=minTimeToRead-1;
 
 
@@ -319,7 +358,7 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         groups.push_back(currentGroup);
 
 
-        assert(vToGroup.back()<=maxTime);
+        //assert(vToGroup.back()<=maxTime);
         maxTime=vToGroup.back();
 
         maxVertex=vToGroup.size()-1+vertexShift;
@@ -337,7 +376,7 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         groups.push_back(currentGroup);
 
         assert(maxVertex-vertexShift==vToGroup.size()-3);
-        testCorrectness(true);
+        testCorrectness(false);
 
     }
     catch (std::system_error& er) {
