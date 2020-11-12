@@ -49,8 +49,8 @@ public:
 
     std::tuple<double, size_t, size_t, char> minCutEdge(size_t index1, size_t index2) const;
 
-    double getLiftedMinMarginal() const;
-    double getOneEdgeMinMarginal(const size_t & index1,const size_t & neighborIndex) const;
+    double getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const;
+    double getOneEdgeMinMarginal(const size_t & index1, const size_t & neighborIndex, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost) const;
 
 
     const LdpTwoLayerGraph& getCutGraph()const {
@@ -80,9 +80,13 @@ public:
         return w;
     }
 
+    const double& getLiftedCost()const{
+        return liftedCost;
+    }
+
     void print()const ;
 private:
-    double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne,bool addLiftedCost=false)const;
+    double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne, bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const;
 
     LPMP::linear_assignment_problem_input createLAStandard(bool addLiftedCost=false)const;
     LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2,bool addLiftedCost=false)const ;
@@ -337,15 +341,15 @@ void ldp_cut_factor::updateCostLifted(const double& value){
 
 
 void ldp_cut_factor::updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
-    double oldValue=cutGraph.getForwardEdgeCost(inputVertexIndex,neighborIndex);
-    cutGraph.setForwardEdgeCost(inputVertexIndex,neighborIndex,oldValue+value);
+    //double oldValue=cutGraph.getForwardEdgeCost(inputVertexIndex,neighborIndex);
+    cutGraph.updateForwardEdgeCost(inputVertexIndex,neighborIndex,value);
 }
 
 
 
 
 
-double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& index2, bool restrictToOne, bool addLiftedCost)const {
+double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& index2, bool restrictToOne, bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const {
     // not restrictToOne .. block only edge
     // restrictToOne ... block both vertices
     //index1 .. index in inputVertices, index2.. index in outputVertices + numberOfInput
@@ -354,6 +358,8 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
     std::fill(storeLabeling.begin(),storeLabeling.end(),unassignedLabel);
     liftedActive=false;
     bool activeExists=false;
+    const double& localLiftedCost=*pLiftedCost;
+    const LdpTwoLayerGraph& localCutGraph=*pCutGraph;
     //TODO: Assert of neighborIndex?
     //TODO add lifted edge to evaluation, based on
 
@@ -372,8 +378,8 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
         if(restrictToOne){
             if(debug())std::cout<<"restric to one"<<std::endl;
             double valueToReturn=0;
-            auto* iter=cutGraph.forwardNeighborsBegin(index1);
-            auto* end=cutGraph.forwardNeighborsEnd(index1);
+            auto* iter=localCutGraph.forwardNeighborsBegin(index1);
+            auto* end=localCutGraph.forwardNeighborsEnd(index1);
             bool found=false;
             for(;iter!=end;iter++){
                 if(iter->first==index2){
@@ -384,13 +390,13 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
             }
             storeLabeling[index1]=index2;
-            if(liftedCost<0||(index1==baseCoveringLifted[0]&&index2==baseCoveringLifted[1])) valueToReturn+=liftedCost;
+            if(localLiftedCost<0||(index1==baseCoveringLifted[0]&&index2==baseCoveringLifted[1])) valueToReturn+=localLiftedCost;
             return valueToReturn;
         }
         else{
             if(debug())std::cout<<"not restric to one"<<std::endl;
 
-            double activeCost=liftedCost+minCutValue;
+            double activeCost=localLiftedCost+minCutValue;
             if(activeCost<0){
                 size_t vertex=std::get<1>(myTuple);
                 size_t label=std::get<2>(myTuple);
@@ -416,7 +422,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
             //minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
             assert(index2<outputVertices.size());
             bool found=false;
-            for (auto* it=cutGraph.forwardNeighborsBegin(index1);it!=cutGraph.forwardNeighborsEnd(index1);it++) {
+            for (auto* it=localCutGraph.forwardNeighborsBegin(index1);it!=localCutGraph.forwardNeighborsEnd(index1);it++) {
                 if(it->first==index2){
                     minValue=it->second;
                     found=true;
@@ -458,10 +464,10 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
         if(baseCoverLiftedExists&&storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
             liftedActive=true;
-            if(!addLiftedCost) minValue+=liftedCost;
+            if(!addLiftedCost) minValue+=localLiftedCost;
         }
-        else if(activeExists&&liftedCost<0){
-            minValue+=liftedCost;
+        else if(activeExists&&localLiftedCost<0){
+            minValue+=localLiftedCost;
             liftedActive=true;
         }
 
@@ -560,16 +566,16 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const 
 
 double ldp_cut_factor::LowerBound() const{
     bool addLifted=(baseCoverLiftedExists&&liftedCost>0);
-    double value=advancedMinimizer(unassignedLabel,unassignedLabel,false,addLifted);
+    double value=advancedMinimizer(unassignedLabel,unassignedLabel,false,addLifted,&cutGraph,&liftedCost);
     return value;
 }
 
 
-double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2) const{
+double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2,const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const{
     if(debug())std::cout<<"base edge min marginal in cut"<<std::endl;
     bool addLiftedCost=baseCoverLiftedExists&&liftedCost>0;
-    double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost);
-    double restrictZero=advancedMinimizer(index1,index2,false,addLiftedCost);
+    double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost,pCutGraph,pLiftedCost);
+    double restrictZero=advancedMinimizer(index1,index2,false,addLiftedCost,pCutGraph,pLiftedCost);
     return restrictOne-restrictZero;
 }
 
@@ -602,7 +608,7 @@ std::tuple<double,size_t,size_t,char> ldp_cut_factor::minCutEdge(size_t index1,s
 }
 
 
-double ldp_cut_factor::getLiftedMinMarginal() const{
+double ldp_cut_factor::getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const{
     if(debug())std::cout<<"cut lifted min marginal"<<std::endl;
 //    bool nonPositiveEdgeExists=false;
 //    bool baseCoverCost=std::numeric_limits<double>::min();
@@ -621,6 +627,7 @@ double ldp_cut_factor::getLiftedMinMarginal() const{
 //            }
 //        }
 //    }
+    double localLiftedCost=*pLiftedCost;
     std::tuple<double,size_t,size_t,char>t=minCutEdge(unassignedLabel,unassignedLabel);
     bool baseCoverNegative=std::get<3>(t)>0;
     double minValue=std::get<0>(t);
@@ -629,32 +636,32 @@ double ldp_cut_factor::getLiftedMinMarginal() const{
         if(minValue>=0){
             //assert(minValueSet);
             if(debug())std::cout<<"min value big"<<std::endl;
-            double value=liftedCost+minValue;
+            double value=localLiftedCost+minValue;
             if(debug())std::cout<<value<<std::endl;
             return value;
         }
         else{
             if(debug())std::cout<<"min value negative"<<std::endl;
-            return liftedCost;
+            return localLiftedCost;
         }
     }
     else{
         if(debug())std::cout<<" base cover lifted"<<std::endl;
-        double lowerBound=advancedMinimizer(unassignedLabel,unassignedLabel,false,false); //some cut edge must be active
+        double lowerBound=advancedMinimizer(unassignedLabel,unassignedLabel,false,false,pCutGraph,pLiftedCost); //some cut edge must be active
         double restrictedOne=0;
         double restrictedZero=0;
         if(storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
             if(debug())std::cout<<"base cover lifted "<<std::endl;
             assert(liftedActive);
             restrictedOne=lowerBound;
-            restrictedZero=advancedMinimizer(baseCoveringLifted[0],baseCoveringLifted[1],false,false);
-            if(liftedActive) restrictedZero-=liftedCost;
+            restrictedZero=advancedMinimizer(baseCoveringLifted[0],baseCoveringLifted[1],false,false,pCutGraph,pLiftedCost);
+            if(liftedActive) restrictedZero-=localLiftedCost;
             return restrictedOne-restrictedZero;
         }
         else{
             if(debug())std::cout<<"base cover lifted not active"<<std::endl;
             assert(lowerBound<0);
-            return liftedCost;
+            return localLiftedCost;
         }
     }
 
@@ -747,18 +754,19 @@ public:
     {
          if(debug())std::cout<<"snc send one to left "<<std::endl;
         if(debug()) std::cout<<"triangle send one to left ";
-        //printIndices();
-        //for (size_t i=0;i<1;i++) {
+        std::vector<double> baseCosts=r.getBaseCosts();
+        const std::vector<double>& liftedCosts=r.getLiftedCosts();
         size_t i=0;
         double delta=0;
         for (;i<nodeIndicesInSnc.size();i++) {
 
-            delta = r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i]);
+            delta = r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i],&baseCosts,&liftedCosts);
+            baseCosts[nodeIndicesInSnc[i]]-=omega*delta;
 
             msg[i] -= omega * delta;
         }
         if(containsLiftedEdge){
-            delta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge);
+            delta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge,&baseCosts,&liftedCosts);
             msg[i]-=omega * delta;
 
         }
@@ -774,14 +782,18 @@ public:
         //for (size_t i=0;i<1;i++) {
         double delta;
         size_t i=0;
+        double liftedCost=l.getLiftedCost();
+        LdpTwoLayerGraph cutGraph=l.getCutGraph();
         for (;i<nodeIndicesInCut.size();i++) {
             if(sncIsOut){
                 size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[i]);
-                delta = l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex);
+                delta = l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex,&cutGraph,&liftedCost);
+                cutGraph.updateForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i],-delta);
             }
             else{  //just for output nodes now
                 assert(false);
-                delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut);
+                delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut,&cutGraph,&liftedCost);
+                cutGraph.updateForwardEdgeCost(nodeIndicesInCut[i],sncNodeIDindexInCut,-delta);
             }
             if(debug())std::cout<<"min marginal value "<<delta<<std::endl;
             msg[i] -= omega * delta;
@@ -789,43 +801,10 @@ public:
 
         if(containsLiftedEdge){
             if(debug())std::cout<<"send to lifted "<<l.getLiftedOutputVertex()<<std::endl;
-            delta=l.getLiftedMinMarginal();
+            delta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
             msg[i]-=omega*delta;
         }
     }
-
-
-
-//    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
-//    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
-//    {
-//        if(debug()) std::cout<<"triangle send all to left"<<std::endl;
-
-//        //TODO take only one half from the base min marginals!
-//        std::vector<double> msg_vec_base = r.getAllBaseMinMarginals();
-//        std::vector<double> localBaseCost=r.getBaseCosts();
-//        for (size_t i = 0; i < localBaseCost.size(); ++i) {
-//            msg_vec_base[i]=0.5*msg_vec_base[i];
-//            localBaseCost[i]-=msg_vec_base[i];
-//        }
-//        const std::vector<double> msg_vec_lifted = r.getAllLiftedMinMarginals(&localBaseCost);
-
-//        for(auto it=msg_begin; it!=msg_end; ++it)
-//        {
-//            auto& msg = (*it).GetMessageOp();
-//            for (int i = 0; i <msg.verticesInSnc.size(); ++i) {
-//                const size_t vertex = msg.verticesInSnc.at(i);
-//                bool lifted=msg.isLifted.at(i);
-//                if(lifted){
-//                    (*it)[i] -=  omega * msg_vec_lifted.at(vertex);
-//                }
-//                else{
-//                    (*it)[i] -= omega * msg_vec_base.at(vertex);
-//                }
-
-//            }
-//        }
-//    }
 
 
 
@@ -853,204 +832,6 @@ private:
 
 
 
-//double ldp_cut_factor::LowerBound() const{
-//    size_t liftedIndex=edges.size();
-//    double lb=0;
-//    if(costs.at(liftedIndex)>=0){
-//        std::vector<bool> usedInput(inputVertices.size(),0);
-//        std::vector<bool> usedOutput(outputVertices.size(),0);
-//        bool canUseSimple=true;
-//        for(size_t i=0;i<costs.size()-1;i++){
-//            if(costs[i]<0){
-//                if(i==baseCoveringLifted){
-//                    if(costs[i]<-costs[liftedIndex]){
-//                        lb+=costs[i]+costs[liftedIndex];
-//                        if(usedInput.at(edges[i][0])||usedOutput.at(edges[i][1])){
-//                            canUseSimple=false;
-//                            break;
-//                        }
-//                        else{
-//                            usedInput.at(edges[i][0])=1;
-//                            usedOutput.at(edges[i][1])=1;
-//                        }
-//                    }
-
-//                }
-//                else{
-//                    lb+=costs[i];
-//                    if(usedInput.at(edges[i][0])||usedOutput.at(edges[i][1])){
-//                        canUseSimple=false;
-//                        break;
-//                    }
-//                    else{
-//                        usedInput.at(edges[i][0])=1;
-//                        usedOutput.at(edges[i][1])=1;
-//                    }
-
-//                }
-//            }
-//        }
-//        if(canUseSimple){
-//            return lb;
-//        }
-//        else{
-//            //TODO solve min cost assignment
-//        }
-//    }
-//    else{
-//        std::vector<bool> usedInput(inputVertices.size(),0);
-//        std::vector<bool> usedOutput(outputVertices.size(),0);
-//        bool canUseSimple=true;
-//        double minValue=std::numeric_limits<double>::max();
-//        for(size_t i=0;i<costs.size()-1;i++){
-//            minValue=std::min(minValue,costs[i]);
-//            if(costs[i]<0){
-//                lb+=costs[i];
-//                if(usedInput.at(edges[i][0])||usedOutput.at(edges[i][1])){
-//                    canUseSimple=false;
-//                    break;
-//                }
-//                else{
-//                    usedInput.at(edges[i][0])=1;
-//                    usedOutput.at(edges[i][1])=1;
-//                }
-//            }
-//        }
-//        if(canUseSimple){
-//            if(minValue<0){
-//                lb+=costs[liftedIndex];
-//            }
-//            else if(costs[liftedIndex]<-minValue){
-//                lb=costs[liftedIndex]+minValue;
-//            }
-//            return lb;
-//        }
-//        else{
-//            //TODO solve min cost assignment
-//        }
-
-//    }
-
-//}
-
-
-//double ldp_cut_factor::getOneMinMarginal(size_t edgeId) const{
-//    assert(edgeId<=costs.size());
-//    size_t liftedIndex=edges.size();
-//    std::vector<bool> usedInput(inputVertices.size(),0);
-//    std::vector<bool> usedOutput(outputVertices.size(),0);
-//    //std::vector<bool> activeEdges(edges.size(),0); //maybe change to set of indices
-//    std::set<size_t> activeEdges;
-//    double lb=0;
-//    bool canUseSimple=true;
-//    for(size_t i=0;i<costs.size()-1;i++){  //TODO maybe make one method to be used in LowerBound too!
-//        if(costs[i]<0){
-//            lb+=costs[i];
-//            //activeEdges[i]=1;
-//            activeEdges.insert(i);
-//            if(usedInput.at(edges[i][0])||usedOutput.at(edges[i][1])){
-//                canUseSimple=false;
-//                break;
-//            }
-//            else{
-//                usedInput.at(edges[i][0])=1;
-//                usedOutput.at(edges[i][1])=1;
-//            }
-//        }
-//    }
-//    if(canUseSimple){
-
-//        double inactiveLiftedCost=0;
-//        double activeLiftedCost=0;
-//        if(costs[baseCoveringLifted]>=0){
-//            inactiveLiftedCost=lb;
-//        }
-//        else{
-//            inactiveLiftedCost=lb-costs[baseCoveringLifted]; //maybe remove vertices from used input and used output
-//        }
-//        if(lb<0){
-//            activeLiftedCost=lb+costs[liftedIndex];
-//        }
-//        else{
-//            double minValue=costs[0];
-//            for (size_t i = 1; i < costs.size()-1; ++i) {
-//                minValue=std::min(minValue,costs[i]);
-//            }
-//            activeLiftedCost=minValue+costs[liftedIndex];
-//        }
-//        //TODO up to here use for lower bound, return lower from the two
-//        if(edgeId==liftedIndex){
-//            return activeLiftedCost-inactiveLiftedCost;
-//        }
-//        else if(edgeId!=baseCoveringLifted){
-//            double optValue=inactiveLiftedCost;
-//            bool liftedActiveInOpt=false;
-//            if(activeLiftedCost<inactiveLiftedCost){
-//                optValue=activeLiftedCost;
-//                liftedActiveInOpt=true;
-//            }
-//            double inactiveCost=0;
-//            double activeCost=0;
-//            if(costs[edgeId]>=0){
-//                inactiveCost=optValue;
-//                activeCost=costs[edgeId];
-//                size_t blockV1=edges[edgeId][0];
-//                size_t blockV2=edges[edgeId][1];
-//                for(size_t i=0;i<costs.size()-1;i++){
-//                    if(costs[i]<0&&edges[i][0]!=blockV1&&edges[i][1]!=blockV2){
-//                        activeCost+=costs[i];
-//                    }
-//                }
-//                if(costs[liftedIndex]<0){
-//                    activeCost+=costs[liftedIndex];
-//                }
-
-
-
-
-//            }
-//            else{
-//                activeCost=optValue;
-//            }
-
-
-//        }
-
-//    }
-//    else{
-//        //TODO use min cost assignment
-//    }
-
-//    if(edgeId==liftedIndex){
-
-//    }
-//}
-
-
-//    ldp_cut_factor(size_t v_,size_t w_, std::vector<std::array<size_t,2>> inputEdges,std::vector<double> inputCosts) { //TODO: maybe inputEdges as map<size_t<map<size_t,double>> - better for creating edges as pairs of order of v1 and v2
-//        std::set<size_t> inpVertices;
-//        std::set<size_t> outVertices;
-//        for (size_t i = 0; i < inputEdges.size(); ++i) {
-//            size_t v1=inputEdges[i][0];
-//            size_t v2=inputEdges[i][1];
-//            if(inpVertices.count(v1)==0){
-//                inpVertices.insert(v1);
-//            }
-
-//            if(outVertices.count(v2)==0){
-//                outVertices.insert(v2);
-//            }
-
-//        }
-//        //inputVertices=std::vector<size_t>(inpVertices.size());
-//        for(size_t vert:inpVertices){
-//            inputVertices.push_back(vert);
-//        }
-//        for(size_t vert:outVertices){
-//            outputVertices.push_back(vert);
-//        }
-
-//    }
 
 
 

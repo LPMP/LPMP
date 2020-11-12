@@ -55,6 +55,9 @@ public:
     }
 
 
+    void updateForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+        forwardEdges[vertex][neighborIndex].second+=value;
+    }
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
         return forwardEdges[vertex][neighborIndex].second;
