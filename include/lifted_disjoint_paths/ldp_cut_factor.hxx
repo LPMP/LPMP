@@ -411,6 +411,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
     }
     else{
+        std::cout<<"ADVANCED METHOD FOR CUT FACTOR"<<std::endl;
         if(debug())std::cout<<"advanced method"<<std::endl;
         if(index1==unassignedLabel){
             lapInput=createLAStandard(addLiftedCost);
@@ -761,7 +762,7 @@ public:
         for (;i<nodeIndicesInSnc.size();i++) {
 
             delta = r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i],&baseCosts,&liftedCosts);
-            baseCosts[nodeIndicesInSnc[i]]-=omega*delta;
+            baseCosts[nodeIndicesInSnc[i]]-=delta;
 
             msg[i] -= omega * delta;
         }

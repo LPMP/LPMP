@@ -12,6 +12,7 @@
 #include <memory>
 #include "ldp_min_marginals_extractor.hxx"
 #include "ldp_path_separator.hxx"
+#include "ldp_cut_message_creator.hxx"
 
 namespace LPMP {
 
@@ -170,6 +171,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         else{
             const std::vector<size_t>& liftedIDs= sncOut->getLiftedIDs();
             size_t centralNodeLabel=currentPrimalLabels[i];
+            assert(centralNodeLabel!=0);
             auto iter=sncOut->getPrimalLiftedIndices().begin();
             auto end=sncOut->getPrimalLiftedIndices().end();
             for(size_t j=0;j<liftedIDs.size();j++){
@@ -193,7 +195,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
         }
 
-        auto* sncIn=single_node_cut_factors_[vertex][1]->get_factor();
+        auto* sncIn=single_node_cut_factors_[vertex][0]->get_factor();
         if(!sncIn->isNodeActive()||(sncIn->getPrimalBaseVertexID()==base_graph_source_node())){
             if(!sncIn->getPrimalLiftedIndices().empty()){
                 isFeasible=false;
@@ -203,6 +205,7 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         else{
             const std::vector<size_t>& liftedIDs= sncIn->getLiftedIDs();
             size_t centralNodeLabel=currentPrimalLabels[i];
+            assert(centralNodeLabel!=0);
             auto iter=sncIn->getPrimalLiftedIndices().begin();
             auto end=sncIn->getPrimalLiftedIndices().end();
             for(size_t j=0;j<liftedIDs.size();j++){
@@ -331,7 +334,8 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     for (int i = 0; i < nr_nodes()&&isFeasible; ++i) {
 
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
-        return isFeasible; const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+        return isFeasible;
+        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
 
         bool shouldBeActive=currentPrimalLabels[i]!=0;
 
@@ -440,9 +444,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             std::vector<size_t> liftedIndicesOut;
             if(sncOut->getPrimalBaseVertexID()!=base_graph_terminal_node()) {
                 const std::vector<size_t>& liftedIDs= sncOut->getLiftedIDs();
-                for(size_t i=0;i<liftedIDs.size();i++){
-                    if(currentPrimalLabels[liftedIDs[i]]==centralNodeLabel){
-                        liftedIndicesOut.push_back(i);
+                for(size_t j=0;j<liftedIDs.size();j++){
+                    if(currentPrimalLabels[liftedIDs[j]]==centralNodeLabel){
+                        liftedIndicesOut.push_back(j);
                     }
                 }
 
@@ -452,9 +456,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             std::vector<size_t> liftedIndicesIn;
             if(sncIn->getPrimalBaseVertexID()!=base_graph_source_node()) {
                 const std::vector<size_t>& liftedIDs= sncIn->getLiftedIDs();
-                for(size_t i=0;i<liftedIDs.size();i++){
-                    if(currentPrimalLabels[liftedIDs[i]]==centralNodeLabel){
-                        liftedIndicesIn.push_back(i);
+                for(size_t j=0;j<liftedIDs.size();j++){
+                    if(currentPrimalLabels[liftedIDs[j]]==centralNodeLabel){
+                        liftedIndicesIn.push_back(j);
                     }
                 }
 
@@ -855,7 +859,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         if(diagnostics()){
            // std::cout<<"computed primal value "<<primalValue<<std::endl;
             double controlPrimalValue=0;
-            std::vector<size_t> labels(nr_nodes());
+            //std::vector<size_t> labels(nr_nodes());
             for (size_t i = 0; i < startingNodes.size(); ++i) {
                 // std::cout<<"path "<<i<<std::endl;
                 size_t currentNode=startingNodes[i];
@@ -863,7 +867,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 controlPrimalValue+=pInstance->getEdgeScore(pInstance->getSourceNode(),currentNode);
                 while(currentNode!=base_graph_terminal_node()){
                     assert(currentNode<labels.size());
-                    labels[currentNode]=i+1;
+                   // labels[currentNode]=i+1;
                     controlPrimalValue+=pInstance->getVertexScore(currentNode);
                     controlPrimalValue+=pInstance->getEdgeScore(currentNode,descendants[currentNode]);
                     currentNode=descendants[currentNode];
@@ -871,15 +875,35 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             }
 
-            //std::cout<<"lifted edges"<<std::endl;
+
+//            //std::cout<<"lifted edges"<<std::endl;
+//            for(size_t e=0;e<pInstance->getGraph().numberOfEdges();e++){
+//                size_t v0=pInstance->getGraph().vertexOfEdge(e,0);
+//                size_t v1=pInstance->getGraph().vertexOfEdge(e,1);
+//                if(v0==base_graph_source_node()){
+
+//                }
+//                else if(v1==base_graph_terminal_node()){
+
+//                }
+//                else if
+//                if(currentPrimalDescendants[v0]==v1){
+//                    controlPrimalValue+=pInstance->getEdgeScore(e);
+//                }
+//            }
+
             for(size_t e=0;e<pInstance->getGraphLifted().numberOfEdges();e++){
                 size_t v0=pInstance->getGraphLifted().vertexOfEdge(e,0);
                 size_t v1=pInstance->getGraphLifted().vertexOfEdge(e,1);
-                if(labels[v0]==labels[v1]&&labels[v0]!=0){
+                if(currentPrimalLabels[v0]==currentPrimalLabels[v1]&&currentPrimalLabels[v0]!=0){
 
                     controlPrimalValue+=pInstance->getLiftedEdgeScore(e);
 
                 }
+            }
+            if(std::abs(primalValue-controlPrimalValue)>=eps){
+                std::cout<<"computed primal value "<<primalValue<<std::endl;
+                std::cout<<"control primal value "<<controlPrimalValue<<std::endl;
             }
             assert(std::abs(primalValue-controlPrimalValue)<eps);
 
@@ -1131,6 +1155,17 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             //TODO what if lifted has not been added in the for!
             bool liftedAdded=false;
             for(size_t i=0;i<inputs.size();i++){
+                size_t inputVertex=inputs[i];
+                auto * snc=single_node_cut_factors_[inputVertex][1];
+                LdpCutMessageInputs<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> messageInputs;
+                messageInputs.init(pCutFactor,snc,i);
+
+
+                if(messageInputs.containsLifted) liftedAdded=true;
+                auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,messageInputs._nodeIndicesInCut,messageInputs._nodeIndicesInSnc,i,true,messageInputs.containsLifted,messageInputs._nodeIndexOfLiftedEdge);
+                snc_cut_messages_.push_back(message1);
+            }
+            for(size_t i=0;i<inputs.size();i++){
                 std::vector<size_t> _nodeIndicesInCut;
                 std::vector<size_t> _nodeIndicesInSnc;
                 size_t _sncNodeIDindexInCut;
@@ -1191,10 +1226,17 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 //        else{
 //            std::cout<<"cannot add"<<std::endl;
 //        }
-        leQueue.pop();
+
         delete pCutFactor;
         pCutFactor=nullptr;
+        leQueue.pop();
 
+    }
+    while(!leQueue.empty()){
+        ldp_cut_factor* pCutFactor=leQueue.top().second;
+        delete pCutFactor;
+        pCutFactor=nullptr;
+        leQueue.pop();
     }
 
     minMarginalsExtractor.clearMinMarginals();
@@ -1204,8 +1246,9 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
 
     //TODO traverse used cut edges and update costs in the respective node factors
-    return 0;
+    return addedCuts;
 }
+
 
 
 
@@ -1215,8 +1258,13 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
+   size_t numberOfCutsToSeparate=nr_constraints_to_add/2;
+   size_t numberOfPathsToSeparate=nr_constraints_to_add-numberOfCutsToSeparate;
 
+   size_t cutsSeparated=  separateCuts(numberOfCutsToSeparate);
 
+    size_t counterAdded=cutsSeparated;
+    //size_t counterAdded=0;
     ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
     pathSeparator.separatePathInequalities(nr_constraints_to_add);
     std::priority_queue<std::pair<double,ldp_path_factor_type*>>& queueWithPaths=pathSeparator.getPriorityQueue();
@@ -1224,7 +1272,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     double possibleImprovement=0;
    // std::cout<<"queue filled "<<queueWithPaths.size()<<std::endl;
 
-    size_t counterAdded=0;
+
     size_t pathFactorsOriginalSize=path_factors_.size();
     while(!queueWithPaths.empty()&&counterAdded<nr_constraints_to_add){
        // std::pair<double,ldp_path_factor_type*>& p=queueWithPaths.top();
@@ -1245,14 +1293,18 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t pathVertex=pathVertices[i];
             if(i>0){
                 auto * pSNC=single_node_cut_factors_[pathVertex][0];
-                LdpPathMessageInputs messageInputs=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNC,i);
-                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndexInPath,messageInputs.vertexIndexInSnc,messageInputs.isLifted);
+                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputs;
+                messageInputs.init(myPathFactor,pSNC,i);
+                //LdpPathMessageInputs messageInputs=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNC,i);
+                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndicesInPath,messageInputs.indicesInSnc,messageInputs.isLiftedForMessage);
                 snc_path_messages_.push_back(newMessage);
             }
             if(i<myPathFactor->getNumberOfEdges()-1){
                 auto * pSNCOut=single_node_cut_factors_[pathVertex][1];
-                LdpPathMessageInputs messageInputsOut=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNCOut,i);
-                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndexInPath,messageInputsOut.vertexIndexInSnc,messageInputsOut.isLifted);
+                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputsOut;
+                messageInputsOut.init(myPathFactor,pSNCOut,i);
+              //  LdpPathMessageInputs messageInputsOut=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNCOut,i);
+                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndicesInPath,messageInputsOut.indicesInSnc,messageInputsOut.isLiftedForMessage);
                 snc_path_messages_.push_back(newMessageOut);
             }
             //std::cout<<"vertex "<<i<<" of path solved "<<std::endl;

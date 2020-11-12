@@ -114,7 +114,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
         size_t vertex2=listOfVertices[i+1];
 
         if(isLifted[i]){
-            if(vertexLabels[vertex1]==vertexLabels[vertex2]){
+            if(vertexLabels[vertex1]==vertexLabels[vertex2]&&vertexLabels[vertex1]!=0){
                 primalSolution[i]=1;
             }
             else{
@@ -135,7 +135,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
     }
     size_t vertex2=listOfVertices.back();
     size_t vertex1=listOfVertices[0];
-    primalSolution.back()=(vertexLabels[vertex1]==vertexLabels[vertex2]);
+    primalSolution.back()=(vertexLabels[vertex1]!=0&&vertexLabels[vertex1]==vertexLabels[vertex2]);
     if(primalSolution.back()==0) numberOfZeros++;
     assert(numberOfZeros!=1);
 

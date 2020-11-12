@@ -7,79 +7,20 @@
 
 namespace LPMP {
 
-
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 struct LdpPathMessageInputs{
-    std::vector<size_t> edgeIndexInPath;  //Mostly one, two for the first and the last path vertices
-    std::vector<size_t> vertexIndexInSnc;
-    std::vector<char> isLifted;
+
+    void init(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index);
+
+    std::vector<size_t> edgeIndicesInPath;  //Mostly one, two for the first and the last path vertices
+    std::vector<size_t> indicesInSnc;
+    std::vector<char> isLiftedForMessage;
 
 };
 
 
-template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT> //PATH_FACTOR is ldp_path_factor, SINGLE_NODE_CUT_FACTOR_CONT is the container wrapper
-class ldp_path_separator {
-
-public:
-    ldp_path_separator(const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& _mmExtractor):
-
-    pInstance(_pInstance),
-     mmExtractor(_mmExtractor)
-
-    {
-        numberOfVertices=pInstance->getNumberOfVertices()-2;
-        isInQueue=std::vector<char>(numberOfVertices);
-        predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
-        predInQueueIsLifted=std::vector<char>(numberOfVertices);
-    }
-
-    void separatePathInequalities(size_t maxConstraints);
-
-    std::priority_queue<std::pair<double,PATH_FACTOR*>>& getPriorityQueue(){
-        return pQueue;
-    }
-
-
-    LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
-    void clearPriorityQueue();
-
-
-private:
-
-    PATH_FACTOR* createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
-    std::list<std::pair<size_t,bool>> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
-
-const lifted_disjoint_paths::LdpInstance * pInstance;
-ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& mmExtractor;
-size_t numberOfVertices;
-
-
-std::vector<std::map<size_t,double>> baseMM;
-std::vector<std::map<size_t,double>> liftedMM;
-std::vector<std::list<size_t>> predecessors;  //Can I use list? Maybe yes, just predecessors will not be sorted!
-std::vector<std::list<size_t>> descendants;
- std::vector<std::vector<std::pair<size_t,bool>>> usedEdges;
-std::vector<char> isInQueue;
-std::vector<size_t> predInQueue;
-std::vector<char> predInQueueIsLifted;
-std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
-
-};
-
 template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
-    while(!pQueue.empty()){
-        std::pair<double,PATH_FACTOR*> p=pQueue.top();
-        delete p.second;
-        p.second=nullptr;
-        pQueue.pop();
-    }
-
-}
-  //  auto * myPathFactor=pathFactor->get_factor();
-
-
-template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline LdpPathMessageInputs ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const {
+inline void LdpPathMessageInputs<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::init(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index) {
   //  auto * myPathFactor=pathFactor->get_factor();
 
     bool isOut=sncFactor->get_factor()->isNodeOutFlow();
@@ -91,9 +32,7 @@ inline LdpPathMessageInputs ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTO
     assert(pathVertices.at(index)==sncFactor->get_factor()->nodeID);
     const std::vector<char>& liftedInfo=myPathFactor->getLiftedInfo();
 
-    std::vector<size_t> indicesInSnc;
-    std::vector<char> isLiftedForMessage;
-    std::vector<size_t> edgeIndicesInPath;
+
     if(index==0){
         assert(isOut);
         auto * pFactorOutFactor=sncFactor->get_factor();
@@ -155,10 +94,73 @@ inline LdpPathMessageInputs ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTO
         }
     }
 
-    LdpPathMessageInputs messageInputs={edgeIndicesInPath,indicesInSnc,isLiftedForMessage};
-    return messageInputs;
+//    LdpPathMessageInputs messageInputs={edgeIndicesInPath,indicesInSnc,isLiftedForMessage};
+//    return messageInputs;
 
 }
+
+
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT> //PATH_FACTOR is ldp_path_factor, SINGLE_NODE_CUT_FACTOR_CONT is the container wrapper
+class ldp_path_separator {
+
+public:
+    ldp_path_separator(const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& _mmExtractor):
+
+    pInstance(_pInstance),
+     mmExtractor(_mmExtractor)
+
+    {
+        numberOfVertices=pInstance->getNumberOfVertices()-2;
+        isInQueue=std::vector<char>(numberOfVertices);
+        predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
+        predInQueueIsLifted=std::vector<char>(numberOfVertices);
+    }
+
+    void separatePathInequalities(size_t maxConstraints);
+
+    std::priority_queue<std::pair<double,PATH_FACTOR*>>& getPriorityQueue(){
+        return pQueue;
+    }
+
+
+    //LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
+    void clearPriorityQueue();
+
+
+private:
+
+    PATH_FACTOR* createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
+    std::list<std::pair<size_t,bool>> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
+
+const lifted_disjoint_paths::LdpInstance * pInstance;
+ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& mmExtractor;
+size_t numberOfVertices;
+
+
+std::vector<std::map<size_t,double>> baseMM;
+std::vector<std::map<size_t,double>> liftedMM;
+std::vector<std::list<size_t>> predecessors;  //Can I use list? Maybe yes, just predecessors will not be sorted!
+std::vector<std::list<size_t>> descendants;
+ std::vector<std::vector<std::pair<size_t,bool>>> usedEdges;
+std::vector<char> isInQueue;
+std::vector<size_t> predInQueue;
+std::vector<char> predInQueueIsLifted;
+std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
+
+};
+
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
+    while(!pQueue.empty()){
+        std::pair<double,PATH_FACTOR*> p=pQueue.top();
+        delete p.second;
+        p.second=nullptr;
+        pQueue.pop();
+    }
+
+}
+  //  auto * myPathFactor=pathFactor->get_factor();
+
 
 
 template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
