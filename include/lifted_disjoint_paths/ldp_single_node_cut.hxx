@@ -58,6 +58,10 @@ public:
 		return baseCosts;
 	}
 
+    const double& getNodeCost()const{
+        return nodeCost;
+    }
+
     //Methods for getting and setting primal solution
     double EvaluatePrimal() const;
 
