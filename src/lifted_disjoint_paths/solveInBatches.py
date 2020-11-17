@@ -32,7 +32,7 @@ paramsMap["USE_ADAPTIVE_THRESHOLDS"]="0"
 pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of the solver
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","5","-v","0"]
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","2","-v","1"]
 
 params=ldpMP.LdpParams(paramsMap)
 
@@ -42,6 +42,7 @@ timeFrames=ldpMP.TimeFramesToVertices()
 #Initalizing the structure from a file
 timeFrames.init_from_file(pathToFiles+"problemDesc_frames",params)
 maxTimeFrame=timeFrames.get_max_time()
+#maxTimeFrame=580
 
 maxTimeGapLifted=60 #value that corresponds to maximal length of a lifted edge
 batchSize=300
@@ -52,7 +53,7 @@ maxTime=minTime+batchSize-1
 maxUsedLabel=0
 maxTimeForUsingLabels=0
 oldLabels=[]
-globalLabels=[]
+#globalLabels=[]
 stop=False
 
 while not stop:
@@ -72,9 +73,16 @@ while not stop:
   firstPaths=firstSolver.get_best_primal()
   batchProc.decode_solution(firstPaths)
   labels=batchProc.get_labels();
-  oldLabels=labels
+  
+  if oldLabels:
+    indexToDelete=batchProc.get_index_to_delete()
+    if indexToDelete<len(oldLabels):
+      del oldLabels [indexToDelete:len(oldLabels)]
+    oldLabels=oldLabels+labels
+  else:
+    oldLabels=labels
   maxUsedLabel=batchProc.get_max_used_label()
-  globalLabels.append(labels)
+  #globalLabels.append(labels)
   if maxTime==maxTimeFrame:
     stop=True
   else:
@@ -82,7 +90,7 @@ while not stop:
     maxTimeForUsingLabels=minTime+lengthOfOldPathsToUse-1;
     maxTime=min(minTime+batchSize-1,maxTimeFrame)
 
-for gl in globalLabels:
+for gl in oldLabels:
   for i in gl:
     print(i, end =" ")
   print("")

@@ -22,6 +22,7 @@ LdpBatchProcess::LdpBatchProcess(VertexGroups<>& shiftedGroups, std::vector<std:
     }
    // std::cout<<"min max time and vertices set"<<std::endl;
     numberOfVerticesInBatch=maxVertex-minVertex+1;
+    indexToDel=shiftedVertexLabels_.size();
 
    // origVerticesScore=std::vector<double>(numberOfVerticesInBatch);
     maxTimeForLabeled=maxTimeForLabeled_;
@@ -34,7 +35,10 @@ LdpBatchProcess::LdpBatchProcess(VertexGroups<>& shiftedGroups, std::vector<std:
         for (size_t i = 0; i < shiftedVertexLabels_.size(); ++i) {
             size_t vertex=shiftedVertexLabels_[i][0];
             if(vertex<minVertex) continue;
-            if(vertex>=minValidVertex) break;
+            if(vertex>=minValidVertex){
+                indexToDel=i;
+                break;
+            }
             shiftedLabels[vertex-minVertex]=shiftedVertexLabels_[i][1];
         }
 

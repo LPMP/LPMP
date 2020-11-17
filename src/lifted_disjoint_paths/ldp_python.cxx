@@ -76,6 +76,7 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
              .def("init_from_file",&LPMP::LdpBatchProcess::initFromFile,"Initializes both edges and vectors from a file")
              .def("decode_solution",&LPMP::LdpBatchProcess::decode,"Given paths resulting from solver, creates labels for new vertices in form: vector n x 2: vertexID->label")
              .def("get_labels",&LPMP::LdpBatchProcess::getDecodedLabels,"Returns labels obtained from solution in form: vector n x 2: vertexID->label")
+             .def("get_index_to_delete",&LPMP::LdpBatchProcess::getIndexToDel,"Returns index than needs to be used for deleting outdated labels in label vector")
              .def("get_max_used_label",&LPMP::LdpBatchProcess::getMaxLabelsSoFar,"Returns max used label, needed for constructor of next batch");
 
 
