@@ -65,6 +65,15 @@ public:
     }
 
 
+    const double& getPrimalLiftedCost()const{
+        return primalLiftedCost;
+    }
+    const double& getPrimalBaseCost()const{
+        return primalBaseCost;
+    }
+
+    const void print() const;
+
 private:
     double minimize(const std::vector<double> *pCosts, size_t edgeIndex, bool edgeLabel)const;
 
@@ -73,6 +82,8 @@ private:
     const std::vector<char> isLifted;
     size_t numberOfEdges;
     std::vector<char> primalSolution;
+    mutable double primalBaseCost;
+    mutable double primalLiftedCost;
 
 };
 
@@ -97,6 +108,16 @@ double ldp_path_factor::getMinMarginal(const size_t &edgeIndex,const std::vector
 
 void ldp_path_factor::init_primal(){
     std::fill(primalSolution.begin(),primalSolution.end(),0);
+}
+
+
+const void ldp_path_factor::print() const{
+    std::cout<<"path factor"<<std::endl;
+    for (int i = 0; i < listOfVertices.size(); ++i) {
+        int il=isLifted.at(i);
+        std::cout<<"vertex "<<listOfVertices[i]<<", is lifted "<<il<<", cost "<<listOfCosts[i]<<std::endl;
+    }
+
 }
 
 void ldp_path_factor::updateEdgeCost(const size_t& edgeIndex,const double& value){
@@ -143,8 +164,18 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
 
 double ldp_path_factor::EvaluatePrimal() const{
     double value=0;
+    primalBaseCost=0;
+    primalLiftedCost=0;
     for (size_t i=0;i<numberOfEdges;i++) {
-        value+=listOfCosts[i]*primalSolution[i];
+        if(primalSolution[i]){
+            value+=listOfCosts[i];
+            if(isLifted[i]){
+                primalLiftedCost+=listOfCosts[i];
+            }
+            else{
+                primalBaseCost+=listOfCosts[i];
+            }
+        }
     }
     return value;
 }

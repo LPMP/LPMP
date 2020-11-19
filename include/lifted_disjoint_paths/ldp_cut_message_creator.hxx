@@ -32,6 +32,7 @@ inline void LdpCutMessageInputs<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::init(CU
 
     containsLifted=false;
     auto * sncFactorOut=snc->get_factor();
+    assert(inputVertex==sncFactorOut->nodeID);
     auto iterCut=cutGraph.forwardNeighborsBegin(i);
     auto iterEnd=cutGraph.forwardNeighborsEnd(i);
 

@@ -84,6 +84,16 @@ public:
         return liftedCost;
     }
 
+    const double& getPrimalLiftedCost()const{
+        return primalLiftedCost;
+    }
+    const double& getPrimalBaseCost()const{
+        return primalBaseCost;
+    }
+
+
+
+
     void print()const ;
 private:
     double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne, bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const;
@@ -111,6 +121,9 @@ size_t unassignedLabel;
 mutable std::vector<size_t> storeLabeling;  //index to index
 double liftedCost;
 mutable bool liftedActive;
+mutable double primalBaseCost;
+mutable double primalLiftedCost;
+
 
 
 
@@ -302,7 +315,13 @@ double ldp_cut_factor::EvaluatePrimal() const{
             value+=cutGraph.getForwardEdgeCost(i,primalSolution[i]);
         }
     }
-    if(primalSolution.back()==w) value+=liftedCost;  //meaning lifted edge is active
+    primalBaseCost=value;
+    primalLiftedCost=0;
+
+    if(primalSolution.back()==w){
+        primalLiftedCost=liftedCost;
+        value+=liftedCost;  //meaning lifted edge is active
+    }
     return value;
 }
 

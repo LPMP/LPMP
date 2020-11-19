@@ -165,6 +165,14 @@ public:
         }
     }
 
+    const double& getPrimalLiftedCost()const{
+        return primalLiftedCost;
+    }
+    const double& getPrimalBaseCost()const{
+        return primalBaseCost;
+    }
+
+
          const std::size_t nodeID;
 
 
@@ -306,6 +314,10 @@ private:
      std::unordered_map<size_t,size_t> liftedIDToOrder;
 
      std::vector<size_t> traverseOrder;
+
+     mutable double primalBaseCost;
+     mutable double primalLiftedCost;
+
 
 
 };
@@ -460,7 +472,10 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setPrimalLifted(std::vecto
 
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
+    primalBaseCost=0;
+    primalLiftedCost=0;
     if(primalBase_==nodeNotActive){
+
         return 0;
     }
     else{
@@ -468,9 +483,11 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::EvaluatePrimal() const{
         double value=nodeCost;
        // std::cout<<"node cost "<<nodeID<<": "<<nodeCost<<std::endl;
         value+=baseCosts.at(primalBase_);
+        primalBaseCost=value;
 
         for(size_t node:primalLifted_){
             value+=liftedCosts.at(node);
+            primalLiftedCost+=liftedCosts.at(node);
         }
         return value;
     }
