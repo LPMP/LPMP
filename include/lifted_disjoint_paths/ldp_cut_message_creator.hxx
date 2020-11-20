@@ -27,6 +27,7 @@ inline void LdpCutMessageInputs<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::init(CU
     _nodeIndexOfLiftedEdge;
 
     size_t inputVertex=myCutFactor->getInputVertices().at(i);
+    const auto & outputVertices=myCutFactor->getOutputVertices();
     const auto & cutGraph=myCutFactor->getCutGraph();
 
 
@@ -46,16 +47,17 @@ inline void LdpCutMessageInputs<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::init(CU
     size_t sncCounter=0;
     size_t cutCounter=0;
     while(iterCut!=iterEnd&&iterSnc!=iterSncEnd){
-        if(iterCut->first<*iterSnc){
+        size_t vertexInCut=outputVertices.at(iterCut->first);
+        if(vertexInCut<*iterSnc){
             iterCut++;
             cutCounter++;
         }
-        else if(*iterSnc<iterCut->first){
+        else if(*iterSnc<vertexInCut){
             iterSnc++;
             sncCounter++;
         }
         else {
-            assert(*iterSnc==iterCut->first);
+            assert(*iterSnc==vertexInCut);
             _nodeIndicesInCut.push_back(cutCounter);
             _nodeIndicesInSnc.push_back(sncCounter);
             //snc->updateEdgeCost(-iterCut->second,sncCounter,false);

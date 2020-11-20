@@ -269,12 +269,13 @@ class ldp_snc_path_message
 public:
     ldp_snc_path_message(const std::vector<size_t>& _edgeIndexInPath,  //Mostly one, two for the first and the last path vertices
                          const std::vector<size_t>& _vertexIndexInSnc,
-                         const std::vector<char>& _isLifted)
+                         const std::vector<char>& _isLifted, bool debugInfo=false)
     {
         edgeIndexInPath=_edgeIndexInPath;  //Mostly one, two for the first and the last path vertices
         vertexIndexInSnc=_vertexIndexInSnc;
         isLifted=_isLifted;
         dimension=_edgeIndexInPath.size();
+        debInfo=debugInfo;
 //        std::cout<<"dimension in message "<<dimension<<std::endl;
 
        // std::cout<<"dimension of edge indices "<<edgeIndexInPath.size()<<std::endl;
@@ -296,6 +297,25 @@ public:
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
+        //if(debInfo){
+            size_t indexInPath=edgeIndexInPath[msg_dim];
+            size_t v0=l.getListOfVertices().at(indexInPath);
+            size_t v1;
+            if(indexInPath==l.getNumberOfEdges()-1){
+                v1=l.getListOfVertices().at(0);
+                lastV1=v1;
+                lastV2=v0;
+                lastValue=msg;
+            }
+            else{
+                v1=l.getListOfVertices().at(indexInPath+1);
+                lastV1=v0;
+                lastV2=v1;
+                lastValue=msg;
+            }
+            //std::cout<<"Update cost of path, vertices "<<v0<<", "<<v1<<", edge index "<<edgeIndexInPath[msg_dim]<<", value "<<msg<<std::endl;
+        //}
+        assert(isLifted.at(msg_dim)==l.getLiftedInfo().at(indexInPath));
         l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
         double after=l.LowerBound();
        // std::cout<<"after lb "<<after<<std::endl;
@@ -312,7 +332,31 @@ public:
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
+        size_t centralNodeID=r.nodeID;
        // std::cout<<"repam left path "<<std::endl;
+        //if(debInfo){
+            size_t secondVertex;
+            size_t v0;
+            size_t v1;
+
+            if(isLifted.at(msg_dim)){
+
+                secondVertex=r.getLiftedIDs().at(vertexIndexInSnc[msg_dim]);
+
+            }
+            else{
+                secondVertex=r.getBaseIDs().at(vertexIndexInSnc[msg_dim]);
+            }
+            v0=std::min(centralNodeID,secondVertex);
+            v1=std::max(centralNodeID,secondVertex);
+            assert(v0==lastV1);
+            assert(v1==lastV2);
+            if(std::abs(msg+lastValue)>=eps){
+                std::cout<<"WRONG update cost "<<v0<<", "<<v1<<", left was "<<lastValue<<", right is "<<msg<<std::endl;
+            }
+            assert(std::abs(msg+lastValue)<eps);
+           // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
+        //}
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
         double after=r.LowerBound();
        // std::cout<<"abter lb "<<after<<std::endl;
@@ -406,6 +450,11 @@ private:
     size_t dimension;
     std::vector<size_t> vertexIndexInSnc;
     std::vector<char> isLifted;
+    bool debInfo;
+
+    mutable size_t lastV1;
+    mutable size_t lastV2;
+    mutable double lastValue;
 
 };
 

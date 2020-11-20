@@ -1075,6 +1075,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                     }
                     std::cout<<std::endl;
                     for(auto f:usedPathFactors){
+                        std::cout<<"pf index "<<f<<std::endl;
                         auto * pathF=path_factors_[f]->get_factor();
                         pathF->print();
                         std::cout<<" base cost "<<pathF->getPrimalBaseCost()<<std::endl;
@@ -1085,9 +1086,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
                 }
-                else{
-                    std::cout<<"path "<<i<<" ok"<<std::endl;
-                }
+//                else{
+//                    std::cout<<"path "<<i<<" ok"<<std::endl;
+//                }
 
             }
             controlBaseValue=controlPrimalValue;
@@ -1352,7 +1353,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
         bool canAdd=true;
         ldp_cut_factor* pCutFactor=leQueue.top().second;
-        pCutFactor->print();
+        //pCutFactor->print();
         auto& cutGraph=pCutFactor->getCutGraph();
 //        for(size_t i=0;i<pCutFactor->getNumberOfInputs();i++){
 //            size_t a=pCutFactor->getInputVertices()[i];
@@ -1373,7 +1374,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             size_t v=pCutFactor->getLiftedInputVertex();
             size_t w=pCutFactor->getLiftedOutputVertex();
             usedLiftedEdges[v].insert(w);
-            //pCutFactor->print();
+           // pCutFactor->print();
             addedCuts++;
             auto* newCutFactor = lp_->template add_factor<CUT_FACTOR_CONT>(*pCutFactor);
             cut_factors_.push_back(newCutFactor);
@@ -1516,7 +1517,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         pPathFactor=nullptr;
         queueWithPaths.pop();
         auto *myPathFactor=newPathFactor->get_factor();
-        myPathFactor->print();
+        //myPathFactor->print();
         const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
         for (size_t i=0;i<myPathFactor->getNumberOfEdges();i++) {
             size_t pathVertex=pathVertices[i];
@@ -1525,15 +1526,17 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                 LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputs;
                 messageInputs.init(myPathFactor,pSNC,i);
                 //LdpPathMessageInputs messageInputs=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNC,i);
-                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndicesInPath,messageInputs.indicesInSnc,messageInputs.isLiftedForMessage);
+                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
+                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndicesInPath,messageInputs.indicesInSnc,messageInputs.isLiftedForMessage,debugInfo);
                 snc_path_messages_.push_back(newMessage);
             }
             if(i<myPathFactor->getNumberOfEdges()-1){
                 auto * pSNCOut=single_node_cut_factors_[pathVertex][1];
                 LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputsOut;
                 messageInputsOut.init(myPathFactor,pSNCOut,i);
+                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
               //  LdpPathMessageInputs messageInputsOut=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNCOut,i);
-                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndicesInPath,messageInputsOut.indicesInSnc,messageInputsOut.isLiftedForMessage);
+                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndicesInPath,messageInputsOut.indicesInSnc,messageInputsOut.isLiftedForMessage,debugInfo);
                 snc_path_messages_.push_back(newMessageOut);
             }
             //std::cout<<"vertex "<<i<<" of path solved "<<std::endl;

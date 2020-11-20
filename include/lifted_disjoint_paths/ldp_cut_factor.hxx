@@ -47,7 +47,7 @@ public:
 
     void updateCostLifted(const double& value);
 
-    std::tuple<double, size_t, size_t, char> minCutEdge(size_t index1, size_t index2) const;
+    std::tuple<double, size_t, size_t, char> minCutEdge(size_t index1, size_t index2,const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const;
 
     double getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const;
     double getOneEdgeMinMarginal(const size_t & index1, const size_t & neighborIndex, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost) const;
@@ -98,9 +98,9 @@ public:
 private:
     double advancedMinimizer(const size_t& index1, const size_t& neighborIndex, bool restrictToOne, bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const;
 
-    LPMP::linear_assignment_problem_input createLAStandard(bool addLiftedCost=false)const;
-    LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2,bool addLiftedCost=false)const ;
-    LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1, const size_t& v2,bool addLiftedCost=false)const;
+    LPMP::linear_assignment_problem_input createLAStandard(bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const;
+    LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2,bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const ;
+    LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1, const size_t& v2,bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const;
 
 
 //std::vector<double> costs;
@@ -386,10 +386,10 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
     std::tuple<double,size_t,size_t,char> myTuple;
     if(index1!=unassignedLabel&&!restrictToOne){
        if(debug()) std::cout<<"restric to zero"<<std::endl;
-        myTuple=minCutEdge(index1,index2);
+        myTuple=minCutEdge(index1,index2,pCutGraph,pLiftedCost);
     }
     else{
-        myTuple=minCutEdge(unassignedLabel,unassignedLabel);
+        myTuple=minCutEdge(unassignedLabel,unassignedLabel,pCutGraph,pLiftedCost);
     }
     double minCutValue=std::get<0>(myTuple);
     if(minCutValue>=0){
@@ -430,14 +430,14 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
     }
     else{
-        std::cout<<"ADVANCED METHOD FOR CUT FACTOR"<<std::endl;
+       // std::cout<<"ADVANCED METHOD FOR CUT FACTOR"<<std::endl;
         if(debug())std::cout<<"advanced method"<<std::endl;
         if(index1==unassignedLabel){
-            lapInput=createLAStandard(addLiftedCost);
+            lapInput=createLAStandard(addLiftedCost,pCutGraph,pLiftedCost);
         }
         else if(restrictToOne){
             assert(index1<inputVertices.size());
-            lapInput=laExcludeVertices(index1,index2,addLiftedCost);
+            lapInput=laExcludeVertices(index1,index2,addLiftedCost,pCutGraph,pLiftedCost);
             //std::cout<<"lap input for one created "<<std::endl;
             //minValue=cutGraph.getForwardEdgeCost(index1,neighborIndex);
             assert(index2<outputVertices.size());
@@ -457,7 +457,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
         else{//edge is restricted to zero
             assert(index1<inputVertices.size());
             assert(index2<outputVertices.size());
-            lapInput=laExcludeEdge(index1,index2,addLiftedCost);
+            lapInput=laExcludeEdge(index1,index2,addLiftedCost,pCutGraph,pLiftedCost);
             // std::cout<<"lap input for zero created "<<std::endl;
         }
         MCF::SSP<long,double> mcf(lapInput.no_mcf_nodes(),lapInput.no_mcf_edges());
@@ -500,17 +500,17 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
 
 
-LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard(bool addLiftedCost) const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard(bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost) const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
         lapInput.add_assignment(i,numberOfOutput,0.0);
-        auto * it=cutGraph.forwardNeighborsBegin(i);
-        auto * end=cutGraph.forwardNeighborsEnd(i);
+        auto * it=pCutGraph->forwardNeighborsBegin(i);
+        auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;it!=end;it++){
             const size_t& outputIndex=it->first;
             double value=it->second;
             if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
-                value+=liftedCost;
+                value+=*pLiftedCost;
             }
             if(value<0){
                 assert(outputIndex<outputVertices.size());
@@ -524,13 +524,13 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard(bool ad
 }
 
 
-LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size_t& v1, const size_t& v2, bool addLiftedCost) const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size_t& v1, const size_t& v2, bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost) const{
     LPMP::linear_assignment_problem_input lapInput;
     bool edgeFound=false;
     for (size_t i = 0; i < numberOfInput; ++i) {
         lapInput.add_assignment(i,numberOfOutput,0.0);
-        auto * it=cutGraph.forwardNeighborsBegin(i);
-        auto * end=cutGraph.forwardNeighborsEnd(i);        
+        auto * it=pCutGraph->forwardNeighborsBegin(i);
+        auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;it!=end;it++){
             const size_t& outputIndex=it->first;
              double value=it->second;
@@ -539,7 +539,7 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size
                  continue;
              }
              if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
-                 value+=liftedCost;
+                 value+=*pLiftedCost;
              }
 
             if(value<0){
@@ -555,20 +555,20 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size
 }
 
 
-LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const size_t& v1, const size_t& v2, bool addLiftedCost) const{
+LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const size_t& v1, const size_t& v2, bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost) const{
     LPMP::linear_assignment_problem_input lapInput;
     for (size_t i = 0; i < numberOfInput; ++i) {
         lapInput.add_assignment(i,numberOfOutput,0.0);
         if(i==v1){
             continue;
         }
-        auto * it=cutGraph.forwardNeighborsBegin(i);
-        auto * end=cutGraph.forwardNeighborsEnd(i);
+        auto * it=pCutGraph->forwardNeighborsBegin(i);
+        auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;it!=end;it++){
             const size_t& outputIndex=it->first;
             double value=it->second;
             if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
-                value+=liftedCost;
+                value+=*pLiftedCost;
             }
             if(outputIndex==v2) continue;
             if(value<0){
@@ -600,14 +600,14 @@ double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t 
 }
 
 
-std::tuple<double,size_t,size_t,char> ldp_cut_factor::minCutEdge(size_t index1,size_t index2) const{
+std::tuple<double,size_t,size_t,char> ldp_cut_factor::minCutEdge(size_t index1,size_t index2,const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const{
     double minValue=std::numeric_limits<double>::max();
     size_t v1=0;
     size_t v2=0;
     char cutCoverLiftedNegative=false;
     for(size_t i=0;i<inputVertices.size();i++){
-        auto * iter=cutGraph.forwardNeighborsBegin(i);
-        auto *end=cutGraph.forwardNeighborsEnd(i);
+        auto * iter=pCutGraph->forwardNeighborsBegin(i);
+        auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;iter!=end;iter++){
             if(iter->second<minValue){
                 if(index1!=i||index2!=iter->first){
@@ -648,7 +648,7 @@ double ldp_cut_factor::getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,co
 //        }
 //    }
     double localLiftedCost=*pLiftedCost;
-    std::tuple<double,size_t,size_t,char>t=minCutEdge(unassignedLabel,unassignedLabel);
+    std::tuple<double,size_t,size_t,char>t=minCutEdge(unassignedLabel,unassignedLabel,pCutGraph,pLiftedCost);
     bool baseCoverNegative=std::get<3>(t)>0;
     double minValue=std::get<0>(t);
 
@@ -727,12 +727,19 @@ public:
       // std::cout<<std::endl;
         assert(msg_dim <=nodeIndicesInCut.size());
        if(msg_dim==nodeIndicesInCut.size()){
+           lastV1=l.getLiftedInputVertex();
+           lastV2=l.getLiftedOutputVertex();
+           lastValue=msg;
 
            l.updateCostLifted(msg);
        }
        else{
            if(sncIsOut){
                l.updateCostBase(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
+               lastV1=l.getInputVertices().at(sncNodeIDindexInCut);
+               size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
+               lastV2=l.getOutputVertices().at(otherVertex);
+               lastValue=msg;
            }
            else{
                l.updateCostBase(nodeIndicesInCut.at(msg_dim),sncNodeIDindexInCut,msg);
@@ -754,16 +761,29 @@ public:
             r.print();
         }
         assert(msg_dim <=nodeIndicesInSnc.size());
+        size_t secondVertex;
         if(msg_dim==nodeIndicesInSnc.size()){
             {
                 assert(containsLiftedEdge);
                 if(debug())std::cout<<"node id of lifted edge "<<r.getLiftedIDs()[nodeIndexOfLiftedEdge]<<std::endl;
                 r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
+                secondVertex=r.getLiftedIDs().at(nodeIndexOfLiftedEdge);
             }
         }
         else{
                 r.updateEdgeCost(msg,nodeIndicesInSnc.at(msg_dim),false);
+                secondVertex=r.getBaseIDs().at(nodeIndicesInSnc.at(msg_dim));
         }
+        assert(lastV1==r.nodeID);
+        if(lastV2!=secondVertex){
+            std::cout<<"cut mismatch, first vertex "<<lastV1<<", vertex in cut "<<lastV2<<",  vertex in snc "<<secondVertex<<", index in cut"<<nodeIndicesInCut[msg_dim]<<", is lifted "<<(msg_dim==nodeIndicesInSnc.size())<<std::endl;
+
+        }
+//        else{
+//            std::cout<<"cut ok, first vertex "<<lastV1<<", vertex in cut "<<lastV2<<",  vertex in snc "<<secondVertex<<", is lifted "<<(msg_dim==nodeIndicesInSnc.size())<<std::endl;
+//        }
+        assert(lastV2==secondVertex);
+        assert(std::abs(lastValue+msg)<eps);
         double after=r.LowerBound();
         if(debug())std::cout<<"abter lb "<<after<<std::endl;
 
@@ -846,7 +866,14 @@ private:
     const bool sncIsOut;   //if true, central node is in inputs, other nodes in outputs
     const bool containsLiftedEdge;
     const size_t nodeIndexOfLiftedEdge;
+
+
+    mutable size_t lastV1;
+    mutable size_t lastV2;
+    mutable double lastValue;
 };
+
+
 
 
 
