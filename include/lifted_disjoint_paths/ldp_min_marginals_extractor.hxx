@@ -82,7 +82,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
         //std::cout<<"base mm size "<<minMarginalsIn.size()<<std::endl;
         for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
             size_t neighborID=sncFactorIn->getBaseIDs()[j];
-            if(neighborID>=numberOfVertices) continue;
+            //if(neighborID>=numberOfVertices) continue;
             minMarginalsIn[j]*=0.5;
             localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
             baseEdgesWithCosts[neighborID][i]+=minMarginalsIn[j];
@@ -105,7 +105,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
 
         for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
             size_t neighborID=sncFactorOut->getBaseIDs()[j];
-            if(neighborID>=numberOfVertices) continue;
+            //if(neighborID>=numberOfVertices) continue;
             minMarginalsOut[j]*=0.5;
               localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
             baseEdgesWithCosts[i][neighborID]+=minMarginalsOut[j];

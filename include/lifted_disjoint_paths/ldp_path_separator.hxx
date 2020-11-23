@@ -318,7 +318,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         auto iter=baseMM[i].begin();
         auto end=baseMM[i].end();
         for(;iter!=end;iter++){
-            if(iter->second<0){
+            if(iter->first<numberOfVertices&&iter->second<0){
                 edgesToSort.push_back(std::tuple(iter->second,i,iter->first,false));
             }
         }

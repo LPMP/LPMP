@@ -119,6 +119,8 @@ public:
             std::sort(forwardEdges[i].begin(),forwardEdges[i].end());
             std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
         }
+
+
         //Need to sort within edges?
     }
 
@@ -128,69 +130,90 @@ public:
     }
 
 
-    void setForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
-        std::cout<<"Warning not synchronized with backward edges"<<std::endl;
-        forwardEdges[vertex][neighborIndex].second=value;
-    }
+//    void setForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+//        std::cout<<"Warning not synchronized with backward edges"<<std::endl;
+//        forwardEdges[vertex][neighborIndex].second=value;
+//    }
 
 
-    void setBackwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
-        std::cout<<"Warning not synchronized with forward edges"<<std::endl;
-        backwardEdges[vertex][neighborIndex].second=value;
-    }
+//    void setBackwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+//        std::cout<<"Warning not synchronized with forward edges"<<std::endl;
+//        backwardEdges[vertex][neighborIndex].second=value;
+//    }
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfVertices);
+        assert(neighborIndex<forwardEdges[vertex].size());
         return forwardEdges[vertex][neighborIndex].second;
     }
 
 
     double getBackwardEdgeCost(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfVertices);
+        assert(neighborIndex<backwardEdges[vertex].size());
         return backwardEdges[vertex][neighborIndex].second;
     }
 
     size_t getForwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfVertices);
+        assert(neighborIndex<forwardEdges[vertex].size());
         return forwardEdges[vertex][neighborIndex].first;
     }
 
 
     size_t getBackwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
+         assert(vertex<numberOfVertices);
+         assert(neighborIndex<backwardEdges[vertex].size());
         return backwardEdges[vertex][neighborIndex].first;
     }
 
     const std::pair<size_t,double> * forwardNeighborsBegin(size_t i)const {
+         assert(i<numberOfVertices);
         return forwardEdges[i].begin();
     }
 
     const std::pair<size_t,double> * forwardNeighborsEnd(size_t i)const {
+         assert(i<numberOfVertices);
         return forwardEdges[i].end();
     }
 
     const std::pair<size_t,double> * backwardNeighborsBegin(size_t i)const {
+         assert(i<numberOfVertices);
         return backwardEdges[i].begin();
     }
 
     const std::pair<size_t,double> * backwardNeighborsEnd(size_t i)const {
+         assert(i<numberOfVertices);
         return backwardEdges[i].end();
     }
 
     std::pair<size_t,double> * forwardNeighborsBegin(size_t i) {
+         assert(i<numberOfVertices);
         return forwardEdges[i].begin();
     }
 
      std::pair<size_t,double> * forwardNeighborsEnd(size_t i) {
+          assert(i<numberOfVertices);
         return forwardEdges[i].end();
     }
 
      std::pair<size_t,double> * backwardNeighborsBegin(size_t i) {
+         assert(i<numberOfVertices);
         return backwardEdges[i].begin();
     }
 
      std::pair<size_t,double> * backwardNeighborsEnd(size_t i) {
+        assert(i<numberOfVertices);
         return backwardEdges[i].end();
     }
 
     const size_t & getNumberOfVertices()const{
         return numberOfVertices;
+    }
+
+    const size_t & getNumberOfEdgesFromVertex(const size_t& i)const{
+        assert(i<numberOfVertices);
+        return forwardEdges[i].size();
     }
 
   //  void setAllCostToZero();
