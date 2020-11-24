@@ -20,6 +20,7 @@ public:
 
     {
         numberOfVertices=pInstance->getNumberOfVertices()-2;
+        maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
 
     }
 
@@ -50,6 +51,7 @@ private:
     std::vector<std::vector<char>> isConnected;
     std::priority_queue<std::pair<double,CUT_FACTOR*>> pQueue;
      std::vector<std::list<size_t>> candidateLifted;
+     size_t maxTimeGap;
 
 };
 
@@ -88,8 +90,12 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::connectEdge
                 baseCounter++;
             }
             if(origDescendants==endOrig||*origDescendants>*newDescendants){
-                descendants[pred].insert(origDescendants,(*newDescendants));
-                predecessors[*newDescendants].push_back(pred);
+                size_t l0=pInstance->getGroupIndex(pred);
+                size_t l1=pInstance->getGroupIndex(*newDescendants);
+                if(l1-l0<=maxTimeGap){
+                    descendants[pred].insert(origDescendants,(*newDescendants));
+                    predecessors[*newDescendants].push_back(pred);
+                }
                 if(itBase!=baseEnd&&itBase->first==*newDescendants){
                     assert(baseCounter<isConnected[pred].size());
                     isConnected[pred][baseCounter]=1;
@@ -120,6 +126,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
 
     double improvementValue=std::min(abs(lCost),cost);
 
+    size_t addedCutEdges=0;
     auto descV1Iter=descendants[v1].begin();
     auto descV1end=descendants[v1].end();
     for (;descV1Iter!=descV1end;descV1Iter++) {
@@ -133,6 +140,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
                 if(pInstance->isReachable(d2,v2)){
                     assert(baseEdgesWithCosts[d][d2]>=cost-eps);
                     cutEdges[d][d2]=0;
+                    addedCutEdges++;
                     assert(d<numberOfVertices);
                     assert(d2<numberOfVertices);
                 }
@@ -148,30 +156,10 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
             }
 
         }
-
-
     }
+    assert(addedCutEdges>0);
 
-//    for(auto& d:descendants[v1]){              //or break if d is in used vertices for cuts and w is reachable from d
-//        const auto* it=baseGraph.forwardNeighborsBegin(d);
-//        const auto* end=baseGraph.forwardNeighborsEnd(d);
-//        for(;it!=end;it++){               //can be probably a linear iteration
-//            size_t d2=it->first;
 
-//            //TODO fix this! How to effectively check if d2 is descendant of v1?
-//            if(!isConnected[v1][d2]&&pInstance->isReachable(d2,v2)){  //candidate cut edge (d,d2), leaves component and w is reachable
-////                if(baseEdgesWithCosts[d][d2]<cost-eps){
-////                    std::cout<<"wrong cut edge "<<d<<", "<<d2<<", value: "<<cost<<"is connected "<<isConnected[d][d2]<<std::endl;
-////                }
-//                assert(baseEdgesWithCosts[d][d2]>=cost-eps);
-//                cutEdges[d][d2]=0;
-//                assert(d<numberOfVertices);
-//                assert(d2<numberOfVertices);
-//            }
-//        }
-
-//    }
-    // ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,lCost,cutEdges); //TODO use this after solving upddate cost in snc
     CUT_FACTOR* pCutF=new CUT_FACTOR(v1,v2,0.0,cutEdges);
     pQueue.push(std::pair(improvementValue,pCutF));
 }
@@ -268,12 +256,12 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
 
     }
 
-    std::cout<<"candidate lifted obtained "<<std::endl;
+   // std::cout<<"candidate lifted obtained "<<std::endl;
 
 
 
 
-    std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
+   // std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
     size_t i=0;
     while(nrClosedNodes<numberOfVertices&&i<edgesToSort.size()){
         size_t v=std::get<1>(edgesToSort[i]);
@@ -290,15 +278,15 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         double cost=std::get<0>(edgesToSort[i]);
         assert(cost>0);
 
-        std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
-        std::cout<<"number of closed "<<nrClosedNodes<<std::endl;
+        //std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
+       // std::cout<<"number of closed "<<nrClosedNodes<<std::endl;
 
       //  std::tuple<double,size_t,size_t> bestLiftedEdge;  //lb improvement, cost, vertices
       //  double bestLiftedCost=0;
       //  std::cout<<"compute"<<cost<<std::endl;
 
         for(auto& pred: predecessors[v]){
-            std::cout<<"pred "<<pred<<std::endl;
+           // std::cout<<"pred "<<pred<<std::endl;
             if(candidateLifted[pred].empty()) continue;
             std::list<size_t> edgesToKeep;
             auto  liftedIt=candidateLifted[pred].begin();
@@ -309,10 +297,10 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
             auto  oldDescEnd=descendants[pred].end();
 
             while(newDescIt!=newDescEnd&&liftedIt!=liftedEnd){
-                std::cout<<"new desc, lifted "<<(*newDescIt)<<", "<<(*liftedIt)<<std::endl;
+                //std::cout<<"new desc, lifted "<<(*newDescIt)<<", "<<(*liftedIt)<<std::endl;
                 while(liftedIt!=liftedEnd&&*liftedIt<*newDescIt) liftedIt++;
                 if(oldDescIt==oldDescEnd||*oldDescIt>*newDescIt){
-                    std::cout<<"new desc "<<std::endl;
+                   // std::cout<<"new desc "<<std::endl;
                     if(liftedIt!=liftedEnd&&*liftedIt==*newDescIt){
                         createCut(pred,*liftedIt,cost);
                         liftedIt=candidateLifted[pred].erase(liftedIt);
@@ -338,7 +326,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         i++;
     }
 
-    std::cout<<"queue with cuts filled"<<std::endl;
+    //std::cout<<"queue with cuts filled"<<std::endl;
 
 
 }

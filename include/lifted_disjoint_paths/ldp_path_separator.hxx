@@ -114,6 +114,7 @@ public:
         isInQueue=std::vector<char>(numberOfVertices);
         predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
         predInQueueIsLifted=std::vector<char>(numberOfVertices);
+        maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
     }
 
     void separatePathInequalities(size_t maxConstraints);
@@ -146,6 +147,7 @@ std::vector<char> isInQueue;
 std::vector<size_t> predInQueue;
 std::vector<char> predInQueueIsLifted;
 std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
+ size_t maxTimeGap;
 
 };
 
@@ -336,7 +338,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                 positiveLifted[i][iter->first]=iter->second;
             }
         }
-    }
+    }  maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
 
     std::sort(edgesToSort.begin(),edgesToSort.end());
 
@@ -391,8 +393,12 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                         }
                     }
 
-                    descendants[pred].insert(iterDescPred,descV2);
-                    predecessors[descV2].push_back(pred);
+                    size_t l0=pInstance->getGroupIndex(pred);
+                    size_t l1=pInstance->getGroupIndex(descV2);
+                    if(l1-l0<=maxTimeGap){
+                        descendants[pred].insert(iterDescPred,descV2);
+                        predecessors[descV2].push_back(pred);
+                    }
                     iterDescV2++;
 
                 }
