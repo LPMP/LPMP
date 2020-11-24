@@ -1123,26 +1123,21 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
                 }
             }
-            if(std::abs(primalValue-controlPrimalValue)>=eps){
+            double diff=std::abs(primalValue-controlPrimalValue);
+            diff/=abs(primalValue);
+            double epsilon=1e-13;
+            if(diff>=epsilon){
                 std::cout<<"computed primal value "<<primalValue<<std::endl;
                 std::cout<<"control primal value "<<controlPrimalValue<<std::endl;
                 std::cout<<"computed base primal value "<<primalBaseValue<<std::endl;
                 std::cout<<"control primal base value "<<controlBaseValue<<std::endl;
                 std::cout<<"computed lifted primal value "<<primalLiftedValue<<std::endl;
                 std::cout<<"control lifted base value "<<controlLiftedValue<<std::endl;
+                std::cout<<"difference "<<diff<<std::endl;
 
             }
-            assert(std::abs(primalValue-controlPrimalValue)<eps);
 
-
-            if(debug()){
-                for(auto path: bestPrimalSolution){
-                    for(auto v:path){
-                        std::cout<<v<<" ";
-                    }
-                    std::cout<<std::endl;
-                }
-            }
+            assert(diff<epsilon);
         }
 
 //    best_primal_solution = ...;

@@ -320,7 +320,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         auto iter=baseMM[i].begin();
         auto end=baseMM[i].end();
         for(;iter!=end;iter++){
-            if(iter->first<numberOfVertices&&iter->second<0){
+            if(iter->first<numberOfVertices&&iter->second<-eps){
                 edgesToSort.push_back(std::tuple(iter->second,i,iter->first,false));
             }
         }
@@ -331,10 +331,10 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         auto iter=liftedMM[i].begin();
         auto end=liftedMM[i].end();
         for(;iter!=end;iter++){
-            if(iter->second<0){
+            if(iter->second<-eps){
                 edgesToSort.push_back(std::tuple(iter->second,i,iter->first,true));
             }
-            else if(iter->second>0){
+            else if(iter->second>eps){
                 positiveLifted[i][iter->first]=iter->second;
             }
         }

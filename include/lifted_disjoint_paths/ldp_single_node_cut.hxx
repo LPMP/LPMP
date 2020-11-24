@@ -928,9 +928,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
         double restrictedOptValue=strForUpdateValues.optValue;
 
         double valueToReturn=origOptValue-restrictedOptValue;
-		if(debug()&&valueToReturn>1e-8){
-			std::cout<<"wrong min marginal"<<nodeID<<", "<<indexOfLiftedEdge<<", opt vertex but positive value "<<valueToReturn<<std::endl;
-		}
+        assert(valueToReturn<eps);
 		return valueToReturn;
 
 
@@ -961,11 +959,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
         //auto it =message.begin();
         double messValue=ldpInstance.sncLiftedMessages[liftedIDs[indexOfLiftedEdge]];
 
-		if(debug()){
-			if(messValue<-eps){
-				std::cout<<"wrong min marginal "<<nodeID<<", index "<<indexOfLiftedEdge<<". Not optimal, value "<<messValue<<std::endl;
-			}
-		}
+        assert(messValue>-eps);
 
         return messValue;
 	}
@@ -1246,7 +1240,7 @@ public:
 	{
         const std::vector<double>& baseCosts=r.getBaseCosts();
         const std::vector<double>& liftedCosts=r.getLiftedCosts();
-        if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
+        //if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
         const double delta = r.getOneLiftedMinMarginal(left_node,&baseCosts,&liftedCosts);
 		msg[0] -= omega * delta;
     //    if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
@@ -1257,7 +1251,7 @@ public:
 	{
         const std::vector<double>& baseCosts=l.getBaseCosts();
         const std::vector<double>& liftedCosts=l.getLiftedCosts();
-        if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
+       // if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
         const double delta = l.getOneLiftedMinMarginal(right_node,&baseCosts,&liftedCosts);
 		msg[0] -= omega * delta;
 	}
@@ -1267,9 +1261,8 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
     static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
     {
-        if(debug()){
-            std::cout<<"running get all lifted marginals to left "<<r.nodeID<<std::endl;
-        }
+        //if(debug()) std::cout<<"running get all lifted marginals to left "<<r.nodeID<<std::endl;
+
         const std::vector<double> msg_vec = r.getAllLiftedMinMarginals();
 
 
@@ -1288,9 +1281,8 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
     static void SendMessagesToRight(const SINGLE_NODE_CUT_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
     {
-        if(debug()){
-            std::cout<<"running get all lifted marginals to right "<<l.nodeID<<std::endl;
-        }
+        //if(debug()) std::cout<<"running get all lifted marginals to right "<<l.nodeID<<std::endl;
+
         const std::vector<double> msg_vec = l.getAllLiftedMinMarginals();
 
         for(auto it=msg_begin; it!=msg_end; ++it)
@@ -1305,9 +1297,8 @@ public:
 
 
 
-        if(debug()){
-            std::cout<<"messages added "<<std::endl;
-        }
+        //if(debug()) std::cout<<"messages added "<<std::endl;
+
     }
 
 

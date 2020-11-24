@@ -238,7 +238,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         auto itDesc=descendants[i].begin();
         while(itLifted!=neighbors.end()){
             if(itDesc==descendants[i].end()||*itDesc>itLifted->first){
-                if(itLifted->second<eps) candidateLifted[i].push_back(itLifted->first);
+                if(itLifted->second<-eps) candidateLifted[i].push_back(itLifted->first);
                 itLifted++;
             }
             else if(*itDesc<itLifted->first){
