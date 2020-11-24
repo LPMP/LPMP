@@ -729,114 +729,183 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 {
 
 
-    std::map<size_t,std::map<size_t,double>> baseEdgesFromFactors;
-    std::map<size_t,std::map<size_t,double>> liftedEdgesFromFactors;
+    double primalValue=0;
+    double primalBaseValue=0;
+    double primalLiftedValue=0;
 
     for (int i = 0; i < nr_nodes(); ++i) {
+
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
-        const std::vector<double>& bCosts=sncFactorIn->getBaseCosts();
-        const std::vector<size_t>& bEdges=sncFactorIn->getBaseIDs();
-        double nodeCost=sncFactorIn->getNodeCost();
-        for (int j = 0; j < bCosts.size(); ++j) {
-            baseEdgesFromFactors[bEdges[j]][i]+=bCosts[j];
-           // baseEdgesFromFactors[bEdges[j]][i]+=nodeCost;
-        }
-        const std::vector<double>& lCosts=sncFactorIn->getLiftedCosts();
-        const std::vector<size_t>& lEdges=sncFactorIn->getLiftedIDs();
-        for (int j = 0; j < lCosts.size(); ++j) {
-            liftedEdgesFromFactors[lEdges[j]][i]+=lCosts[j];
-        }
+        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+        primalValue+=sncFactorIn->EvaluatePrimal();
+        primalValue+=sncFactorOut->EvaluatePrimal();
+
+        primalBaseValue+=sncFactorIn->getPrimalBaseCost();
+        primalBaseValue+=sncFactorOut->getPrimalBaseCost();
+
+        primalLiftedValue+=sncFactorIn->getPrimalLiftedCost();
+        primalLiftedValue+=sncFactorOut->getPrimalLiftedCost();
+
+
     }
 
-    for (int i = 0; i < nr_nodes(); ++i) {
-        const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
-        const std::vector<double>& bCosts=sncFactorOut->getBaseCosts();
-        const std::vector<size_t>& bEdges=sncFactorOut->getBaseIDs();
-        double nodeCost=sncFactorOut->getNodeCost();
-        for (int j = 0; j < bCosts.size(); ++j) {
-            baseEdgesFromFactors[i][bEdges[j]]+=bCosts[j];
-            //baseEdgesFromFactors[i][bEdges[j]]+=nodeCost;
-        }
-        const std::vector<double>& lCosts=sncFactorOut->getLiftedCosts();
-        const std::vector<size_t>& lEdges=sncFactorOut->getLiftedIDs();
-        for (int j = 0; j < lCosts.size(); ++j) {
-            liftedEdgesFromFactors[i][lEdges[j]]+=lCosts[j];
-        }
+
+
+
+  /*  for (int i = 0; i < triangle_factors_.size(); ++i) {
+        auto * trFactor=triangle_factors_[i]->get_factor();
+        primalValue+=trFactor->EvaluatePrimal();
+
     }
+    */
+
+
+    std::map<size_t,std::map<size_t,double>> costsFromOtherFactors;
+    std::map<size_t,std::map<size_t,std::set<size_t>>> indicesOfCutFactors;
+    std::map<size_t,std::map<size_t,std::set<size_t>>> indicesOfPathFactors;
+
 
     for (int i = 0; i < cut_factors_.size(); ++i) {
         auto * cFactor=cut_factors_[i]->get_factor();
-        const std::vector<size_t>& inputs=cFactor->getInputVertices();
-        const std::vector<size_t>& outputs=cFactor->getOutputVertices();
-        auto & cutGraph=cFactor->getCutGraph();
-        for (int j = 0; j < inputs.size(); ++j) {
-            size_t inputVertex=inputs[j];
-            auto * iter=cutGraph.forwardNeighborsBegin(j);
-            auto * end=cutGraph.forwardNeighborsEnd(j);
-            for (;iter!=end;iter++) {
-                size_t outputVertex=outputs[iter->first];
-                baseEdgesFromFactors[inputVertex][outputVertex]+=iter->second;
-            }
+        primalValue+=cFactor->EvaluatePrimal();
 
+        primalBaseValue+=cFactor->getPrimalBaseCost();
+        primalLiftedValue+=cFactor->getPrimalLiftedCost();
+        const auto & inputs=cFactor->getInputVertices();
+        const auto & outputs=cFactor->getOutputVertices();
+        const auto & cutGraph=cFactor->getCutGraph();
+        for (int j = 0; j < inputs.size(); ++j) {
+            size_t v1=inputs[j];
+            const auto * iter=cutGraph.forwardNeighborsBegin(j);
+            const auto * end=cutGraph.forwardNeighborsEnd(j);
+            for (;iter!=end;iter++) {
+                size_t v2=outputs.at(iter->first);
+                double cost=iter->second;
+                costsFromOtherFactors[v1][v2]+=cost;
+                indicesOfCutFactors[v1][v2].insert(i);
+            }
         }
-        size_t v=cFactor->getLiftedInputVertex();
-        size_t w=cFactor->getLiftedOutputVertex();
-        double liftedCost=cFactor->getLiftedCost();
-        liftedEdgesFromFactors[v][w]+=liftedCost;
 
     }
-
-
 
     for (int i = 0; i < path_factors_.size(); ++i) {
         auto * pFactor=path_factors_[i]->get_factor();
-        const std::vector<size_t>& vertices= pFactor->getListOfVertices();
-        const std::vector<double>& costs= pFactor->getCosts();
-        const std::vector<char>& liftedInfo=pFactor-> getLiftedInfo();
-        for (int j = 0; j < vertices.size()-1; ++j) {
-            size_t v1=vertices[j];
-            size_t v2=vertices[j+1];
-            double cost=costs[j];
-            if(liftedInfo.at(j)>0){
-                liftedEdgesFromFactors[v1][v2]+=cost;
-            }
-            else{
-                baseEdgesFromFactors[v1][v2]+=cost;
+        primalValue+=pFactor->EvaluatePrimal();
+
+        primalBaseValue+=pFactor->getPrimalBaseCost();
+        primalLiftedValue+=pFactor->getPrimalLiftedCost();
+
+        const auto& pathVertices=pFactor->getListOfVertices();
+        for (int j = 0; j < pathVertices.size()-1; ++j) {
+            if(pFactor->getLiftedInfo().at(j)==0){
+                size_t v1=pathVertices[j];
+                size_t v2=pathVertices[j+1];
+                costsFromOtherFactors[v1][v2]+=pFactor->getCosts().at(j);
+                indicesOfPathFactors[v1][v2].insert(i);
+
             }
         }
-        liftedEdgesFromFactors[vertices[0]][vertices.back()]+=costs.back();
-        //TODO: Add longest edge!
-    }
 
-    const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
-
-    for (int i = 0; i < baseGraph.getNumberOfVertices(); ++i) {
-        const auto* iter=baseGraph.forwardNeighborsBegin(i);
-        const auto* end=baseGraph.forwardNeighborsEnd(i);
-        for (;iter!=end;iter++) {
-            size_t vertex=iter->first;
-            double cost=iter->second;
-            double factorsCost=baseEdgesFromFactors[i][vertex];
-            if(abs(factorsCost-cost)>eps){
-                std::cout<<"base cost mismatch "<<i<<", "<<vertex<<", orig: "<<cost<<", factor cost: "<<factorsCost<<std::endl;
-            }
-        }
     }
 
 
-    for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
-        const auto* iter=liftedGraph.forwardNeighborsBegin(i);
-        const auto* end=liftedGraph.forwardNeighborsEnd(i);
-        for (;iter!=end;iter++) {
-            size_t vertex=iter->first;
-            double cost=iter->second;
-            double factorsCost=liftedEdgesFromFactors[i][vertex];
-            if(abs(factorsCost-cost)>eps){
-                std::cout<<"lifted cost mismatch "<<i<<", "<<vertex<<", orig: "<<cost<<", factor cost: "<<factorsCost<<std::endl;
+        if(diagnostics()){
+            //sncDebug();
+           // std::cout<<"computed primal value "<<primalValue<<std::endl;
+            double controlPrimalValue=0;
+            double controlLiftedValue=0;
+            double controlBaseValue=0;
+            //std::vector<size_t> labels(nr_nodes());
+            for (size_t i = 0; i < currentPrimalStartingVertices.size(); ++i) {
+                // std::cout<<"path "<<i<<std::endl;
+                double pathCost=0;
+
+                size_t currentNode=currentPrimalStartingVertices[i];
+
+
+
+                double factorPathCost=0;
+                double sncFactorsCost=0;
+                controlPrimalValue+=pInstance->getEdgeScore(pInstance->getSourceNode(),currentNode);
+                pathCost+=pInstance->getEdgeScore(pInstance->getSourceNode(),currentNode);
+                bool hasPathFactor=false;
+                bool hasCutFactor=false;
+                std::set<size_t> usedPathFactors;
+                while(currentNode!=base_graph_terminal_node()){
+                    assert(currentNode<currentPrimalLabels.size());
+                   // labels[currentNode]=i+1;
+                    double valueToAdd=pInstance->getVertexScore(currentNode);
+                    valueToAdd+=pInstance->getEdgeScore(currentNode,currentPrimalDescendants[currentNode]);
+                    controlPrimalValue+=valueToAdd;
+                    pathCost+=valueToAdd;
+
+
+                    const auto* sncFactorIn=single_node_cut_factors_[currentNode][0]->get_factor();
+                    const auto* sncFactorOut=single_node_cut_factors_[currentNode][1]->get_factor();
+                    sncFactorsCost+=sncFactorIn->getPrimalBaseCost();
+                    sncFactorsCost+=sncFactorOut->getPrimalBaseCost();
+                    factorPathCost+=costsFromOtherFactors[currentNode][currentPrimalDescendants[currentNode]];
+
+                    if(!indicesOfPathFactors[currentNode][currentPrimalDescendants[currentNode]].empty()){
+                        std::set<size_t>& pf=indicesOfPathFactors[currentNode][currentPrimalDescendants[currentNode]];
+                        hasPathFactor=true;
+                        usedPathFactors.insert(pf.begin(),pf.end());
+
+                    }
+                    if(!indicesOfCutFactors[currentNode][currentPrimalDescendants[currentNode]].empty()) hasCutFactor=true;
+                    if(!hasPathFactor&&!hasCutFactor) assert(costsFromOtherFactors[currentNode][currentPrimalDescendants[currentNode]]==0);
+                    currentNode=currentPrimalDescendants[currentNode];
+                }
+                if(std::abs(pathCost-factorPathCost-sncFactorsCost)>eps){
+                    std::cout<<"cost mismatch in path "<<i<<", factor complete "<<(factorPathCost+sncFactorsCost)<<", control "<<pathCost<<"has path "<<hasPathFactor<<", cost snc "<<sncFactorsCost<<", other factors: "<<factorPathCost<<", has cut "<<hasCutFactor<<std::endl;
+                    currentNode=currentPrimalStartingVertices[i];
+                    while(currentNode!=base_graph_terminal_node()){
+                        std::cout<<currentNode<<", ";
+                        currentNode=currentPrimalDescendants[currentNode];
+                    }
+                    std::cout<<std::endl;
+                    for(auto f:usedPathFactors){
+                        std::cout<<"pf index "<<f<<std::endl;
+                        auto * pathF=path_factors_[f]->get_factor();
+                        pathF->print();
+                        std::cout<<" base cost "<<pathF->getPrimalBaseCost()<<std::endl;
+                    }
+
+                    assert(false);
+
+
+
+                }
+
             }
+            controlBaseValue=controlPrimalValue;
+
+            for(size_t e=0;e<pInstance->getGraphLifted().numberOfEdges();e++){
+                size_t v0=pInstance->getGraphLifted().vertexOfEdge(e,0);
+                size_t v1=pInstance->getGraphLifted().vertexOfEdge(e,1);
+                if(currentPrimalLabels[v0]==currentPrimalLabels[v1]&&currentPrimalLabels[v0]!=0){
+
+                    controlPrimalValue+=pInstance->getLiftedEdgeScore(e);
+                    controlLiftedValue+=pInstance->getLiftedEdgeScore(e);
+
+                }
+            }
+            double diff=std::abs(primalValue-controlPrimalValue);
+            diff/=abs(primalValue);
+            double epsilon=1e-13;
+            if(diff>=epsilon){
+                std::cout<<"computed primal value "<<primalValue<<std::endl;
+                std::cout<<"control primal value "<<controlPrimalValue<<std::endl;
+                std::cout<<"computed base primal value "<<primalBaseValue<<std::endl;
+                std::cout<<"control primal base value "<<controlBaseValue<<std::endl;
+                std::cout<<"computed lifted primal value "<<primalLiftedValue<<std::endl;
+                std::cout<<"control lifted base value "<<controlLiftedValue<<std::endl;
+                std::cout<<"difference "<<diff<<std::endl;
+
+            }
+
+            assert(diff<epsilon);
         }
-    }
 
 
 
@@ -938,217 +1007,28 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
         primalValue+=sncFactorIn->EvaluatePrimal();
         primalValue+=sncFactorOut->EvaluatePrimal();
-
-        primalBaseValue+=sncFactorIn->getPrimalBaseCost();
-        primalBaseValue+=sncFactorOut->getPrimalBaseCost();
-
-        primalLiftedValue+=sncFactorIn->getPrimalLiftedCost();
-        primalLiftedValue+=sncFactorOut->getPrimalLiftedCost();
-
-
     }
-
-
-
-
-  /*  for (int i = 0; i < triangle_factors_.size(); ++i) {
-        auto * trFactor=triangle_factors_[i]->get_factor();
-        primalValue+=trFactor->EvaluatePrimal();
-
-    }
-    */
-
-
-    std::map<size_t,std::map<size_t,double>> costsFromOtherFactors;
-    std::map<size_t,std::map<size_t,std::set<size_t>>> indicesOfCutFactors;
-    std::map<size_t,std::map<size_t,std::set<size_t>>> indicesOfPathFactors;
-
 
     for (int i = 0; i < cut_factors_.size(); ++i) {
         auto * cFactor=cut_factors_[i]->get_factor();
         primalValue+=cFactor->EvaluatePrimal();
-
-        primalBaseValue+=cFactor->getPrimalBaseCost();
-        primalLiftedValue+=cFactor->getPrimalLiftedCost();
-        const auto & inputs=cFactor->getInputVertices();
-        const auto & outputs=cFactor->getOutputVertices();
-        const auto & cutGraph=cFactor->getCutGraph();
-        for (int j = 0; j < inputs.size(); ++j) {
-            size_t v1=inputs[j];
-            const auto * iter=cutGraph.forwardNeighborsBegin(j);
-            const auto * end=cutGraph.forwardNeighborsEnd(j);
-            for (;iter!=end;iter++) {
-                size_t v2=outputs.at(iter->first);
-                double cost=iter->second;
-                costsFromOtherFactors[v1][v2]+=cost;
-                indicesOfCutFactors[v1][v2].insert(i);
-            }
-        }
-
     }
 
     for (int i = 0; i < path_factors_.size(); ++i) {
         auto * pFactor=path_factors_[i]->get_factor();
         primalValue+=pFactor->EvaluatePrimal();
-
-        primalBaseValue+=pFactor->getPrimalBaseCost();
-        primalLiftedValue+=pFactor->getPrimalLiftedCost();
-
-        const auto& pathVertices=pFactor->getListOfVertices();
-        for (int j = 0; j < pathVertices.size()-1; ++j) {
-            if(pFactor->getLiftedInfo().at(j)==0){
-                size_t v1=pathVertices[j];
-                size_t v2=pathVertices[j+1];
-                costsFromOtherFactors[v1][v2]+=pFactor->getCosts().at(j);
-                indicesOfPathFactors[v1][v2].insert(i);
-
-            }
-        }
-
     }
 
+    if(primalValue < bestPrimalValue){
 
-//TODO swap order and use these paths for adjusting lifted and triangle labels
+        bestPrimalValue=primalValue;
+        bestPrimalSolution=paths;
+     }
 
-
-
-        if(primalValue < bestPrimalValue){
-
-            bestPrimalValue=primalValue;
-
-
-            bestPrimalSolution=paths;
-        }
-
-        if(diagnostics()){
-            //sncDebug();
-           // std::cout<<"computed primal value "<<primalValue<<std::endl;
-            double controlPrimalValue=0;
-            double controlLiftedValue=0;
-            double controlBaseValue=0;
-            //std::vector<size_t> labels(nr_nodes());
-            for (size_t i = 0; i < startingNodes.size(); ++i) {
-                // std::cout<<"path "<<i<<std::endl;
-                double pathCost=0;
-
-                size_t currentNode=startingNodes[i];
-
-
-
-                double factorPathCost=0;
-                double sncFactorsCost=0;
-                controlPrimalValue+=pInstance->getEdgeScore(pInstance->getSourceNode(),currentNode);
-                pathCost+=pInstance->getEdgeScore(pInstance->getSourceNode(),currentNode);
-                bool hasPathFactor=false;
-                bool hasCutFactor=false;
-                std::set<size_t> usedPathFactors;
-                while(currentNode!=base_graph_terminal_node()){
-                    assert(currentNode<labels.size());
-                   // labels[currentNode]=i+1;
-                    double valueToAdd=pInstance->getVertexScore(currentNode);
-                    valueToAdd+=pInstance->getEdgeScore(currentNode,descendants[currentNode]);
-                    controlPrimalValue+=valueToAdd;
-                    pathCost+=valueToAdd;
-
-
-                    const auto* sncFactorIn=single_node_cut_factors_[currentNode][0]->get_factor();
-                    const auto* sncFactorOut=single_node_cut_factors_[currentNode][1]->get_factor();
-                    sncFactorsCost+=sncFactorIn->getPrimalBaseCost();
-                    sncFactorsCost+=sncFactorOut->getPrimalBaseCost();
-                    factorPathCost+=costsFromOtherFactors[currentNode][descendants[currentNode]];
-
-                    if(!indicesOfPathFactors[currentNode][descendants[currentNode]].empty()){
-                        std::set<size_t>& pf=indicesOfPathFactors[currentNode][descendants[currentNode]];
-                        hasPathFactor=true;
-                        usedPathFactors.insert(pf.begin(),pf.end());
-
-                    }
-                    if(!indicesOfCutFactors[currentNode][descendants[currentNode]].empty()) hasCutFactor=true;
-                    if(!hasPathFactor&&!hasCutFactor) assert(costsFromOtherFactors[currentNode][descendants[currentNode]]==0);
-                    currentNode=descendants[currentNode];
-                }
-                if(std::abs(pathCost-factorPathCost-sncFactorsCost)>eps){
-                    std::cout<<"cost mismatch in path "<<i<<", factor complete "<<(factorPathCost+sncFactorsCost)<<", control "<<pathCost<<"has path "<<hasPathFactor<<", cost snc "<<sncFactorsCost<<", other factors: "<<factorPathCost<<", has cut "<<hasCutFactor<<std::endl;
-                    currentNode=startingNodes[i];
-                    while(currentNode!=base_graph_terminal_node()){
-                        std::cout<<currentNode<<", ";
-                        currentNode=descendants[currentNode];
-                    }
-                    std::cout<<std::endl;
-                    for(auto f:usedPathFactors){
-                        std::cout<<"pf index "<<f<<std::endl;
-                        auto * pathF=path_factors_[f]->get_factor();
-                        pathF->print();
-                        std::cout<<" base cost "<<pathF->getPrimalBaseCost()<<std::endl;
-                    }
-
-                    assert(false);
-
-
-
-                }
-//                else{
-//                    std::cout<<"path "<<i<<" ok"<<std::endl;
-//                }
-
-            }
-            controlBaseValue=controlPrimalValue;
-
-
-
-
-//            //std::cout<<"lifted edges"<<std::endl;
-//            for(size_t e=0;e<pInstance->getGraph().numberOfEdges();e++){
-//                size_t v0=pInstance->getGraph().vertexOfEdge(e,0);
-//                size_t v1=pInstance->getGraph().vertexOfEdge(e,1);
-//                if(v0==base_graph_source_node()){
-
-//                }
-//                else if(v1==base_graph_terminal_node()){
-
-//                }
-//                else if
-//                if(currentPrimalDescendants[v0]==v1){
-//                    controlPrimalValue+=pInstance->getEdgeScore(e);
-//                }
-//            }
-
-            for(size_t e=0;e<pInstance->getGraphLifted().numberOfEdges();e++){
-                size_t v0=pInstance->getGraphLifted().vertexOfEdge(e,0);
-                size_t v1=pInstance->getGraphLifted().vertexOfEdge(e,1);
-                if(currentPrimalLabels[v0]==currentPrimalLabels[v1]&&currentPrimalLabels[v0]!=0){
-
-                    controlPrimalValue+=pInstance->getLiftedEdgeScore(e);
-                    controlLiftedValue+=pInstance->getLiftedEdgeScore(e);
-
-                }
-            }
-            double diff=std::abs(primalValue-controlPrimalValue);
-            diff/=abs(primalValue);
-            double epsilon=1e-13;
-            if(diff>=epsilon){
-                std::cout<<"computed primal value "<<primalValue<<std::endl;
-                std::cout<<"control primal value "<<controlPrimalValue<<std::endl;
-                std::cout<<"computed base primal value "<<primalBaseValue<<std::endl;
-                std::cout<<"control primal base value "<<controlBaseValue<<std::endl;
-                std::cout<<"computed lifted primal value "<<primalLiftedValue<<std::endl;
-                std::cout<<"control lifted base value "<<controlLiftedValue<<std::endl;
-                std::cout<<"difference "<<diff<<std::endl;
-
-            }
-
-            assert(diff<epsilon);
-        }
-
-//    best_primal_solution = ...;
+    if(debug()) sncDebug();
 
     if(diagnostics()) std::cout<<"primal value: "<<primalValue<<std::endl;
 }
-
-//std::vector<size_t> get_best_solution() const
-//{
-//    return best_primal_solution;
-//}
 
 
 
