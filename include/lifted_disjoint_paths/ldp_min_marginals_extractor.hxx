@@ -19,14 +19,14 @@ public:
        // baseGraph=pInstance->getMyGraph();
        // liftedGraph=pInstance->getMyGraphLifted();
         //directedGraph.setAllCostToZero();
-        numberOfVertices=pInstance->getNumberOfVertices()-2;  //without s and t
+        numberOfVerticesComplete=pInstance->getNumberOfVertices();  //without s and t
 
     }
     ldp_min_marginals_extractor():
     pInstance(nullptr),
     p_single_node_cut_factors_(nullptr)
     {
-        numberOfVertices=0;
+        numberOfVerticesComplete=0;
     }
 
     std::vector<std::map<size_t,double>>& getBaseEdgesMinMarginals(){
@@ -49,7 +49,7 @@ void clearMinMarginals(){
 private:
 const lifted_disjoint_paths::LdpInstance * pInstance;
 std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>>* p_single_node_cut_factors_;
-size_t numberOfVertices;
+size_t numberOfVerticesComplete;
 std::vector<std::map<size_t,double>> baseEdgesWithCosts;
 std::vector<std::map<size_t,double>> liftedEdgesWithCosts;
 //LdpDirectedGraph baseGraph;
@@ -67,11 +67,11 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
     std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>>& single_node_cut_factors_=*p_single_node_cut_factors_;
 
-    liftedEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVertices);
-    baseEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVertices);
+    liftedEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);
+    baseEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVerticesComplete);
 
     //Getting the edge costs
-    for (size_t i = 0; i < numberOfVertices; ++i) {
+    for (size_t i = 0; i < numberOfVerticesComplete-2; ++i) {
         // std::cout<<"node "<<i<<std::endl;
 
         //TODO just half of the change for base!
@@ -82,7 +82,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
         //std::cout<<"base mm size "<<minMarginalsIn.size()<<std::endl;
         for (size_t j = 0; j < minMarginalsIn.size(); ++j) {
             size_t neighborID=sncFactorIn->getBaseIDs()[j];
-            //if(neighborID>=numberOfVertices) continue;
+            //if(neighborID>=numberOfVertices-2) continue;
             minMarginalsIn[j]*=0.5;
             localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
             baseEdgesWithCosts[neighborID][i]+=minMarginalsIn[j];
@@ -105,7 +105,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
 
         for (size_t j = 0; j < minMarginalsOut.size(); ++j) {
             size_t neighborID=sncFactorOut->getBaseIDs()[j];
-            //if(neighborID>=numberOfVertices) continue;
+            //if(neighborID>=numberOfVertices-2) continue;
             minMarginalsOut[j]*=0.5;
               localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
             baseEdgesWithCosts[i][neighborID]+=minMarginalsOut[j];

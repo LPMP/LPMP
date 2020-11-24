@@ -49,9 +49,20 @@ private:
     std::vector<std::list<size_t>> descendants;
     std::vector<std::vector<char>> isConnected;
     std::priority_queue<std::pair<double,CUT_FACTOR*>> pQueue;
+     std::vector<std::list<size_t>> candidateLifted;
 
 };
 
+template <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
+    while(!pQueue.empty()){
+        std::pair<double,CUT_FACTOR*> p=pQueue.top();
+        delete p.second;
+        p.second=nullptr;
+        pQueue.pop();
+    }
+
+}
 
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::connectEdge(const size_t& v,const size_t& w){
@@ -60,19 +71,19 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::connectEdge
     const LdpDirectedGraph & baseGraph=pInstance->getMyGraph();
     for(auto& pred: predecessors[v]){
         assert(pred<numberOfVertices);
-        auto * origDescendants=descendants[pred].begin();
-        auto * newDescendants=descendants[w].begin();
-        auto * endOrig=descendants[pred].end();
-        auto * endNew=descendants[w].end();
-        auto itBase=baseGraph.forwardNeighborsBegin(pred);
+        auto  origDescendants=descendants[pred].begin();
+        auto  newDescendants=descendants[w].begin();
+        auto  endOrig=descendants[pred].end();
+        auto  endNew=descendants[w].end();
+        auto  itBase=baseGraph.forwardNeighborsBegin(pred);
         size_t baseCounter=0;
-        auto baseEnd=baseGraph.forwardNeighborsEnd(pred);
+        auto  baseEnd=baseGraph.forwardNeighborsEnd(pred);
         //TODO update is connected
 
 
 
         while(newDescendants!=endNew){
-            while(itBase->first!=baseEnd&&itBase->first<*newDescendants){
+            while(itBase!=baseEnd&&itBase->first<*newDescendants){
                 itBase++;
                 baseCounter++;
             }
@@ -109,31 +120,67 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
 
     double improvementValue=std::min(abs(lCost),cost);
 
-    for(auto& d:descendants[v1]){              //or break if d is in used vertices for cuts and w is reachable from d
+    auto descV1Iter=descendants[v1].begin();
+    auto descV1end=descendants[v1].end();
+    for (;descV1Iter!=descV1end;descV1Iter++) {
+        auto descV1SecondIter=descV1Iter;
+        size_t d=*descV1Iter;
         const auto* it=baseGraph.forwardNeighborsBegin(d);
         const auto* end=baseGraph.forwardNeighborsEnd(d);
-        for(;it!=end;it++){               //can be probably a linear iteration
-            size_t d2=it->first;
-
-            if(!isConnected[v1][d2]&&pInstance->isReachable(d2,v2)){  //candidate cut edge (d,d2), leaves component and w is reachable
-                // cutEdges[d][d2]=baseEdgesWithCosts[d][d2]; //TODO use cost after enabling cost update in BOTH snc factors
-                assert(baseEdgesWithCosts[d][d2]>=cost-eps);
-                cutEdges[d][d2]=0;
-                assert(d!=base_graph_source_node());
-                assert(d2!=base_graph_terminal_node());
+        while(it!=end){
+            if(descV1SecondIter==descV1end||it->first<*descV1SecondIter){
+                size_t d2=it->first;
+                if(pInstance->isReachable(d2,v2)){
+                    assert(baseEdgesWithCosts[d][d2]>=cost-eps);
+                    cutEdges[d][d2]=0;
+                    assert(d<numberOfVertices);
+                    assert(d2<numberOfVertices);
+                }
+                it++;
             }
+            else if(it->first>*descV1SecondIter){
+                descV1SecondIter++;
+            }
+            else {
+                assert(*descV1SecondIter==it->first);
+                it++;
+                descV1SecondIter++;
+            }
+
         }
 
+
     }
+
+//    for(auto& d:descendants[v1]){              //or break if d is in used vertices for cuts and w is reachable from d
+//        const auto* it=baseGraph.forwardNeighborsBegin(d);
+//        const auto* end=baseGraph.forwardNeighborsEnd(d);
+//        for(;it!=end;it++){               //can be probably a linear iteration
+//            size_t d2=it->first;
+
+//            //TODO fix this! How to effectively check if d2 is descendant of v1?
+//            if(!isConnected[v1][d2]&&pInstance->isReachable(d2,v2)){  //candidate cut edge (d,d2), leaves component and w is reachable
+////                if(baseEdgesWithCosts[d][d2]<cost-eps){
+////                    std::cout<<"wrong cut edge "<<d<<", "<<d2<<", value: "<<cost<<"is connected "<<isConnected[d][d2]<<std::endl;
+////                }
+//                assert(baseEdgesWithCosts[d][d2]>=cost-eps);
+//                cutEdges[d][d2]=0;
+//                assert(d<numberOfVertices);
+//                assert(d2<numberOfVertices);
+//            }
+//        }
+
+//    }
     // ldp_cut_factor* pCutF=new ldp_cut_factor(v1,v2,lCost,cutEdges); //TODO use this after solving upddate cost in snc
     CUT_FACTOR* pCutF=new CUT_FACTOR(v1,v2,0.0,cutEdges);
-    pQueue->push(std::pair(improvementValue,pCutF));
+    pQueue.push(std::pair(improvementValue,pCutF));
 }
 
 
 
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCutInequalities(size_t maxConstraints){
+    std::cout<<"separate cuts "<<std::endl;
     mmExtractor.initMinMarginals();
     baseEdgesWithCosts=mmExtractor.getBaseEdgesMinMarginals();
     liftedEdgesWithCosts=mmExtractor.getLiftedEdgesMinMarginals();
@@ -156,9 +203,11 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
 
     //Structure for connecting negative (and small positive?) edges
     for(size_t node=0;node<predecessors.size();node++){
-        predecessors[node].insert(node);
-        descendants[node].insert(node);
+        predecessors[node].push_back(node);
+        descendants[node].push_back(node);
     }
+
+    std::cout<<"desc and pred init done"<<std::endl;
 
 
     //list of base edges to be sorted
@@ -186,20 +235,22 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
 
     std::sort(edgesToSort.begin(),edgesToSort.end());
 
+    std::cout<<"edges to sort sorted"<<std::endl;
+
 
     //Select candidate lifted edges: negative and disconnected
 
-    std::vector<std::list<size_t>> candidateLifted(numberOfVertices);  //pair size_t,double instead of size_t?
+    candidateLifted=std::vector<std::list<size_t>> (numberOfVertices);  //pair size_t,double instead of size_t?
     size_t nrClosedNodes=0;
     std::vector<char> closedNodes(numberOfVertices);
     for (size_t i=0;i<numberOfVertices;i++) {
         const std::map<size_t,double>& neighbors=liftedEdgesWithCosts.at(i);
-        std::map<size_t,double> neighborsToKeep;
+        //std::map<size_t,double> neighborsToKeep;
         auto itLifted=neighbors.begin();
         auto itDesc=descendants[i].begin();
         while(itLifted!=neighbors.end()){
             if(itDesc==descendants[i].end()||*itDesc>itLifted->first){
-                candidateLifted[i].push_back(itLifted->first);
+                if(itLifted->second<eps) candidateLifted[i].push_back(itLifted->first);
                 itLifted++;
             }
             else if(*itDesc<itLifted->first){
@@ -217,16 +268,19 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
 
     }
 
+    std::cout<<"candidate lifted obtained "<<std::endl;
 
 
 
+
+    std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
     size_t i=0;
     while(nrClosedNodes<numberOfVertices&&i<edgesToSort.size()){
         size_t v=std::get<1>(edgesToSort[i]);
         size_t index=std::get<2>(edgesToSort[i]);
         size_t w=baseGraph.getForwardEdgeVertex(v,index);
        // double cost=std::get<0>(edgesToSort[i]);
-       //  std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
+
         assert(v<isConnected.size());
         assert(index<isConnected[v].size());
         if(isConnected[v][index]){
@@ -236,24 +290,29 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         double cost=std::get<0>(edgesToSort[i]);
         assert(cost>0);
 
+        std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
+        std::cout<<"number of closed "<<nrClosedNodes<<std::endl;
 
       //  std::tuple<double,size_t,size_t> bestLiftedEdge;  //lb improvement, cost, vertices
       //  double bestLiftedCost=0;
       //  std::cout<<"compute"<<cost<<std::endl;
 
         for(auto& pred: predecessors[v]){
+            std::cout<<"pred "<<pred<<std::endl;
             if(candidateLifted[pred].empty()) continue;
             std::list<size_t> edgesToKeep;
-            auto * liftedIt=candidateLifted[pred].begin();
-            auto * liftedEnd=candidateLifted[pred].end();
-            auto * newDescIt=descendants[w].begin();
-            auto * newDescEnd=descendants[w].end();
-            auto * oldDescIt=descendants[pred].begin();
-            auto * oldDescEnd=descendants[pred].end();
+            auto  liftedIt=candidateLifted[pred].begin();
+            auto  liftedEnd=candidateLifted[pred].end();
+            auto  newDescIt=descendants[w].begin();
+            auto  newDescEnd=descendants[w].end();
+            auto  oldDescIt=descendants[pred].begin();
+            auto  oldDescEnd=descendants[pred].end();
 
             while(newDescIt!=newDescEnd&&liftedIt!=liftedEnd){
+                std::cout<<"new desc, lifted "<<(*newDescIt)<<", "<<(*liftedIt)<<std::endl;
                 while(liftedIt!=liftedEnd&&*liftedIt<*newDescIt) liftedIt++;
-                if(*oldDescIt>*newDescIt){
+                if(oldDescIt==oldDescEnd||*oldDescIt>*newDescIt){
+                    std::cout<<"new desc "<<std::endl;
                     if(liftedIt!=liftedEnd&&*liftedIt==*newDescIt){
                         createCut(pred,*liftedIt,cost);
                         liftedIt=candidateLifted[pred].erase(liftedIt);
@@ -278,6 +337,8 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         connectEdge(v,w);
         i++;
     }
+
+    std::cout<<"queue with cuts filled"<<std::endl;
 
 
 }

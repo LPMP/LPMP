@@ -211,7 +211,7 @@ public:
         return numberOfVertices;
     }
 
-    const size_t & getNumberOfEdgesFromVertex(const size_t& i)const{
+    size_t getNumberOfEdgesFromVertex(const size_t& i)const{
         assert(i<numberOfVertices);
         return forwardEdges[i].size();
     }

@@ -361,6 +361,7 @@ void ldp_cut_factor::updateCostLifted(const double& value){
 
 void ldp_cut_factor::updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
     //double oldValue=cutGraph.getForwardEdgeCost(inputVertexIndex,neighborIndex);
+    assert(inputVertexIndex<inputVertices.size());
     cutGraph.updateForwardEdgeCost(inputVertexIndex,neighborIndex,value);
 }
 
@@ -594,6 +595,8 @@ double ldp_cut_factor::LowerBound() const{
 double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2,const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const{
     if(debug())std::cout<<"base edge min marginal in cut"<<std::endl;
     bool addLiftedCost=baseCoverLiftedExists&&liftedCost>0;
+    assert(index1<numberOfInput);
+    assert(index2<numberOfOutput);
     double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost,pCutGraph,pLiftedCost);
     double restrictZero=advancedMinimizer(index1,index2,false,addLiftedCost,pCutGraph,pLiftedCost);
     return restrictOne-restrictZero;
@@ -705,7 +708,7 @@ public:
                           size_t _nodeIndexOfLiftedEdge):
         nodeIndicesInCut(_nodeIndicesInCut),  //empty if it is a message only for lifted edge
         nodeIndicesInSnc(_nodeIndicesInSnc),
-        sncNodeIDindexInCut(_sncNodeIDindexInCut),
+        sncNodeIDindexInCut(_sncNodeIDindexInCut), //Warning if only lifted edge is incident, this is equal to number of inputs
         sncIsOut(_sncIsOut),   //if true, central node is in inputs, other nodes in outputs
         containsLiftedEdge(_containsLiftedEdge),
         nodeIndexOfLiftedEdge(_nodeIndexOfLiftedEdge){

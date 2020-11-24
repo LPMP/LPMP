@@ -51,29 +51,40 @@ public:
 
 
     void setForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+        //todo asserts
+        assert(vertex<numberOfInputs);
+        assert(neighborIndex<forwardEdges[vertex].size());
         forwardEdges[vertex][neighborIndex].second=value;
     }
 
 
     void updateForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+        assert(vertex<numberOfInputs);
+        assert(neighborIndex<forwardEdges[vertex].size());
         forwardEdges[vertex][neighborIndex].second+=value;
     }
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfInputs);
+        assert(neighborIndex<forwardEdges[vertex].size());
         return forwardEdges[vertex][neighborIndex].second;
     }
 
     size_t getForwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfInputs);
+        assert(neighborIndex<forwardEdges[vertex].size());
         return forwardEdges[vertex][neighborIndex].first;
     }
 
 
 
     const std::pair<size_t,double> * forwardNeighborsBegin(size_t i)const {
+        assert(i<numberOfInputs);
         return forwardEdges[i].begin();
     }
 
     const std::pair<size_t,double> * forwardNeighborsEnd(size_t i)const {
+        assert(i<numberOfInputs);
         return forwardEdges[i].end();
     }
 
