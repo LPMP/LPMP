@@ -4,21 +4,29 @@
 #include<cstdlib>
 #include<vector>
 #include <config.hxx>
+#include"lifted_disjoint_paths/ldp_instance.hxx"
 
 namespace LPMP {
 
 class ldp_path_factor{
 
 public:
-    ldp_path_factor(const std::vector<size_t>& _listOfVertices,const std::vector<double>& _listOfCosts,const std::vector<char>& _isLifted):
+    ldp_path_factor(const std::vector<size_t>& _listOfVertices,const std::vector<double>& _listOfCosts,const std::vector<char>& _isLifted,const lifted_disjoint_paths::LdpInstance* pInstance):
         listOfVertices(_listOfVertices),
         listOfCosts(_listOfCosts),
         isLifted(_isLifted)
     {
         assert(listOfCosts.size()==listOfVertices.size()&&listOfCosts.size()==isLifted.size());
         numberOfEdges=listOfCosts.size();
+        isStrongBase=std::vector<char>(numberOfEdges);
         primalSolution=std::vector<char>(numberOfEdges);
         assert(listOfCosts.size()>=2);
+        for (size_t i = 0; i < numberOfEdges-1; ++i) {
+            if(!isLifted[i]){
+                bool strongBase=pInstance->isStrongBase(listOfVertices[i],listOfVertices[i+1]);
+                isStrongBase[i]=strongBase;
+            }
+        }
     }
 
 
@@ -80,6 +88,7 @@ private:
     const std::vector<size_t> listOfVertices;
     std::vector<double> listOfCosts;
     const std::vector<char> isLifted;
+    std::vector<char> isStrongBase;
     size_t numberOfEdges;
     std::vector<char> primalSolution;
     mutable double primalBaseCost;
@@ -230,7 +239,10 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
         }
 
     }
-    if(numberOfPositive==1){
+
+    assert(numberOfPositive==0||indexOfPositive<numberOfEdges);
+
+    if(numberOfPositive==1&&(isLifted[indexOfPositive]||isStrongBase[indexOfPositive])){
         assert(indexOfWeakestNegative<numberOfEdges);
         assert(indexOfPositive<numberOfEdges);
         if(edgeIndex<numberOfEdges&&!edgeLabel){  //must cut the edge

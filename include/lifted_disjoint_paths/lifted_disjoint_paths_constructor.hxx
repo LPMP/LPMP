@@ -1101,8 +1101,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         ldp_path_factor_type* pPathFactor=queueWithPaths.top().second;
         double improvement=queueWithPaths.top().first;
         possibleImprovement+=improvement;
-        //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
-        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
+        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
+        //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
         path_factors_.push_back(newPathFactor);
        // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
         delete pPathFactor;
