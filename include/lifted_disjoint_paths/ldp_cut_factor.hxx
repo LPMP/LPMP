@@ -93,6 +93,7 @@ public:
 
 
 
+    LdpTwoLayerGraph getAllMinMarginals()const;
 
     void print()const ;
 private:
@@ -101,6 +102,8 @@ private:
     LPMP::linear_assignment_problem_input createLAStandard(bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const;
     LPMP::linear_assignment_problem_input laExcludeEdge(const size_t& v1,const size_t& v2,bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const ;
     LPMP::linear_assignment_problem_input laExcludeVertices(const size_t& v1, const size_t& v2,bool addLiftedCost, const LdpTwoLayerGraph *pCutGraph, const double *pLiftedCost)const;
+
+
 
 
 //std::vector<double> costs;
@@ -210,67 +213,45 @@ ldp_cut_factor::ldp_cut_factor(size_t v_, size_t w_, double liftedCost_, std::ma
     cutGraph=LdpTwoLayerGraph(localEdges,edgeCosts);
     primalSolution=std::vector<size_t>(inputVertices.size()+1,unassignedLabel); //plus one for lifted edge
 
-//    if(diagnostics()){
-//        size_t edgeCounter=0;
-//        for (size_t v=0;v<cutGraph.getNumberOfVertices();v++) {
-//            assert(localEdges[edgeCounter][0]==v);
-//            const auto * it=cutGraph.forwardNeighborsBegin(v);
-//            const auto * end=cutGraph.forwardNeighborsEnd(v);
-//            for(;it!=end;it++){
-//                assert(edgeCounter<localEdges.size());
-//                assert(localEdges[edgeCounter][1]==it->first);
-//                edgeCounter++;
-//            }
-//            if(edgeCounter>=localEdges.size()) break;
-//        }
 
-//    }
     storeLabeling=std::vector<size_t>(numberOfInput+1,unassignedLabel);
 
 }
 
-//ldp_cut_factor::ldp_cut_factor(size_t v_, size_t w_, double liftedCost, std::map<size_t,std::map<size_t,double>> inputEdges):
-//    v(v_),
-//    w(w_)
-//{ //TODO: maybe inputEdges as map<size_t<map<size_t,double>> - better for creating edges as pairs of order of v1 and v2
-//    std::set<size_t> outVertices;
-//    size_t edgeCounter=0;
-//    for(auto iter=inputEdges.begin();iter!=inputEdges.end();iter++){
-//        size_t v1=iter->first;
-//        inputVertices.push_back(v1);
-//        std::map<size_t,double>& neighbors=iter->second;
-//        for(auto iter2=neighbors.begin();iter2!=neighbors.end();iter2++){
-//            outVertices.insert(iter2->first);
-//            edgeCounter++;
-//        }
-//    }
-//    for(size_t vert:outVertices){
-//        outputVertices.push_back(vert);
-//    }
-//    size_t counterInput=0;
+LdpTwoLayerGraph ldp_cut_factor::getAllMinMarginals()const{
+    double currentOpt=LowerBound();
+    bool addLiftedCost=baseCoverLiftedExists&&liftedCost>0;
+    LdpTwoLayerGraph localCutGraph=cutGraph;
+    LdpTwoLayerGraph minMarginals=cutGraph;
 
-//    baseCoveringLifted=edgeCounter; //meaning there is none
+    //double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost,pCutGraph,pLiftedCost);
 
-//    for(auto iter=inputEdges.begin();iter!=inputEdges.end();iter++){
-//        size_t v1=iter->first;
-//        std::map<size_t,double>& neighbors=iter->second;
-//        for(size_t i=0;i<outputVertices.size();i++){
-//            auto it=neighbors.find(outputVertices[i]);
-//            if(it!=neighbors.end()){
-//                if(v1==v&&it->first==w){
-//                    baseCoveringLifted=edges.size();
-//                }
-//                edges.push_back({counterInput,i});
-//                costs.push_back(it->second);
-//            }
-//        }
-//        counterInput++;
-//    }
-//    costs.push_back(liftedCost);
-//    primalSolution=std::vector<bool>(edges.size()+1);
-//    assert(edgeCounter==edges.size());
+    std::vector<size_t> optLabeling=storeLabeling;
+    for (int i = 0; i < inputVertices.size(); ++i) {
+        auto* iter=localCutGraph.forwardNeighborsBegin(i);
+        auto *end=localCutGraph.forwardNeighborsEnd(i);
+        if(iter->first==optLabeling[i]){
+            size_t index2=optLabeling[i];
+            double restrictZero=advancedMinimizer(i,index2,false,addLiftedCost,&localCutGraph,&liftedCost);
+            double delta=currentOpt-restrictZero;
+            currentOpt=restrictZero;
+            iter->second-=delta;
+            //TODO delta to a proper place in min marginals
 
-//}
+        }
+        else{
+            double restrictOne=advancedMinimizer(i,iter->first,true,addLiftedCost,&localCutGraph,&liftedCost);
+            double delta=restrictOne-currentOpt;
+            currentOpt=restrictOne-currentOpt;
+            iter->second-=delta;
+            //TODO delta to a proper place in min marginals
+        }
+    }
+    return minMarginals;
+
+}
+
+
 
 //Returning neighbors indices, not output indices!
 //Last entry for lifted edge, different encoding

@@ -89,6 +89,18 @@ public:
     }
 
 
+
+    std::pair<size_t,double> * forwardNeighborsBegin(size_t i){
+        assert(i<numberOfInputs);
+        return forwardEdges[i].begin();
+    }
+
+    std::pair<size_t,double> * forwardNeighborsEnd(size_t i){
+        assert(i<numberOfInputs);
+        return forwardEdges[i].end();
+    }
+
+
     const size_t & getNumberOfInputs()const{
         return numberOfInputs;
     }
