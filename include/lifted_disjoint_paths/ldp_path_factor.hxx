@@ -20,6 +20,7 @@ public:
         numberOfEdges=listOfCosts.size();
         isStrongBase=std::vector<char>(numberOfEdges);
         primalSolution=std::vector<char>(numberOfEdges);
+        optSolution=std::vector<char>(numberOfEdges);
         assert(listOfCosts.size()>=2);
         for (size_t i = 0; i < numberOfEdges-1; ++i) {
             if(!isLifted[i]){
@@ -80,6 +81,8 @@ public:
         return primalBaseCost;
     }
 
+    std::vector<double> getAllMinMarginals()const;
+
     const void print() const;
 
 private:
@@ -93,6 +96,7 @@ private:
     std::vector<char> primalSolution;
     mutable double primalBaseCost;
     mutable double primalLiftedCost;
+    mutable std::vector<char> optSolution;
 
 };
 
@@ -114,6 +118,30 @@ double ldp_path_factor::getMinMarginal(const size_t &edgeIndex,const std::vector
    // std::cout<<"restrict zero "<<restrictZero<<std::endl;
     return restrictOne-restrictZero;
 }
+
+
+std::vector<double> ldp_path_factor::getAllMinMarginals()const{
+    std::vector<double> localCosts=listOfCosts;
+    std::vector<double> minMarginals(numberOfEdges);
+    double currentOpt=minimize(&localCosts,numberOfEdges,false);
+    std::vector<char> origOptSolution=optSolution;
+    for (int i = 0; i < numberOfEdges; ++i) {
+        if(origOptSolution[i]){
+            double restrictedOpt=minimize(&localCosts,i,false);
+            double delta=currentOpt-restrictedOpt;
+            currentOpt=restrictedOpt;
+            minMarginals[i]=delta;
+            localCosts[i]-=delta;
+        }
+        else{
+            double restrictedOpt=minimize(&localCosts,i,true);
+            double delta=restrictedOpt-currentOpt;
+            minMarginals[i]=delta;
+            localCosts[i]-=delta;
+        }
+    }
+}
+
 
 void ldp_path_factor::init_primal(){
     std::fill(primalSolution.begin(),primalSolution.end(),0);
@@ -195,6 +223,7 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
     size_t indexOfWeakestNegative=numberOfEdges;
     size_t numberOfPositive=0;
     size_t indexOfPositive=numberOfEdges;
+    std::fill(optSolution.begin(),optSolution.end(),1);
     //std::cout<<"calling minimize, printing edge costs "<<std::endl;
     for(size_t i=0;i<numberOfEdges;i++){
         double c=costs[i];
@@ -216,6 +245,7 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
             //std::cout<<"minimize with restrict zero "<<edgeIndex<<std::endl;
             numberOfPositive=1;
             indexOfPositive=edgeIndex;
+            optSolution[indexOfPositive]=0;
         }
     }
 
@@ -233,6 +263,7 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
         }
         else{
             numberOfPositive++;
+            optSolution[i]=0;
             if(numberOfPositive==1){
                 indexOfPositive=i;
             }
@@ -248,6 +279,7 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
         if(edgeIndex<numberOfEdges&&!edgeLabel){  //must cut the edge
 
             double value=optimalValue-costs[indexOfWeakestNegative];
+            optSolution[indexOfWeakestNegative]=0;
           //  std::cout<<"restrict zero contradiction, return  "<<value<<std::endl;
             return value;
         }
@@ -257,7 +289,15 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
            // if(edgeIndex<numberOfEdges)std::cout<<"all active cost "<<allActive<<std::endl;
             double cut=optimalValue-costs[indexOfWeakestNegative];
            // if(edgeIndex<numberOfEdges)std::cout<<"do cut cost "<<cut<<std::endl;
-            return std::min(cut,allActive);
+            if(cut<allActive){
+                optSolution[indexOfWeakestNegative]=0;
+                return cut;
+            }
+            else{
+                optSolution[indexOfPositive]=1;
+                return allActive;
+            }
+
         }
     }
     else{  //no contradiction
@@ -271,6 +311,13 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
 
 double ldp_path_factor::LowerBound()const{
     double optValue=minimize(&listOfCosts,numberOfEdges,0);
+    if(debug()){
+        double value=0;
+        for (size_t i = 0; i < numberOfEdges; ++i) {
+            if(optSolution[i]) value+=listOfCosts[i];
+        }
+        assert(std::abs(value-optValue)<eps);
+    }
     return optValue;
 
 }
