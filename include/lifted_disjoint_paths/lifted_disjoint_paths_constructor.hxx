@@ -41,6 +41,8 @@ public:
         size_t separateCuts(const std::size_t nr_constraints_to_add);
     void pre_iterate() { reparametrize_snc_factors(); }
 
+    double controlLowerBound() const;
+
     std::vector<std::vector<size_t>> getBestPrimal()const { return bestPrimalSolution;}
 
     double getBestPrimalValue()const { return bestPrimalValue;}
@@ -133,6 +135,33 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 }
 
+
+template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
+double lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>:: controlLowerBound() const
+{
+    double lowerBound=0;
+    for (int i = 0; i < nr_nodes(); ++i) {
+        size_t vertex=i;
+        auto* sncOut=single_node_cut_factors_[vertex][1]->get_factor();
+        auto* sncIn=single_node_cut_factors_[vertex][0]->get_factor();
+        lowerBound+=sncOut->LowerBound();
+        lowerBound+=sncIn->LowerBound();
+
+    }
+
+    for (int i = 0; i < path_factors_.size(); ++i) {
+        auto * pathFactor=path_factors_[i]->get_factor();
+        lowerBound+=pathFactor->LowerBound();
+
+    }
+
+    for (int i = 0; i < cut_factors_.size(); ++i) {
+        auto * cutFactor=cut_factors_[i]->get_factor();
+        lowerBound+=cutFactor->LowerBound();
+
+    }
+
+}
 
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
@@ -908,9 +937,6 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             assert(diff<epsilon);
         }
 
-
-
-
 }
 
 
@@ -918,9 +944,14 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CU
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::ComputePrimal()
 {
     //TODO lower bound check
+    double lbBefore=0;
+    double lbAfter=0;
+    if(diagnostics()) lbBefore=controlLowerBound();
     LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
     mmExtractor.initMinMarginals(true);
     mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
+    if(diagnostics()) lbAfter=controlLowerBound();
+    assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
 
 
     read_in_mcf_costs();
