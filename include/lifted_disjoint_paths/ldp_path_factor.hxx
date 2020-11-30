@@ -140,6 +140,7 @@ std::vector<double> ldp_path_factor::getAllMinMarginals()const{
             localCosts[i]-=delta;
         }
     }
+    return minMarginals;
 }
 
 

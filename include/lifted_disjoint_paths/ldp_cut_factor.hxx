@@ -93,7 +93,7 @@ public:
 
 
 
-    LdpTwoLayerGraph getAllMinMarginals()const;
+    std::pair<LdpTwoLayerGraph,double> getAllMinMarginals()const;
 
     void print()const ;
 private:
@@ -218,7 +218,7 @@ ldp_cut_factor::ldp_cut_factor(size_t v_, size_t w_, double liftedCost_, std::ma
 
 }
 
-LdpTwoLayerGraph ldp_cut_factor::getAllMinMarginals()const{
+std::pair<LdpTwoLayerGraph, double> ldp_cut_factor::getAllMinMarginals()const{
     double currentOpt=LowerBound();
     bool addLiftedCost=baseCoverLiftedExists&&liftedCost>0;
     LdpTwoLayerGraph localCutGraph=cutGraph;
@@ -227,27 +227,31 @@ LdpTwoLayerGraph ldp_cut_factor::getAllMinMarginals()const{
     //double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost,pCutGraph,pLiftedCost);
 
     std::vector<size_t> optLabeling=storeLabeling;
-    for (int i = 0; i < inputVertices.size(); ++i) {
+    for (size_t i = 0; i < inputVertices.size(); ++i) {
         auto* iter=localCutGraph.forwardNeighborsBegin(i);
         auto *end=localCutGraph.forwardNeighborsEnd(i);
-        if(iter->first==optLabeling[i]){
-            size_t index2=optLabeling[i];
-            double restrictZero=advancedMinimizer(i,index2,false,addLiftedCost,&localCutGraph,&liftedCost);
-            double delta=currentOpt-restrictZero;
-            currentOpt=restrictZero;
-            iter->second-=delta;
-            //TODO delta to a proper place in min marginals
+        size_t counter=0;
+        for (;iter!=end;iter++) {
+            if(counter==optLabeling[i]){
+                double restrictZero=advancedMinimizer(i,iter->first,false,addLiftedCost,&localCutGraph,&liftedCost);
+                double delta=currentOpt-restrictZero;
+                currentOpt=restrictZero;
+                iter->second-=delta;
+                minMarginals.setForwardEdgeCost(i,counter,delta);
 
-        }
-        else{
-            double restrictOne=advancedMinimizer(i,iter->first,true,addLiftedCost,&localCutGraph,&liftedCost);
-            double delta=restrictOne-currentOpt;
-            currentOpt=restrictOne-currentOpt;
-            iter->second-=delta;
-            //TODO delta to a proper place in min marginals
+            }
+            else{
+                double restrictOne=advancedMinimizer(i,iter->first,true,addLiftedCost,&localCutGraph,&liftedCost);
+                double delta=restrictOne-currentOpt;
+                iter->second-=delta;
+                minMarginals.setForwardEdgeCost(i,counter,delta);
+            }
+            counter++;
         }
     }
-    return minMarginals;
+    double liftedMM=getLiftedMinMarginal(&localCutGraph,&liftedCost);
+
+    return std::pair<LdpTwoLayerGraph,double>(minMarginals,liftedMM);
 
 }
 
@@ -466,11 +470,13 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
         if(baseCoverLiftedExists&&storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
             liftedActive=true;
+            storeLabeling.back()=w;
             if(!addLiftedCost) minValue+=localLiftedCost;
         }
         else if(activeExists&&localLiftedCost<0){
             minValue+=localLiftedCost;
             liftedActive=true;
+            storeLabeling.back()=w;
         }
 
         // std::cout<<"lifted active "<<liftedActive<<std::endl;

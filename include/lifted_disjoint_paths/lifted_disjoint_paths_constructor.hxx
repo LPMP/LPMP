@@ -14,6 +14,7 @@
 #include "ldp_path_separator.hxx"
 #include "ldp_cut_message_creator.hxx"
 #include "ldp_cut_factor_separator.hxx"
+#include "ldp_special_min_marginals_extractor.hxx"
 
 namespace LPMP {
 
@@ -916,6 +917,12 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::ComputePrimal()
 {
+    //TODO lower bound check
+    LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
+    mmExtractor.initMinMarginals(true);
+    mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
+
+
     read_in_mcf_costs();
     mcf_->solve();
 
