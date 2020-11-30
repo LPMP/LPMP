@@ -371,7 +371,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
     std::tuple<double,size_t,size_t,char> myTuple;
     if(index1!=unassignedLabel&&!restrictToOne){
-       if(debug()) std::cout<<"restric to zero"<<std::endl;
+      // if(debug()) std::cout<<"restric to zero"<<std::endl;
         myTuple=minCutEdge(index1,index2,pCutGraph,pLiftedCost);
     }
     else{
@@ -379,9 +379,9 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
     }
     double minCutValue=std::get<0>(myTuple);
     if(minCutValue>=0){
-    if(debug())    std::cout<<"simple method"<<std::endl;
+ //   if(debug())    std::cout<<"simple method"<<std::endl;
         if(restrictToOne){
-            if(debug())std::cout<<"restric to one"<<std::endl;
+           // if(debug())std::cout<<"restric to one"<<std::endl;
             double valueToReturn=0;
             auto* iter=localCutGraph.forwardNeighborsBegin(index1);
             auto* end=localCutGraph.forwardNeighborsEnd(index1);
@@ -399,7 +399,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
             return valueToReturn;
         }
         else{
-            if(debug())std::cout<<"not restric to one"<<std::endl;
+            //if(debug())std::cout<<"not restric to one"<<std::endl;
 
             double activeCost=localLiftedCost+minCutValue;
             if(activeCost<0){
@@ -417,7 +417,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
     }
     else{
        // std::cout<<"ADVANCED METHOD FOR CUT FACTOR"<<std::endl;
-        if(debug())std::cout<<"advanced method"<<std::endl;
+        //if(debug())std::cout<<"advanced method"<<std::endl;
         if(index1==unassignedLabel){
             lapInput=createLAStandard(addLiftedCost,pCutGraph,pLiftedCost);
         }
@@ -533,7 +533,7 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size
             if(value<0){
                 assert(outputIndex<outputVertices.size());
                 lapInput.add_assignment(i,outputIndex,value);
-                if(debug())std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
+               // if(debug())std::cout<<"adding assignment "<<i<<", "<<outputIndex<<": "<<value<<std::endl;
             }
         }
 
@@ -580,7 +580,7 @@ double ldp_cut_factor::LowerBound() const{
 
 
 double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t & index2,const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const{
-    if(debug())std::cout<<"base edge min marginal in cut"<<std::endl;
+  //  if(debug())std::cout<<"base edge min marginal in cut"<<std::endl;
     bool addLiftedCost=baseCoverLiftedExists&&liftedCost>0;
     assert(index1<numberOfInput);
     assert(index2<numberOfOutput);
@@ -619,24 +619,7 @@ std::tuple<double,size_t,size_t,char> ldp_cut_factor::minCutEdge(size_t index1,s
 
 
 double ldp_cut_factor::getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,const double* pLiftedCost) const{
-    if(debug())std::cout<<"cut lifted min marginal"<<std::endl;
-//    bool nonPositiveEdgeExists=false;
-//    bool baseCoverCost=std::numeric_limits<double>::min();
-//    double minValue=std::numeric_limits<double>::max();
-//    bool minValueSet=false;
-//    for(size_t i=0;i<inputVertices.size();i++){
-//        auto * iter=cutGraph.forwardNeighborsBegin(i);
-//        auto *end=cutGraph.forwardNeighborsEnd(i);
-//        for(;iter!=end;iter++){
-//            if(iter->second<minValue){
-//                minValue=iter->second;
-//                minValueSet=true;
-//            }
-//            if(i==baseCoveringLifted[0]&&iter->first==baseCoveringLifted[1]){
-//                baseCoverCost=iter->second;
-//            }
-//        }
-//    }
+
     double localLiftedCost=*pLiftedCost;
     std::tuple<double,size_t,size_t,char>t=minCutEdge(unassignedLabel,unassignedLabel,pCutGraph,pLiftedCost);
     bool baseCoverNegative=std::get<3>(t)>0;
@@ -645,23 +628,23 @@ double ldp_cut_factor::getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,co
     if(!baseCoverLiftedExists||!baseCoverNegative){
         if(minValue>=0){
             //assert(minValueSet);
-            if(debug())std::cout<<"min value big"<<std::endl;
+            //if(debug())std::cout<<"min value big"<<std::endl;
             double value=localLiftedCost+minValue;
-            if(debug())std::cout<<value<<std::endl;
+            //if(debug())std::cout<<value<<std::endl;
             return value;
         }
         else{
-            if(debug())std::cout<<"min value negative"<<std::endl;
+            //if(debug())std::cout<<"min value negative"<<std::endl;
             return localLiftedCost;
         }
     }
     else{
-        if(debug())std::cout<<" base cover lifted"<<std::endl;
+      //  if(debug())std::cout<<" base cover lifted"<<std::endl;
         double lowerBound=advancedMinimizer(unassignedLabel,unassignedLabel,false,false,pCutGraph,pLiftedCost); //some cut edge must be active
         double restrictedOne=0;
         double restrictedZero=0;
         if(storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
-            if(debug())std::cout<<"base cover lifted "<<std::endl;
+            //if(debug())std::cout<<"base cover lifted "<<std::endl;
             assert(liftedActive);
             restrictedOne=lowerBound;
             restrictedZero=advancedMinimizer(baseCoveringLifted[0],baseCoveringLifted[1],false,false,pCutGraph,pLiftedCost);
@@ -669,7 +652,7 @@ double ldp_cut_factor::getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,co
             return restrictedOne-restrictedZero;
         }
         else{
-            if(debug())std::cout<<"base cover lifted not active"<<std::endl;
+          //  if(debug())std::cout<<"base cover lifted not active"<<std::endl;
             assert(lowerBound<0);
             return localLiftedCost;
         }
@@ -699,91 +682,72 @@ public:
         sncIsOut(_sncIsOut),   //if true, central node is in inputs, other nodes in outputs
         containsLiftedEdge(_containsLiftedEdge),
         nodeIndexOfLiftedEdge(_nodeIndexOfLiftedEdge){
+        assert(sncIsOut);
 
           }
 
     template<typename CUT_FACTOR>
     void RepamLeft(CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
-        if(debug())std::cout<<"cut repam left ";
-        double before=l.LowerBound();
-        if(debug())std::cout<<"before lb "<<before<<std::endl;
-       if(debug()){
 
-          l.print();
-       }
-//       printIndices();
-
-      // std::cout<<std::endl;
-        assert(msg_dim <=nodeIndicesInCut.size());
+       assert(msg_dim <=nodeIndicesInCut.size());
        if(msg_dim==nodeIndicesInCut.size()){
-           lastV1=l.getLiftedInputVertex();
-           lastV2=l.getLiftedOutputVertex();
-           lastValue=msg;
+           if(debug()){
+               lastV1=l.getLiftedInputVertex();
+               lastV2=l.getLiftedOutputVertex();
+               lastValue=msg;
+           }
 
            l.updateCostLifted(msg);
        }
        else{
            if(sncIsOut){
                l.updateCostBase(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
-               lastV1=l.getInputVertices().at(sncNodeIDindexInCut);
-               size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
-               lastV2=l.getOutputVertices().at(otherVertex);
-               lastValue=msg;
+               if(debug()){
+                   lastV1=l.getInputVertices().at(sncNodeIDindexInCut);
+                   size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
+                   lastV2=l.getOutputVertices().at(otherVertex);
+                   lastValue=msg;
+               }
            }
-           else{
-               l.updateCostBase(nodeIndicesInCut.at(msg_dim),sncNodeIDindexInCut,msg);
-           }
-       }//std::cout<<"index to update "<<indicesInTriangle.at(msg_dim);
-       double after=l.LowerBound();
-       if(debug())std::cout<<"after lb "<<after<<std::endl;
+
+       }
 
      }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
-        if(debug())std::cout<<"snc repam right "<<std::endl;
-        double before=r.LowerBound();
-        if(debug())std::cout<<"before lb "<<before<<std::endl;
-        if(debug()){
-            std::cout<<"snc repam right "<<std::endl;
-            r.print();
-        }
+
         assert(msg_dim <=nodeIndicesInSnc.size());
         size_t secondVertex;
         if(msg_dim==nodeIndicesInSnc.size()){
             {
                 assert(containsLiftedEdge);
-                if(debug())std::cout<<"node id of lifted edge "<<r.getLiftedIDs()[nodeIndexOfLiftedEdge]<<std::endl;
                 r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
-                secondVertex=r.getLiftedIDs().at(nodeIndexOfLiftedEdge);
+                if(debug()) secondVertex=r.getLiftedIDs().at(nodeIndexOfLiftedEdge);
             }
         }
         else{
-                r.updateEdgeCost(msg,nodeIndicesInSnc.at(msg_dim),false);
-                secondVertex=r.getBaseIDs().at(nodeIndicesInSnc.at(msg_dim));
+            r.updateEdgeCost(msg,nodeIndicesInSnc.at(msg_dim),false);
+            if(debug()) secondVertex=r.getBaseIDs().at(nodeIndicesInSnc.at(msg_dim));
         }
-        assert(lastV1==r.nodeID);
-        if(lastV2!=secondVertex){
-            std::cout<<"cut mismatch, first vertex "<<lastV1<<", vertex in cut "<<lastV2<<",  vertex in snc "<<secondVertex<<", index in cut"<<nodeIndicesInCut[msg_dim]<<", is lifted "<<(msg_dim==nodeIndicesInSnc.size())<<std::endl;
+        if(debug()){
+            assert(lastV1==r.nodeID);
+            if(lastV2!=secondVertex){
+                std::cout<<"cut mismatch, first vertex "<<lastV1<<", vertex in cut "<<lastV2<<",  vertex in snc "<<secondVertex<<", index in cut"<<nodeIndicesInCut[msg_dim]<<", is lifted "<<(msg_dim==nodeIndicesInSnc.size())<<std::endl;
 
+            }
+            assert(lastV2==secondVertex);
+            assert(std::abs(lastValue+msg)<eps);
         }
-//        else{
-//            std::cout<<"cut ok, first vertex "<<lastV1<<", vertex in cut "<<lastV2<<",  vertex in snc "<<secondVertex<<", is lifted "<<(msg_dim==nodeIndicesInSnc.size())<<std::endl;
-//        }
-        assert(lastV2==secondVertex);
-        assert(std::abs(lastValue+msg)<eps);
-        double after=r.LowerBound();
-        if(debug())std::cout<<"abter lb "<<after<<std::endl;
 
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
-         if(debug())std::cout<<"snc send one to left "<<std::endl;
-        if(debug()) std::cout<<"triangle send one to left ";
+
         std::vector<double> baseCosts=r.getBaseCosts();
         const std::vector<double>& liftedCosts=r.getLiftedCosts();
         size_t i=0;
@@ -801,15 +765,13 @@ public:
 
         }
 
-        //  std::cout<<" done "<<std::endl;
+
     }
 
     template<typename CUT_FACTOR, typename MSG>
     void send_message_to_right(const CUT_FACTOR& l, MSG& msg, const double omega)
     {
-        if(debug())std::cout<<"cut send one to right"<<std::endl;
-        if(debug()) std::cout<<"triangle send one to right"<<std::endl;
-        //for (size_t i=0;i<1;i++) {
+
         double delta;
         size_t i=0;
         double liftedCost=l.getLiftedCost();
@@ -825,12 +787,12 @@ public:
                 delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut,&cutGraph,&liftedCost);
                 cutGraph.updateForwardEdgeCost(nodeIndicesInCut[i],sncNodeIDindexInCut,-delta);
             }
-            if(debug())std::cout<<"min marginal value "<<delta<<std::endl;
+
             msg[i] -= omega * delta;
         }
 
         if(containsLiftedEdge){
-            if(debug())std::cout<<"send to lifted "<<l.getLiftedOutputVertex()<<std::endl;
+
             delta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
             msg[i]-=omega*delta;
         }

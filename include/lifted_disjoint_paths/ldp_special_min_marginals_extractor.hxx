@@ -40,7 +40,7 @@ inline LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::LdpSpe
     numberOfVertices(pLdpInstance->getNumberOfVertices()-2)
 {
 
-    std::cout<<"constructor ok"<<std::endl;
+   // std::cout<<"constructor ok"<<std::endl;
 }
 
 template<class CUT_FACTOR_CONT,class PATH_FACTOR_CONT>
@@ -74,7 +74,7 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
         }
     }
 
-    std::cout<<"path factors processed"<<std::endl;
+   // std::cout<<"path factors processed"<<std::endl;
 
 
 
@@ -107,7 +107,7 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
         }
 
     }
-    std::cout<<"cut factors processed"<<std::endl;
+    //std::cout<<"cut factors processed"<<std::endl;
 
 }
 

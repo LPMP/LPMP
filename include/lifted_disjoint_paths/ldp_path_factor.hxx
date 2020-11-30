@@ -336,9 +336,7 @@ public:
         isLifted=_isLifted;
         dimension=_edgeIndexInPath.size();
         debInfo=debugInfo;
-//        std::cout<<"dimension in message "<<dimension<<std::endl;
 
-       // std::cout<<"dimension of edge indices "<<edgeIndexInPath.size()<<std::endl;
         assert(dimension==1||dimension==2);
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
@@ -349,15 +347,12 @@ public:
     template<typename PATH_FACTOR>
     void RepamLeft(PATH_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
-       // std::cout<<"repam left path "<<std::endl;
-        double before=l.LowerBound();
-        //std::cout<<"before lb "<<before<<std::endl;
-        assert(dimension==1||dimension==2);
+
         assert(msg_dim<dimension);
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
-        //if(debInfo){
+        if(debug()){
             size_t indexInPath=edgeIndexInPath[msg_dim];
             size_t v0=l.getListOfVertices().at(indexInPath);
             size_t v1;
@@ -373,28 +368,26 @@ public:
                 lastV2=v1;
                 lastValue=msg;
             }
+            assert(isLifted.at(msg_dim)==l.getLiftedInfo().at(indexInPath));
             //std::cout<<"Update cost of path, vertices "<<v0<<", "<<v1<<", edge index "<<edgeIndexInPath[msg_dim]<<", value "<<msg<<std::endl;
-        //}
-        assert(isLifted.at(msg_dim)==l.getLiftedInfo().at(indexInPath));
+        }
+
         l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
-        double after=l.LowerBound();
-       // std::cout<<"after lb "<<after<<std::endl;
+
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR>
     void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
     {
-       // std::cout<<"snc repam right "<<std::endl;
-        double before=r.LowerBound();
-       // std::cout<<"before lb "<<before<<std::endl;
+
         assert(dimension==1||dimension==2);
         assert(msg_dim<dimension);
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
-        size_t centralNodeID=r.nodeID;
-       // std::cout<<"repam left path "<<std::endl;
-        //if(debInfo){
+        if(debug()){
+            size_t centralNodeID=r.nodeID;
+
             size_t secondVertex;
             size_t v0;
             size_t v1;
@@ -416,10 +409,9 @@ public:
             }
             assert(std::abs(msg+lastValue)<eps);
            // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
-        //}
+        }
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
-        double after=r.LowerBound();
-       // std::cout<<"abter lb "<<after<<std::endl;
+
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
@@ -469,12 +461,6 @@ public:
     template<typename PATH_FACTOR, typename MSG>
     void send_message_to_right(const PATH_FACTOR& l, MSG& msg, const double omega)
     {
-        //std::cout<<"send messages to right path "<<std::endl;
-        //             assert(dimension==1||dimension==2);
-        //             assert(dimension==1||dimension==2);
-        //             assert(vertexIndexInSnc.size()==dimension);
-        //             assert(isLifted.size()==dimension);
-        //             assert(edgeIndexInPath.size()==dimension);
 
         double delta;
         if(dimension==1){
