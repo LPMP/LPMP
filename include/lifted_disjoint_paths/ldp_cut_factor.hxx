@@ -722,11 +722,11 @@ public:
         assert(msg_dim <=nodeIndicesInSnc.size());
         size_t secondVertex;
         if(msg_dim==nodeIndicesInSnc.size()){
-            {
-                assert(containsLiftedEdge);
-                r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
-                if(debug()) secondVertex=r.getLiftedIDs().at(nodeIndexOfLiftedEdge);
-            }
+
+            assert(containsLiftedEdge);
+            r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
+            if(debug()) secondVertex=r.getLiftedIDs().at(nodeIndexOfLiftedEdge);
+
         }
         else{
             r.updateEdgeCost(msg,nodeIndicesInSnc.at(msg_dim),false);

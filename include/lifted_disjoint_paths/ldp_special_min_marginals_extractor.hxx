@@ -116,6 +116,8 @@ template<class SNC_FACTOR_CONT>
 inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::sendMessagesToSncFactors(std::vector<std::array<SNC_FACTOR_CONT *,2>>& SNCFactors)
 {
     for (size_t i = 0; i < baseEdgesWithCosts.size(); ++i) {
+        assert(i<SNCFactors.size());
+        if(i>=SNCFactors.size()) std::cout<<"wrong size"<<std::endl;
         auto* pOutFactor=SNCFactors[i][1]->get_factor();
         auto iter=baseEdgesWithCosts[i].begin();
         const std::vector<size_t>& baseIDs= pOutFactor->getBaseIDs();
@@ -143,6 +145,8 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::s
     }
 
     for (size_t i = 0; i < liftedEdgesWithCosts.size(); ++i) {
+        if(i>=SNCFactors.size()) std::cout<<"wrong size"<<std::endl;
+        assert(i<SNCFactors.size());
         auto* pOutFactor=SNCFactors[i][1]->get_factor();
         auto iter=liftedEdgesWithCosts[i].begin();
         const std::vector<size_t>& liftedIDs= pOutFactor->getLiftedIDs();

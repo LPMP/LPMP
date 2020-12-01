@@ -140,7 +140,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CU
 double lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE, SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>:: controlLowerBound() const
 {
     double lowerBound=0;
-    for (int i = 0; i < nr_nodes(); ++i) {
+    for (int i = 0; i < single_node_cut_factors_.size(); ++i) {
         size_t vertex=i;
         auto* sncOut=single_node_cut_factors_[vertex][1]->get_factor();
         auto* sncIn=single_node_cut_factors_[vertex][0]->get_factor();
@@ -160,6 +160,7 @@ double lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_
         lowerBound+=cutFactor->LowerBound();
 
     }
+    return lowerBound;
 
 }
 
@@ -372,7 +373,6 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
         if(sncFactorIn->isNodeActive()!=shouldBeActive||sncFactorOut->isNodeActive()!=shouldBeActive){
             isFeasible=false;
-
         }
         else if(shouldBeActive){
             size_t descI=sncFactorOut->getPrimalBaseVertexID();
@@ -946,11 +946,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 //If used here, more stable primal solution. However, slower convergence.
 //    double lbBefore=0;
 //    double lbAfter=0;
-//    if(diagnostics()) lbBefore=controlLowerBound();
+//  //  if(diagnostics()) lbBefore=controlLowerBound();
 //    LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
 //    mmExtractor.initMinMarginals(true);
 //    mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
-//    if(diagnostics()) lbAfter=controlLowerBound();
+//   // if(diagnostics()) lbAfter=controlLowerBound();
 //    assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
 
 
@@ -1124,61 +1124,61 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 
     //size_t counterAdded=cutsSeparated;
 
-    ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
-    pathSeparator.separatePathInequalities(nr_constraints_to_add);
-    std::priority_queue<std::pair<double,ldp_path_factor_type*>>& queueWithPaths=pathSeparator.getPriorityQueue();
+//    ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
+//    pathSeparator.separatePathInequalities(nr_constraints_to_add);
+//    std::priority_queue<std::pair<double,ldp_path_factor_type*>>& queueWithPaths=pathSeparator.getPriorityQueue();
 
-    double possibleImprovement=0;
-   // std::cout<<"queue filled "<<queueWithPaths.size()<<std::endl;
+//    double possibleImprovement=0;
+//   // std::cout<<"queue filled "<<queueWithPaths.size()<<std::endl;
 
 
-    size_t pathFactorsOriginalSize=path_factors_.size();
-    while(!queueWithPaths.empty()&&counterAdded<nr_constraints_to_add){
-       // std::pair<double,ldp_path_factor_type*>& p=queueWithPaths.top();
+//    size_t pathFactorsOriginalSize=path_factors_.size();
+//    while(!queueWithPaths.empty()&&counterAdded<nr_constraints_to_add){
+//       // std::pair<double,ldp_path_factor_type*>& p=queueWithPaths.top();
 
-        ldp_path_factor_type* pPathFactor=queueWithPaths.top().second;
-        double improvement=queueWithPaths.top().first;
-        possibleImprovement+=improvement;
-        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
-        //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
-        path_factors_.push_back(newPathFactor);
-       // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
-        delete pPathFactor;
-        pPathFactor=nullptr;
-        queueWithPaths.pop();
-        auto *myPathFactor=newPathFactor->get_factor();
-        //myPathFactor->print();
-        const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
-        for (size_t i=0;i<myPathFactor->getNumberOfEdges();i++) {
-            size_t pathVertex=pathVertices[i];
-            if(i>0){
-                auto * pSNC=single_node_cut_factors_[pathVertex][0];
-                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputs;
-                messageInputs.init(myPathFactor,pSNC,i);
-                //LdpPathMessageInputs messageInputs=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNC,i);
-                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
-                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndicesInPath,messageInputs.indicesInSnc,messageInputs.isLiftedForMessage,debugInfo);
-                snc_path_messages_.push_back(newMessage);
-            }
-            if(i<myPathFactor->getNumberOfEdges()-1){
-                auto * pSNCOut=single_node_cut_factors_[pathVertex][1];
-                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputsOut;
-                messageInputsOut.init(myPathFactor,pSNCOut,i);
-                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
-              //  LdpPathMessageInputs messageInputsOut=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNCOut,i);
-                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndicesInPath,messageInputsOut.indicesInSnc,messageInputsOut.isLiftedForMessage,debugInfo);
-                snc_path_messages_.push_back(newMessageOut);
-            }
-            //std::cout<<"vertex "<<i<<" of path solved "<<std::endl;
-        }
-        counterAdded ++;
-        //std::cout<<"added "<<counterAdded<<" path ineq"<<std::endl;
-    }
+//        ldp_path_factor_type* pPathFactor=queueWithPaths.top().second;
+//        double improvement=queueWithPaths.top().first;
+//        possibleImprovement+=improvement;
+//        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
+//        //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
+//        path_factors_.push_back(newPathFactor);
+//       // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
+//        delete pPathFactor;
+//        pPathFactor=nullptr;
+//        queueWithPaths.pop();
+//        auto *myPathFactor=newPathFactor->get_factor();
+//        //myPathFactor->print();
+//        const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
+//        for (size_t i=0;i<myPathFactor->getNumberOfEdges();i++) {
+//            size_t pathVertex=pathVertices[i];
+//            if(i>0){
+//                auto * pSNC=single_node_cut_factors_[pathVertex][0];
+//                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputs;
+//                messageInputs.init(myPathFactor,pSNC,i);
+//                //LdpPathMessageInputs messageInputs=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNC,i);
+//                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
+//                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndicesInPath,messageInputs.indicesInSnc,messageInputs.isLiftedForMessage,debugInfo);
+//                snc_path_messages_.push_back(newMessage);
+//            }
+//            if(i<myPathFactor->getNumberOfEdges()-1){
+//                auto * pSNCOut=single_node_cut_factors_[pathVertex][1];
+//                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputsOut;
+//                messageInputsOut.init(myPathFactor,pSNCOut,i);
+//                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
+//              //  LdpPathMessageInputs messageInputsOut=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNCOut,i);
+//                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndicesInPath,messageInputsOut.indicesInSnc,messageInputsOut.isLiftedForMessage,debugInfo);
+//                snc_path_messages_.push_back(newMessageOut);
+//            }
+//            //std::cout<<"vertex "<<i<<" of path solved "<<std::endl;
+//        }
+//        counterAdded ++;
+//        //std::cout<<"added "<<counterAdded<<" path ineq"<<std::endl;
+//    }
 
-    pathSeparator.clearPriorityQueue();
-    adjustPathLabels(pathFactorsOriginalSize);
+//    pathSeparator.clearPriorityQueue();
+//    adjustPathLabels(pathFactorsOriginalSize);
 
-    if(diagnostics()) std::cout<<"added "<<counterAdded<<" path factors with improvement "<<possibleImprovement<<std::endl;
+//    if(diagnostics()) std::cout<<"added "<<counterAdded<<" path factors with improvement "<<possibleImprovement<<std::endl;
      return counterAdded;
 
 }
@@ -1207,14 +1207,18 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
     //If this is here, probably faster convergence but less stable primal solution cost.
-    double lbBefore=0;
-    double lbAfter=0;
-    if(diagnostics()) lbBefore=controlLowerBound();
-    LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
-    mmExtractor.initMinMarginals(true);
-    mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
-    if(diagnostics()) lbAfter=controlLowerBound();
-    assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
+//    double lbBefore=0;
+//    double lbAfter=0;
+//    if(diagnostics()) lbBefore=controlLowerBound();
+//    std::cout<<"extractor constructor "<<std::endl;
+//    LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
+//    std::cout<<"extractor constructor "<<std::endl;
+//    mmExtractor.initMinMarginals(true);
+//    std::cout<<"init called "<<std::endl;
+//    mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
+//    std::cout<<"messages obtained"<<std::endl;
+//    if(diagnostics()) lbAfter=controlLowerBound();
+//    assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
 
 
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
