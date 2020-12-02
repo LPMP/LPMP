@@ -188,16 +188,19 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_N
    while(!queue.empty()&&!pathFound){
        size_t& vertex=queue.front();
 
+       assert(vertex<usedEdges.size());
        std::vector<std::pair<size_t,bool>>& neighbors=usedEdges[vertex];
 
       // std::cout<<"vertex in queue "<<vertex<<", neighbors "<<std::endl;
        for(size_t i=0;i<neighbors.size();i++){
            std::pair<size_t,bool> p=neighbors[i];
            size_t neighborOfVertex=p.first;
+           assert(neighborOfVertex<numberOfVertices);
            bool isLifted=p.second;
           // std::cout<<neighborOfVertex<<", "<<std::endl;
            if(neighborOfVertex==lastVertex){
                //std::cout<<"is last vertex"<<std::endl;
+               assert(lastVertex<numberOfVertices);
                predInQueue[lastVertex]=vertex;
                predInQueueIsLifted[lastVertex]=isLifted;
                isInQueue[lastVertex]=1; //To be cleared
@@ -223,6 +226,7 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_N
 
    size_t currentVertex=lastVertex;
    while(currentVertex!=firstVertex){  //path contains vertex and info about edge starting in it
+       assert(currentVertex<numberOfVertices);
        size_t newVertex=predInQueue[currentVertex];
        bool isEdgeLifted=predInQueueIsLifted[currentVertex];
        shortestPath.push_front({newVertex,isEdgeLifted});
@@ -231,6 +235,7 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_N
 
    size_t maxValue=std::numeric_limits<size_t>::max();
    for(auto& v:toDeleteFromQueue){
+       assert(v<numberOfVertices);
        isInQueue[v]=0;
        predInQueue[v]=maxValue;
        predInQueueIsLifted[v]=0;
@@ -263,6 +268,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
         bool isLiftedEdge=iter->second;
        // std::cout<<vertex<<", "<<std::endl;
       //  std::cout<<"lifted "<<isLiftedEdge<<std::endl;
+        assert(counter<pathVertices.size());
         pathVertices[counter]=vertex;
         liftedEdgesIndices[counter]=isLiftedEdge;
         counter++;
@@ -281,10 +287,12 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
         bool isLiftedEdge=iter->second;
       //  std::cout<<vertex<<", "<<std::endl;
       //  std::cout<<"lifted "<<isLiftedEdge<<std::endl;
+        assert(counter<pathVertices.size());
         pathVertices[counter]=vertex;
         liftedEdgesIndices[counter]=isLiftedEdge;
         counter++;
     }
+    assert(counter<pathVertices.size());
     pathVertices[counter]=lv2;
     liftedEdgesIndices[counter]=true; //this relates to the big lifted edge connecting the first and the last path vertex
 
@@ -295,7 +303,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     //std::cout<<"lifted "<<isLifted<<std::endl;
 
     std::vector<double> costs(pathVertices.size(),0); //last member is the lifted edge cost
-    assert(pathVertices[0]==lv1);
+    assert(pathVertices.front()==lv1);
     assert(pathVertices.back()==lv2);
 
     PATH_FACTOR* pPathFactor=new PATH_FACTOR(pathVertices,costs,liftedEdgesIndices,pInstance);
@@ -307,9 +315,19 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
 
 template  <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separatePathInequalities(size_t maxConstraints){
-    mmExtractor.initMinMarginals();
+ //   mmExtractor.initMinMarginals();
     baseMM=mmExtractor.getBaseEdgesMinMarginals();
     liftedMM=mmExtractor.getLiftedEdgesMinMarginals();
+    usedEdges= std::vector<std::vector<std::pair<size_t,bool>>> (numberOfVertices);
+
+
+    assert(baseMM.size()==numberOfVertices+2);
+    assert(liftedMM.size()==numberOfVertices);
+
+    predecessors=std::vector<std::list<size_t>> (numberOfVertices);  //Can I use list? Maybe yes, just predecessors will not be sorted!
+    descendants=std::vector<std::list<size_t>> (numberOfVertices);
+
+    assert(pQueue.empty());
 
 
     size_t constraintsCounter=0;
@@ -338,7 +356,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                 positiveLifted[i][iter->first]=iter->second;
             }
         }
-    }  maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
+    }
 
     std::sort(edgesToSort.begin(),edgesToSort.end());
 
@@ -351,8 +369,6 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
 //    }
 
-    predecessors=std::vector<std::list<size_t>> (numberOfVertices);  //Can I use list? Maybe yes, just predecessors will not be sorted!
-    descendants=std::vector<std::list<size_t>> (numberOfVertices);
 
     for(size_t i=0;i<numberOfVertices;i++){
         predecessors[i].push_back(i);
@@ -360,7 +376,6 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
     }
 
-    usedEdges= std::vector<std::vector<std::pair<size_t,bool>>> (numberOfVertices);
 
 
     for(size_t i=0;i<edgesToSort.size();i++){
@@ -370,6 +385,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         bool isLifted=std::get<3>(edge);
         double edgeCost=std::get<0>(edge);
 
+        assert(vertex1<numberOfVertices&&vertex2<numberOfVertices);
         auto iterPredV1=predecessors[vertex1].begin();
         auto endPredV1=predecessors[vertex1].end();
         auto iterDescV2=descendants[vertex2].begin();
@@ -377,11 +393,13 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
         for (;iterPredV1!=endPredV1;iterPredV1++) {
             const size_t& pred=*iterPredV1;
+            assert(pred<numberOfVertices);
             auto iterDescPred=descendants[pred].begin();  //Put descendants of V2 into descendants of pred
             auto endDescPred=descendants[pred].end();
             while(iterDescV2!=endDescV2){
                 if(iterDescPred==endDescPred||*iterDescV2<*iterDescPred){ //exists desc of v2 not contained in desc of pred
                     const size_t& descV2=*iterDescV2;
+                    assert(descV2<numberOfVertices);
                    // std::cout<<"exists new descendant "<<std::endl;
                     auto f=positiveLifted[pred].find(descV2);
                     if(f!=positiveLifted[pred].end()){  //Contradicting lifted edge exists!
@@ -416,7 +434,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         //TODO add predecessors and descendanta here
     }
 
-    mmExtractor.clearMinMarginals();
+ //   mmExtractor.clearMinMarginals();
 
     std::cout<<"candidate constraints "<<constraintsCounter<<std::endl;
 

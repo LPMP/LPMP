@@ -1078,107 +1078,108 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 {
    size_t numberOfCutsToSeparate=nr_constraints_to_add/2;
    size_t numberOfPathsToSeparate=nr_constraints_to_add-numberOfCutsToSeparate;
+   minMarginalsExtractor.initMinMarginals();
 
    // size_t cutsSeparated=  separateCuts(numberOfCutsToSeparate);
    size_t counterAdded=0;
-   LdpCutSeparator<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> cutSeparator(pInstance,minMarginalsExtractor);
-   cutSeparator.separateCutInequalities(numberOfCutsToSeparate);
-   std::priority_queue<std::pair<double,ldp_cut_factor*>>& queueWithCuts=cutSeparator.getPriorityQueue();
-   while(!queueWithCuts.empty()&&counterAdded<numberOfCutsToSeparate){
-       ldp_cut_factor* pCutFromQueue=queueWithCuts.top().second;
-       auto * newCutFactor=lp_->template add_factor<CUT_FACTOR_CONT>(*pCutFromQueue);
-       cut_factors_.push_back(newCutFactor);
-       delete pCutFromQueue;
-       pCutFromQueue=nullptr;
-       queueWithCuts.pop();
-       auto * pCutFactor=newCutFactor->get_factor();
-       const std::vector<size_t>& inputs=pCutFactor->getInputVertices();
-       const std::vector<size_t>& outputs=pCutFactor->getOutputVertices();
-       bool liftedAdded=false;
-       for(size_t i=0;i<inputs.size();i++){
-           size_t inputVertex=inputs[i];
-           auto * snc=single_node_cut_factors_[inputVertex][1];
-           LdpCutMessageInputs<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> messageInputs;
-           messageInputs.init(pCutFactor,snc,i);
+//   LdpCutSeparator<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> cutSeparator(pInstance,minMarginalsExtractor);
+//   cutSeparator.separateCutInequalities(numberOfCutsToSeparate);
+//   std::priority_queue<std::pair<double,ldp_cut_factor*>>& queueWithCuts=cutSeparator.getPriorityQueue();
+//   while(!queueWithCuts.empty()&&counterAdded<numberOfCutsToSeparate){
+//       ldp_cut_factor* pCutFromQueue=queueWithCuts.top().second;
+//       auto * newCutFactor=lp_->template add_factor<CUT_FACTOR_CONT>(*pCutFromQueue);
+//       cut_factors_.push_back(newCutFactor);
+//       delete pCutFromQueue;
+//       pCutFromQueue=nullptr;
+//       queueWithCuts.pop();
+//       auto * pCutFactor=newCutFactor->get_factor();
+//       const std::vector<size_t>& inputs=pCutFactor->getInputVertices();
+//       const std::vector<size_t>& outputs=pCutFactor->getOutputVertices();
+//       bool liftedAdded=false;
+//       for(size_t i=0;i<inputs.size();i++){
+//           size_t inputVertex=inputs[i];
+//           auto * snc=single_node_cut_factors_[inputVertex][1];
+//           LdpCutMessageInputs<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> messageInputs;
+//           messageInputs.init(pCutFactor,snc,i);
 
 
-           if(messageInputs.containsLifted) liftedAdded=true;
-           auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,messageInputs._nodeIndicesInCut,messageInputs._nodeIndicesInSnc,i,true,messageInputs.containsLifted,messageInputs._nodeIndexOfLiftedEdge);
-           snc_cut_messages_.push_back(message1);
-       }
-       if(!liftedAdded){
-           std::vector<size_t> _nodeIndicesInCut;
-           std::vector<size_t> _nodeIndicesInSnc;
-           size_t v=pCutFactor->getLiftedInputVertex();
-           size_t w=pCutFactor->getLiftedOutputVertex();
-           auto * snc=single_node_cut_factors_[v][1];
-           size_t _nodeIndexOfLiftedEdge=snc->get_factor()->getLiftedIDToOrder(w);
-           auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,_nodeIndicesInCut,_nodeIndicesInSnc,inputs.size(),true,true,_nodeIndexOfLiftedEdge);
-           snc_cut_messages_.push_back(message1);
-       }
-       counterAdded++;
-   }
-   cutSeparator.clearPriorityQueue();
+//           if(messageInputs.containsLifted) liftedAdded=true;
+//           auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,messageInputs._nodeIndicesInCut,messageInputs._nodeIndicesInSnc,i,true,messageInputs.containsLifted,messageInputs._nodeIndexOfLiftedEdge);
+//           snc_cut_messages_.push_back(message1);
+//       }
+//       if(!liftedAdded){
+//           std::vector<size_t> _nodeIndicesInCut;
+//           std::vector<size_t> _nodeIndicesInSnc;
+//           size_t v=pCutFactor->getLiftedInputVertex();
+//           size_t w=pCutFactor->getLiftedOutputVertex();
+//           auto * snc=single_node_cut_factors_[v][1];
+//           size_t _nodeIndexOfLiftedEdge=snc->get_factor()->getLiftedIDToOrder(w);
+//           auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,_nodeIndicesInCut,_nodeIndicesInSnc,inputs.size(),true,true,_nodeIndexOfLiftedEdge);
+//           snc_cut_messages_.push_back(message1);
+//       }
+//       counterAdded++;
+//   }
+//   cutSeparator.clearPriorityQueue();
 
 
 
-    //size_t counterAdded=cutsSeparated;
+//    size_t counterAdded=cutsSeparated;
 
-//    ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
-//    pathSeparator.separatePathInequalities(nr_constraints_to_add);
-//    std::priority_queue<std::pair<double,ldp_path_factor_type*>>& queueWithPaths=pathSeparator.getPriorityQueue();
+    ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
+    pathSeparator.separatePathInequalities(nr_constraints_to_add);
+    std::priority_queue<std::pair<double,ldp_path_factor_type*>>& queueWithPaths=pathSeparator.getPriorityQueue();
 
-//    double possibleImprovement=0;
-//   // std::cout<<"queue filled "<<queueWithPaths.size()<<std::endl;
+    double possibleImprovement=0;
+   // std::cout<<"queue filled "<<queueWithPaths.size()<<std::endl;
 
 
-//    size_t pathFactorsOriginalSize=path_factors_.size();
-//    while(!queueWithPaths.empty()&&counterAdded<nr_constraints_to_add){
-//       // std::pair<double,ldp_path_factor_type*>& p=queueWithPaths.top();
+    size_t pathFactorsOriginalSize=path_factors_.size();
+    while(!queueWithPaths.empty()&&counterAdded<nr_constraints_to_add){
+       // std::pair<double,ldp_path_factor_type*>& p=queueWithPaths.top();
 
-//        ldp_path_factor_type* pPathFactor=queueWithPaths.top().second;
-//        double improvement=queueWithPaths.top().first;
-//        possibleImprovement+=improvement;
-//        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
-//        //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
-//        path_factors_.push_back(newPathFactor);
-//       // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
-//        delete pPathFactor;
-//        pPathFactor=nullptr;
-//        queueWithPaths.pop();
-//        auto *myPathFactor=newPathFactor->get_factor();
-//        //myPathFactor->print();
-//        const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
-//        for (size_t i=0;i<myPathFactor->getNumberOfEdges();i++) {
-//            size_t pathVertex=pathVertices[i];
-//            if(i>0){
-//                auto * pSNC=single_node_cut_factors_[pathVertex][0];
-//                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputs;
-//                messageInputs.init(myPathFactor,pSNC,i);
-//                //LdpPathMessageInputs messageInputs=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNC,i);
-//                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
-//                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndicesInPath,messageInputs.indicesInSnc,messageInputs.isLiftedForMessage,debugInfo);
-//                snc_path_messages_.push_back(newMessage);
-//            }
-//            if(i<myPathFactor->getNumberOfEdges()-1){
-//                auto * pSNCOut=single_node_cut_factors_[pathVertex][1];
-//                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputsOut;
-//                messageInputsOut.init(myPathFactor,pSNCOut,i);
-//                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
-//              //  LdpPathMessageInputs messageInputsOut=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNCOut,i);
-//                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndicesInPath,messageInputsOut.indicesInSnc,messageInputsOut.isLiftedForMessage,debugInfo);
-//                snc_path_messages_.push_back(newMessageOut);
-//            }
-//            //std::cout<<"vertex "<<i<<" of path solved "<<std::endl;
-//        }
-//        counterAdded ++;
-//        //std::cout<<"added "<<counterAdded<<" path ineq"<<std::endl;
-//    }
+        ldp_path_factor_type* pPathFactor=queueWithPaths.top().second;
+        double improvement=queueWithPaths.top().first;
+        possibleImprovement+=improvement;
+        auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
+        //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
+        path_factors_.push_back(newPathFactor);
+       // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
+        delete pPathFactor;
+        pPathFactor=nullptr;
+        queueWithPaths.pop();
+        auto *myPathFactor=newPathFactor->get_factor();
+        //myPathFactor->print();
+        const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
+        for (size_t i=0;i<myPathFactor->getNumberOfEdges();i++) {
+            size_t pathVertex=pathVertices[i];
+            if(i>0){
+                auto * pSNC=single_node_cut_factors_[pathVertex][0];
+                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputs;
+                messageInputs.init(myPathFactor,pSNC,i);
+                //LdpPathMessageInputs messageInputs=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNC,i);
+                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
+                auto* newMessage = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNC,messageInputs.edgeIndicesInPath,messageInputs.indicesInSnc,messageInputs.isLiftedForMessage,debugInfo);
+                snc_path_messages_.push_back(newMessage);
+            }
+            if(i<myPathFactor->getNumberOfEdges()-1){
+                auto * pSNCOut=single_node_cut_factors_[pathVertex][1];
+                LdpPathMessageInputs<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> messageInputsOut;
+                messageInputsOut.init(myPathFactor,pSNCOut,i);
+                bool debugInfo=path_factors_.size()==17||path_factors_.size()==19;
+              //  LdpPathMessageInputs messageInputsOut=pathSeparator.getMessageInputsToPathFactor(myPathFactor,pSNCOut,i);
+                auto* newMessageOut = lp_->template add_message<SNC_PATH_MESSAGE>(newPathFactor,pSNCOut,messageInputsOut.edgeIndicesInPath,messageInputsOut.indicesInSnc,messageInputsOut.isLiftedForMessage,debugInfo);
+                snc_path_messages_.push_back(newMessageOut);
+            }
+            //std::cout<<"vertex "<<i<<" of path solved "<<std::endl;
+        }
+        counterAdded ++;
+        //std::cout<<"added "<<counterAdded<<" path ineq"<<std::endl;
+    }
 
-//    pathSeparator.clearPriorityQueue();
-//    adjustPathLabels(pathFactorsOriginalSize);
+    pathSeparator.clearPriorityQueue();
+    adjustPathLabels(pathFactorsOriginalSize);
 
-//    if(diagnostics()) std::cout<<"added "<<counterAdded<<" path factors with improvement "<<possibleImprovement<<std::endl;
+    if(diagnostics()) std::cout<<"added "<<counterAdded<<" path factors with improvement "<<possibleImprovement<<std::endl;
      return counterAdded;
 
 }

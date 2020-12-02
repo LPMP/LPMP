@@ -21,7 +21,7 @@ public:
         isStrongBase=std::vector<char>(numberOfEdges);
         primalSolution=std::vector<char>(numberOfEdges);
         optSolution=std::vector<char>(numberOfEdges);
-        assert(listOfCosts.size()>=2);
+        assert(listOfCosts.size()>2);
         for (size_t i = 0; i < numberOfEdges-1; ++i) {
             if(!isLifted[i]){
                 bool strongBase=pInstance->isStrongBase(listOfVertices[i],listOfVertices[i+1]);
@@ -171,6 +171,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
 
         size_t vertex1=listOfVertices[i];
         size_t vertex2=listOfVertices[i+1];
+        assert(vertex1<vertexLabels.size()&&vertex2<vertexLabels.size()&&vertex1<primalDescendants.size());
 
         if(isLifted[i]){
             if(vertexLabels[vertex1]==vertexLabels[vertex2]&&vertexLabels[vertex1]!=0){
@@ -225,13 +226,15 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
     size_t numberOfPositive=0;
     size_t indexOfPositive=numberOfEdges;
     std::fill(optSolution.begin(),optSolution.end(),1);
+    assert(optSolution.size()==numberOfEdges);
+    assert(costs.size()==numberOfEdges);
     //std::cout<<"calling minimize, printing edge costs "<<std::endl;
-    for(size_t i=0;i<numberOfEdges;i++){
-        double c=costs[i];
-        size_t vertex=listOfVertices[i];
-       // std::cout<<listOfVertices[i]<<": "<<c<<std::endl;
+//    for(size_t i=0;i<numberOfEdges;i++){
+//        double c=costs[i];
+//        size_t vertex=listOfVertices[i];
+//       // std::cout<<listOfVertices[i]<<": "<<c<<std::endl;
 
-    }
+//    }
     if(edgeIndex<numberOfEdges){
         //        std::cout<<"printing edge costs "<<std::endl;
         //        for(auto& c:listOfCosts){

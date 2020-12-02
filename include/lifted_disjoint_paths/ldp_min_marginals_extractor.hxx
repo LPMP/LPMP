@@ -65,6 +65,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
     //liftedGraph.setAllCostToZero();
 
     const lifted_disjoint_paths::LdpInstance &instance=*pInstance;
+    assert(p_single_node_cut_factors_!=nullptr);
     std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>>& single_node_cut_factors_=*p_single_node_cut_factors_;
 
     liftedEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);

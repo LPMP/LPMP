@@ -169,9 +169,12 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCutInequalities(size_t maxConstraints){
     std::cout<<"separate cuts "<<std::endl;
-    mmExtractor.initMinMarginals();
+//    mmExtractor.initMinMarginals();
     baseEdgesWithCosts=mmExtractor.getBaseEdgesMinMarginals();
     liftedEdgesWithCosts=mmExtractor.getLiftedEdgesMinMarginals();
+
+    assert(baseEdgesWithCosts.size()==numberOfVertices+2);
+    assert(liftedEdgesWithCosts.size()==numberOfVertices);
 
 
 
