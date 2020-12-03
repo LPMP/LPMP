@@ -23,4 +23,5 @@ target_link_libraries(bdd_projected_subgradient_text_input ILP_parser bdd LPMP)
 
 add_executable(bdd_min_marginal_averaging_parallel_text_input bdd_min_marginal_averaging_parallel_text_input.cpp)
 target_link_libraries(bdd_min_marginal_averaging_parallel_text_input ILP_parser bdd edge_cover transitivity_reduction LPMP)
+target_link_libraries(bdd_projected_subgradient_text_input ILP_parser Cudd LPMP)
 

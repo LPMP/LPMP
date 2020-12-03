@@ -294,7 +294,6 @@ namespace LPMP {
         auto CPE = taskflow.emplace(construct_pos_edges_graph);
 
         init_edge.precede(CPE);
-        //CPE.gather(init_edge);
 
         std::future<void> fu = executor.run(taskflow);
         fu.get();

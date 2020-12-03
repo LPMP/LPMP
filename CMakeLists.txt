@@ -31,7 +31,6 @@ target_include_directories(LPMP INTERFACE external/tsl-robin-map/include)
 target_include_directories(LPMP INTERFACE external/cpp-taskflow) 
 target_include_directories(LPMP INTERFACE external/pybind11)
 target_include_directories(LPMP INTERFACE external/LBDD/include)
-target_include_directories(LPMP INTERFACE external/blossomV)
 
 include(ExternalProject)
 ExternalProject_Add(Cudd_external
@@ -104,7 +103,12 @@ add_subdirectory(external/BCFW-Bundle)
 add_subdirectory(external/DD_ILP)
 add_subdirectory(external/ConicBundle)
 add_subdirectory(external/arboricity)
+<<<<<<< HEAD
 #set(PYBIND11_CPP_STANDARD -std=c++17)
+=======
+
+set(PYBIND11_CPP_STANDARD -std=c++17)
+>>>>>>> f8821484e4c0fb3eb7c868336682987d9b792138
 set(PYBIND11_INSTALL ON CACHE BOOL "enable pybind11 bindings.")
 add_subdirectory(external/pybind11)
 add_subdirectory(external/LBDD)

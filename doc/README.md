@@ -40,3 +40,4 @@
   * [Problem formulation](/doc/Discrete-Tomography.md#problem-formulation)
   * [File format](Discrete-Tomography.md#file-format)
   * [Datasets](Discrete-Tomography.md#datasets)
+* [Lifted Disjoint Paths](/doc/Lifted-Disjoint-Paths.md)
