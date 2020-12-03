@@ -570,7 +570,8 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneBaseEdgeMinMargina
 
 
     if(strForUpdateValues.optBaseIndex!=index){
-        return strForUpdateValues.solutionCosts[index]-strForUpdateValues.solutionCosts[optBaseIndex];
+        //return strForUpdateValues.solutionCosts[index]-strForUpdateValues.solutionCosts[strForUpdateValues.optBaseIndex];
+        return strForUpdateValues.solutionCosts[index]-strForUpdateValues.optValue;
     }
     else{
         double secondBest=std::numeric_limits<double>::max();
@@ -658,6 +659,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateEdgeCost(const doubl
 
 
 	}
+    //LowerBound();
 }
 
 
@@ -772,6 +774,14 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
     updateOptimal();
+    if(debug()){
+        double controlValue=0;
+        if(optBaseIndex!=nodeNotActive){
+            controlValue+=nodeCost;
+            controlValue+=baseCosts.at(optBaseIndex);
+
+        }
+    }
     return optValue;
 
 }
@@ -861,29 +871,29 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
     double bestSolutionValue=0;
     size_t bestSolutionIndex=nodeNotActive;
 
-        myStr.solutionCosts[nodeNotActive]=0;
-        for (size_t i = 0; i < myStr.baseCosts.size(); ++i) {
-            double baseCost=myStr.baseCosts[i];
-            if(!vertexToIgnoreSet||baseIDs[i]!=vertexIDToIgnore){
+    myStr.solutionCosts[nodeNotActive]=0;
+    for (size_t i = 0; i < myStr.baseCosts.size(); ++i) {
+        double baseCost=myStr.baseCosts[i];
+        if(!vertexToIgnoreSet||baseIDs[i]!=vertexIDToIgnore){
 
-                double valueToAdd=0;
-                if(baseIDs[i]!=getVertexToReach()){
-                     valueToAdd=ldpInstance.sncTDStructure[baseIDs[i]];
-                }
-                double value=baseCost+nodeCost+valueToAdd;
-
-                myStr.solutionCosts.at(i)=value;
-                if(value<bestSolutionValue){
-                    bestSolutionValue=value;
-                    bestSolutionIndex=i;
-
-                }
+            double valueToAdd=0;
+            if(baseIDs[i]!=getVertexToReach()){
+                valueToAdd=ldpInstance.sncTDStructure[baseIDs[i]];
             }
+            double value=baseCost+nodeCost+valueToAdd;
 
+            myStr.solutionCosts.at(i)=value;
+            if(value<bestSolutionValue){
+                bestSolutionValue=value;
+                bestSolutionIndex=i;
+
+            }
         }
 
-        myStr.optBaseIndex=bestSolutionIndex;
-        myStr.optValue=bestSolutionValue;
+    }
+
+    myStr.optBaseIndex=bestSolutionIndex;
+    myStr.optValue=bestSolutionValue;
 
 
 
@@ -929,6 +939,9 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
 
         double valueToReturn=origOptValue-restrictedOptValue;
         assert(valueToReturn<eps);
+        if(valueToReturn>=eps){
+            throw std::runtime_error("wrong lifted message opt");
+        }
 		return valueToReturn;
 
 
@@ -960,6 +973,9 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
         double messValue=ldpInstance.sncLiftedMessages[liftedIDs[indexOfLiftedEdge]];
 
         assert(messValue>-eps);
+        if(messValue<=-eps){
+            throw std::runtime_error("wrong lifted message");
+        }
 
         return messValue;
 	}
@@ -977,7 +993,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
     }
 
 
-    for(size_t i=traverseOrder.size()-1;i>=1;i--){
+    for(size_t i=traverseOrder.size();i>=1;i--){
         size_t currentVertex=traverseOrder[i-1];
         if(ldpInstance.sncClosedVertices[currentVertex]) continue;
         size_t bestIndex=getVertexToReach();

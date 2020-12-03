@@ -355,6 +355,7 @@ public:
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
+       // l.LowerBound();
         if(debug()){
             size_t indexInPath=edgeIndexInPath[msg_dim];
             size_t v0=l.getListOfVertices().at(indexInPath);
@@ -376,6 +377,7 @@ public:
         }
 
         l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
+       // l.LowerBound();
 
     }
 
@@ -388,6 +390,7 @@ public:
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
+        //r.LowerBound();
         if(debug()){
             size_t centralNodeID=r.nodeID;
 
@@ -414,6 +417,7 @@ public:
            // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
         }
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
+        //r.LowerBound();
 
     }
 

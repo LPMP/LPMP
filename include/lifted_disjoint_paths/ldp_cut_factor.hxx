@@ -380,7 +380,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
     double minCutValue=std::get<0>(myTuple);
     if(minCutValue>=0){
  //   if(debug())    std::cout<<"simple method"<<std::endl;
-        if(restrictToOne){
+        if(index1!=unassignedLabel&&restrictToOne){
            // if(debug())std::cout<<"restric to one"<<std::endl;
             double valueToReturn=0;
             auto* iter=localCutGraph.forwardNeighborsBegin(index1);
@@ -395,7 +395,10 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
             }
             storeLabeling[index1]=index2;
-            if(localLiftedCost<0||(index1==baseCoveringLifted[0]&&index2==baseCoveringLifted[1])) valueToReturn+=localLiftedCost;
+            if(localLiftedCost<0||(index1==baseCoveringLifted[0]&&index2==baseCoveringLifted[1])){
+                liftedActive=true;
+                valueToReturn+=localLiftedCost;
+            }
             return valueToReturn;
         }
         else{
@@ -575,6 +578,45 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const 
 double ldp_cut_factor::LowerBound() const{
     bool addLifted=(baseCoverLiftedExists&&liftedCost>0);
     double value=advancedMinimizer(unassignedLabel,unassignedLabel,false,addLifted,&cutGraph,&liftedCost);
+    if(debug()){
+        double controlValue=0;
+        for (int i = 0; i < storeLabeling.size()-1; ++i) {
+               size_t outputIndex=storeLabeling[i];
+               if(outputIndex!=unassignedLabel){
+                   bool found=false;
+                   for (auto iter=cutGraph.forwardNeighborsBegin(i);iter!=cutGraph.forwardNeighborsEnd(i);iter++) {
+                       if(iter->first==outputIndex){
+                           size_t index2=outputVertices.at(outputIndex);
+                           double val=iter->second;
+                           //std::cout<<inputVertices.at(i)<<"->"<<index2<<": "<<val<<std::endl;
+                           controlValue+=val;
+                           found=true;
+                           break;
+
+                       }
+                   }
+                   if(!found){
+                       throw std::runtime_error("assigned output is not valid");
+                   }
+
+               }
+//               else{
+//                   std::cout<<inputVertices.at(i)<<" unassigned"<<std::endl;
+//               }
+
+           }
+           if(liftedActive){
+               controlValue+=liftedCost;
+               //std::cout<<"lifted cost "<<liftedCost<<std::endl;
+           }
+           if(std::abs(controlValue-value)>eps){
+               print();
+               std::cout<<"control value: "<<controlValue<<", orig value: "<<value<<std::endl;
+               throw std::runtime_error("wrong lower bound in cut factor ");
+           }
+        }
+
+
     return value;
 }
 
@@ -690,6 +732,7 @@ public:
     void RepamLeft(CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
 
+      l.LowerBound();
        assert(msg_dim <=nodeIndicesInCut.size());
        if(msg_dim==nodeIndicesInCut.size()){
            if(debug()){
@@ -712,6 +755,7 @@ public:
            }
 
        }
+       l.LowerBound();
 
      }
 
@@ -720,6 +764,7 @@ public:
     {
 
         assert(msg_dim <=nodeIndicesInSnc.size());
+      //  r.LowerBound();
         size_t secondVertex;
         if(msg_dim==nodeIndicesInSnc.size()){
 
@@ -741,6 +786,7 @@ public:
             assert(lastV2==secondVertex);
             assert(std::abs(lastValue+msg)<eps);
         }
+        //r.LowerBound();
 
     }
 
@@ -749,18 +795,33 @@ public:
     {
 
         std::vector<double> baseCosts=r.getBaseCosts();
-        const std::vector<double>& liftedCosts=r.getLiftedCosts();
+        std::vector<double> liftedCosts=r.getLiftedCosts(); //TODO change to const reference
         size_t i=0;
         double delta=0;
         for (;i<nodeIndicesInSnc.size();i++) {
 
             delta = r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i],&baseCosts,&liftedCosts);
             baseCosts[nodeIndicesInSnc[i]]-=delta;
+            if(debug()){
+                double controlDelta=r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i],&baseCosts,&liftedCosts);
+                if(abs(controlDelta)>eps){
+                    std::cout<<"base control value "<<controlDelta<<", original delta: "<<delta<<std::endl;
+                    throw std::runtime_error("wrong min marginal check");
+                }
+            }
 
             msg[i] -= omega * delta;
         }
         if(containsLiftedEdge){
             delta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge,&baseCosts,&liftedCosts);
+            if(debug()){
+                liftedCosts[nodeIndexOfLiftedEdge]-=delta;
+                double controlDelta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge,&baseCosts,&liftedCosts);
+                if(abs(controlDelta)>eps){
+                    std::cout<<"lifted control value "<<controlDelta<<", original delta: "<<delta<<std::endl;
+                    throw std::runtime_error("wrong lifted min marginal check");
+                }
+            }
             msg[i]-=omega * delta;
 
         }
