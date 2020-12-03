@@ -11,15 +11,17 @@ namespace LPMP {
     class correlation_clustering_edge_labeling; // forward declaration
     class correlation_clustering_node_labeling; // forward declaration
 
+    class multicut_edge_labeling; // forward declaration
+
     struct multicut_instance : public cut_base_instance {
 
         template<typename STREAM>
             void write_problem(STREAM& s) const;
 
+        bool feasible(const multicut_edge_labeling& labeling) const;
+
         correlation_clustering_instance transform_to_correlation_clustering() const;
     };
-
-    class multicut_edge_labeling; // forward declaration
 
     class multicut_node_labeling : public cut_base_node_labeling {
         public:
@@ -47,5 +49,38 @@ namespace LPMP {
             s << "MULTICUT\n";
             cut_base_instance::write_problem(s);
         }
+
+    // TODO: put in separate cpp file
+    ////////////////////
+    // implementation //
+    ////////////////////
+
+    inline bool multicut_instance::feasible(const multicut_edge_labeling& labeling) const
+    {
+        if(labeling.size() != no_edges())
+            return false;
+
+        union_find uf(no_nodes());
+
+        for(size_t e=0; e<no_edges(); ++e)
+        {
+            const size_t i = this->edges_[e][0];
+            const size_t j = this->edges_[e][1];
+            if(!labeling[e])
+                uf.merge(i,j);
+        }
+
+        for(size_t e=0; e<no_edges(); ++e)
+        {
+            const size_t i = this->edges_[e][0];
+            const size_t j = this->edges_[e][1];
+            if(labeling[e] && uf.connected(i,j))
+                return false;
+            if(!labeling[e] && !uf.connected(i,j))
+                return false;
+        } 
+
+        return true;
+    }
 
 } // namespace LPMP

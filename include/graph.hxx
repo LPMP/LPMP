@@ -4,6 +4,10 @@
 #include <array>
 #include <algorithm>
 #include <queue>
+#include <list>
+// TODO: decide on hash map
+#include "tsl/robin_set.h"
+#include <unordered_set>
 #include "two_dimensional_variable_array.hxx"
 #include "union_find.hxx"
 #include "help_functions.hxx"
@@ -102,6 +106,12 @@ namespace LPMP {
                 template<typename LAMBDA>
                     void for_each_quadrangle(LAMBDA f);
 
+                std::vector<size_t> degeneracy_ordering() const;
+
+                // enumerate maximal cliques with the Bron Kerbosch algorithm with degeneracy ordering
+                template<typename LAMBDA>
+                    void for_each_maximal_clique(LAMBDA f) const;
+
                 // return contracted graph and mapping from original nodes to contracted nodes
                 template<typename EDGE_ITERATOR, typename MERGE_FUNC>
                     std::tuple<graph, std::vector<std::size_t>> contract(EDGE_ITERATOR edge_begin, EDGE_ITERATOR edge_end, MERGE_FUNC merge_func) const;
@@ -112,6 +122,9 @@ namespace LPMP {
                 void check_graph() const;
 
             private:
+                template<typename LAMBDA>
+                    void BronKerboschPivot(LAMBDA f, std::unordered_set<size_t>& R, std::unordered_set<size_t>& P, std::unordered_set<size_t>& X) const;
+
                 two_dim_variable_array<edge_type> edges_;
         };
 
@@ -405,6 +418,148 @@ namespace LPMP {
                     edge_mask(v,c) = false;
                     edge_mask(u, edge_no( edges_(v,c).sister() )) = false;
                 }
+            }
+        }
+
+    template<typename EDGE_INFORMATION, bool SUPPORT_SISTER, bool SUPPORT_MASKING>
+    std::vector<size_t> graph<EDGE_INFORMATION, SUPPORT_SISTER, SUPPORT_MASKING>::degeneracy_ordering() const
+    {
+        std::vector<size_t> degeneracy_ordering;
+        degeneracy_ordering.reserve(no_nodes());
+
+        std::vector<size_t> degree;
+        degree.reserve(no_nodes());
+        for(size_t v=0; v<no_nodes(); ++v)
+            degree.push_back(no_edges(v));
+        const size_t max_degree = *std::max_element(degree.begin(), degree.end());
+
+        std::vector<std::list<size_t>::iterator> D_ptr;
+        D_ptr.reserve(no_nodes());
+        std::vector<std::list<size_t>> D(max_degree+1);
+        for(size_t v=0; v<no_nodes(); ++v)
+        {
+            D[no_edges(v)].push_front(v);
+            D_ptr.push_back(D[no_edges(v)].begin());
+        }
+
+        for(size_t iter=0; iter<no_nodes(); ++iter)
+        {
+            // find smallest remaining degree element
+            const size_t min_d = [&]() {
+                for(size_t d=0; d<D.size(); ++d)
+                    if(!D[d].empty())
+                        return d;
+                throw std::runtime_error("in degeneracy_ordering(): degree list empty.");
+            }();
+
+            const size_t i = D[min_d].front();
+            D[min_d].pop_front();
+            degree[i] = 0;
+            degeneracy_ordering.push_back(i);
+
+            for(auto edge_it=begin(i); edge_it!=end(i); ++edge_it)
+            {
+                const size_t j = edge_it->head();
+                if(degree[j] == 0)
+                    continue;
+
+                D[degree[j]].erase(D_ptr[j]);
+                degree[j]--;
+                D[degree[j]].push_front(j);
+                D_ptr[j] = D[degree[j]].begin();
+            } 
+        } 
+
+        assert(degeneracy_ordering.size() == no_nodes());
+        std::reverse(degeneracy_ordering.begin(), degeneracy_ordering.end());
+        return degeneracy_ordering;
+    }
+
+    inline void intersection(const std::unordered_set<size_t>& in_1, const std::unordered_set<size_t>& in_2, std::unordered_set<size_t>& out)
+    {
+        assert(out.empty());
+        if(in_1.size() > in_2.size())
+            return intersection(in_2, in_1, out);
+
+        for(const auto i : in_1)
+            if(in_2.count(i) > 0)
+                out.insert(i);
+    }
+
+
+    template<typename EDGE_INFORMATION, bool SUPPORT_SISTER, bool SUPPORT_MASKING>
+        template<typename LAMBDA>
+        void graph<EDGE_INFORMATION, SUPPORT_SISTER, SUPPORT_MASKING>::BronKerboschPivot(LAMBDA f, 
+                std::unordered_set<size_t>& R, std::unordered_set<size_t>& P, std::unordered_set<size_t>& X
+                ) const
+        {
+            if(P.empty() && X.empty())
+            {
+                f(R.begin(), R.end());
+                return;
+            }
+
+            const size_t pivot = [&]() {
+                if(!X.empty())
+                    return *X.begin();
+                return *P.begin();
+            }();
+            std::unordered_set<size_t> pivot_N;
+            for(auto edge_it=begin(pivot); edge_it!=end(pivot); ++edge_it)
+                pivot_N.insert(edge_it->head());
+
+            std::unordered_set<size_t> P_cur, X_cur;
+            //std::cout << "P : ";
+            //for(const size_t v : P)
+            //    std::cout << v << ", ";
+            //std::cout << "\n";
+            std::vector<size_t> P_vertices(P.begin(), P.end());
+            for(const size_t v : P_vertices)
+            {
+                if(pivot_N.count(v) > 0)
+                    continue;
+                R.insert(v);
+                P_cur.clear();
+                X_cur.clear();
+                intersection(P, pivot_N, P_cur);
+                intersection(X, pivot_N, X_cur);
+                BronKerboschPivot(f, R, P_cur, X_cur);
+                if(P.count(v) > 0)
+                    P.erase(v);
+                X.insert(v);
+                assert(R.count(v) > 0);
+                R.erase(v);
+            } 
+        }
+
+    template<typename EDGE_INFORMATION, bool SUPPORT_SISTER, bool SUPPORT_MASKING>
+        template<typename LAMBDA>
+        void graph<EDGE_INFORMATION, SUPPORT_SISTER, SUPPORT_MASKING>::for_each_maximal_clique(LAMBDA f) const
+        {
+            std::unordered_set<size_t> R;
+            std::unordered_set<size_t> P;
+            for(size_t v=0; v<no_nodes(); ++v)
+                P.insert(v);
+            std::unordered_set<size_t> X;
+
+            std::unordered_set<size_t> P_cur, X_cur, cur_N;
+            for(const size_t v : degeneracy_ordering())
+            {
+                R.clear();
+                R.insert(v);
+                cur_N.clear();
+                for(auto edge_it=begin(v); edge_it!=end(v); ++edge_it)
+                    cur_N.insert(edge_it->head());
+                P_cur.clear();
+                X_cur.clear();
+                intersection(P, cur_N, P_cur);
+                intersection(X, cur_N, X_cur);
+                BronKerboschPivot(f, R, P_cur, X_cur);
+                assert(P.count(v) > 0);
+                P.erase(v);
+                X.insert(v); 
+
+                assert(P.size() + X.size() == no_nodes());
             }
         }
 

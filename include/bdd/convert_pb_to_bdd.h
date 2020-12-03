@@ -1,7 +1,8 @@
 #pragma once
 
 #include "config.hxx"
-#include "cuddObj.hh"
+#include "bdd.h"
+//#include "cuddObj.hh"
 #include "hash_helper.hxx"
 #include <iostream>
 #include <unordered_map>
@@ -12,14 +13,13 @@ namespace LPMP {
 
     class bdd_converter {
         public:
-            bdd_converter(Cudd& bdd_mgr) : bdd_mgr_(bdd_mgr) {
-                Cudd_AutodynDisable(bdd_mgr_.getManager());
-            }
+            bdd_converter(BDD::bdd_mgr& bdd_mgr) : bdd_mgr_(bdd_mgr) 
+        {}
 
             template<typename LEFT_HAND_SIDE_ITERATOR>
-                BDD convert_to_bdd(LEFT_HAND_SIDE_ITERATOR begin, LEFT_HAND_SIDE_ITERATOR end, const inequality_type ineq, const int right_hand_side);
+                BDD::node_ref convert_to_bdd(LEFT_HAND_SIDE_ITERATOR begin, LEFT_HAND_SIDE_ITERATOR end, const inequality_type ineq, const int right_hand_side);
 
-            BDD convert_to_bdd(const std::vector<int> coefficients, const inequality_type ineq, const int right_hand_side); 
+            BDD::node_ref convert_to_bdd(const std::vector<int> coefficients, const inequality_type ineq, const int right_hand_side); 
 
         private:
             // returned vector has as its first element the right hand side, then follow the coefficients
@@ -27,10 +27,10 @@ namespace LPMP {
                 static std::tuple< std::vector<int>, inequality_type >
                 normal_form(COEFF_ITERATOR begin, COEFF_ITERATOR end, const inequality_type ineq, const int right_hand_side);
 
-            BDD convert_to_bdd_impl(std::vector<int>& nf, const inequality_type ineq);
+            BDD::node_ref convert_to_bdd_impl(std::vector<int>& nf, const inequality_type ineq);
 
-            Cudd& bdd_mgr_;
-            using constraint_cache_type = std::unordered_map<std::vector<int>,BDD>;
+            BDD::bdd_mgr& bdd_mgr_;
+            using constraint_cache_type = std::unordered_map<std::vector<int>,BDD::node_ref>;
             constraint_cache_type equality_cache;
             constraint_cache_type lower_equal_cache;
     };
@@ -58,32 +58,33 @@ namespace LPMP {
         }
 
     template<typename LEFT_HAND_SIDE_ITERATOR>
-        BDD bdd_converter::convert_to_bdd(LEFT_HAND_SIDE_ITERATOR begin, LEFT_HAND_SIDE_ITERATOR end, const inequality_type ineq, const int right_hand_side)
+        BDD::node_ref bdd_converter::convert_to_bdd(LEFT_HAND_SIDE_ITERATOR begin, LEFT_HAND_SIDE_ITERATOR end, const inequality_type ineq, const int right_hand_side)
         {
             auto [nf, ineq_nf] = normal_form(begin, end, ineq, right_hand_side);
             return convert_to_bdd_impl(nf, ineq_nf); 
         }
 
-        BDD bdd_converter::convert_to_bdd(const std::vector<int> coefficients, const inequality_type ineq, const int right_hand_side)
+    BDD::node_ref bdd_converter::convert_to_bdd(const std::vector<int> coefficients, const inequality_type ineq, const int right_hand_side)
         {
             return convert_to_bdd(coefficients.begin(), coefficients.end(), ineq, right_hand_side);
         }
 
 
-        BDD bdd_converter::convert_to_bdd_impl(std::vector<int>& nf, const inequality_type ineq)
+    BDD::node_ref bdd_converter::convert_to_bdd_impl(std::vector<int>& nf, const inequality_type ineq)
         {
             assert(nf.size() > 0);
             const int right_hand_side = nf[0];
             if(nf.size() == 1) {
                 switch(ineq) {
                     case inequality_type::equal: 
-                        return right_hand_side == 0 ? bdd_mgr_.bddOne() : bdd_mgr_.bddZero();
+                        return right_hand_side == 0 ? bdd_mgr_.topsink() : bdd_mgr_.botsink();
+                        //return right_hand_side == 0 ? bdd_mgr_.bddOne() : bdd_mgr_.bddZero();
                         break;
                     case inequality_type::smaller_equal:
-                        return right_hand_side >= 0 ? bdd_mgr_.bddOne() : bdd_mgr_.bddZero();
+                        return right_hand_side >= 0 ? bdd_mgr_.topsink() : bdd_mgr_.botsink();
                         break;
                     case inequality_type::greater_equal:
-                        return right_hand_side <= 0 ? bdd_mgr_.bddOne() : bdd_mgr_.bddZero();
+                        return right_hand_side <= 0 ? bdd_mgr_.topsink() : bdd_mgr_.botsink();
                         break;
                     default:
                         throw std::runtime_error("inequality type not supported");
@@ -119,14 +120,15 @@ namespace LPMP {
             const int cur_coefficient = nf.back();
             nf.resize(nf.size()-1);
 
-            BDD bdd_0 = convert_to_bdd_impl(nf, ineq);
+            BDD::node_ref bdd_0 = convert_to_bdd_impl(nf, ineq);
             // set first var to 1
             nf[0] -= cur_coefficient;
-            BDD bdd_1 = convert_to_bdd_impl(nf, ineq);
+            BDD::node_ref bdd_1 = convert_to_bdd_impl(nf, ineq);
             nf[0] += cur_coefficient;
 
-            BDD cur_var = bdd_mgr_.bddVar(nf.size()-1);
-            auto bdd = cur_var.Ite(bdd_0, bdd_1);
+            BDD::node_ref cur_var = bdd_mgr_.projection(nf.size()-1);
+            //auto bdd = cur_var.Ite(bdd_0, bdd_1);
+            auto bdd = bdd_mgr_.ite_rec(cur_var, bdd_0, bdd_1);
 
             nf.push_back(cur_coefficient);
             // record bdd in cache

@@ -1,6 +1,6 @@
 #include "bdd/bdd_anisotropic_diffusion.h"
 #include "bdd/ILP_parser.h"
-#include "cuddObj.hh"
+#include "bdd.h"
 
 #include <fstream>
 
@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     std::cout << "parsed input\n";
 
     bdd_anisotropic_diffusion_options options(argc-1, argv+1);
-    Cudd bdd_mgr;
+    BDD::bdd_mgr bdd_mgr;
     bdd_anisotropic_diffusion bdds;
     bdds.set_options(options);
     std::cout << "Initializing bdds\n";

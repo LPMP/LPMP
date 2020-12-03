@@ -10,7 +10,7 @@ using namespace LPMP;
 template<typename BDD_SOLVER>
 void test_two_bdd_inference()
 {
-    Cudd bdd_mgr;
+    BDD::bdd_mgr bdd_mgr;
     bdd_converter converter(bdd_mgr);
 
     // construct simplex constraint

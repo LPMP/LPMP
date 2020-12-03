@@ -2,7 +2,7 @@
 
 #include "bdd_min_marginal_averaging.h"
 #include "bdd/ILP_parser.h"
-#include "cuddObj.hh"
+//#include "cuddObj.hh"
 #include <array>
 #include <vector>
 
@@ -17,7 +17,7 @@ template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
 class bdd_min_marginal_averaging_smoothed_base : public bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>
 {
 public:
-    bdd_min_marginal_averaging_smoothed_base() {}
+    using bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::bdd_mma_base;
     bdd_min_marginal_averaging_smoothed_base(const bdd_min_marginal_averaging_smoothed_base &) = delete; // no copy constructor because of pointers in bdd_branch_node
 
     double smooth_lower_bound() { return -std::numeric_limits<double>::infinity(); } // TODO: not implemented yet
