@@ -1292,6 +1292,25 @@ public:
             (*it)[0] -= omega * msg_vec.at(left_node);
         }
 
+        if(debug()){
+            const std::vector<double> controlMessages=r.getAllLiftedMinMarginals();
+            for (int i = 0; i < controlMessages.size(); ++i) {
+                double controlValue=msg_vec[i]-omega*msg_vec[i];
+                if(abs(controlMessages.at(i)-controlValue)>eps){
+                    std::cout<<"control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", should be "<<controlValue<<", omega "<<omega<<std::endl;
+                    throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+                }
+            }
+//            std::vector<double> localLiftedCosts=r.getLiftedCosts();
+//            assert(msg_vec.size()==localLiftedCosts.size());
+//            for (int i = 0; i < localLiftedCosts.size(); ++i) {
+//                localLiftedCosts[i]-=msg_vec[i];
+//            }
+
+        }
+
+
+
     }
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
@@ -1310,6 +1329,19 @@ public:
 
             (*it).operator[](0)-= omega * msg_vec.at(right_node);
         }
+
+        if(debug()){
+            const std::vector<double> controlMessages=l.getAllLiftedMinMarginals();
+            for (int i = 0; i < controlMessages.size(); ++i) {
+                double controlValue=msg_vec[i]-omega*msg_vec[i];
+                if(abs(controlMessages.at(i)-controlValue)>eps){
+                    std::cout<<"control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", should be "<<controlValue<<", omega "<<omega<<std::endl;
+                    throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+                }
+            }
+
+        }
+
 
 
 
