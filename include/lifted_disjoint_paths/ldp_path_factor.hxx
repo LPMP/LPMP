@@ -431,15 +431,32 @@ public:
         assert(isLifted.size()==dimension);
 
         double delta=0;
+        double controlDelta=0;
         if(dimension==1){
             const std::vector<double>& baseCosts=r.getBaseCosts();
             const std::vector<double>& liftedCosts=r.getLiftedCosts();
             if(isLifted.at(0)){
                 delta = r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
+                if(debug()){
+                    std::vector<double> controlLiftedCosts=liftedCosts;
+                    controlLiftedCosts[vertexIndexInSnc[0]]-=delta;
+                    controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&controlLiftedCosts);
+                }
             }
             else{
                // std::cout<<"base "<<std::endl;
                 delta = r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
+                if(debug()){
+                    std::vector<double> controlBaseCosts=baseCosts;
+                    controlBaseCosts[vertexIndexInSnc[0]]-=delta;
+                    controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&controlBaseCosts,&liftedCosts);
+                }
+            }
+            if(debug()){
+                if(abs(controlDelta)>eps){
+                    std::cout<<"control value from snc factor "<<controlDelta<<", original delta: "<<delta<<", is lifted "<<int(isLifted.at(0))<<std::endl;
+                    throw std::runtime_error("wrong snc min marginal check in path message");
+                }
             }
             msg[0] -= omega * delta;
         }
@@ -449,15 +466,26 @@ public:
             for (size_t i=0;i<dimension;i++) {
                 if(isLifted.at(i)){
                    // std::cout<<"lifted "<<std::endl;
-
                     delta = r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
                     liftedCosts[vertexIndexInSnc[i]]-=delta;
+                    if(debug()){
+                        controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+                    }
                     // std::cout<<"delta obtained "<<std::endl;
                 }
                 else{
                     //std::cout<<"base "<<std::endl;
                     delta = r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
                     baseCosts[vertexIndexInSnc[i]]-=delta;
+                    if(debug()){
+                        controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+                    }
+                }
+                if(debug()){
+                    if(abs(controlDelta)>eps){
+                        std::cout<<"control value from snc factor "<<controlDelta<<", original delta: "<<delta<<", is lifted "<<int(isLifted.at(i))<<std::endl;
+                        throw std::runtime_error("wrong snc min marginal check in path message");
+                    }
                 }
                 msg[i] -= omega * delta;
             }
@@ -469,11 +497,21 @@ public:
     void send_message_to_right(const PATH_FACTOR& l, MSG& msg, const double omega)
     {
 
-        double delta;
+        double delta=0;
+        double controlDelta=0;
         if(dimension==1){
             const std::vector<double>& costs=l.getCosts();
             delta=l.getMinMarginal(edgeIndexInPath[0],&costs);
-            //std::cout<<"sending "<<delta<<std::endl;
+            if(debug()){
+                std::vector<double> controlCosts=costs;
+                controlCosts.at(edgeIndexInPath[0])-=delta;
+                controlDelta=l.getMinMarginal(edgeIndexInPath[0],&controlCosts);
+                if(abs(controlDelta)>eps){
+                    std::cout<<"control value from path factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
+                    throw std::runtime_error("wrong path min marginal check in path message");
+                }
+
+            }
             msg[0] -= omega * delta;
         }
         else{
@@ -484,6 +522,13 @@ public:
               //  std::cout<<"sending "<<delta<<std::endl;
                 assert(edgeIndexInPath[i]<localCosts.size());
                 localCosts[edgeIndexInPath[i]]-=delta;
+                if(debug()){
+                    controlDelta=l.getMinMarginal(edgeIndexInPath[i],&localCosts);
+                    if(abs(controlDelta)>eps){
+                        std::cout<<"control value from path factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
+                        throw std::runtime_error("wrong path min marginal check in path message");
+                    }
+                }
                 msg[i] -= omega * delta;
             }
         }

@@ -837,16 +837,27 @@ public:
         size_t i=0;
         double liftedCost=l.getLiftedCost();
         LdpTwoLayerGraph cutGraph=l.getCutGraph();
+        double controlDelta=0;
         for (;i<nodeIndicesInCut.size();i++) {
             if(sncIsOut){
                 size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[i]);
                 delta = l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex,&cutGraph,&liftedCost);
                 cutGraph.updateForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i],-delta);
+                if(debug()){
+                    controlDelta=l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex,&cutGraph,&liftedCost);
+                }
             }
             else{  //just for output nodes now
                 assert(false);
                 delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut,&cutGraph,&liftedCost);
                 cutGraph.updateForwardEdgeCost(nodeIndicesInCut[i],sncNodeIDindexInCut,-delta);
+                controlDelta=delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut,&cutGraph,&liftedCost);
+            }
+            if(debug()){
+                if(abs(controlDelta)>eps){
+                    std::cout<<"control value from cut factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
+                    throw std::runtime_error("wrong cut min marginal - check base edge");
+                }
             }
 
             msg[i] -= omega * delta;
@@ -855,6 +866,14 @@ public:
         if(containsLiftedEdge){
 
             delta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
+            if(debug()){
+                liftedCost-=delta;
+                controlDelta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
+                if(abs(controlDelta)>eps){
+                    std::cout<<"control value from cut factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
+                    throw std::runtime_error("wrong cut min marginal - check lifted edge");
+                }
+            }
             msg[i]-=omega*delta;
         }
     }
