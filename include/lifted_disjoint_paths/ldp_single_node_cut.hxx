@@ -122,7 +122,7 @@ public:
 
     std::vector<double> getAllBaseMinMarginals()const;
     std::vector<double> getAllBaseMinMarginalsForMCF() const;
-    std::vector<double> getAllLiftedMinMarginals(const std::vector<double> *pLocalBaseCosts=nullptr) const;
+    std::vector<double> getAllLiftedMinMarginals(const std::vector<double> *pLocalBaseCosts=nullptr,const std::vector<double> *pLocalLiftedCosts=nullptr) const;
 
 
     //Accessing maps between local and global node indices
@@ -641,6 +641,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateNodeCost(const doubl
 
 template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::updateEdgeCost(const double value,const size_t vertexIndex,bool isLifted){//Only cost change
+  //  if(debug()) std::cout<<"updating cost "<<value<<std::endl;
 	if(!isLifted){ //update in base edge
 		assert(vertexIndex<baseCosts.size());
        // std::cout<<"update edge, node id "<<nodeID<<", "<<baseIDs[vertexIndex]<<": "<<value<<std::endl;
@@ -1061,17 +1062,25 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
 
 
 template<class LDP_INSTANCE>
-inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(const std::vector<double>* pLocalBaseCosts) const{
+inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(const std::vector<double>* pLocalBaseCosts, const std::vector<double> *pLocalLiftedCosts) const{
 
 
 
-	std::vector<double> localLiftedCosts=liftedCosts;
+    std::vector<double> localLiftedCosts;
     std::vector<double> localBaseCosts;
     if(pLocalBaseCosts==nullptr){
         localBaseCosts=baseCosts;
     }
     else{//If other value of base costs needs to be used. E.g. for getting min marginals of both base and lifted edges
         localBaseCosts=*pLocalBaseCosts;
+    }
+
+
+    if(pLocalLiftedCosts==nullptr){
+        localLiftedCosts=liftedCosts;
+    }
+    else{
+        localLiftedCosts=*pLocalLiftedCosts;
     }
 
     //First, compute optimal value
@@ -1239,16 +1248,20 @@ public:
 	void RepamLeft(SINGLE_NODE_CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
 	{
        // if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<":"<<msg<<std::endl;
+        if(debug()) l.LowerBound();
 		assert(msg_dim == 0);
         l.updateEdgeCost(msg,right_node,true);
+        if(debug()) l.LowerBound();
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
 	{
        // if(debug()) std::cout<<"repam right "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<":"<<msg<<std::endl;
+       if(debug()) r.LowerBound();
 		assert(msg_dim == 0);
         r.updateEdgeCost(msg,left_node,true);
+        if(debug()) r.LowerBound();
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
@@ -1281,24 +1294,27 @@ public:
 
         const std::vector<double> msg_vec = r.getAllLiftedMinMarginals();
 
-
-        for(auto it=msg_begin; it!=msg_end; ++it)
-        {
-
-            auto& msg = (*it).GetMessageOp();
-            const size_t left_node = msg.left_node;
-            const size_t right_node = msg.right_node;
-
-            (*it)[0] -= omega * msg_vec.at(left_node);
-        }
-
+        std::vector<double> liftedCosts=r.getLiftedCosts();
+        std::vector<double> baseCosts=r.getBaseCosts();
         if(debug()){
-            const std::vector<double> controlMessages=r.getAllLiftedMinMarginals();
+
+             for (int i = 0; i < liftedCosts.size(); ++i) {
+                // std::cout<<"orig lifted cost "<<liftedCosts[i];
+                 liftedCosts[i]-=msg_vec[i];
+                // std::cout<<", after change "<<liftedCosts[i]<<std::endl;
+             }
+
+            const std::vector<double> controlMessages=r.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
+            assert((liftedCosts.size()==controlMessages.size()));
             for (int i = 0; i < controlMessages.size(); ++i) {
-                double controlValue=msg_vec[i]-omega*msg_vec[i];
-                if(abs(controlMessages.at(i)-controlValue)>eps){
-                    std::cout<<"control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", should be "<<controlValue<<", omega "<<omega<<std::endl;
+
+                //std::cout<<"obtained from right to left "<<r.nodeID<<", to "<<r.getLiftedIDs()[i]<<std::endl;
+                if(abs(controlMessages.at(i))>eps){
+                    std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", orig "<<msg_vec[i]<<std::endl;
                     throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+                }
+                else{
+                   // std::cout<<"OK control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", orig "<<msg_vec[i]<<std::endl;
                 }
             }
 //            std::vector<double> localLiftedCosts=r.getLiftedCosts();
@@ -1308,6 +1324,22 @@ public:
 //            }
 
         }
+
+        for(auto it=msg_begin; it!=msg_end; ++it)
+        {
+
+            auto& msg = (*it).GetMessageOp();
+            const size_t left_node = msg.left_node;
+            const size_t right_node = msg.right_node;
+            double delta=omega * msg_vec.at(left_node);
+            if(debug()){
+               // std::cout<<"from right to left "<<r.nodeID<<", to "<<left_node<<", value: "<<delta<<std::endl;
+            }
+
+            (*it)[0] -= delta;
+        }
+
+
 
 
 
@@ -1320,27 +1352,51 @@ public:
 
         const std::vector<double> msg_vec = l.getAllLiftedMinMarginals();
 
-        for(auto it=msg_begin; it!=msg_end; ++it)
-        {
-            auto& msg = (*it).GetMessageOp();
-            const size_t left_node = msg.left_node;
-            const size_t right_node = msg.right_node;
-
-
-            (*it).operator[](0)-= omega * msg_vec.at(right_node);
-        }
+        std::vector<double> liftedCosts=l.getLiftedCosts();
+        std::vector<double> baseCosts=l.getBaseCosts();
 
         if(debug()){
-            const std::vector<double> controlMessages=l.getAllLiftedMinMarginals();
+
+             for (int i = 0; i < liftedCosts.size(); ++i) {
+                // std::cout<<"orig lifted cost "<<liftedCosts[i];
+                 liftedCosts[i]-=msg_vec[i];
+                 //std::cout<<", after change "<<liftedCosts[i]<<std::endl;
+             }
+
+            const std::vector<double> controlMessages=l.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
+            assert((liftedCosts.size()==controlMessages.size()));
             for (int i = 0; i < controlMessages.size(); ++i) {
-                double controlValue=msg_vec[i]-omega*msg_vec[i];
-                if(abs(controlMessages.at(i)-controlValue)>eps){
-                    std::cout<<"control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", should be "<<controlValue<<", omega "<<omega<<std::endl;
+
+             //   std::cout<<"obtained from right to left "<<l.nodeID<<", to "<<l.getLiftedIDs()[i]<<", orig "<<msg_vec[i]<<std::endl;
+
+
+                if(abs(controlMessages.at(i))>eps){
+                    std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", orig "<<msg_vec[i]<<std::endl;
                     throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+                }
+                else{
+                    //std::cout<<"OK control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<", orig "<<msg_vec[i]<<std::endl;
                 }
             }
 
         }
+
+
+        for(auto it=msg_begin; it!=msg_end; ++it)
+        {
+
+            auto& msg = (*it).GetMessageOp();
+            const size_t left_node = msg.left_node;
+            const size_t right_node = msg.right_node;
+
+            double delta= omega * msg_vec.at(right_node);
+            if(debug()){
+               // std::cout<<"from left to right "<<l.nodeID<<", to "<<right_node<<", value: "<<delta<<std::endl;
+            }
+
+            (*it).operator[](0)-= delta;
+        }
+
 
 
 

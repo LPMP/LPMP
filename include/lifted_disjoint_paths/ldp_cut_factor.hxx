@@ -708,7 +708,7 @@ double ldp_cut_factor::getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,co
         }
         else{
             //  if(debug()) std::cout<<"base cover not active"<<std::endl;
-            if(debug()) std::cout<<"lb negative"<<std::endl;
+          //  if(debug()) std::cout<<"lb negative"<<std::endl;
             return localLiftedCost;
         }
     }
@@ -738,7 +738,7 @@ public:
     void RepamLeft(CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
     {
 
-        l.LowerBound();
+       // l.LowerBound();
         assert(msg_dim <=nodeIndicesInCut.size());
         if(msg_dim==nodeIndicesInCut.size()){
             if(debug()){
@@ -761,7 +761,7 @@ public:
             }
 
         }
-        l.LowerBound();
+      //  l.LowerBound();
 
     }
 
@@ -770,7 +770,7 @@ public:
     {
 
         assert(msg_dim <=nodeIndicesInSnc.size());
-        //  r.LowerBound();
+      // if(debug()) r.LowerBound();
         size_t secondVertex;
         if(msg_dim==nodeIndicesInSnc.size()){
 
@@ -792,7 +792,7 @@ public:
             assert(lastV2==secondVertex);
             assert(std::abs(lastValue+msg)<eps);
         }
-        //r.LowerBound();
+      //  if(debug()) r.LowerBound();
 
     }
 

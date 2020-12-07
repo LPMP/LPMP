@@ -167,6 +167,7 @@ void ldp_path_factor::updateEdgeCost(const size_t& edgeIndex,const double& value
 void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, const std::vector<size_t> &vertexLabels){
 
     size_t numberOfZeros=0;
+    size_t indexOfZero=0;
     for (size_t i=0;i<numberOfEdges-1;i++) {
 
         size_t vertex1=listOfVertices[i];
@@ -180,6 +181,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
             else{
                 primalSolution[i]=0;
                 numberOfZeros++;
+                indexOfZero=i;
             }
         }
         else{
@@ -188,6 +190,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
             }
             else {
                 primalSolution[i]=0;
+                indexOfZero=i;
                 numberOfZeros++;
             }
 
@@ -196,8 +199,11 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
     size_t vertex2=listOfVertices.back();
     size_t vertex1=listOfVertices[0];
     primalSolution.back()=(vertexLabels[vertex1]!=0&&vertexLabels[vertex1]==vertexLabels[vertex2]);
-    if(primalSolution.back()==0) numberOfZeros++;
-    assert(numberOfZeros!=1);
+    if(primalSolution.back()==0){
+        indexOfZero=numberOfEdges-1;
+        numberOfZeros++;
+    }
+     assert(numberOfZeros!=1||!isLifted.at(indexOfZero));
 
 }
 
@@ -355,6 +361,7 @@ public:
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
+       // if(debug()) l.LowerBound();
        // l.LowerBound();
         if(debug()){
             size_t indexInPath=edgeIndexInPath[msg_dim];
@@ -378,6 +385,7 @@ public:
 
         l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
        // l.LowerBound();
+       // if(debug()) l.LowerBound();
 
     }
 
@@ -390,7 +398,8 @@ public:
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
-        //r.LowerBound();
+        if(debug()) r.LowerBound();
+       // r.LowerBound();
         if(debug()){
             size_t centralNodeID=r.nodeID;
 
@@ -417,6 +426,7 @@ public:
            // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
         }
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
+        if(debug()) r.LowerBound();
         //r.LowerBound();
 
     }
