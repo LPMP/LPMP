@@ -34,6 +34,32 @@ void construct_instance(LPMP::asymmetric_multiway_cut_instance& instance, const 
     } 
 }
 
+py::array_t<char> get_edge_mask(const LPMP::asymmetric_multiway_cut_instance& instance, const LPMP::asymmetric_multiway_cut_labeling& labeling)
+{
+    char* edge_mask = new char[instance.nr_edges()];
+    assert(instance.edge_costs.no_edges() == labeling.edge_labels.size());
+    for(size_t e=0; e<instance.nr_edges(); ++e)
+        edge_mask[e] = labeling.edge_labels[e];
+
+    return py::array({instance.nr_edges()}, edge_mask); 
+} 
+
+py::array_t<char> get_label_mask(const LPMP::asymmetric_multiway_cut_instance& instance, const LPMP::asymmetric_multiway_cut_labeling& labeling)
+{
+    char* label_mask = new char[instance.nr_nodes()*instance.nr_labels()];
+    assert(instance.nr_nodes() == labeling.node_labels.size());
+    for(size_t i=0; i<instance.nr_nodes(); ++i)
+    {
+        for(size_t l=0; l<instance.nr_labels(); ++l)
+        {
+            assert(labeling.node_labels[i] < instance.nr_labels());
+            label_mask[i*instance.nr_labels() + l] = labeling.node_labels[i] == l;
+        }
+    }
+
+    return py::array({instance.nr_nodes(), instance.nr_labels()}, label_mask); 
+} 
+
 
 PYBIND11_MODULE(asymmetric_multiway_cut_py, m) {
     m.doc() = "python binding for LPMP asymmetric multiway cut";
@@ -48,7 +74,13 @@ PYBIND11_MODULE(asymmetric_multiway_cut_py, m) {
                     construct_instance(instance, edge_costs, node_costs);
                     return instance;
                     }))
-        .def("evaluate", &LPMP::asymmetric_multiway_cut_instance::evaluate);
+        .def("evaluate", &LPMP::asymmetric_multiway_cut_instance::evaluate)
+        .def("result_mask", [](const LPMP::asymmetric_multiway_cut_instance& instance, const LPMP::asymmetric_multiway_cut_labeling& labeling) {
+                return std::make_pair(
+                        get_edge_mask(instance, labeling),
+                        get_label_mask(instance, labeling)
+                        ); 
+                });
 
         m.def("asymmetric_multiway_cut_gaec", [](const LPMP::asymmetric_multiway_cut_instance& instance) {
                 return LPMP::asymmetric_multiway_cut_gaec(instance);
