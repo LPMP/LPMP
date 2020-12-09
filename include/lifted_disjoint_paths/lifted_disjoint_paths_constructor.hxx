@@ -763,6 +763,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     double primalBaseValue=0;
     double primalLiftedValue=0;
 
+    double sncLowerBound=0;
+    double cutLowerBound=0;
+    double pathLowerBound=0;
+
     for (int i = 0; i < nr_nodes(); ++i) {
 
         const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
@@ -775,6 +779,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
         primalLiftedValue+=sncFactorIn->getPrimalLiftedCost();
         primalLiftedValue+=sncFactorOut->getPrimalLiftedCost();
+
+        sncLowerBound+=sncFactorIn->LowerBound();
+        sncLowerBound+=sncFactorOut->LowerBound();
 
 
     }
@@ -824,6 +831,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         liftedCostsFromOtherFactors[l1][l2]+=cFactor->getLiftedCost();
         liftedIndicesOfCutFactors[l1][l2].insert(i);
 
+        cutLowerBound+=cFactor->LowerBound();
+
     }
 
     for (int i = 0; i < path_factors_.size(); ++i) {
@@ -853,7 +862,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         liftedCostsFromOtherFactors[v1][v2]+=pFactor->getCosts().back();
         liftedIndicesOfPathFactors[v1][v2].insert(i);
 
+        pathLowerBound+=pFactor->LowerBound();
+
     }
+
+    std::cout<<"SNC lower bound: "<<sncLowerBound<<", cut lower bound: "<<cutLowerBound<<", path lower bound: "<<pathLowerBound<<std::endl;
 
 
         if(diagnostics()){
@@ -1110,7 +1123,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         bestPrimalSolution=paths;
      }
 
-    if(debug()) sncDebug();
+    //if(debug()){
+
+        sncDebug();
+    //}
 
     if(diagnostics()) std::cout<<"primal value: "<<primalValue<<std::endl;
 }
@@ -1189,6 +1205,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
         auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
         //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
         path_factors_.push_back(newPathFactor);
+        pPathFactor->print();
        // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
         delete pPathFactor;
         pPathFactor=nullptr;

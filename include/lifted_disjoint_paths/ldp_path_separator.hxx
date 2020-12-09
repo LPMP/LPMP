@@ -4,6 +4,7 @@
 #include"lifted_disjoint_paths/ldp_instance.hxx"
 #include"ldp_min_marginals_extractor.hxx"
 #include"ldp_path_factor.hxx"
+#include "ldp_functions.hxx"
 
 namespace LPMP {
 
@@ -104,6 +105,7 @@ template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT> //PATH_FACTOR is 
 class ldp_path_separator {
 
 public:
+       // bool edgeCompare(const std::tuple<float,size_t,size_t,bool>& t1,const std::tuple<float,size_t,size_t,bool>& t2) ;
     ldp_path_separator(const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& _mmExtractor):
 
     pInstance(_pInstance),
@@ -113,7 +115,7 @@ public:
         numberOfVertices=pInstance->getNumberOfVertices()-2;
         isInQueue=std::vector<char>(numberOfVertices);
         predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
-        predInQueueIsLifted=std::vector<char>(numberOfVertices);
+        predInQueueIsLifted=std::vector<char>(numberOfVertices,2);
         maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
     }
 
@@ -133,6 +135,7 @@ private:
     PATH_FACTOR* createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
     std::list<std::pair<size_t,bool>> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
 
+
 const lifted_disjoint_paths::LdpInstance * pInstance;
 ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& mmExtractor;
 size_t numberOfVertices;
@@ -150,6 +153,34 @@ std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
  size_t maxTimeGap;
 
 };
+
+
+//template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+//inline bool ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::edgeCompare(const std::tuple<float,size_t,size_t,bool>& t1,const std::tuple<float,size_t,size_t,bool>& t2) {
+//    if(std::get<0>(t1)==std::get<0>(t2)){
+//        if(std::get<1>(t1)==std::get<1>(t2)){
+//            if(std::get<2>(t1)==std::get<2>(t2)){
+//                if(std::get<3>(t1)==std::get<3>(t2)){
+//                    throw std::runtime_error("duplicated edge in edge list");
+//                }
+//                else {
+//                    std::get<3>(t1)>std::get<3>(t2); //lifted first
+//                }
+
+//            }
+//            else{
+//                return std::get<2>(t1)<std::get<2>(t2);
+//            }
+
+//        }
+//        else{
+//            return std::get<1>(t1)<std::get<1>(t2);
+//        }
+//    }
+//    else{
+//        return std::get<0>(t1)<std::get<0>(t2);
+//    }
+//}
 
 template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
@@ -228,6 +259,7 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_N
    while(currentVertex!=firstVertex){  //path contains vertex and info about edge starting in it
        assert(currentVertex<numberOfVertices);
        size_t newVertex=predInQueue[currentVertex];
+       assert(predInQueueIsLifted.at(currentVertex)<2);
        bool isEdgeLifted=predInQueueIsLifted[currentVertex];
        shortestPath.push_front({newVertex,isEdgeLifted});
        currentVertex=newVertex;
@@ -238,7 +270,7 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_N
        assert(v<numberOfVertices);
        isInQueue[v]=0;
        predInQueue[v]=maxValue;
-       predInQueueIsLifted[v]=0;
+       predInQueueIsLifted[v]=2;
    }
    return shortestPath;
 }
@@ -332,7 +364,8 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
     size_t constraintsCounter=0;
 
-    std::vector<std::tuple<double,size_t,size_t,bool>> edgesToSort; //contains negative base and lifted edges: cost,vertex1,vertex2,isLifted
+   // std::vector<std::tuple<double,size_t,size_t,bool>> edgesToSort; //contains negative base and lifted edges: cost,vertex1,vertex2,isLifted
+     std::vector<std::tuple<float,size_t,size_t,bool>> edgesToSort; //contains negative base and lifted edges: cost,vertex1,vertex2,isLifted
 
     for(size_t i=0;i<numberOfVertices;i++){
         auto iter=baseMM[i].begin();
@@ -358,7 +391,10 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         }
     }
 
-    std::sort(edgesToSort.begin(),edgesToSort.end());
+   // std::sort(edgesToSort.begin(),edgesToSort.end());
+    //lifted_disjoint_paths::edgeCompare(edgesToSort[0],edgesToSort[1]);
+    //std::sort(edgesToSort.begin(),edgesToSort.end(),edgeCompare);
+    std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::edgeCompare<float>);
 
 //    std::vector<std::set<size_t>> predecessors(numberOfVertices);  //Can I use list? Maybe yes, just predecessors will not be sorted!
 //    std::vector<std::set<size_t>> descendants(numberOfVertices);
@@ -376,10 +412,19 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
     }
 
+//    for(size_t i=0;i<edgesToSort.size();i++){
+//        std::tuple<double,size_t,size_t,bool>& edge=edgesToSort[i];
+//        size_t& vertex1=std::get<1>(edge);
+//        size_t& vertex2=std::get<2>(edge);
+//        bool isLifted=std::get<3>(edge);
+//        double edgeCost=std::get<0>(edge);
+
+//    }
 
 
     for(size_t i=0;i<edgesToSort.size();i++){
-        std::tuple<double,size_t,size_t,bool>& edge=edgesToSort[i];
+       // std::tuple<double,size_t,size_t,bool>& edge=edgesToSort[i];
+        std::tuple<float,size_t,size_t,bool>& edge=edgesToSort[i];
         size_t& vertex1=std::get<1>(edge);
         size_t& vertex2=std::get<2>(edge);
         bool isLifted=std::get<3>(edge);
@@ -430,6 +475,28 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
             }
         }
         usedEdges[vertex1].push_back(std::pair(vertex2,isLifted));
+        if(i>1){
+     //       std::tuple<double,size_t,size_t,bool>& e=edgesToSort[i-1];
+            std::tuple<float,size_t,size_t,bool>& e=edgesToSort[i-1];
+            size_t& v1=std::get<1>(e);
+            size_t& v2=std::get<2>(e);
+            bool il=std::get<3>(e);
+            double ec=std::get<0>(e);
+//            if(v1==vertex1&&v2==vertex2&&abs(ec-edgeCost)<eps){
+//                std::cout<<"same base and lifted cost "<<v1<<" "<<v2<<", cost: "<<edgeCost<<"first lifted, second lifted: "<<isLifted<<", "<<il<<std::endl;
+//            }
+            if(abs(ec-edgeCost)<eps){
+                std::cout<<"same base and lifted cost "<<v1<<" "<<v2<<", cost: "<<ec<<". is lifted "<<il<<std::endl;
+                std::cout<<"same base and lifted cost "<<vertex1<<" "<<vertex2<<", cost: "<<edgeCost<<". is lifted "<<isLifted<<std::endl;
+                std::cout<<"equal values "<<(ec==edgeCost)<<std::endl;
+            }
+
+
+        }
+//        if(vertex1==106&&vertex2==136){
+//            std::cout<<"edge for path factor 106, 136, is lifted "<<isLifted<<", cost: "<<edgeCost<<std::endl;
+//        }
+
 
         //TODO add predecessors and descendanta here
     }

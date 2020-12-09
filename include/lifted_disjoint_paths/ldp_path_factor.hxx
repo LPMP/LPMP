@@ -398,7 +398,18 @@ public:
         assert(vertexIndexInSnc.size()==dimension);
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
-        if(debug()) r.LowerBound();
+        double rounded=round(msg*10000)/1000;
+        size_t vertexIndex=vertexIndexInSnc[msg_dim];
+        size_t vertexID=0;
+        if(isLifted.at(msg_dim)){
+            vertexID=r.getLiftedIDs().at(vertexIndex);
+        }
+        else{
+            vertexID=r.getBaseIDs().at(vertexIndex);
+        }
+        //std::cout<<"snc repam right "<<r.nodeID<<", "<<vertexIndexInSnc[msg_dim]<<", vertex id: "<<vertexID<<", value: "<<std::setprecision(5)<<rounded<<std::endl;
+        //std::cout<<std::setprecision(10);
+        //if(debug()) r.LowerBound();
        // r.LowerBound();
         if(debug()){
             size_t centralNodeID=r.nodeID;
@@ -426,7 +437,7 @@ public:
            // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
         }
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
-        if(debug()) r.LowerBound();
+      //  if(debug()) r.LowerBound();
         //r.LowerBound();
 
     }
@@ -447,27 +458,37 @@ public:
             const std::vector<double>& liftedCosts=r.getLiftedCosts();
             if(isLifted.at(0)){
                 delta = r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
-                if(debug()){
-                    std::vector<double> controlLiftedCosts=liftedCosts;
-                    controlLiftedCosts[vertexIndexInSnc[0]]-=delta;
-                    controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&controlLiftedCosts);
-                }
+//                if(debug()){
+//                    r.LowerBound();
+//                    double controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
+//                    if(abs(controlDelta-delta)>eps){
+//                        throw std::runtime_error("different lifted min marginal if using lower bound");
+//                    }
+//                    std::vector<double> controlLiftedCosts=liftedCosts;
+//                    controlLiftedCosts[vertexIndexInSnc[0]]-=delta;
+//                    controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&controlLiftedCosts);
+//                }
             }
             else{
                // std::cout<<"base "<<std::endl;
                 delta = r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
-                if(debug()){
-                    std::vector<double> controlBaseCosts=baseCosts;
-                    controlBaseCosts[vertexIndexInSnc[0]]-=delta;
-                    controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&controlBaseCosts,&liftedCosts);
-                }
+//                if(debug()){
+//                    r.LowerBound();
+//                    double controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
+//                    if(abs(controlDelta-delta)>eps){
+//                        throw std::runtime_error("different base min marginal if using lower bound");
+//                    }
+////                    std::vector<double> controlBaseCosts=baseCosts;
+////                    controlBaseCosts[vertexIndexInSnc[0]]-=delta;
+////                    controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&controlBaseCosts,&liftedCosts);
+//                }
             }
-            if(debug()){
-                if(abs(controlDelta)>eps){
-                    std::cout<<"control value from snc factor "<<controlDelta<<", original delta: "<<delta<<", is lifted "<<int(isLifted.at(0))<<std::endl;
-                    throw std::runtime_error("wrong snc min marginal check in path message");
-                }
-            }
+//            if(debug()){
+//                if(abs(controlDelta)>eps){
+//                    std::cout<<"control value from snc factor "<<controlDelta<<", original delta: "<<delta<<", is lifted "<<int(isLifted.at(0))<<std::endl;
+//                    throw std::runtime_error("wrong snc min marginal check in path message");
+//                }
+//            }
             msg[0] -= omega * delta;
         }
         else{
@@ -477,26 +498,36 @@ public:
                 if(isLifted.at(i)){
                    // std::cout<<"lifted "<<std::endl;
                     delta = r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+
+//                    if(debug()){
+//                        r.LowerBound();
+//                        controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+//                        if(abs(controlDelta-delta)>eps){
+//                            throw std::runtime_error("different lifted min marginal if using lower bound");
+//                        }
+//                    }
                     liftedCosts[vertexIndexInSnc[i]]-=delta;
-                    if(debug()){
-                        controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
-                    }
                     // std::cout<<"delta obtained "<<std::endl;
                 }
                 else{
                     //std::cout<<"base "<<std::endl;
                     delta = r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+
+//                    if(debug()){
+//                        r.LowerBound();
+//                        controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+//                        if(abs(controlDelta-delta)>eps){
+//                            throw std::runtime_error("different base min marginal if using lower bound");
+//                        }
+//                    }
                     baseCosts[vertexIndexInSnc[i]]-=delta;
-                    if(debug()){
-                        controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
-                    }
                 }
-                if(debug()){
-                    if(abs(controlDelta)>eps){
-                        std::cout<<"control value from snc factor "<<controlDelta<<", original delta: "<<delta<<", is lifted "<<int(isLifted.at(i))<<std::endl;
-                        throw std::runtime_error("wrong snc min marginal check in path message");
-                    }
-                }
+//                if(debug()){
+//                    if(abs(controlDelta)>eps){
+//                        std::cout<<"control value from snc factor "<<controlDelta<<", original delta: "<<delta<<", is lifted "<<int(isLifted.at(i))<<std::endl;
+//                        throw std::runtime_error("wrong snc min marginal check in path message");
+//                    }
+//                }
                 msg[i] -= omega * delta;
             }
         }
