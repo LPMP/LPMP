@@ -87,9 +87,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
             minMarginalsIn[j]*=0.5;
             localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
             baseEdgesWithCosts[neighborID][i]+=minMarginalsIn[j];
-            if(neighborID==106&&i==136){
-                std::cout<<"extract mm base 106 136: "<<baseEdgesWithCosts[neighborID][i]<<std::endl;
-            }
+
 
         }
 
@@ -99,9 +97,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
         for (size_t j = 0; j < minMarginalsLiftedIn.size(); ++j) {
             size_t neighborID=sncFactorIn->getLiftedIDs()[j];
             liftedEdgesWithCosts[neighborID][i]+=minMarginalsLiftedIn[j];
-            if(neighborID==106&&i==136){
-                std::cout<<"extract mm lifted 106 136: "<<liftedEdgesWithCosts[neighborID][i]<<std::endl;
-            }
+
         }
 
           //  std::cout<<"lifted min marginals in "<<i<<std::endl;
@@ -117,22 +113,17 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
             minMarginalsOut[j]*=0.5;
               localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
             baseEdgesWithCosts[i][neighborID]+=minMarginalsOut[j];
-            if(neighborID==136&&i==106){
-                std::cout<<"extract mm base 106 136: "<< baseEdgesWithCosts[i][neighborID]<<std::endl;
-            }
+
         }
 
          std::vector<double> minMarginalsLiftedOut=sncFactorOut->getAllLiftedMinMarginals(&localBaseCostsOut);
 
-        for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
-            size_t neighborID=sncFactorOut->getLiftedIDs()[j];
+         for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
+             size_t neighborID=sncFactorOut->getLiftedIDs()[j];
              liftedEdgesWithCosts[i][neighborID]+=minMarginalsLiftedOut[j];
-             if(neighborID==136&&i==106){
-                 std::cout<<"extract mm lifted 106 136: "<<liftedEdgesWithCosts[i][neighborID]<<std::endl;
-             }
-        }
+         }
 
-     }
+    }
 
 
 }

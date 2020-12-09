@@ -138,7 +138,8 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
             if(descV1SecondIter==descV1end||it->first<*descV1SecondIter){
                 size_t d2=it->first;
                 if(pInstance->isReachable(d2,v2)){
-                    assert(baseEdgesWithCosts[d][d2]>=cost-eps);
+                    //assert(baseEdgesWithCosts[d][d2]>=cost-eps);
+                    assert(baseEdgesWithCosts[d][d2]>=cost-0.0001);
                     cutEdges[d][d2]=0;
                     addedCutEdges++;
                     assert(d<numberOfVertices);
@@ -168,7 +169,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
 
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCutInequalities(size_t maxConstraints){
-    std::cout<<"separate cuts "<<std::endl;
+  //  std::cout<<"separate cuts "<<std::endl;
 //    mmExtractor.initMinMarginals();
     baseEdgesWithCosts=mmExtractor.getBaseEdgesMinMarginals();
     liftedEdgesWithCosts=mmExtractor.getLiftedEdgesMinMarginals();
@@ -179,6 +180,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
 
 
     std::vector<std::tuple<double,size_t,size_t>> edgesToSort;
+   // std::vector<std::tuple<float,size_t,size_t>> edgesToSort;
     descendants= std::vector<std::list<size_t>> (numberOfVertices);
     predecessors= std::vector<std::list<size_t>> (numberOfVertices);
 
@@ -198,7 +200,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         descendants[node].push_back(node);
     }
 
-    std::cout<<"desc and pred init done"<<std::endl;
+   // std::cout<<"desc and pred init done"<<std::endl;
 
 
     //list of base edges to be sorted
@@ -213,20 +215,22 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
             assert(baseGraph.getForwardEdgeVertex(vertex,neighborsCounter)==w);
             //std::tuple<double,size_t,size_t> t(cost,v,w)
             if(vertex!=pInstance->getSourceNode()&&w!=pInstance->getTerminalNode()){
-                if(cost<eps){
+                //if(cost<eps){
+                if(cost<1e-4){
                     connectEdge(vertex,w);
                 }
                 else{
-
+                    //edgesToSort.push_back(std::tuple<float,size_t,size_t>(cost,vertex,neighborsCounter));
                     edgesToSort.push_back(std::tuple<double,size_t,size_t>(cost,vertex,neighborsCounter));
                 }
             }
         }
     }
 
-    std::sort(edgesToSort.begin(),edgesToSort.end());
+   // std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::baseEdgeCompare<float>);
+     std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::baseEdgeCompare<double>);
 
-    std::cout<<"edges to sort sorted"<<std::endl;
+   // std::cout<<"edges to sort sorted"<<std::endl;
 
 
     //Select candidate lifted edges: negative and disconnected
@@ -271,6 +275,10 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         size_t index=std::get<2>(edgesToSort[i]);
         size_t w=baseGraph.getForwardEdgeVertex(v,index);
        // double cost=std::get<0>(edgesToSort[i]);
+        double cost=std::get<0>(edgesToSort[i]);
+
+//        std::cout<<"cut edge to conect "<<v<<", "<<index<<": "<<std::setprecision(6)<<cost<<std::endl;
+//        std::cout<<std::setprecision(10);
 
         assert(v<isConnected.size());
         assert(index<isConnected[v].size());
@@ -278,7 +286,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
             i++;
             continue;
         }
-        double cost=std::get<0>(edgesToSort[i]);
+        //double cost=std::get<0>(edgesToSort[i]);
         assert(cost>0);
 
         //std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
