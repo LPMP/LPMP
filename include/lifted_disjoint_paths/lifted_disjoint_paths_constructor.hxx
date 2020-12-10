@@ -1004,14 +1004,14 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CU
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::ComputePrimal()
 {
 //If used here, more stable primal solution. However, slower convergence.
-//    double lbBefore=0;
-//    double lbAfter=0;
-//  //  if(diagnostics()) lbBefore=controlLowerBound();
-//    LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
-//    mmExtractor.initMinMarginals(true);
-//    mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
-//   // if(diagnostics()) lbAfter=controlLowerBound();
-//    assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
+    double lbBefore=0;
+    double lbAfter=0;
+    if(debug()) lbBefore=controlLowerBound();
+    LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
+    mmExtractor.initMinMarginals(true);
+    mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
+    if(debug()) lbAfter=controlLowerBound();
+    assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
 
 
     read_in_mcf_costs();

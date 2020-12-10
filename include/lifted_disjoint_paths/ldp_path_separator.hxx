@@ -157,32 +157,6 @@ std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
 };
 
 
-//template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-//inline bool ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::edgeCompare(const std::tuple<float,size_t,size_t,bool>& t1,const std::tuple<float,size_t,size_t,bool>& t2) {
-//    if(std::get<0>(t1)==std::get<0>(t2)){
-//        if(std::get<1>(t1)==std::get<1>(t2)){
-//            if(std::get<2>(t1)==std::get<2>(t2)){
-//                if(std::get<3>(t1)==std::get<3>(t2)){
-//                    throw std::runtime_error("duplicated edge in edge list");
-//                }
-//                else {
-//                    std::get<3>(t1)>std::get<3>(t2); //lifted first
-//                }
-
-//            }
-//            else{
-//                return std::get<2>(t1)<std::get<2>(t2);
-//            }
-
-//        }
-//        else{
-//            return std::get<1>(t1)<std::get<1>(t2);
-//        }
-//    }
-//    else{
-//        return std::get<0>(t1)<std::get<0>(t2);
-//    }
-//}
 
 template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
@@ -194,7 +168,6 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPr
     }
 
 }
-  //  auto * myPathFactor=pathFactor->get_factor();
 
 
 
@@ -203,7 +176,7 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_N
    assert(firstVertex!=lastVertex);
 
    std::list<std::pair<size_t,bool>> shortestPath;
-   //BSF should work best
+   //Just BSF
    //I need a map of used edges
    std::list<size_t> queue; //vertex and is lifted (between vertex and its predecessor in queue)
 
@@ -300,8 +273,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     for (;iter!=end;iter++) {
         size_t vertex=iter->first;
         bool isLiftedEdge=iter->second;
-       // std::cout<<vertex<<", "<<std::endl;
-      //  std::cout<<"lifted "<<isLiftedEdge<<std::endl;
+
         assert(counter<pathVertices.size());
         pathVertices[counter]=vertex;
         liftedEdgesIndices[counter]=isLiftedEdge;
@@ -309,8 +281,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     }
     pathVertices[counter]=bv1;
     liftedEdgesIndices[counter]=isLifted;
-  //  std::cout<<"central edge vertex "<<bv1<<", "<<std::endl;
-  //  std::cout<<"lifted "<<isLifted<<std::endl;
+
     counter++;
     //Careful with the bridge edge!
     if(bv2!=lv2) assert(ending.front().first==bv2);
@@ -319,8 +290,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     for(;iter!=end;iter++){
         size_t vertex=iter->first;
         bool isLiftedEdge=iter->second;
-      //  std::cout<<vertex<<", "<<std::endl;
-      //  std::cout<<"lifted "<<isLiftedEdge<<std::endl;
+
         assert(counter<pathVertices.size());
         pathVertices[counter]=vertex;
         liftedEdgesIndices[counter]=isLiftedEdge;
@@ -394,19 +364,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         }
     }
 
-   // std::sort(edgesToSort.begin(),edgesToSort.end());
-    //lifted_disjoint_paths::edgeCompare(edgesToSort[0],edgesToSort[1]);
-    //std::sort(edgesToSort.begin(),edgesToSort.end(),edgeCompare);
     std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::edgeCompare<double>);
-
-//    std::vector<std::set<size_t>> predecessors(numberOfVertices);  //Can I use list? Maybe yes, just predecessors will not be sorted!
-//    std::vector<std::set<size_t>> descendants(numberOfVertices);
-
-//    for(size_t i=0;i<numberOfVertices;i++){
-//        predecessors[i].insert(i);
-//        descendants[i].insert(i);
-
-//    }
 
 
     for(size_t i=0;i<numberOfVertices;i++){
@@ -415,14 +373,6 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
     }
 
-//    for(size_t i=0;i<edgesToSort.size();i++){
-//        std::tuple<double,size_t,size_t,bool>& edge=edgesToSort[i];
-//        size_t& vertex1=std::get<1>(edge);
-//        size_t& vertex2=std::get<2>(edge);
-//        bool isLifted=std::get<3>(edge);
-//        double edgeCost=std::get<0>(edge);
-
-//    }
 
 
     for(size_t i=0;i<edgesToSort.size();i++){
@@ -442,20 +392,20 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
 
             bool alreadyConnected=false;
-//            if(debug()){
-//                for(auto iter=descendants[vertex1].begin();iter!=descendants[vertex1].end();iter++){
-//                    if(*iter==vertex2){
-//                        alreadyConnected=true;
-//                        break;
-//                    }
-//                }
-//            }
+            if(debug()){
+                for(auto iter=descendants[vertex1].begin();iter!=descendants[vertex1].end();iter++){
+                    if(*iter==vertex2){
+                        alreadyConnected=true;
+                        break;
+                    }
+                }
+            }
 
 
 
            // bool connectedInThisRound=false;
             //for (;iterPredV1!=endPredV1;iterPredV1++) {
-            for (;iterPredV1!=endPredV1&&!alreadyConnected;iterPredV1++) {
+            for (;iterPredV1!=endPredV1;iterPredV1++) {
                 const size_t& pred=*iterPredV1;
                 assert(pred<numberOfVertices);
                 auto iterDescPred=descendants[pred].begin();  //Put descendants of V2 into descendants of pred
@@ -470,10 +420,8 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                         size_t l0=pInstance->getGroupIndex(pred);
                         size_t l1=pInstance->getGroupIndex(descV2);
 
-                        //                        if(!(l1-l0>maxTimeGap||!alreadyConnected)){
-                        //                            std::cout<<"trying to connect multiple times "<<pred<<", "<<descV2<<", should be connected by "<<vertex1<<", "<<vertex2<<std::endl;
-                        //                        }
-                        //                        assert(l1-l0>maxTimeGap||!alreadyConnected);
+                      if(debug()) assert(l1-l0>maxTimeGap||!alreadyConnected);
+
                         assert(descV2<numberOfVertices);
                         if(l1-l0<=maxTimeGap){                           // std::cout<<"exists new descendant "<<std::endl;
                             auto f=positiveLifted[pred].find(descV2);
@@ -499,7 +447,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                         if(pred==vertex1&&*iterDescPred==vertex2){
                             alreadyConnected=true;
                             if(diagnostics()) std::cout<<"already connected "<<vertex1<<" "<<vertex2<<std::endl;
-                            break;
+                            if(!debug())break;
                         }
                         //else if (*iterDescV2>*iterDescPred) { //not interesting
                         if (*iterDescV2>*iterDescPred) { //not interesting
@@ -512,6 +460,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                         }
                     }
                 }
+                if(alreadyConnected&&!debug()) break;
             }
         //}
         usedEdges[vertex1].push_back(std::pair(vertex2,isLifted));
@@ -523,12 +472,9 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                 size_t& v2=std::get<2>(e);
                 bool il=std::get<3>(e);
                 double ec=std::get<0>(e);
-                //            if(v1==vertex1&&v2==vertex2&&abs(ec-edgeCost)<eps){
-                //                std::cout<<"same base and lifted cost "<<v1<<" "<<v2<<", cost: "<<edgeCost<<"first lifted, second lifted: "<<isLifted<<", "<<il<<std::endl;
-                //            }
                 if(abs(ec-edgeCost)<eps){
-                    std::cout<<"same base and lifted cost "<<v1<<" "<<v2<<", cost: "<<ec<<". is lifted "<<il<<std::endl;
-                    std::cout<<"same base and lifted cost "<<vertex1<<" "<<vertex2<<", cost: "<<edgeCost<<". is lifted "<<isLifted<<std::endl;
+                    std::cout<<"same edge cost "<<v1<<" "<<v2<<", cost: "<<ec<<". is lifted "<<il<<std::endl;
+                    std::cout<<"same edge cost "<<vertex1<<" "<<vertex2<<", cost: "<<edgeCost<<". is lifted "<<isLifted<<std::endl;
                     std::cout<<"equal values "<<(ec==edgeCost)<<std::endl;
                 }
 
