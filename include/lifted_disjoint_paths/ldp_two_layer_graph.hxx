@@ -112,9 +112,6 @@ private:
     size_t numberOfInputs;
     size_t numberOfOutputs;
 
-
-
-
 };
 
 }

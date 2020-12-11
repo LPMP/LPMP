@@ -72,7 +72,7 @@ void ldp_path_factor::init_primal(){
 }
 
 
-const void ldp_path_factor::print() const{
+void ldp_path_factor::print() const{
     std::cout<<"path factor"<<std::endl;
     for (int i = 0; i < listOfVertices.size(); ++i) {
         int il=isLifted.at(i);

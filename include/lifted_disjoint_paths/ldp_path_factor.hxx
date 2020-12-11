@@ -65,7 +65,7 @@ public:
 
     std::vector<double> getAllMinMarginals()const;
 
-    const void print() const;
+    void print() const;
 
 private:
     double minimize(const std::vector<double> *pCosts, size_t edgeIndex, bool edgeLabel)const;
