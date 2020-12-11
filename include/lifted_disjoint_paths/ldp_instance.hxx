@@ -38,7 +38,6 @@
 #include <pybind11/numpy.h>
 #include <disjoint-paths/disjointPathsMethods.hxx>
 #include <disjoint-paths/completeStructure.hxx>
-#include <disjoint-paths/twoGraphsInputStructure.hxx>
 #include "lifted_disjoint_paths/ldp_directed_graph.hxx"
 #include "config.hxx"
 

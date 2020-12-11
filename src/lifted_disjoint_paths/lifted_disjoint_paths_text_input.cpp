@@ -1,4 +1,4 @@
-#include "lifted_disjoint_paths/lifted_disjoint_paths_input.h"
+
 #include "lifted_disjoint_paths/lifted_disjoint_paths_fmc.h"
 #include "visitors/standard_visitor.hxx"
 #include "lifted_disjoint_paths/ldp_instance.hxx"

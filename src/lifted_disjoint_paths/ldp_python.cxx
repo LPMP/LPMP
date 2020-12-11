@@ -44,8 +44,6 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
              .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<size_t> &,disjointPaths::CompleteStructure<>&>())
              .def(py::init<LPMP::lifted_disjoint_paths::LdpParameters<>&,const py::array_t<size_t>&,const py::array_t<size_t>&,const  py::array_t<double>& ,const  py::array_t<double>&,const  py::array_t<double>&,disjointPaths::VertexGroups<>&>()) ;
 
-     py::class_<disjointPaths::TwoGraphsInputStructure>(m,"TwoGraphsStructure")
-             .def(py::init<const py::array_t<size_t>&,const py::array_t<size_t>&,const  py::array_t<double>& ,const  py::array_t<double>&,disjointPaths::VertexGroups<>&>());
 
      using problemSolver=LPMP::ProblemConstructorRoundingSolver<LPMP::Solver<LPMP::LP<LPMP::lifted_disjoint_paths_FMC>,LPMP::StandardTighteningVisitor>>;
      py::class_<problemSolver>(m,"Solver")
