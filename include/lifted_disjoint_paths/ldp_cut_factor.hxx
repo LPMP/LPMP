@@ -220,7 +220,7 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
-        std::cout<<"send cut to left"<<std::endl;
+        //std::cout<<"send cut to left"<<std::endl;
 
         std::vector<double> baseCosts=r.getBaseCosts();
         std::vector<double> liftedCosts=r.getLiftedCosts(); //TODO change to const reference
@@ -260,7 +260,7 @@ public:
     template<typename CUT_FACTOR, typename MSG>
     void send_message_to_right(const CUT_FACTOR& l, MSG& msg, const double omega)
     {
-        std::cout<<"send cut to right"<<std::endl;
+        //std::cout<<"send cut to right"<<std::endl;
 
         double delta;
         size_t i=0;
@@ -271,14 +271,14 @@ public:
 
             if(sncIsOut){
                 size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[i]);
-                std::cout<<"base edge mm, neighbor node "<<l.getOutputVertices()[otherVertex]<<std::endl;
+                //std::cout<<"base edge mm, neighbor node "<<l.getOutputVertices()[otherVertex]<<std::endl;
                 delta = l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex,&cutGraph,&liftedCost);
-                std::cout<<"orig edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;;
+                //std::cout<<"orig edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;;
                 cutGraph.updateForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i],-delta);
-                std::cout<<"changed edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;
-                //if(debug()){
+                //std::cout<<"changed edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;
+                if(debug()){
                     controlDelta=l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex,&cutGraph,&liftedCost);
-               // }
+                }
             }
             else{  //just for output nodes now
                 assert(false);
@@ -286,32 +286,32 @@ public:
                 cutGraph.updateForwardEdgeCost(nodeIndicesInCut[i],sncNodeIDindexInCut,-delta);
                 controlDelta=delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut,&cutGraph,&liftedCost);
             }
-           // if(debug()){
+            if(debug()){
                 if(abs(controlDelta)>eps){
                     std::cout<<"control value from cut factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
                     throw std::runtime_error("wrong cut min marginal - check base edge");
                 }
-            //}
-            std::cout<<"delta "<<delta<<", sending "<<(omega*delta)<<std::endl;
+            }
+           // std::cout<<"delta "<<delta<<", sending "<<(omega*delta)<<std::endl;
 
             msg[i] -= omega * delta;
         }
 
         if(containsLiftedEdge){
 
-            std::cout<<"lifted edge mm, neighbor node "<<l.getLiftedOutputVertex()<<std::endl;
+            // std::cout<<"lifted edge mm, neighbor node "<<l.getLiftedOutputVertex()<<std::endl;
             delta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
-            //if(debug()){
-            std::cout<<"orig lifted edge cost "<<liftedCost<<std::endl;
+            if(debug()){
+            //std::cout<<"orig lifted edge cost "<<liftedCost<<std::endl;
                 liftedCost-=delta;
-                std::cout<<"new lifted edge cost "<<liftedCost<<std::endl;
+              //  std::cout<<"new lifted edge cost "<<liftedCost<<std::endl;
                 controlDelta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
                 if(abs(controlDelta)>eps){
                     std::cout<<"control value from cut factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
                     throw std::runtime_error("wrong cut min marginal - check lifted edge");
                 }
-            //}
-                std::cout<<"delta "<<delta<<", sending "<<(omega*delta)<<std::endl;
+            }
+            //    std::cout<<"delta "<<delta<<", sending "<<(omega*delta)<<std::endl;
             msg[i]-=omega*delta;
         }
     }

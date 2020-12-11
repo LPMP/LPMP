@@ -225,8 +225,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
     }
     double minCutValue=std::get<0>(myTuple);
     if(minCutValue>=0){
-        // if(debug()&&index1!=unassignedLabel)
-        std::cout<<"simple method"<<std::endl;
+        // if(debug()&&index1!=unassignedLabel)  std::cout<<"simple method"<<std::endl;
         if(index1!=unassignedLabel&&restrictToOne){ //must join
             // if(debug()&&index1!=unassignedLabel)    std::cout<<"must join"<<std::endl;
             double valueToReturn=0;
@@ -271,8 +270,7 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
 
     }
     else{
-        //if(debug()&&index1!=unassignedLabel)
-        std::cout<<"ADVANCED METHOD FOR CUT FACTOR"<<std::endl;
+        //if(debug()&&index1!=unassignedLabel)  std::cout<<"ADVANCED METHOD FOR CUT FACTOR"<<std::endl;
 
         if(index1==unassignedLabel){
             lapInput=createLAStandard(addLiftedCost,pCutGraph,pLiftedCost);
@@ -475,7 +473,7 @@ double ldp_cut_factor::LowerBound() const{
     }
 
 
-    std::cout<<"cut factor lb "<<value;
+   // std::cout<<"cut factor lb "<<value;
     return value;
 }
 
@@ -486,9 +484,9 @@ double ldp_cut_factor::getOneEdgeMinMarginal(const size_t & index1,const size_t 
     assert(index1<numberOfInput);
     assert(index2<numberOfOutput);
     double restrictOne= advancedMinimizer(index1,index2,true,addLiftedCost,pCutGraph,pLiftedCost);
-    std::cout<<"restrict one "<<restrictOne<<std::endl;
+   // std::cout<<"restrict one "<<restrictOne<<std::endl;
     double restrictZero=advancedMinimizer(index1,index2,false,addLiftedCost,pCutGraph,pLiftedCost);
-    std::cout<<"restrict zero "<<restrictZero<<std::endl;
+   // std::cout<<"restrict zero "<<restrictZero<<std::endl;
     return restrictOne-restrictZero;
 }
 
@@ -531,40 +529,34 @@ double ldp_cut_factor::getLiftedMinMarginal(const LdpTwoLayerGraph* pCutGraph,co
     if(!baseCoverLiftedExists||!baseCoverNegative){
 
         if(minValue>=0){
-            //if(debug())
-            std::cout<<"no base cover, minValue positive"<<std::endl;
+            //if(debug()) std::cout<<"no base cover, minValue positive"<<std::endl;
             double value=localLiftedCost+minValue;
             return value;
         }
         else{
-            //  if(debug())
-            std::cout<<"no base cover, minValue negative"<<std::endl;
+            //  if(debug()) std::cout<<"no base cover, minValue negative"<<std::endl;
             return localLiftedCost;
         }
     }
     else{  //Base cover lifted exists and is negative
         assert(minValue<0);
-        //   if(debug())
-        std::cout<<"base cover negative"<<std::endl;
+        //   if(debug()) std::cout<<"base cover negative"<<std::endl;
         double zeroLiftedCost=0.0;
         double lowerBoundNoLift=advancedMinimizer(unassignedLabel,unassignedLabel,false,false,pCutGraph,&zeroLiftedCost); //some cut edge must be active, not effective! Min cut edge searched again!
         double restrictedOne=0;
         double restrictedZero=0;
         assert(lowerBoundNoLift<0);
         if(storeLabeling[baseCoveringLifted[0]]==baseCoveringLifted[1]){
-            //if(debug())
-            std::cout<<"base cover active, lower bound "<<lowerBoundNoLift<<std::endl;
+            //if(debug()) std::cout<<"base cover active, lower bound "<<lowerBoundNoLift<<std::endl;
 
             restrictedOne=lowerBoundNoLift+localLiftedCost;
             restrictedZero=advancedMinimizer(baseCoveringLifted[0],baseCoveringLifted[1],false,false,pCutGraph,&zeroLiftedCost);
 
-            //if(debug())
-            std::cout<<"restrict zero value "<<restrictedZero<<std::endl;
+            //if(debug()) std::cout<<"restrict zero value "<<restrictedZero<<std::endl;
             return restrictedOne-restrictedZero;
         }
         else{
-            //  if(debug())
-            std::cout<<"base cover not active"<<std::endl;
+            //  if(debug())std::cout<<"base cover not active"<<std::endl;
           //  if(debug()) std::cout<<"lb negative"<<std::endl;
             return localLiftedCost;
         }
