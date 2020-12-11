@@ -815,6 +815,7 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TOD
 
         }
     }
+    std::cout<<"snc lower bound "<<optValue<<std::endl;
     return optValue;
 
 }
