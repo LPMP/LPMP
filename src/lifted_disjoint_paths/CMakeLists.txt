@@ -5,8 +5,11 @@ target_link_libraries(ldp_directed_graph LPMP pybind11::module)
 add_library(ldp_instance ldp_instance.cxx)
 target_link_libraries(ldp_instance LPMP  pybind11::module ldp_directed_graph)
 
+add_library(ldp_two_layer_graph ldp_two_layer_graph.cxx)
+target_link_libraries(ldp_two_layer_graph LPMP)
+
 add_library(ldp_cut_factor ldp_cut_factor.cxx)
-target_link_libraries(ldp_cut_factor LPMP)
+target_link_libraries(ldp_cut_factor LPMP ldp_two_layer_graph)
 
 add_library(ldp_path_factor ldp_path_factor.cxx)
 target_link_libraries(ldp_path_factor LPMP pybind11::module)
