@@ -3,6 +3,7 @@
 
 #include"lifted_disjoint_paths/ldp_instance.hxx"
 #include"ldp_min_marginals_extractor.hxx"
+#include"ldp_two_layer_graph.hxx"
 #include<list>
 
 namespace LPMP {
@@ -33,6 +34,8 @@ public:
 
     //LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
     void clearPriorityQueue();
+
+    bool checkWithBlockedEdges(const CUT_FACTOR& cutFactor,const std::vector<std::set<size_t>>& blockedEdges)const;
 
 
 private:
@@ -65,6 +68,40 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriori
     }
 
 }
+
+
+template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline bool LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBlockedEdges(const CUT_FACTOR& cutFactor,const std::vector<std::set<size_t>>& blockedEdges) const{
+    const LdpTwoLayerGraph& cutGraph=cutFactor.getCutGraph();
+    const std::vector<size_t>& inputs=cutFactor.getInputVertices();
+    const std::vector<size_t>& outputs=cutFactor.getOutputVertices();
+
+    bool isFree=true;
+
+    for (int i = 0; i < inputs.size()&&isFree; ++i) {
+        size_t inputVertex=inputs.at(i);
+        auto iter=cutGraph.forwardNeighborsBegin(i);
+        for (;iter!=cutGraph.forwardNeighborsEnd(i);iter++) {
+            size_t outIndex=iter->first;
+            assert(outIndex<outputs.size());
+            size_t outputVertex=outputs[outIndex];
+            assert(inputVertex<blockedEdges.size());
+            auto f=blockedEdges[inputVertex].find(outputVertex);
+            if(f!=blockedEdges[inputVertex].end()){
+                isFree=false;
+                break;
+            }
+        }
+
+    }
+
+    return isFree;
+
+
+
+
+}
+
 
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::connectEdge(const size_t& v,const size_t& w){

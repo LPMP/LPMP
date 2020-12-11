@@ -106,19 +106,20 @@ class ldp_path_separator {
 
 public:
        // bool edgeCompare(const std::tuple<float,size_t,size_t,bool>& t1,const std::tuple<float,size_t,size_t,bool>& t2) ;
-    ldp_path_separator(const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& _mmExtractor):
+    ldp_path_separator(const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& _mmExtractor);
+//        :
 
-    pInstance(_pInstance),
-     mmExtractor(_mmExtractor)
+//    pInstance(_pInstance),
+//     mmExtractor(_mmExtractor)
 
-    {
-        numberOfVertices=pInstance->getNumberOfVertices()-2;
-        isInQueue=std::vector<char>(numberOfVertices);
-        predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
-        predInQueueIsLifted=std::vector<char>(numberOfVertices,2);
-        maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
+//    {
+//        numberOfVertices=pInstance->getNumberOfVertices()-2;
+//        isInQueue=std::vector<char>(numberOfVertices);
+//        predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
+//        predInQueueIsLifted=std::vector<char>(numberOfVertices,2);
+//        maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
 
-    }
+//    }
 
     void separatePathInequalities(size_t maxConstraints);
 
@@ -129,6 +130,7 @@ public:
 
     //LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
     void clearPriorityQueue();
+    bool checkWithBlockedEdges(const PATH_FACTOR& pFactor,const std::vector<std::set<size_t>>& blockedEdges);
 
 
 private:
@@ -155,6 +157,49 @@ std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
  size_t maxTimeGap;
 
 };
+
+
+
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline bool ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBlockedEdges(const PATH_FACTOR& pFactor,const std::vector<std::set<size_t>>& blockedEdges){
+    const std::vector<size_t>& vertices= pFactor.getListOfVertices();
+    const std::vector<char>& liftedInfo= pFactor.getLiftedInfo();
+
+    bool isFree=true;
+
+    assert(vertices[0]<blockedEdges.size());
+    for (int i = 0; i < vertices.size()-1&&isFree; ++i) {
+        assert(vertices[i+1]<blockedEdges.size());
+
+        auto f=blockedEdges[vertices[i]].find(vertices[i+1]);
+        if(f!=blockedEdges[vertices[i]].end()){
+            isFree=false;
+        }
+    }
+    if(isFree){
+        auto f=blockedEdges[vertices.front()].find(vertices.back());
+        if(f!=blockedEdges[vertices.front()].end()){
+            isFree=false;
+        }
+    }
+    return isFree;
+}
+
+
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::ldp_path_separator(const lifted_disjoint_paths::LdpInstance * _pInstance, ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR_CONT>& _mmExtractor):
+
+pInstance(_pInstance),
+ mmExtractor(_mmExtractor)
+
+{
+    numberOfVertices=pInstance->getNumberOfVertices()-2;
+    isInQueue=std::vector<char>(numberOfVertices);
+    predInQueue=std::vector<size_t>(numberOfVertices,std::numeric_limits<size_t>::max());
+    predInQueueIsLifted=std::vector<char>(numberOfVertices,2);
+    maxTimeGap=std::max(pInstance->getGapLifted(),pInstance->getGapBase());
+
+}
 
 
 
