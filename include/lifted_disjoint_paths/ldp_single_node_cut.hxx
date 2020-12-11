@@ -120,6 +120,7 @@ public:
     double getOneLiftedMinMarginal(size_t indexOfLiftedEdge, const std::vector<double>*pBaseCosts, const std::vector<double>*pLiftedCosts)const;
     double getNodeMinMarginal()const;
 
+    std::vector<double> getAllBaseMinMarginals(const std::vector<double> *pLocalBaseCosts, const std::vector<double> *pLocalLiftedCosts)const;
     std::vector<double> getAllBaseMinMarginals()const;
     std::vector<double> getAllBaseMinMarginalsForMCF() const;
     std::vector<double> getAllLiftedMinMarginals(const std::vector<double> *pLocalBaseCosts=nullptr,const std::vector<double> *pLocalLiftedCosts=nullptr) const;
@@ -598,12 +599,43 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseM
 }
 
 
+template<class LDP_INSTANCE>
+inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals(const std::vector<double>* pLocalBaseCosts,const std::vector<double>* pLocalLiftedCosts) const{
+
+
+    StrForTopDownUpdate str(*pLocalBaseCosts,*pLocalLiftedCosts);
+    topDownUpdate(str);
+
+    std::vector<double> minMarginals(pLocalBaseCosts->size());
+    if(str.optBaseIndex==nodeNotActive){
+        for (int i = 0; i < str.solutionCosts.size()-1; ++i) {
+            minMarginals[i]=str.solutionCosts[i];
+
+        }
+    }
+    else{
+        double secondBest=std::numeric_limits<double>::infinity();
+        double optValue=str.solutionCosts.at(str.optBaseIndex);
+        for (int i = 0; i < str.solutionCosts.size(); ++i) {
+            if(i==str.optBaseIndex) continue;
+            if(str.solutionCosts[i]<secondBest){
+                secondBest=str.solutionCosts[i];
+            }
+
+        }
+        for (int i = 0; i < str.solutionCosts.size()-1; ++i) {
+            minMarginals[i]=str.solutionCosts[i]-secondBest;
+
+        }
+    }
+    return minMarginals;
+}
 
 template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals() const{
 	updateOptimal();
 
-	std::vector<double> minMarginals(baseCosts.size());
+    std::vector<double> minMarginals(baseCosts.size());
     if(optBaseIndex==nodeNotActive){
 		for (int i = 0; i < solutionCosts.size()-1; ++i) {
 			minMarginals[i]=solutionCosts[i];

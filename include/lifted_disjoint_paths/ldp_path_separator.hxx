@@ -446,7 +446,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                     else{
                         if(pred==vertex1&&*iterDescPred==vertex2){
                             alreadyConnected=true;
-                            if(diagnostics()) std::cout<<"already connected "<<vertex1<<" "<<vertex2<<std::endl;
+                            //if(diagnostics()) std::cout<<"already connected "<<vertex1<<" "<<vertex2<<std::endl;
                             if(!debug())break;
                         }
                         //else if (*iterDescV2>*iterDescPred) { //not interesting

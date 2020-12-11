@@ -1141,7 +1141,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
 {
    size_t numberOfCutsToSeparate=nr_constraints_to_add/2;
    size_t numberOfPathsToSeparate=nr_constraints_to_add-numberOfCutsToSeparate;
-   minMarginalsExtractor.initMinMarginals();
+   minMarginalsExtractor.initMinMarginalsLiftedFirst();
 
    double possibleImprovement=0;
    // size_t cutsSeparated=  separateCuts(numberOfCutsToSeparate);
