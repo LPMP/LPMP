@@ -1143,10 +1143,10 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
    size_t numberOfPathsToSeparate=nr_constraints_to_add-numberOfCutsToSeparate;
    minMarginalsExtractor.initMinMarginalsLiftedFirst();
 
-   std::vector<std::map<size_t,size_t>> baseEdgeUsage;
+   std::vector<std::map<size_t,size_t>> baseEdgeUsage;   //To count number of usages of each edge
    std::vector<std::map<size_t,size_t>> liftedEdgeUsage;
 
-   std::vector<std::set<size_t>> blockedBaseEdges;
+   std::vector<std::set<size_t>> blockedBaseEdges;   //To store the edges that are already blocked because of usage
    std::vector<std::set<size_t>> blockedLiftedEdges;
 
 
@@ -1211,7 +1211,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
            }
            counterAdded++;
            counterCuts++;
-           if(diagnostics()) std::cout<<"added "<<counterCuts<<" cut ineq"<<std::endl;
+
        }
        else{
 
@@ -1256,9 +1256,12 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
            }
            counterAdded ++;
            counterPaths++;
-           if(diagnostics()) std::cout<<"added "<<counterPaths<<" path ineq"<<std::endl;
+
        }
    }
+
+    if(diagnostics()) std::cout<<"added "<<counterCuts<<" cut ineq"<<std::endl;
+    if(diagnostics()) std::cout<<"added "<<counterPaths<<" path ineq"<<std::endl;
 
     cutSeparator.clearPriorityQueue();
 
@@ -1267,8 +1270,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     adjustCutLabels(cutFactorOriginalSize);
     adjustPathLabels(pathFactorsOriginalSize);
 
-    if(diagnostics()) std::cout<<"added "<<counterAdded<<" path factors with improvement "<<possibleImprovement<<std::endl;
-     return counterAdded;
+    if(diagnostics()) std::cout<<"added "<<counterAdded<<" factors with improvement "<<possibleImprovement<<std::endl;
+    return counterAdded;
 
 }
 
