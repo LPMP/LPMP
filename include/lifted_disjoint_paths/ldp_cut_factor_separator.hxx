@@ -35,7 +35,8 @@ public:
     //LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
     void clearPriorityQueue();
 
-    bool checkWithBlockedEdges(const CUT_FACTOR& cutFactor,const std::vector<std::set<size_t>>& blockedEdges)const;
+    bool checkWithBlockedEdges(const CUT_FACTOR& cutFactor,const std::vector<std::set<size_t>>& blockedBaseEdges,const std::vector<std::set<size_t>>& blockedLiftedEdges)const;
+    void updateUsedEdges(const CUT_FACTOR& cutFactor,std::vector<std::set<size_t>>& blockedBaseEdges,std::vector<std::map<size_t,size_t>>& usedBaseEdges,std::vector<std::set<size_t>>& blockedLiftedEdges,std::vector<std::map<size_t,size_t>>& usedLiftedEdges,const size_t& maxUsage)const;
 
 
 private:
@@ -70,8 +71,9 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriori
 }
 
 
+
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline bool LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBlockedEdges(const CUT_FACTOR& cutFactor,const std::vector<std::set<size_t>>& blockedEdges) const{
+inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::updateUsedEdges(const CUT_FACTOR& cutFactor,std::vector<std::set<size_t>>& blockedBaseEdges,std::vector<std::map<size_t,size_t>>& usedBaseEdges,std::vector<std::set<size_t>>& blockedLiftedEdges,std::vector<std::map<size_t,size_t>>& usedLiftedEdges,const size_t& maxUsage)const{
     const LdpTwoLayerGraph& cutGraph=cutFactor.getCutGraph();
     const std::vector<size_t>& inputs=cutFactor.getInputVertices();
     const std::vector<size_t>& outputs=cutFactor.getOutputVertices();
@@ -79,26 +81,79 @@ inline bool LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBl
     bool isFree=true;
 
     for (int i = 0; i < inputs.size()&&isFree; ++i) {
-        size_t inputVertex=inputs.at(i);
+        size_t inputVertex=inputs[i];
         auto iter=cutGraph.forwardNeighborsBegin(i);
         for (;iter!=cutGraph.forwardNeighborsEnd(i);iter++) {
             size_t outIndex=iter->first;
             assert(outIndex<outputs.size());
             size_t outputVertex=outputs[outIndex];
-            assert(inputVertex<blockedEdges.size());
-            auto f=blockedEdges[inputVertex].find(outputVertex);
-            if(f!=blockedEdges[inputVertex].end()){
+            assert(inputVertex<blockedBaseEdges.size());
+            assert(inputVertex<usedBaseEdges.size());
+            size_t& currentUsages=usedBaseEdges[inputVertex][outputVertex];
+            assert(currentUsages<maxUsage&&blockedBaseEdges[inputVertex].count(outputVertex)==0);
+            currentUsages++;
+            if(currentUsages==maxUsage){
+                blockedBaseEdges[inputVertex].insert(outputVertex);
+            }
+        }
+    }
+
+    size_t v=cutFactor.getLiftedInputVertex();
+    size_t w=cutFactor.getLiftedOutputVertex();
+
+    assert(v<usedLiftedEdges.size());
+    assert(v<blockedLiftedEdges.size());
+    size_t & currentUsages=usedLiftedEdges[v][w];
+
+    assert(currentUsages<maxUsage&&blockedLiftedEdges[v].count(w)==0);
+
+    currentUsages++;
+    if(currentUsages==maxUsage){
+        blockedLiftedEdges[v].insert(w);
+    }
+
+
+}
+
+
+
+template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline bool LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBlockedEdges(const CUT_FACTOR& cutFactor,const std::vector<std::set<size_t>>& blockedBaseEdges,const std::vector<std::set<size_t>>& blockedLiftedEdges)const{
+    const LdpTwoLayerGraph& cutGraph=cutFactor.getCutGraph();
+    const std::vector<size_t>& inputs=cutFactor.getInputVertices();
+    const std::vector<size_t>& outputs=cutFactor.getOutputVertices();
+
+    bool isFree=true;
+
+    for (int i = 0; i < inputs.size()&&isFree; ++i) {
+        size_t inputVertex=inputs[i];
+        auto iter=cutGraph.forwardNeighborsBegin(i);
+        for (;iter!=cutGraph.forwardNeighborsEnd(i);iter++) {
+            size_t outIndex=iter->first;
+            assert(outIndex<outputs.size());
+            size_t outputVertex=outputs[outIndex];
+            assert(inputVertex<blockedBaseEdges.size());
+            auto f=blockedBaseEdges[inputVertex].find(outputVertex);
+            if(f!=blockedBaseEdges[inputVertex].end()){
                 isFree=false;
                 break;
             }
         }
 
     }
+    if(isFree){
+        size_t v=cutFactor.getLiftedInputVertex();
+        size_t w=cutFactor.getLiftedOutputVertex();
+
+        assert(v<blockedLiftedEdges.size());
+
+        auto f=blockedLiftedEdges[v].find(w);
+        if(f!=blockedLiftedEdges[v].end()){
+            isFree=false;
+        }
+    }
 
     return isFree;
-
-
-
 
 }
 

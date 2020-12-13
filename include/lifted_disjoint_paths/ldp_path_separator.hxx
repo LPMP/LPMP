@@ -130,7 +130,8 @@ public:
 
     //LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
     void clearPriorityQueue();
-    bool checkWithBlockedEdges(const PATH_FACTOR& pFactor,const std::vector<std::set<size_t>>& blockedEdges);
+    bool checkWithBlockedEdges(const PATH_FACTOR& pFactor,const std::vector<std::set<size_t>>& blockedBaseEdges,const std::vector<std::set<size_t>>& blockedLiftedEdges)const;
+    void updateUsedEdges(const PATH_FACTOR& pFactor,std::vector<std::set<size_t>>& blockedBaseEdges,std::vector<std::map<size_t,size_t>>& usedBaseEdges,std::vector<std::set<size_t>>& blockedLiftedEdges,std::vector<std::map<size_t,size_t>>& usedLiftedEdges,const size_t& maxUsage)const;
 
 
 private:
@@ -161,27 +162,86 @@ std::priority_queue<std::pair<double,PATH_FACTOR*>> pQueue;
 
 
 template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline bool ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBlockedEdges(const PATH_FACTOR& pFactor,const std::vector<std::set<size_t>>& blockedEdges){
+inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::updateUsedEdges(const PATH_FACTOR& pFactor,std::vector<std::set<size_t>>& blockedBaseEdges,std::vector<std::map<size_t,size_t>>& usedBaseEdges,std::vector<std::set<size_t>>& blockedLiftedEdges,std::vector<std::map<size_t,size_t>>& usedLiftedEdges,const size_t& maxUsage)const{
+    const std::vector<size_t>& vertices= pFactor.getListOfVertices();
+    const std::vector<char>& liftedInfo= pFactor.getLiftedInfo();
+
+    assert(liftedInfo.size()==vertices.size());
+    for (int i = 0; i < vertices.size(); ++i) {
+
+        size_t vertex1=vertices[i];
+        size_t vertex2;
+        if(i<vertices.size()-1){
+            vertex2=vertices[i+1];
+        }
+        else{
+            vertex2=vertices.back();
+            vertex1=vertices.front();
+        }
+
+        if(liftedInfo[i]){
+            assert(vertex1<blockedLiftedEdges.size());
+            assert(vertex1<usedLiftedEdges.size());
+            size_t& currentUsage=usedLiftedEdges[vertex1][vertex2];
+            assert(currentUsage<maxUsage&&blockedLiftedEdges[vertex1].count(vertex2)==0);
+            currentUsage++;
+            if(currentUsage==maxUsage){
+                blockedLiftedEdges[vertex1].insert(vertex2);
+            }
+        }
+        else{
+            assert(vertex1<blockedBaseEdges.size());
+            assert(vertex1<usedBaseEdges.size());
+            size_t& currentUsage=usedBaseEdges[vertex1][vertex2];
+            assert(currentUsage<maxUsage&&blockedBaseEdges[vertex1].count(vertex2)==0);
+            currentUsage++;
+            if(currentUsage==maxUsage){
+                blockedBaseEdges[vertex1].insert(vertex2);
+            }
+        }
+
+    }
+}
+
+
+
+template <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+inline bool ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBlockedEdges(const PATH_FACTOR& pFactor,const std::vector<std::set<size_t>>& blockedBaseEdges,const std::vector<std::set<size_t>>& blockedLiftedEdges)const{
     const std::vector<size_t>& vertices= pFactor.getListOfVertices();
     const std::vector<char>& liftedInfo= pFactor.getLiftedInfo();
 
     bool isFree=true;
 
-    assert(vertices[0]<blockedEdges.size());
-    for (int i = 0; i < vertices.size()-1&&isFree; ++i) {
-        assert(vertices[i+1]<blockedEdges.size());
 
-        auto f=blockedEdges[vertices[i]].find(vertices[i+1]);
-        if(f!=blockedEdges[vertices[i]].end()){
-            isFree=false;
+    assert(liftedInfo.size()==vertices.size());
+    for (int i = 0; i < vertices.size(); ++i) {
+
+        size_t vertex1=vertices[i];
+        size_t vertex2;
+        if(i<vertices.size()-1){
+            vertex2=vertices[i+1];
+        }
+        else{
+            vertex2=vertices.back();
+            vertex1=vertices.front();
+        }
+
+        if(liftedInfo[i]){
+            assert(vertex1<blockedLiftedEdges.size());
+            auto f=blockedLiftedEdges[vertex1].find(vertex2);
+            if(f!=blockedLiftedEdges[vertex1].end()){
+                isFree=false;
+            }
+        }
+        else{
+            assert(vertex1<blockedBaseEdges.size());
+            auto f=blockedBaseEdges[vertex1].find(vertex2);
+            if(f!=blockedBaseEdges[vertex1].end()){
+                isFree=false;
+            }
         }
     }
-    if(isFree){
-        auto f=blockedEdges[vertices.front()].find(vertices.back());
-        if(f!=blockedEdges[vertices.front()].end()){
-            isFree=false;
-        }
-    }
+
     return isFree;
 }
 
