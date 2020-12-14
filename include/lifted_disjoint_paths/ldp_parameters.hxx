@@ -172,6 +172,14 @@ public:
 
 	//ConfigDisjoint<>& operator=(const ConfigDisjoint<>&);
 
+    size_t getTightenMaxEdgeUsage() const{
+        return tighteningMaxEdgeUsage;
+    }
+
+    double getTightenMinImprovement() const{
+        return tighteningMinImprovement;
+    }
+
 
 private:
     LdpParameters<T>(const LdpParameters<T>&);
@@ -215,6 +223,9 @@ private:
 	size_t maxTimeGapComplete;     //max time gap of edges to read
 
      std::stringstream controlOutput;
+
+     double tighteningMinImprovement;
+     size_t tighteningMaxEdgeUsage;
 
 
 };
@@ -426,6 +437,23 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
         useAdaptiveThresholds=false;
     }
      controlOutput<<"adaptive thresholds "<<useAdaptiveThresholds<<std::endl;
+
+
+     if(parameters.count("TIGHT_MIN_IMPROVEMENT")>0){
+         tighteningMinImprovement=std::stoul(parameters["TIGHT_MIN_IMPROVEMENT"]);
+     }
+     else{
+         tighteningMinImprovement=0.00001;
+     }
+     controlOutput<<"minimal improvement for tightening "<<tighteningMinImprovement<<std::endl;
+
+     if(parameters.count("TIGHT_MAX_EDGE_USAGE")>0){
+         tighteningMaxEdgeUsage=std::stoi(parameters["TIGHT_MAX_EDGE_USAGE"]);
+     }
+     else{
+         tighteningMaxEdgeUsage=2;
+     }
+     controlOutput<<"maximal edge usage for tightening "<<tighteningMinImprovement<<std::endl;
 
     writeControlOutput();
 

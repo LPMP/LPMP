@@ -1004,6 +1004,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CU
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::ComputePrimal()
 {
 //If used here, more stable primal solution. However, slower convergence.
+  //  if(diagnostics()) std::cout<<"computing primal"<<std::endl;
     double lbBefore=0;
     double lbAfter=0;
     if(debug()) lbBefore=controlLowerBound();
@@ -1143,7 +1144,10 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
    size_t numberOfPathsToSeparate=nr_constraints_to_add-numberOfCutsToSeparate;
    minMarginalsExtractor.initMinMarginalsLiftedFirst();
 
-   size_t maxEdgeUsage=2;
+   size_t maxEdgeUsage=pInstance->parameters.getTightenMaxEdgeUsage();
+   double minImprovement=pInstance->parameters.getTightenMinImprovement();
+
+
    std::vector<std::map<size_t,size_t>> baseEdgeUsage(nr_nodes());   //To count number of usages of each edge
    std::vector<std::map<size_t,size_t>> liftedEdgeUsage(nr_nodes());
 
@@ -1158,12 +1162,12 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
    size_t counterCuts=0;
    size_t counterPaths=0;
    LdpCutSeparator<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> cutSeparator(pInstance,minMarginalsExtractor);
-   cutSeparator.separateCutInequalities(numberOfCutsToSeparate);
+   cutSeparator.separateCutInequalities(numberOfCutsToSeparate,minImprovement);
    std::priority_queue<std::pair<double,ldp_cut_factor*>>& queueWithCuts=cutSeparator.getPriorityQueue();
 
 
    ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
-   pathSeparator.separatePathInequalities(nr_constraints_to_add);
+   pathSeparator.separatePathInequalities(nr_constraints_to_add,minImprovement);
    std::priority_queue<std::pair<double,ldp_path_factor_type*>>& queueWithPaths=pathSeparator.getPriorityQueue();
 
 
@@ -1216,6 +1220,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                }
                counterAdded++;
                counterCuts++;
+               if(diagnostics()) std::cout<<"cut improvement "<<improvement<<std::endl;
            }
            else{
                //std::cout<<"cut is not free"<<std::endl;
@@ -1269,6 +1274,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                }
                counterAdded ++;
                counterPaths++;
+               if(diagnostics()) std::cout<<"path improvement "<<improvement<<std::endl;
            }
            else{
                //std::cout<<"path is not free"<<std::endl;

@@ -121,7 +121,7 @@ public:
 
 //    }
 
-    void separatePathInequalities(size_t maxConstraints);
+    void separatePathInequalities(size_t maxConstraints,double minImprovement);
 
     std::priority_queue<std::pair<double,PATH_FACTOR*>>& getPriorityQueue(){
         return pQueue;
@@ -423,7 +423,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
 }
 
 template  <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separatePathInequalities(size_t maxConstraints){
+inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separatePathInequalities(size_t maxConstraints, double minImprovement){
  //   mmExtractor.initMinMarginals();
     baseMM=mmExtractor.getBaseEdgesMinMarginals();
     liftedMM=mmExtractor.getLiftedEdgesMinMarginals();
@@ -449,7 +449,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         auto iter=baseMM[i].begin();
         auto end=baseMM[i].end();
         for(;iter!=end;iter++){
-            if(iter->first<numberOfVertices&&iter->second<-eps){
+            if(iter->first<numberOfVertices&&iter->second<-minImprovement){
                 edgesToSort.push_back(std::tuple(iter->second,i,iter->first,false));
             }
         }
@@ -460,10 +460,12 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         auto iter=liftedMM[i].begin();
         auto end=liftedMM[i].end();
         for(;iter!=end;iter++){
-            if(iter->second<-eps){
+            //if(iter->second<-eps){
+            if(iter->second<-minImprovement){
                 edgesToSort.push_back(std::tuple(iter->second,i,iter->first,true));
             }
-            else if(iter->second>eps){
+            //else if(iter->second>eps){
+            else if(iter->second>minImprovement){
                 positiveLifted[i][iter->first]=iter->second;
             }
         }

@@ -25,7 +25,7 @@ public:
 
     }
 
-    void separateCutInequalities(size_t maxConstraints);
+    void separateCutInequalities(size_t maxConstraints,double minImprovement);
 
     std::priority_queue<std::pair<double,CUT_FACTOR*>>& getPriorityQueue(){
         return pQueue;
@@ -260,7 +260,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
 
 
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCutInequalities(size_t maxConstraints){
+inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCutInequalities(size_t maxConstraints,double minImprovement){
   //  std::cout<<"separate cuts "<<std::endl;
 //    mmExtractor.initMinMarginals();
     baseEdgesWithCosts=mmExtractor.getBaseEdgesMinMarginals();
@@ -308,7 +308,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
             //std::tuple<double,size_t,size_t> t(cost,v,w)
             if(vertex!=pInstance->getSourceNode()&&w!=pInstance->getTerminalNode()){
                 //if(cost<eps){
-                if(cost<1e-4){
+                if(cost<minImprovement){
                     connectEdge(vertex,w);
                 }
                 else{
@@ -337,8 +337,9 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         auto itDesc=descendants[i].begin();
         while(itLifted!=neighbors.end()){
             if(itDesc==descendants[i].end()||*itDesc>itLifted->first){
-                if(itLifted->second<-eps) candidateLifted[i].push_back(itLifted->first);
-                itLifted++;
+               // if(itLifted->second<-eps) candidateLifted[i].push_back(itLifted->first);
+                 if(itLifted->second<-minImprovement) candidateLifted[i].push_back(itLifted->first);
+                 itLifted++;
             }
             else if(*itDesc<itLifted->first){
                 itDesc++;

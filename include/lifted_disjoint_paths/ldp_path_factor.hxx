@@ -187,6 +187,7 @@ public:
         assert(edgeIndexInPath.size()==dimension);
         assert(isLifted.size()==dimension);
 
+       // std::cout<<"send to left (snc to path)"<<std::endl;
         double delta=0;
         double controlDelta=0;
         if(dimension==1){
