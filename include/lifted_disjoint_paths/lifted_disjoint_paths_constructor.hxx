@@ -819,8 +819,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             const auto * iter=cutGraph.forwardNeighborsBegin(j);
             const auto * end=cutGraph.forwardNeighborsEnd(j);
             for (;iter!=end;iter++) {
-                size_t v2=outputs.at(iter->first);
-                double cost=iter->second;
+                size_t v2=outputs.at(iter->head);
+                double cost=iter->cost;
                 costsFromOtherFactors[v1][v2]+=cost;
                 indicesOfCutFactors[v1][v2].insert(i);
             }

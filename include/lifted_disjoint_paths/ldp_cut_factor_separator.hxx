@@ -84,7 +84,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::updateUsedE
         size_t inputVertex=inputs[i];
         auto iter=cutGraph.forwardNeighborsBegin(i);
         for (;iter!=cutGraph.forwardNeighborsEnd(i);iter++) {
-            size_t outIndex=iter->first;
+            size_t outIndex=iter->head;
             assert(outIndex<outputs.size());
             size_t outputVertex=outputs[outIndex];
             assert(inputVertex<blockedBaseEdges.size());
@@ -129,7 +129,7 @@ inline bool LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWithBl
         size_t inputVertex=inputs[i];
         auto iter=cutGraph.forwardNeighborsBegin(i);
         for (;iter!=cutGraph.forwardNeighborsEnd(i);iter++) {
-            size_t outIndex=iter->first;
+            size_t outIndex=iter->head;
             assert(outIndex<outputs.size());
             size_t outputVertex=outputs[outIndex];
             assert(inputVertex<blockedBaseEdges.size());

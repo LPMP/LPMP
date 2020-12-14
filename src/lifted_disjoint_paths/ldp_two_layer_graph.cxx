@@ -17,7 +17,7 @@ LdpTwoLayerGraph::LdpTwoLayerGraph(const std::vector<std::array<size_t,2>>& edge
         size_t i=e[0];
         size_t j=e[1];
         numberOfInputs=std::max(i+1,adjacencyForward.size());
-        numberOfOutputs=std::max(j+1,adjacencyForward.size());
+        numberOfOutputs=std::max(j+1,adjacencyBackward.size());
         adjacencyForward.resize(numberOfInputs);
         adjacencyForward[i]++;
         adjacencyBackward.resize(numberOfOutputs);
@@ -38,7 +38,7 @@ LdpTwoLayerGraph::LdpTwoLayerGraph(const std::vector<std::array<size_t,2>>& edge
         size_t v=edges[i][0];
         size_t w=edges[i][1];
         forwardEdges[v][adjacencyForward[v]]={w,inputEdgeCosts[i],adjacencyBackward[w]};
-        forwardEdges[w][adjacencyBackward[w]]={v,inputEdgeCosts[i],adjacencyForward[v]};
+        backwardEdges[w][adjacencyBackward[w]]={v,inputEdgeCosts[i],adjacencyForward[v]};
         //std::cout<<"add edge to layer graph "<<v<<", "<<w<<std::endl;
         adjacencyForward[v]++;
         adjacencyBackward[w]++;

@@ -47,7 +47,7 @@ inline void LdpCutMessageInputs<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::init(CU
     size_t sncCounter=0;
     size_t cutCounter=0;
     while(iterCut!=iterEnd&&iterSnc!=iterSncEnd){
-        size_t vertexInCut=outputVertices.at(iterCut->first);
+        size_t vertexInCut=outputVertices.at(iterCut->head);
         if(vertexInCut<*iterSnc){
             iterCut++;
             cutCounter++;

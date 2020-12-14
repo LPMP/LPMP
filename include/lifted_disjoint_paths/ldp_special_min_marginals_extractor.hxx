@@ -92,8 +92,8 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
             const auto * end=minMarginals.forwardNeighborsEnd(j);
             size_t outputCounter=0;
             for (;iter!=end;iter++) {
-                size_t v2=outputs.at(iter->first);
-                double delta=iter->second;
+                size_t v2=outputs.at(iter->head);
+                double delta=iter->cost;
                 baseEdgesWithCosts[v1][v2]+=delta;
                 if(doCostUpdate){
                     cFactor->updateCostBase(j,outputCounter,-delta);

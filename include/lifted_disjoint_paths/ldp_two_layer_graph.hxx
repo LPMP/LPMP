@@ -26,7 +26,9 @@ public:
     void updateForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
         assert(vertex<numberOfInputs);
         assert(neighborIndex<forwardEdges[vertex].size());
-        forwardEdges[vertex][neighborIndex].cost += value;
+        edge& e=forwardEdges[vertex][neighborIndex];
+        e.cost += value;
+        backwardEdges[e.head][e.reverse_neighbor_index].cost+=value;
     }
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{

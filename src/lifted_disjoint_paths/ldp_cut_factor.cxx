@@ -79,17 +79,17 @@ std::pair<LdpTwoLayerGraph, double> ldp_cut_factor::getAllMinMarginals()const{
         size_t counter=0;
         for (;iter!=end;iter++) {
             if(counter==optLabeling[i]){
-                double restrictZero=advancedMinimizer(i,iter->first,false,addLiftedCost,&localCutGraph,&liftedCost);
+                double restrictZero=advancedMinimizer(i,iter->head,false,addLiftedCost,&localCutGraph,&liftedCost);
                 double delta=currentOpt-restrictZero;
                 currentOpt=restrictZero;
-                iter->second-=delta;
+                iter->cost-=delta;
                 minMarginals.setForwardEdgeCost(i,counter,delta);
 
             }
             else{
-                double restrictOne=advancedMinimizer(i,iter->first,true,addLiftedCost,&localCutGraph,&liftedCost);
+                double restrictOne=advancedMinimizer(i,iter->head,true,addLiftedCost,&localCutGraph,&liftedCost);
                 double delta=restrictOne-currentOpt;
-                iter->second-=delta;
+                iter->cost-=delta;
                 minMarginals.setForwardEdgeCost(i,counter,delta);
             }
             counter++;
@@ -114,7 +114,7 @@ void ldp_cut_factor::setPrimal(const std::vector<size_t>& primalDescendants, con
         const auto* end=cutGraph.forwardNeighborsEnd(i);
         size_t counter=0;
         for(;it!=end;it++){
-            size_t index=it->first;
+            size_t index=it->head;
 
             assert(index>=0&&index<outputVertices.size());
             size_t neighborID=outputVertices[index];
@@ -175,8 +175,8 @@ void ldp_cut_factor::print()const {
         auto * it=cutGraph.forwardNeighborsBegin(i);
         auto * end=cutGraph.forwardNeighborsEnd(i);
         for(;it!=end;it++){
-            const size_t& outputIndex=it->first;
-            double value=it->second;
+            const size_t& outputIndex=it->head;
+            double value=it->cost;
             std::cout<<inputVertices[i]<<", "<<outputVertices[outputIndex]<<": "<<value<<std::endl;
         }
 
@@ -233,8 +233,8 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
             auto* end=localCutGraph.forwardNeighborsEnd(index1);
             bool found=false;
             for(;iter!=end;iter++){
-                if(iter->first==index2){
-                    valueToReturn=iter->second;
+                if(iter->head==index2){
+                    valueToReturn=iter->cost;
                     found=true;
                     break;
                 }
@@ -283,8 +283,8 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
             assert(index2<outputVertices.size());
             bool found=false;
             for (auto* it=localCutGraph.forwardNeighborsBegin(index1);it!=localCutGraph.forwardNeighborsEnd(index1);it++) {
-                if(it->first==index2){
-                    minValue=it->second;
+                if(it->head==index2){
+                    minValue=it->cost;
                     found=true;
                     break;
                 }
@@ -354,8 +354,8 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::createLAStandard(bool ad
         auto * it=pCutGraph->forwardNeighborsBegin(i);
         auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;it!=end;it++){
-            const size_t& outputIndex=it->first;
-            double value=it->second;
+            const size_t& outputIndex=it->head;
+            double value=it->cost;
             if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
                 value+=*pLiftedCost;
             }
@@ -379,8 +379,8 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeEdge(const size
         auto * it=pCutGraph->forwardNeighborsBegin(i);
         auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;it!=end;it++){
-            const size_t& outputIndex=it->first;
-            double value=it->second;
+            const size_t& outputIndex=it->head;
+            double value=it->cost;
             if(i==v1&&outputIndex==v2){
                 edgeFound=true;
                 continue;
@@ -412,8 +412,8 @@ LPMP::linear_assignment_problem_input   ldp_cut_factor::laExcludeVertices(const 
         auto * it=pCutGraph->forwardNeighborsBegin(i);
         auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;it!=end;it++){
-            const size_t& outputIndex=it->first;
-            double value=it->second;
+            const size_t& outputIndex=it->head;
+            double value=it->cost;
             if(baseCoverLiftedExists&&addLiftedCost&&i==baseCoveringLifted[0]&&outputIndex==baseCoveringLifted[1]){
                 value+=*pLiftedCost;
             }
@@ -441,9 +441,9 @@ double ldp_cut_factor::LowerBound() const{
             if(outputIndex!=unassignedLabel){
                 bool found=false;
                 for (auto iter=cutGraph.forwardNeighborsBegin(i);iter!=cutGraph.forwardNeighborsEnd(i);iter++) {
-                    if(iter->first==outputIndex){
-                        size_t index2=outputVertices.at(outputIndex);
-                        double val=iter->second;
+                    if(iter->head==outputIndex){
+                        //size_t index2=outputVertices.at(outputIndex);
+                        double val=iter->cost;
                         //std::cout<<inputVertices.at(i)<<"->"<<index2<<": "<<val<<std::endl;
                         controlValue+=val;
                         found=true;
@@ -500,15 +500,15 @@ std::tuple<double,size_t,size_t,char> ldp_cut_factor::minCutEdge(size_t index1,s
         auto * iter=pCutGraph->forwardNeighborsBegin(i);
         auto * end=pCutGraph->forwardNeighborsEnd(i);
         for(;iter!=end;iter++){
-            if(iter->second<minValue){
-                if(index1!=i||index2!=iter->first){
-                    minValue=iter->second;
+            if(iter->cost<minValue){
+                if(index1!=i||index2!=iter->head){
+                    minValue=iter->cost;
                     v1=i;
-                    v2=iter->first;
+                    v2=iter->head;
                 }
             }
-            if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&iter->first==baseCoveringLifted[1]){
-                cutCoverLiftedNegative=(iter->second<0);
+            if(baseCoverLiftedExists&&i==baseCoveringLifted[0]&&iter->head==baseCoveringLifted[1]){
+                cutCoverLiftedNegative=(iter->cost<0);
             }
         }
 
