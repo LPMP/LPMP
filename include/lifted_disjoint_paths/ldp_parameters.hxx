@@ -16,7 +16,7 @@
 #include <vector>
 #include <map>
 #include <limits>
-#include "disjoint-paths/parametersParser.hxx"
+#include "ldp_parameter_parser.hxx"
 #include <config.hxx>
 
 namespace LPMP{
@@ -70,6 +70,10 @@ public:
 	size_t getMaxTimeFrame() const {
 		return maxTimeFrame;
 	}
+
+    size_t getMinTimeFrame() const {
+        return minTimeFrame;
+    }
 
 	const size_t getMaxTimeLifted() const {
 		//std::cout<<"getting max time lifted "<<maxTimeLifted<<std::endl;
@@ -172,12 +176,22 @@ public:
 
 	//ConfigDisjoint<>& operator=(const ConfigDisjoint<>&);
 
+
     size_t getTightenMaxEdgeUsage() const{
         return tighteningMaxEdgeUsage;
     }
 
     double getTightenMinImprovement() const{
         return tighteningMinImprovement;
+    }
+
+
+    bool isAllBaseZero()const {
+        return allBaseToZero;
+    }
+
+    bool isKeepRedundantLifted()const{
+        return keepRedundantLifted;
     }
 
 
@@ -204,6 +218,7 @@ private:
 	bool sparsify;     //use graph sparsification?
 	bool restrictFrames;  //is maximal number of frames given
 	size_t maxTimeFrame;   //maximal time frame to be used
+    size_t minTimeFrame;
 	//size_t smallIntervals;
 
     bool useAdaptiveThresholds;
@@ -224,8 +239,13 @@ private:
 
      std::stringstream controlOutput;
 
+
      double tighteningMinImprovement;
      size_t tighteningMaxEdgeUsage;
+
+
+     bool allBaseToZero;
+     bool keepRedundantLifted;
 
 
 };
@@ -249,7 +269,7 @@ private:
 
 template<class T>
 inline LdpParameters<T>::LdpParameters(const std::string &inputFileName){
-    disjointPaths::ParametersParser parser;
+    ParametersParser parser;
     std::string fileName=inputFileName;
     parser.initFromFile(fileName,false);
     std::map<std::string,std::string>& pathsParameters=parser.getParsedStrings();
@@ -305,6 +325,37 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
     controlOutput<<"sparsify "<<sparsify<<std::endl;
     writeControlOutput();
 
+    if(parameters.count("ALL_BASE_TO_ZERO")>0){
+        allBaseToZero=std::stoi(parameters["ALL_BASE_TO_ZERO"]);
+    }
+    else{
+        allBaseToZero=1;
+    }
+    controlOutput<<"all base to zero "<<allBaseToZero<<std::endl;
+    writeControlOutput();
+
+
+    if(parameters.count("KEEP_REDUNDANT_LIFTED")>0){
+        keepRedundantLifted=std::stoi(parameters["KEEP_REDUNDANT_LIFTED"]);
+    }
+    else{
+        keepRedundantLifted=1;
+    }
+    controlOutput<<"keep redundant lifted "<<keepRedundantLifted<<std::endl;
+    writeControlOutput();
+
+
+
+
+    if(parameters.count("ALL_BASE_TO_ZERO")>0){
+        allBaseToZero=std::stoi(parameters["ALL_BASE_TO_ZERO"]);
+    }
+    else{
+        allBaseToZero=1;
+    }
+    controlOutput<<"all base to zero "<<allBaseToZero<<std::endl;
+    writeControlOutput();
+
     if(parameters.count("MAX_TIMEGAP")>0){
         maxTimeFrame=std::stoul(parameters["MAX_TIMEGAP"]);
         restrictFrames=1;
@@ -315,6 +366,18 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
     }
     controlOutput<<"max time frame "<<maxTimeFrame<<std::endl;
     writeControlOutput();
+
+    if(parameters.count("MIN_TIME_FRAME")>0){
+        minTimeFrame=std::stoul(parameters["MIN_TIME_FRAME"]);
+
+    }
+    else{
+
+        minTimeFrame=1;
+    }
+    controlOutput<<"min time frame "<<maxTimeFrame<<std::endl;
+    writeControlOutput();
+
 
     if(parameters.count("INPUT_COST")>0){
         inputCost=std::stod(parameters["INPUT_COST"]);

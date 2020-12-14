@@ -1,6 +1,6 @@
 #include "bdd/bdd_primal_fixing.h"
 #include "bdd/ILP_parser.h"
-#include "cuddObj.hh"
+#include "bdd.h"
 
 #include <fstream>
 

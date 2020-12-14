@@ -2,8 +2,9 @@
 
 #include "bdd_solver_interface.h"
 #include "two_dimensional_variable_array.hxx"
-#include "cuddObj.hh"
 #include "ILP_input.h"
+#include "ILP_parser.h"
+#include "bdd_preprocessor.h"
 #include "convert_pb_to_bdd.h"
 #include "bdd_variable.h"
 #include "bdd_branch_node.h"
@@ -20,19 +21,40 @@
 namespace LPMP {
 
     ////////////////////////////////////////////////////
+    // Solver options
+    ////////////////////////////////////////////////////
+    
+    struct bdd_min_marginal_averaging_options {
+        bdd_min_marginal_averaging_options(TCLAP::CmdLine& cmd);
+
+        void init();
+
+        enum class averaging_type {classic, SRMP} averaging_type = averaging_type::classic;
+        enum class variable_order {input, bfs, cuthill, mindegree} variable_order = variable_order::input;
+        enum class fixing_order {marginals_absolute, marginals_up, marginals_down, marginals_reduction} fixing_order = fixing_order::marginals_up;
+        enum class fixing_value {marginal, reduction, one, zero} fixing_value = fixing_value::marginal;
+
+        private:
+            TCLAP::ValueArg<std::string> averaging_arg;
+            TCLAP::ValueArg<std::string> order_arg;
+            TCLAP::ValueArg<std::string> fixing_order_arg;
+            TCLAP::ValueArg<std::string> fixing_value_arg;
+    };
+
+    ////////////////////////////////////////////////////
     // Base Class
     ////////////////////////////////////////////////////
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     class bdd_base {
         public:
-            bdd_base() {}
+            bdd_base(TCLAP::CmdLine& cmd);
             bdd_base(const bdd_base&) = delete; // no copy constructor because of pointers in bdd_branch_node
 
             template<typename BDD_VARIABLES_ITERATOR>
-                void add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end, Cudd& bdd_mgr);
+                void add_bdd(BDD::node_ref bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end, BDD::bdd_mgr& bdd_mgr);
 
-            void init(const ILP_input& input);
+            //void init(const ILP_input& input);
             void init();
 
             std::size_t nr_variables() const { return bdd_variables_.size(); }
@@ -66,10 +88,21 @@ namespace LPMP {
 
             void init_branch_nodes();
 
+            ILP_input ilp_input_;
             bdd_storage bdd_storage_;
+
+            bdd_min_marginal_averaging_options options;
+
+            TCLAP::ValueArg<std::string> input_file_arg_; // TODO: move to ILP_input or some wrapper around it.
+
     };
 
-
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::bdd_base(TCLAP::CmdLine& cmd)
+        : input_file_arg_("i","input","input file",true,"", "", cmd),
+        options(cmd),
+        bdd_storage_(cmd)
+    {}
 
   /*
    bdd_min_marginal_averaging_options::bdd_min_marginal_averaging_options(int argc, char** argv)
@@ -91,29 +124,46 @@ namespace LPMP {
     
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     template<typename BDD_VARIABLES_ITERATOR>
-    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end, Cudd& bdd_mgr)
+    void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::add_bdd(BDD::node_ref bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end, BDD::bdd_mgr& bdd_mgr)
     {
         bdd_storage_.add_bdd(bdd_mgr, bdd, bdd_vars_begin, bdd_vars_end); 
     }
 
+    /*
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init(const ILP_input& input)
     {
-        Cudd bdd_mgr;
-        // last parameter for recording primal fixations
-        bdd_storage_ = bdd_storage(input, bdd_mgr, false);
+        bdd_storage_.init(input);
+        //bdd_preprocessor bdd_pre(input);
+        //bdd_pre.coalesce_bdd_collection();
+        //bdd_storage_ = bdd_storage(bdd_pre.get_bdd_collection());
+        std::cout << "bdd storage: nr bdds = " << bdd_storage_.nr_bdds() << "\n";
+
         init_branch_nodes();
     }
+    */
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init()
     {
+        ilp_input_ = ILP_parser::parse_file(input_file_arg_.getValue());
+
+        if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::bfs)
+            ilp_input_.reorder_bfs();
+        else if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::cuthill)
+            ilp_input_.reorder_Cuthill_McKee();
+        else if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::mindegree)
+            ilp_input_.reorder_minimum_degree_averaging();
+
+        bdd_storage_.init(ilp_input_);
+
         init_branch_nodes();
     }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init_branch_nodes()
     {
+        assert(bdd_storage_.nr_variables() > 0 && bdd_storage_.nr_bdds() > 0);
         // allocate datastructures holding bdd instructions
         
         // helper vectors used throughout initialization
@@ -453,28 +503,19 @@ namespace LPMP {
     // Min-Marginal Averaging Solver
     ////////////////////////////////////////////////////
 
-    struct bdd_min_marginal_averaging_options {
-        bdd_min_marginal_averaging_options(int argc, char** argv);
-        bdd_min_marginal_averaging_options() {}
-        enum class averaging_type {classic, SRMP} averaging_type = averaging_type::classic;
-        enum class variable_order {input, bfs, cuthill, mindegree} variable_order = variable_order::input;
-        enum class fixing_order {marginals_absolute, marginals_up, marginals_down, marginals_reduction} fixing_order = fixing_order::marginals_up;
-        enum class fixing_value {marginal, reduction, one, zero} fixing_value = fixing_value::marginal;
-    };
-
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     class bdd_mma_base;
 
     typedef bdd_mma_base<bdd_variable_mma, bdd_branch_node_opt> bdd_min_marginal_averaging;
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
-    class bdd_mma_base : public bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>, public bdd_solver_interface
+    class bdd_mma_base : public bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE> //, public bdd_solver_interface // virtual base class not really needed
     {
     public:
-        bdd_mma_base() {}
+        using bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::bdd_base;
         bdd_mma_base(const bdd_mma_base &) = delete; // no copy constructor because of pointers in bdd_branch_node
 
-        void init(const ILP_input &input);
+        //void init(const ILP_input &input);
         void init();
 
         template <typename ITERATOR>
@@ -504,10 +545,11 @@ namespace LPMP {
         template <typename STREAM>
         void export_dot(STREAM &s) const;
 
-        void set_options(const bdd_min_marginal_averaging_options o) { options = o; }
-
     protected:
         void init_costs();
+
+        void min_marginal_averaging_step_forward(const size_t var, std::vector<std::array<double,2>>& min_marginals);
+        void min_marginal_averaging_step_backward(const size_t var, std::vector<std::array<double,2>>& min_marginals); 
 
         std::array<double, 2> min_marginal(const std::size_t var, const std::size_t bdd_index) const;
         template <typename ITERATOR>
@@ -522,24 +564,20 @@ namespace LPMP {
 
         std::vector<double> costs_;
         double lower_bound_ = -std::numeric_limits<double>::infinity();
-        bdd_min_marginal_averaging_options options;
     };
 
 
-   bdd_min_marginal_averaging_options::bdd_min_marginal_averaging_options(int argc, char** argv)
-        {
-            TCLAP::CmdLine cmd("Command line parser for bdd min marginal averaging options", ' ', " ");
-            TCLAP::ValueArg<std::string> averaging_arg("a","averaging","averaging type",false,"classic","{classic|SRMP}");
-            TCLAP::ValueArg<std::string> order_arg("o","order","variable order",false,"input","{input|bfs|cuthill|mindegree}");
-            TCLAP::ValueArg<std::string> fixing_order_arg("f","fixing","variable fixing order",false,"up","{abs|up|down|reduction}");
-            TCLAP::ValueArg<std::string> fixing_value_arg("v","value","variable fixing preferred value",false,"marginal","{marginal|reduction|one|zero}");
-            cmd.add(averaging_arg);
-            cmd.add(order_arg);
-            cmd.add(fixing_order_arg);
-            cmd.add(fixing_value_arg);
+   bdd_min_marginal_averaging_options::bdd_min_marginal_averaging_options(TCLAP::CmdLine& cmd)
+       :
+            averaging_arg("a","averaging","averaging type",false,"classic","{classic|SRMP}", cmd),
+            order_arg("o","order","variable order",false,"input","{input|bfs|cuthill|mindegree}", cmd),
+            fixing_order_arg("f","fixing","variable fixing order",false,"up","{abs|up|down|reduction}", cmd),
+            fixing_value_arg("v","value","variable fixing preferred value",false,"marginal","{marginal|reduction|one|zero}", cmd)
 
-            cmd.parse(argc, argv);
+        {}
 
+   void bdd_min_marginal_averaging_options::init() 
+   {
             if(averaging_arg.getValue() == "classic")
                 averaging_type = bdd_min_marginal_averaging_options::averaging_type::classic;
             else if(averaging_arg.getValue() == "SRMP")
@@ -594,6 +632,7 @@ namespace LPMP {
         costs_.resize(this->nr_variables(), std::numeric_limits<double>::infinity());
     }
 
+    /*
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init(const ILP_input& input)
     {
@@ -601,12 +640,14 @@ namespace LPMP {
         init_costs();
         set_costs(input.objective().begin(), input.objective().end());
     }
+    */
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init()
     {
         bdd_base<BDD_VARIABLE, BDD_BRANCH_NODE>::init();
         init_costs();
+        set_costs(this->ilp_input_.objective().begin(), this->ilp_input_.objective().end());
     }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
@@ -847,12 +888,34 @@ namespace LPMP {
             return std::make_pair(average_marginal, default_avg);
         }
 
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::min_marginal_averaging_step_forward(const size_t var, std::vector<std::array<double,2>>& min_marginals)
+    {
+        //std::cout << "variable " << var << " of " << this->nr_variables() << std::endl;
+        // collect min marginals
+        min_marginals.clear();
+        for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+            this->forward_step(var,bdd_index);
+            min_marginals.push_back(min_marginal(var,bdd_index)); 
+        }
+
+        const std::array<double,2> average_marginal = average_marginals(min_marginals.begin(), min_marginals.end());
+
+        // set marginals in each bdd so min marginals match each other
+        for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+            set_marginal(var,bdd_index,average_marginal,min_marginals[bdd_index]);
+        } 
+    }
+
     // min marginal averaging
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::min_marginal_averaging_forward()
     {
         std::vector<std::array<double,2>> min_marginals;
         for(std::size_t var=0; var<this->nr_variables(); ++var) {
+            min_marginals.clear();
+            min_marginal_averaging_step_forward(var, min_marginals);
+            continue;
 
             // collect min marginals
             min_marginals.clear();
@@ -896,12 +959,37 @@ namespace LPMP {
     }
 
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
+    void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::min_marginal_averaging_step_backward(const size_t var, std::vector<std::array<double,2>>& min_marginals)
+    {
+        //std::cout << "variable " << var << " of " << this->nr_variables() << std::endl;
+        // collect min marginals
+        min_marginals.clear();
+        for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+            min_marginals.push_back(min_marginal(var,bdd_index)); 
+        }
+
+        const std::array<double,2> average_marginal = average_marginals(min_marginals.begin(), min_marginals.end());
+
+        // set marginals in each bdd so min marginals match each other
+        for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index) {
+            set_marginal(var,bdd_index,average_marginal,min_marginals[bdd_index]);
+            this->backward_step(var, bdd_index);
+            //lb += lower_bound_backward(var,bdd_index);
+        }
+    }
+
+    template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::min_marginal_averaging_backward()
     {
         double lb = 0.0;
         std::vector<std::array<double,2>> min_marginals;
 
         for(long int var=this->nr_variables()-1; var>=0; --var) {
+            min_marginals.clear();
+            min_marginal_averaging_step_backward(var, min_marginals);
+            for(std::size_t bdd_index=0; bdd_index<this->nr_bdds(var); ++bdd_index)
+                lb += lower_bound_backward(var,bdd_index);
+            continue;
 
             // collect min marginals
             min_marginals.clear();
@@ -977,9 +1065,9 @@ namespace LPMP {
     template<typename BDD_VARIABLE, typename BDD_BRANCH_NODE>
     void bdd_mma_base<BDD_VARIABLE, BDD_BRANCH_NODE>::iteration()
     {
-        if(options.averaging_type == bdd_min_marginal_averaging_options::averaging_type::classic)
+        if(this->options.averaging_type == bdd_min_marginal_averaging_options::averaging_type::classic)
             min_marginal_averaging_iteration();
-        else if(options.averaging_type == bdd_min_marginal_averaging_options::averaging_type::SRMP)
+        else if(this->options.averaging_type == bdd_min_marginal_averaging_options::averaging_type::SRMP)
             min_marginal_averaging_iteration_SRMP();
         else
             assert(false);

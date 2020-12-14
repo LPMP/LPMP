@@ -4,7 +4,7 @@
 namespace LPMP {
 
     template<typename DERIVED>
-    class bdd_variable {
+    class bdd_variable_base {
         public:
             std::size_t first_node_index = std::numeric_limits<std::size_t>::max();
             std::size_t last_node_index = std::numeric_limits<std::size_t>::max();
@@ -16,11 +16,11 @@ namespace LPMP {
             bool is_first_bdd_variable() const { return prev == nullptr; }
             bool is_last_bdd_variable() const { return next == nullptr; }
             // bool is_initial_state() const { return *this == bdd_variable<DERIVED>{}; }
-            friend bool operator==(const bdd_variable<DERIVED>&, const bdd_variable<DERIVED>&);
+            friend bool operator==(const bdd_variable_base<DERIVED>&, const bdd_variable_base<DERIVED>&);
     };
 
     template<typename DERIVED>
-    bool operator==(const bdd_variable<DERIVED>& x, const bdd_variable<DERIVED>& y)
+    bool operator==(const bdd_variable_base<DERIVED>& x, const bdd_variable_base<DERIVED>& y)
     {
         return (x.first_node_index == y.first_node_index &&
             x.last_node_index == y.last_node_index &&
@@ -28,8 +28,10 @@ namespace LPMP {
             x.next == y.next); 
     }
 
+    class bdd_variable : public bdd_variable_base<bdd_variable> {};
+
     template<typename DERIVED>
-    class bdd_variable_mma_base : public bdd_variable<DERIVED> {
+    class bdd_variable_mma_base : public bdd_variable_base<DERIVED> {
         public:
             double cost = std::numeric_limits<double>::infinity();
     };

@@ -1,9 +1,12 @@
 #pragma once
 
-#include "cuddObj.hh"
+#include "bdd.h"
 #include "ILP_input.h"
 #include "convert_pb_to_bdd.h"
 #include "hash_helper.hxx"
+#include "bdd_preprocessor.h"
+#include "bdd_collection.h"
+#include "tclap/CmdLine.h"
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -13,40 +16,27 @@
 namespace LPMP {
 
     // used for storing all participating BDDs temporarily before exporting them to the bdd solver.
-    // TODO: add subsume function, which merges BDDs which have supports that are covered.
-    // TODO: subsume dangling BDDs into their endpoints
     class bdd_storage {
         public:
 
         struct bdd_node {
             constexpr static std::size_t terminal_0 = std::numeric_limits<std::size_t>::max()-1;
             constexpr static std::size_t terminal_1 = std::numeric_limits<std::size_t>::max();
+            bool low_is_terminal() const { return low == terminal_0 || low == terminal_1; }
+            bool high_is_terminal() const { return low == terminal_0 || low == terminal_1; }
 
             std::size_t low;
             std::size_t high;
             std::size_t variable;
         };
 
-        bdd_storage() {};
-        bdd_storage(const ILP_input& input, Cudd& bdd_mgr, const bool record_primal_propgation_ = false);
-        bdd_storage(const ILP_input& input, const bool record_primal_propgation_ = false);
-
-        void check_node_valid(const bdd_node bdd) const
-        {
-            assert(bdd.low == bdd_node::terminal_0 || bdd.low == bdd_node::terminal_1 || bdd.low < bdd_nodes_.size());
-            assert(bdd.high == bdd_node::terminal_0 || bdd.high == bdd_node::terminal_1 || bdd.high < bdd_nodes_.size());
-            assert(bdd.variable < nr_variables());
-            if(bdd.low != bdd_node::terminal_0 && bdd.low != bdd_node::terminal_1) {
-                assert(bdd.variable < bdd_nodes_[bdd.low].variable);
-            }
-            if(bdd.high != bdd_node::terminal_0 && bdd.high != bdd_node::terminal_1) {
-                assert(bdd.variable < bdd_nodes_[bdd.high].variable);
-            }
-            //assert(bdd.high != bdd.low); this can be so in ou formulation, but not in ordinary BDDs
-        }
+        bdd_storage(TCLAP::CmdLine& cmd);
+        void init(const ILP_input& input);
 
         template <typename BDD_VARIABLES_ITERATOR>
-        void add_bdd(Cudd &bdd_mgr, BDD &bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end);
+        void add_bdd(BDD::bdd_mgr& bdd_mgr, BDD::node_ref bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end);
+
+        void add_bdd(BDD::bdd_collection_entry bdd);
 
         template <typename STREAM>
         void export_dot(STREAM &s) const;
@@ -58,24 +48,25 @@ namespace LPMP {
         const std::vector<bdd_node>& bdd_nodes() const { return bdd_nodes_; }
         const std::vector<std::size_t>& bdd_delimiters() const { return bdd_delimiters_; }
 
+        // TODO: rename to ..._variable
         std::size_t first_bdd_node(const std::size_t bdd_nr) const;
         std::size_t last_bdd_node(const std::size_t bdd_nr) const;
 
-        template <typename BDD_VARIABLES_ITERATOR>
-        void register_primal_propagations(Cudd &bdd_mgr, BDD &bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end);
-
-        struct variable_value_pair
-        {
-            std::size_t var : 63;
-            std::size_t val : 1;
-            bool operator==(const variable_value_pair o) const { return var == o.var && val == o.val; }
-            static std::size_t hash_val(const variable_value_pair x) { return hash::hash_combine(x.var, x.val); }
-        };
-
-        std::vector<variable_value_pair> primal_propagations(const std::size_t var, const bool val) const;
+        // return all edges with endpoints being variables that are consecutive in some BDD
+        std::vector<std::array<size_t,2>> dependency_graph() const;
 
     private:
-        void init(const ILP_input& input, Cudd& bdd_mgr);
+        void check_node_valid(const bdd_node bdd) const;
+
+        template<typename BDD_NODE_TYPE, typename BDD_GETTER, typename VARIABLE_GETTER, typename NEXT_BDD_NODE, typename BDD_VARIABLE_ITERATOR>
+            void add_bdd_impl(
+                    const size_t nr_bdds,
+                    BDD_GETTER bdd_getter,
+                    VARIABLE_GETTER& get_var,
+                    NEXT_BDD_NODE& next_bdd_node,
+                    BDD_VARIABLE_ITERATOR bdd_vars_begin, BDD_VARIABLE_ITERATOR bdd_vars_end
+                    );
+
         void check_bdd_node(const bdd_node bdd) const;
 
         std::vector<bdd_node> bdd_nodes_;
@@ -84,35 +75,99 @@ namespace LPMP {
         std::vector<std::size_t> nr_bdds_per_variable;
         std::size_t nr_variables_ = 0;
 
-        void prepare_primal_propagation_data();
-        bool record_primal_propagation = false;
-        std::vector<std::vector<std::size_t>> primal_propagations_tmp;
-        two_dim_variable_array<std::size_t> primal_propagation;
+        // for BDD decomposition //
+        std::vector<size_t> interval_boundaries;
+        std::vector<size_t> intervals;
+        void compute_intervals(const size_t nr_intervals);
+        size_t interval(const size_t variable) const;
+        size_t nr_intervals() const;
+        std::tuple<two_dim_variable_array<bdd_storage::bdd_node>, two_dim_variable_array<size_t>> split_bdd_nodes(const size_t nr_intervals);
+
+        TCLAP::MultiArg<std::string> preprocessing_arg;
     };
 
+
+    bdd_storage::bdd_storage(TCLAP::CmdLine& cmd)
+        : preprocessing_arg("","bdd_preprocessing","preprocess BDDs",false,"{none|bridge|subsumption|subsumption_except_one|contiguous_overlap|partial_contiguous_overlap|cliques}", cmd)
+    {}
+
     template<typename BDD_VARIABLES_ITERATOR>
-        void bdd_storage::add_bdd(Cudd& bdd_mgr, BDD& bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end)
+        void bdd_storage::add_bdd(BDD::bdd_mgr& bdd_mgr, BDD::node_ref bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end)
         {
             assert(std::is_sorted(bdd_vars_begin, bdd_vars_end));
             assert(std::distance(bdd_vars_begin, bdd_vars_end) > 0);
-            nr_variables_ = std::max(nr_variables_, *(bdd_vars_end-1)+1);
 
-            ADD add = bdd.Add();
-            std::unordered_map<DdNode*, std::size_t> node_to_index;
-            DdNode* node = nullptr;
-            DdGen* bdd_node_iter = Cudd_FirstNode(bdd_mgr.getManager(), add.getNode(), &node);
-            node_to_index.insert({node, bdd_nodes_.size()});
+            std::vector<BDD::node_ref> bdd_nodes = bdd.nodes_postorder();
 
-            auto is_terminal_node = [&](DdNode* node) -> bool {
-                if(node == Cudd_ReadZero(bdd_mgr.getManager()) || node == Cudd_ReadOne(bdd_mgr.getManager()))
-                    return true;
-                return false;
-            }; 
+            auto get_bdd = [&](const size_t bdd_nr) {
+                assert(bdd_nr < bdd_nodes.size());
+                return bdd_nodes[bdd_nr];
+            };
 
-            auto get_node_index = [&](DdNode* node) -> std::size_t {
-                if(node == Cudd_ReadZero(bdd_mgr.getManager())) {
+            auto get_variable = [&](BDD::node_ref& bdd) { 
+                const size_t i = bdd.variable();
+                return i;
+                assert(i < std::distance(bdd_vars_begin, bdd_vars_end));
+                return *(bdd_vars_begin + i); 
+            };
+
+            auto get_next_node = [&](BDD::node_ref& bdd) -> BDD::node_ref { 
+                const ptrdiff_t p = std::distance(&bdd_nodes[0], &bdd);
+                assert(p >= 0 && p < bdd_nodes.size());
+                return bdd_nodes[p+1];
+            };
+
+            add_bdd_impl<BDD::node_ref>(
+                    bdd_nodes.size(),
+                    get_bdd,
+                    get_variable,
+                    get_next_node,
+                    bdd_vars_begin, bdd_vars_end
+                    );
+
+            return;
+        }
+
+    void bdd_storage::add_bdd(BDD::bdd_collection_entry bdd)
+    {
+        const auto vars = bdd.variables();
+        std::unordered_map<size_t,size_t> rebase_to_iota;
+        for(size_t i=0; i<vars.size(); ++i)
+            rebase_to_iota.insert({vars[i], i});
+        bdd.rebase(rebase_to_iota);
+
+        auto get_node = [&](const size_t i) {
+            const size_t j = bdd.nr_nodes() - 3 - i;
+            return bdd[j]; 
+        };
+        auto get_next_node = [&](BDD::bdd_collection_node node) { return node.next_postorder(); };
+        auto get_variable = [&](BDD::bdd_collection_node node) { return node.variable(); };
+
+        add_bdd_impl<BDD::bdd_collection_node>(
+                bdd.nr_nodes() - 2, // do not count in top- and botsink
+                get_node,
+                get_variable,
+                get_next_node,
+                vars.begin(), vars.end()
+                );
+
+        bdd.rebase(vars.begin(), vars.end());
+    }
+
+    template<typename BDD_NODE_TYPE, typename BDD_GETTER, typename VARIABLE_GETTER, typename NEXT_BDD_NODE, typename BDD_VARIABLE_ITERATOR>
+        void bdd_storage::add_bdd_impl(
+                const size_t nr_bdds,
+                BDD_GETTER bdd_getter,
+                VARIABLE_GETTER& get_var, 
+                NEXT_BDD_NODE& next_bdd_node,
+                BDD_VARIABLE_ITERATOR bdd_vars_begin, BDD_VARIABLE_ITERATOR bdd_vars_end)
+        {
+            std::unordered_map<BDD_NODE_TYPE, size_t> node_to_index;
+
+            auto get_node_index = [&](BDD_NODE_TYPE node) -> std::size_t {
+                if(node.is_botsink()) {
                     return bdd_node::terminal_0;
-                } else if(node == Cudd_ReadOne(bdd_mgr.getManager())) {
+                } else if(node.is_topsink()) {
                     return bdd_node::terminal_1;
                 } else {
                     assert(node_to_index.count(node) > 0);
@@ -125,17 +180,13 @@ namespace LPMP {
             std::vector<std::size_t> var_to_bdd_node_terminal_1(std::distance(bdd_vars_begin, bdd_vars_end), pointer_to_terminal_1_not_set);
             var_to_bdd_node_terminal_1.back() = bdd_node::terminal_1;
 
-            // add intermediate nodes if they do not exist, return index in bdd_nodes_ of node to point to
+            auto add_intermediate_nodes = [&](BDD_NODE_TYPE start, BDD_NODE_TYPE end) -> std::size_t {
 
-            // TODO: possibly share intermediate nodes not only for terminal node!
-            auto add_intermediate_nodes = [&](DdNode* start, DdNode* end) -> std::size_t {
+                const std::size_t start_var = get_var(start);
 
-                const std::size_t start_var = Cudd_NodeReadIndex(start); 
-                assert(start_var < std::distance(bdd_vars_begin, bdd_vars_end));
-
-                if(!is_terminal_node(end)) {
-                    const std::size_t end_var = Cudd_NodeReadIndex(end);
-                    std::size_t last_index = get_node_index(end);
+                if(!end.is_terminal()) {
+                    const size_t end_var = get_var(end);
+                    size_t last_index = get_node_index(end);
                     for(std::size_t i = end_var-1; i != start_var; --i) {
                         assert(i>0);
                         const std::size_t v_intermed = *(bdd_vars_begin + i);
@@ -147,7 +198,7 @@ namespace LPMP {
                 } else if(get_node_index(end) == bdd_node::terminal_1) {
 
                     if(var_to_bdd_node_terminal_1[start_var] == pointer_to_terminal_1_not_set) {
-                        for(int i = int(std::distance(bdd_vars_begin, bdd_vars_end))-2; i >= int(start_var); --i) {
+                        for(std::ptrdiff_t i = std::ptrdiff_t(std::distance(bdd_vars_begin, bdd_vars_end))-2; i >= std::ptrdiff_t(start_var); --i) {
                             assert(i >= 0 && i < var_to_bdd_node_terminal_1.size());
                             if(var_to_bdd_node_terminal_1[i] == pointer_to_terminal_1_not_set) {
                                 const std::size_t v_intermed = *(bdd_vars_begin + i+1);
@@ -167,65 +218,39 @@ namespace LPMP {
                 }
             };
 
-            auto add_node = [&](DdNode* node) {
-                assert(Cudd_IsNonConstant(node));
-                DdNode* high = Cudd_T(node);
-                DdNode* low = Cudd_E(node);
-                //const std::size_t high_index = get_node_index(high);
-                //const std::size_t low_index = get_node_index(low);
-                assert(Cudd_NodeReadIndex(node) < std::distance(bdd_vars_begin, bdd_vars_end));
-                const std::size_t variable = *(bdd_vars_begin + Cudd_NodeReadIndex(node));
-                //std::cout << "bdd var = " << variable << "\n";
+            const size_t nr_bdd_nodes_begin = bdd_nodes_.size();
 
-                // for now: TODO: add dummy edges
-                const std::size_t low_index = add_intermediate_nodes(node, low);
-                const std::size_t high_index = add_intermediate_nodes(node, high);
-                /*
-                if(high_index != bdd_node::terminal_0 && high_index != bdd_node::terminal_1) {
-                    const std::size_t bdd_high_var = Cudd_NodeReadIndex(high); 
-                    const std::size_t bdd_cur_var = Cudd_NodeReadIndex(node);
-                    std::size_t last_index = high_index;
-                    for(std::size_t i = bdd_high_var-1; i != bdd_cur_var; --i) {
-                        assert(i>0);
-                        const std::size_t v_intermed = *(bdd_vars_begin + i);
-                        bdd_nodes_.push_back({last_index, bdd_node::terminal_0, v_intermed});
-                        last_index = bdd_nodes_.size()-1;
+            for(size_t i=0; i<nr_bdds; ++i)
+            {
+                auto node = bdd_getter(i);
+                const size_t variable = get_var(node);
+                nr_variables_ = std::max(*(bdd_vars_begin+variable)+1, nr_variables_);
 
-                    }
-                    //assert(Cudd_NodeReadIndex(high) == Cudd_NodeReadIndex(node) + 1);
-                    assert(variable < bdd_nodes_[high_index].variable);
-                }
-                if(low_index != bdd_node::terminal_0 && low_index != bdd_node::terminal_1) {
-                    assert(Cudd_NodeReadIndex(low) == Cudd_NodeReadIndex(node) + 1);
-                    assert(variable < bdd_nodes_[low_index].variable);
-                }
-                */
+                const size_t low_index = add_intermediate_nodes(node, node.low());
+                const size_t high_index = add_intermediate_nodes(node, node.high());
 
                 assert(node_to_index.count(node) == 0);
                 node_to_index.insert({node, bdd_nodes_.size()});
-                bdd_nodes_.push_back(bdd_node{high_index, low_index, variable});
-                check_node_valid(bdd_nodes_.back());
-            };
+                bdd_nodes_.push_back(bdd_node{high_index, low_index, *(bdd_vars_begin+variable)});
+                check_node_valid(bdd_nodes_.back()); 
+            } 
 
-            assert(Cudd_IsConstant(node));
-            const std::size_t nr_bdd_nodes_begin = bdd_nodes_.size();
-
-            while(Cudd_NextNode(bdd_node_iter, &node)) {
-                if(!is_terminal_node(node)) {
-                    add_node(node);
-                }
-            }
-            const std::size_t nr_bdd_nodes_end = bdd_nodes_.size();
-            std::vector<BDD> bdds = {bdd};
-            //assert(nr_bdd_nodes == Cudd_DagSize(bdd.getNode()));
-            //std::cout << "nr bdd nodes = " << nr_bdd_nodes << "\n";
+            const size_t nr_bdd_nodes_end = bdd_nodes_.size();
             bdd_delimiters_.push_back(bdd_delimiters_.back() + nr_bdd_nodes_end - nr_bdd_nodes_begin);
         }
 
-    void bdd_storage::init(const ILP_input& input, Cudd& bdd_mgr)
+
+    void bdd_storage::init(const ILP_input& input)
     {
+        BDD::bdd_mgr bdd_mgr;
+
+        bdd_preprocessor bdd_pre;
+        const bool preprocess = preprocessing_arg.getValue().size() > 0;
+
+        // first transform linear inequalities into BDDs
         std::vector<int> coefficients;
         std::vector<std::size_t> variables;
+        std::vector<BDD::node_ref> bdds;
         bdd_converter converter(bdd_mgr);
 
         for(const auto& constraint : input.constraints()) {
@@ -237,26 +262,38 @@ namespace LPMP {
             }
             assert(std::is_sorted(variables.begin(), variables.end()));
             
-            BDD bdd = converter.convert_to_bdd(coefficients, constraint.ineq, constraint.right_hand_side);
-            add_bdd(bdd_mgr, bdd, variables.begin(), variables.end());
-            if(record_primal_propagation)
-                register_primal_propagations(bdd_mgr, bdd, variables.begin(), variables.end());
+            BDD::node_ref bdd = converter.convert_to_bdd(coefficients, constraint.ineq, constraint.right_hand_side);
+            if(preprocess)
+                bdd_pre.add_bdd(bdd, variables.begin(), variables.end());
+            else
+                add_bdd(bdd_mgr, bdd, variables.begin(), variables.end());
         }
-        if(record_primal_propagation)
-            prepare_primal_propagation_data();
-    }
 
-    bdd_storage::bdd_storage(const ILP_input& input, Cudd& bdd_mgr, const bool record_primal_propagation_)
-    : record_primal_propagation(record_primal_propagation_)
-    {
-        init(input, bdd_mgr);
-    }
+        // second, preprocess BDDs
+        if(preprocessing_arg.getValue().size() > 0)
+        {
+            for(const std::string& preprocessing : preprocessing_arg.getValue())
+            {
+                if(preprocessing == "bridge")
+                    bdd_pre.set_coalesce_bridge();
+                else if(preprocessing == "subsumption")
+                    bdd_pre.set_coalesce_subsumption();
+                else if(preprocessing == "contiguous_overlap")
+                    bdd_pre.set_coalesce_contiguous_overlap();
+                else if(preprocessing == "subsumption_except_one")
+                    bdd_pre.set_coalesce_subsumption_except_one();
+                else if(preprocessing == "partial_contiguous_overlap")
+                    bdd_pre.set_coalesce_partial_contiguous_overlap();
+                else if(preprocessing == "cliques")
+                    bdd_pre.set_coalesce_cliques();
+                else
+                    throw std::runtime_error("bdd preprocessing argument " + preprocessing + " not recognized.");
+            }
+            bdd_pre.coalesce_bdd_collection();
 
-    bdd_storage::bdd_storage(const ILP_input& instance, const bool record_primal_propagation_)
-    : record_primal_propagation(record_primal_propagation_)
-    {
-        Cudd bdd_mgr;
-        init(instance, bdd_mgr);
+            for(size_t bdd_nr=0; bdd_nr<bdd_pre.get_bdd_collection().nr_bdds(); ++bdd_nr)
+                add_bdd(bdd_pre.get_bdd_collection()[bdd_nr]);
+        }
     }
 
     std::size_t bdd_storage::first_bdd_node(const std::size_t bdd_nr) const
@@ -272,6 +309,27 @@ namespace LPMP {
         for(std::size_t i=bdd_delimiters_[bdd_nr]; i<bdd_delimiters_[bdd_nr+1]; ++i)
             max_node = std::max(max_node, bdd_nodes_[i].variable);
         return max_node;
+    }
+
+    std::vector<std::array<size_t,2>> bdd_storage::dependency_graph() const
+    {
+        std::unordered_set<std::array<size_t,2>> edges;
+        std::unordered_set<size_t> cur_vars;
+        std::vector<size_t> cur_vars_sorted;
+        for(size_t bdd_nr=0; bdd_nr<nr_bdds(); ++bdd_nr)
+        {
+            cur_vars.clear();
+            for(size_t i=bdd_delimiters_[bdd_nr]; i<bdd_delimiters_[bdd_nr+1]; ++i)
+                cur_vars.insert(bdd_nodes_[i].variable);
+            cur_vars_sorted.clear();
+            for(const size_t v : cur_vars)
+                cur_vars_sorted.push_back(v);
+            std::sort(cur_vars_sorted.begin(), cur_vars_sorted.end());
+            for(size_t i=0; i+1<cur_vars_sorted.size(); ++i)
+                edges.insert({cur_vars_sorted[i], cur_vars_sorted[i+1]});
+        }
+
+        return std::vector<std::array<size_t,2>>(edges.begin(), edges.end());
     }
 
     template<typename STREAM>
@@ -294,93 +352,300 @@ namespace LPMP {
             s << "}\n"; 
         }
 
-    template <typename BDD_VARIABLES_ITERATOR>
-    void bdd_storage::register_primal_propagations(Cudd &bdd_mgr, BDD &bdd, BDD_VARIABLES_ITERATOR bdd_vars_begin, BDD_VARIABLES_ITERATOR bdd_vars_end)
+    inline void bdd_storage::check_node_valid(const bdd_node bdd) const
     {
-        primal_propagations_tmp.resize(2 * nr_variables());
+        assert(bdd.low == bdd_node::terminal_0 || bdd.low == bdd_node::terminal_1 || bdd.low < bdd_nodes_.size());
+        assert(bdd.high == bdd_node::terminal_0 || bdd.high == bdd_node::terminal_1 || bdd.high < bdd_nodes_.size());
+        assert(bdd.variable < nr_variables());
+        if(bdd.low != bdd_node::terminal_0 && bdd.low != bdd_node::terminal_1) {
+            assert(bdd.variable < bdd_nodes_[bdd.low].variable);
+        }
+        if(bdd.high != bdd_node::terminal_0 && bdd.high != bdd_node::terminal_1) {
+            assert(bdd.variable < bdd_nodes_[bdd.high].variable);
+        }
+        //assert(bdd.high != bdd.low); this can be so in ou formulation, but not in ordinary BDDs
+    }
 
-        auto record_primal_fixations = [&](BDD bdd, std::size_t i, const std::size_t val) {
-            assert(val == 0 || val == 1);
-            for (std::size_t j = 0; j < std::distance(bdd_vars_begin, bdd_vars_end); ++j)
-            {
-                const std::size_t i_var = *(bdd_vars_begin+i);
-                const std::size_t j_var = *(bdd_vars_begin+j);
-                if (i != j)
+    ///////////////////////////
+    // for BDD decomposition //
+    ///////////////////////////
+
+    void bdd_storage::compute_intervals(const size_t nr_intervals)
+    {
+        // first approach: Just partition variables equidistantly.
+        // TODO: Take into account number of BDD nodes in each interval
+        
+        assert(nr_intervals > 1);
+        interval_boundaries.clear();
+        interval_boundaries.reserve(nr_intervals+1);
+        for(size_t interval=0; interval<nr_intervals; ++interval)
+            interval_boundaries.push_back(std::round(double(interval*this->nr_variables())/double(nr_intervals)));
+
+        interval_boundaries.push_back(this->nr_variables()); 
+        assert(interval_boundaries.size() == nr_intervals+1);
+
+        intervals.clear();
+        intervals.reserve(this->nr_variables());
+        for(size_t interval = 0; interval+1<interval_boundaries.size(); ++interval)
+            for(size_t var=interval_boundaries[interval]; var<interval_boundaries[interval+1]; ++var)
+                intervals.push_back(interval);
+    }
+
+    size_t bdd_storage::interval(const size_t variable) const
+    {
+        assert(variable < this->nr_variables());
+        assert(interval_boundaries.size() > 2 || interval_boundaries.size() == 0);
+        if(interval_boundaries.size() == 0)
+            return 0;
+        assert(intervals.size() == this->nr_variables());
+        return intervals[variable];
+    }
+
+    size_t bdd_storage::nr_intervals() const
+    {
+        assert(interval_boundaries.size() > 2 || interval_boundaries.size() == 0);
+        if(interval_boundaries.size() == 0)
+            return 1;
+        return interval_boundaries.size()-1;
+    }
+
+    // take bdd_nodes_ and return two_dim_variable_array<bdd_node> bdd_nodes_split_, two_dim_variable_array<size_t> bdd_delimiters_split_
+    std::tuple<two_dim_variable_array<bdd_storage::bdd_node>, two_dim_variable_array<size_t>> bdd_storage::split_bdd_nodes(const size_t nr_intervals)
+    {
+        compute_intervals(nr_intervals);
+
+        std::vector<size_t> nr_bdd_nodes_per_interval(nr_intervals(), 0);
+        std::vector<size_t> nr_bdds_per_inteval(nr_intervals(), 1);
+        std::unordered_set<size_t> active_intervals;
+
+        for(size_t bdd_counter=0; bdd_counter<bdd_delimiters_.size()-1; ++bdd_counter)
+        {
+            const size_t last_bdd_interval = [&]() {
+                size_t last_bdd_interval = 0;
+                for(auto bdd_node_counter=bdd_delimiters_[bdd_counter]; bdd_node_counter<bdd_delimiters_[bdd_counter+1]; ++bdd_node_counter)
                 {
-                    BDD bdd_j = bdd_mgr.bddVar(j);
-                    if (bdd == bdd * (!bdd_j))
+                    const auto& bdd = bdd_nodes_[bdd_node_counter];
+                    last_bdd_interval = std::max(interval(bdd.variable), last_bdd_interval);
+                }
+                return last_bdd_interval;
+            }();
+            
+            // there are the following cases:
+            // (i) All bdd nodes are non-terminal and in the same interval
+            // (ii) all bdd nodes are non-terminal but in different intervals
+            // (iii) one arc is bottom and the other one is in the same interval
+            // (iv) one arc is bottom and the other one is in the next interval
+            // (v) At least one arc is top -> bdd node is in last interval
+            
+            // count in which intervals bdd has nodes
+            active_intervals.clear();
+            for(auto bdd_node_counter=bdd_delimiters_[bdd_counter]; bdd_node_counter<bdd_delimiters_[bdd_counter+1]; ++bdd_node_counter)
+            {
+                const auto& bdd = bdd_nodes_[bdd_node_counter];
+                active_intervals.insert(interval(bdd.variable));
+            }
+            for(const size_t i : active_intervals)
+                ++nr_bdds_per_inteval[i];
+
+            // count number of bdd nodes per interval
+            for(auto bdd_node_counter=bdd_delimiters_[bdd_counter]; bdd_node_counter<bdd_delimiters_[bdd_counter+1]; ++bdd_node_counter)
+            {
+                const auto& bdd = bdd_nodes_[bdd_node_counter];
+                // first check if node is split node. If not, increase node count in correct interval. If split node, increment node count in both intervals straddled.
+                // case (i)
+                if(!bdd.low_is_terminal() && !bdd.high_is_terminal())
+                {
+                    const bdd_node& low = bdd_nodes_[bdd.low];
+                    const bdd_node& high = bdd_nodes_[bdd.high];
+                    assert(low.variable == high.variable);
+                    if(interval(bdd.variable) == interval(low.variable)) // case (i)
                     {
-                        primal_propagations_tmp[2 * i_var + val].push_back(2 * j_var + 1);
-                        //std::cout << "variable " << j << " forced to 0";
+                        ++nr_bdd_nodes_per_interval[interval(bdd.variable)]; 
                     }
-                    if (bdd == bdd * bdd_j)
+                    else // case (ii)
                     {
-                        primal_propagations_tmp[2 * i_var + val].push_back(2 * j_var);
-                        //std::cout << "variable " << j << " forced to 1";
+                        ++nr_bdd_nodes_per_interval[interval(bdd.variable)];
+                        ++nr_bdd_nodes_per_interval[interval(bdd_nodes_[bdd.low].variable)]; // bdd nodes pointed  to by low and high will be counted in next interval again when visiting those 
                     }
-                    assert(bdd * (!bdd_j) != bdd * bdd_j);
+                }
+                else if(bdd.low_is_terminal() && bdd.high_is_terminal()) // case (v)
+                {
+                    assert(bdd.low == bdd_node::terminal_1 || bdd.high == bdd_node::terminal_1);
+                    ++nr_bdd_nodes_per_interval[interval(bdd.variable)]; 
+                }
+                else if(bdd.low == bdd_node::terminal_0 || bdd.high == bdd_node::terminal_0)
+                {
+                    if(bdd.low == bdd_node::terminal_0)
+                    {
+                        const size_t high_var = bdd_nodes_[bdd.high].variable;
+                        if(interval(bdd.variable) == interval(high_var)) // case (iii)
+                        {
+                            ++nr_bdd_nodes_per_interval[interval(bdd.variable)];
+                        }
+                        else // case (iv)
+                        {
+                            // TODO: not necessarily += 2, possibly += 1 if node is shared!
+                            ++nr_bdd_nodes_per_interval[interval(bdd.variable)];
+                            ++nr_bdd_nodes_per_interval[interval(high_var)];
+                        }
+                    }
+                    else
+                    {
+                        assert(bdd.high == bdd_node::terminal_0);
+                        const size_t low_var = bdd_nodes_[bdd.low].variable;
+                        if(interval(bdd.variable) == interval(low_var)) // case (iii)
+                        {
+                            ++nr_bdd_nodes_per_interval[interval(bdd.variable)];
+                        }
+                        else // case (iv)
+                        {
+                            // TODO: not necessarily += 2, possibly += 1 if node is shared!
+                            ++nr_bdd_nodes_per_interval[interval(bdd.variable)];
+                            ++nr_bdd_nodes_per_interval[interval(low_var)];
+                        }
+                    } 
+                }
+                else
+                {
+                    assert(false); // We should have covered all cases
                 }
             }
-        };
-
-        // go over each variable and set it to 0 and 1. Afterwards, check if other variables are forced to specific values.
-        for (std::size_t i = 0; i < std::distance(bdd_vars_begin, bdd_vars_end); ++i)
-        {
-            BDD bdd_i = bdd_mgr.bddVar(i);
-            BDD bdd_0 = bdd * (!bdd_i);
-            record_primal_fixations(bdd_0, i, 1);
-
-            BDD bdd_1 = bdd * bdd_i;
-            record_primal_fixations(bdd_1, i, 0);
-        }
-    }
-
-    void bdd_storage::prepare_primal_propagation_data()
-    {
-        // remove duplicates
-        for (auto &p : primal_propagations_tmp)
-        {
-            std::sort(p.begin(), p.end());
-            p.erase( std::unique( p.begin(), p.end() ), p.end() );
         }
 
-        primal_propagation = two_dim_variable_array<std::size_t>(primal_propagations_tmp);
-    }
+        two_dim_variable_array<bdd_node> split_bdd_nodes(nr_bdd_nodes_per_interval.begin(), nr_bdd_nodes_per_interval.end());
+        std::fill(nr_bdd_nodes_per_interval.begin(), nr_bdd_nodes_per_interval.end(), 0);
 
-    std::vector<typename bdd_storage::variable_value_pair> bdd_storage::primal_propagations(const std::size_t var, const bool val) const
-    {
-        assert(var < nr_variables());
-        assert(record_primal_propagation);
+        two_dim_variable_array<size_t> split_bdd_delimiters(nr_bdds_per_inteval.begin(), nr_bdds_per_inteval.end());
+        std::fill(nr_bdds_per_inteval.begin(), nr_bdds_per_inteval.end(), 1);
+        for(size_t i=0; i<split_bdd_delimiters.size(); ++i)
+            split_bdd_delimiters(i,0) = 0;
 
-        auto hash = [](const variable_value_pair x) { return variable_value_pair::hash_val(x); };
-        auto equal = [](const variable_value_pair x, const variable_value_pair y) { return x == y; };
-        std::unordered_set<variable_value_pair, decltype(hash), decltype(equal)> p_set(1, hash, equal);
-        std::stack<variable_value_pair> Q;
-        Q.push(variable_value_pair({var, val}));
-
-        while(!Q.empty())
+        // fill split bdd nodes, record duplicated arcs
+        struct split_node { size_t interval; size_t offset; };
+        std::vector<std::array<split_node,2>> duplicated_nodes;
+        std::unordered_map<std::array<size_t,2>,size_t> split_bdd_node_indices; // bdd index in bdd_nodes_, interval
+        for(size_t bdd_counter=0; bdd_counter<bdd_delimiters_.size()-1; ++bdd_counter)
         {
-            const auto [var, val] = Q.top();
-            Q.pop();
-            if(p_set.count(variable_value_pair{var, val}) == 0)
-            {
-                for (const auto x : primal_propagation[2 * var + val])
+            split_bdd_node_indices.clear();
+            for(auto bdd_node_counter=bdd_delimiters_[bdd_counter]; bdd_node_counter<bdd_delimiters_[bdd_counter+1]; ++bdd_node_counter)
+            { 
+                const bdd_node& bdd = bdd_nodes_[bdd_node_counter];
+                // case (i) & (ii)
+                if(!bdd.low_is_terminal() && !bdd.high_is_terminal())
                 {
-                    const std::size_t var = x / 2;
-                    const std::size_t val = x % 2;
-                    if(p_set.count(variable_value_pair{var,val}) == 0)
+                    const size_t i = interval(bdd.variable);
+                    const bdd_node& low = bdd_nodes_[bdd.low];
+                    const bdd_node& high = bdd_nodes_[bdd.high];
+                    assert(low.variable == high.variable);
+
+                    if(interval(bdd.variable) == interval(low.variable)) // case (i)
                     {
-                        p_set.insert(variable_value_pair{var, val});
-                        Q.push(variable_value_pair{var, val});
+                        assert(split_bdd_node_indices.count({bdd.low, i}) > 0);
+                        const size_t low_idx = split_bdd_node_indices.find({bdd.low, i})->second;
+                        assert(split_bdd_node_indices.count({bdd.high, i}) > 0);
+                        const size_t high_idx = split_bdd_node_indices.find({bdd.high, i})->second;
+
+                        split_bdd_nodes(i, nr_bdd_nodes_per_interval[i]) = {bdd.variable, low_idx, high_idx};
+                        split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, i}, nr_bdd_nodes_per_interval[i]));
+                        ++nr_bdd_nodes_per_interval[i];
+                    }
+                    else // case (ii)
+                    {
+                        // in interval i, low and high arcs should point to topsink
+                        split_bdd_nodes(i, nr_bdd_nodes_per_interval[i]) = {bdd.variable, bdd_node::terminal_1, bdd_node::terminal_1};
+                        split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, i}, nr_bdd_nodes_per_interval[i]));
+                        ++nr_bdd_nodes_per_interval[i];
+
+                        // in next interval
+                        const size_t next_i = interval(bdd_nodes_[bdd.low].variable);
+                        assert(i < next_i);
+                        const size_t next_lo_idx = split_bdd_node_indices.find({bdd.low, next_i})->second;
+                        const size_t next_hi_idx = split_bdd_node_indices.find({bdd.high, next_i})->second;
+                        split_bdd_nodes(next_i, nr_bdd_nodes_per_interval[next_i]) = {bdd.variable, next_lo_idx, next_hi_idx};
+                        split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, next_i}, nr_bdd_nodes_per_interval[next_i]));
+                        ++nr_bdd_nodes_per_interval[next_i]; 
+
+                        duplicated_nodes.push_back({split_node{i, nr_bdd_nodes_per_interval[i]-1}, split_node{next_i, nr_bdd_nodes_per_interval[next_i]-1}});
                     }
                 }
+                else if(bdd.low_is_terminal() && bdd.high_is_terminal()) // case (v)
+                {
+                    assert(bdd.low == bdd_node::terminal_1 || bdd.high == bdd_node::terminal_1);
+                    const size_t i = interval(bdd.variable);
+                    split_bdd_nodes(i, nr_bdd_nodes_per_interval[i]) = {bdd.variable, bdd.low, bdd.high};
+                    split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, i}, nr_bdd_nodes_per_interval[i])); 
+                    ++nr_bdd_nodes_per_interval[i]; 
+                }
+                else if(bdd.low == bdd_node::terminal_0 || bdd.high == bdd_node::terminal_0)
+                {
+                    const size_t i = interval(bdd.variable);
+                    if(bdd.low == bdd_node::terminal_0)
+                    {
+                        const size_t high_var = bdd_nodes_[bdd.high].variable;
+                        if(i == interval(high_var)) // case (iii)
+                        {
+                            assert(split_bdd_node_indices.count({bdd.high,i}) > 0);
+                            const size_t high_idx = split_bdd_node_indices.find({bdd.high,i})->second;
+                            split_bdd_nodes(i, nr_bdd_nodes_per_interval[i]) = {bdd.variable, bdd_node::terminal_0, high_idx};
+                            split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, i}, nr_bdd_nodes_per_interval[i])); 
+                            ++nr_bdd_nodes_per_interval[i]; 
+                        }
+                        else // case (iv)
+                        {
+                            split_bdd_nodes(i, nr_bdd_nodes_per_interval[i]) = {bdd.variable, bdd_node::terminal_0, bdd_node::terminal_1};
+                            split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, i}, nr_bdd_nodes_per_interval[i])); 
+                            ++nr_bdd_nodes_per_interval[i]; 
+
+                            const size_t next_i = interval(high_var);
+                            assert(split_bdd_node_indices.count({bdd.high, next_i}) > 0);
+                            const size_t next_high_idx = split_bdd_node_indices.find({bdd.high, next_i})->second;
+                            split_bdd_nodes(next_i, nr_bdd_nodes_per_interval[next_i]) = {bdd.variable, bdd_node::terminal_0, next_high_idx};
+                            ++nr_bdd_nodes_per_interval[next_i]; 
+
+                            duplicated_nodes.push_back({split_node{i, nr_bdd_nodes_per_interval[i]-1}, split_node{next_i, nr_bdd_nodes_per_interval[next_i]-1}});
+                        }
+                    }
+                    else
+                    {
+                        assert(bdd.high == bdd_node::terminal_0);
+                        const size_t low_var = bdd_nodes_[bdd.low].variable;
+                        if(interval(bdd.variable) == interval(low_var)) // case (iii)
+                        {
+                            assert(split_bdd_node_indices.count({bdd.low,i}) > 0);
+                            const size_t low_idx = split_bdd_node_indices.find({bdd.high,i})->second;
+                            split_bdd_nodes(i, nr_bdd_nodes_per_interval[i]) = {bdd.variable, low_idx, bdd_node::terminal_0};
+                            split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, i}, nr_bdd_nodes_per_interval[i])); 
+                            ++nr_bdd_nodes_per_interval[i]; 
+                        }
+                        else // case (iv)
+                        {
+                            split_bdd_nodes(i, nr_bdd_nodes_per_interval[i]) = {bdd.variable, bdd_node::terminal_1, bdd_node::terminal_0};
+                            split_bdd_node_indices.insert(std::make_pair(std::array<size_t,2>{bdd_node_counter, i}, nr_bdd_nodes_per_interval[i])); 
+                            ++nr_bdd_nodes_per_interval[i]; 
+
+                            const size_t next_i = interval(low_var);
+                            assert(split_bdd_node_indices.count({bdd.low, next_i}) > 0);
+                            const size_t next_low_idx = split_bdd_node_indices.find({bdd.low, next_i})->second;
+                            split_bdd_nodes(next_i, nr_bdd_nodes_per_interval[next_i]) = {bdd.variable, next_low_idx, bdd_node::terminal_0};
+                            ++nr_bdd_nodes_per_interval[next_i]; 
+
+                            duplicated_nodes.push_back({split_node{i, nr_bdd_nodes_per_interval[i]-1}, split_node{next_i, nr_bdd_nodes_per_interval[next_i]-1}});
+                        }
+                    } 
+                }
             }
+            // go over each affected interval and set new bdd delimiter values
+            active_intervals.clear();
+            for(auto bdd_node_counter=bdd_delimiters_[bdd_counter]; bdd_node_counter<bdd_delimiters_[bdd_counter+1]; ++bdd_node_counter)
+            {
+                const auto& bdd = bdd_nodes_[bdd_node_counter];
+                active_intervals.insert(interval(bdd.variable));
+            }
+            for(const size_t i : active_intervals)
+                split_bdd_delimiters(i, nr_bdds_per_inteval[i]++) = nr_bdd_nodes_per_interval[i];
         }
 
-        std::vector<variable_value_pair> p;
-        p.reserve(p_set.size());
-        for (const variable_value_pair x : p_set)
-            p.push_back(x);
-        return p;
+        return {split_bdd_nodes, split_bdd_delimiters};
     }
-    } // namespace LPMP
+
+} // namespace LPMP

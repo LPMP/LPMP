@@ -75,6 +75,9 @@ namespace LPMP {
 
     class bdd_mma_fixing : public bdd_min_marginal_averaging_smoothed_base<bdd_variable_fix, bdd_branch_node_fix> {
         public:
+            using bdd_min_marginal_averaging_smoothed_base<bdd_variable_fix, bdd_branch_node_fix>::bdd_min_marginal_averaging_smoothed_base;
+            virtual ~bdd_mma_fixing() {};
+
             bool fix_variables();
 
             bool fix_variables(const std::vector<size_t> & indices, const std::vector<char> & values);
@@ -111,9 +114,6 @@ namespace LPMP {
 
             std::vector<char> primal_solution_;
             std::stack<log_entry, std::deque<log_entry>> log_;
-
-            // JUST FOR INSPECTION
-            ILP_input input_;
     };
 
     double bdd_mma_fixing::compute_upper_bound()
@@ -159,12 +159,14 @@ namespace LPMP {
         init_primal_solution(); 
     }
 
+    /*
     void bdd_mma_fixing::init(const ILP_input& input)
     {
         bdd_mma_base<bdd_variable_fix, bdd_branch_node_fix>::init(input);
         init_pointers();
         input_ = input;
     }
+    */
 
     void bdd_mma_fixing::init()
     {

@@ -95,6 +95,10 @@ public:
    }
    */
 
+   void clear();
+   template<typename ITERATOR>
+       void push_back(ITERATOR val_begin, ITERATOR val_end);
+
    template<typename ITERATOR>
    void resize(ITERATOR begin, ITERATOR end)
    {
@@ -361,5 +365,23 @@ private:
    // pointer[1], pointer[2], ... , pointer[dim1], pointer[end], data[1], data[2], ..., data[dim1] .
    // first pointers to the arrays in the second dimension are stored, then contiguously the data itself.
 };
+
+template<typename T>
+void two_dim_variable_array<T>::clear()
+{
+    data_.clear();
+    offsets_.clear();
+}
+
+template<typename T>
+template<typename ITERATOR>
+void two_dim_variable_array<T>::push_back(ITERATOR val_begin, ITERATOR val_end)
+{
+    offsets_.push_back(offsets_.back() + std::distance(val_begin, val_end));
+    for(auto it=val_begin; it!=val_end; ++it)
+    {
+        data_.push_back(*it);
+    }
+}
 
 } // namespace LPMP

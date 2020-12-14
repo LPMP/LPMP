@@ -1,5 +1,4 @@
-#ifndef LPMP_TOPOLOGICAL_SORT_HXX
-#define LPMP_TOPOLOGICAL_SORT_HXX
+#pragma once
 
 // Compute topological sorting of a DAG
 
@@ -55,22 +54,8 @@ inline bool Graph::sorting_valid(const std::vector<std::size_t>& ordering) const
    return true; 
 }
 
-inline std::vector<std::size_t> Graph::topologicalSort() const
+std::vector<std::size_t> topological_sort_adjacency_list(const two_dim_variable_array<size_t>& adj)
 {
-  std::vector<std::size_t> adjacency_list_size(V);
-  for(const auto e : edges) {
-     adjacency_list_size[e[1]]++;
-  }
-
-  two_dim_variable_array<std::size_t> adjacency_list(adjacency_list_size.begin(), adjacency_list_size.end());
-  std::fill(adjacency_list_size.begin(), adjacency_list_size.end(), 0);
-
-  // add edges in backward direction, since post_order will record nodes in backward topological sorting order.
-  for(const auto e : edges) {
-     adjacency_list(e[1],adjacency_list_size[e[1]]) = e[0];
-     adjacency_list_size[e[1]]++;
-  }
-
   constexpr unsigned char not_marked = 0;
   constexpr unsigned char temp_marked = 1;
   constexpr unsigned char perm_marked = 2;
@@ -119,10 +104,29 @@ inline std::vector<std::size_t> Graph::topologicalSort() const
   assert(sorting_valid(post_order));
 
   return post_order;
+
+}
+
+inline std::vector<std::size_t> Graph::topologicalSort() const
+{
+  std::vector<std::size_t> adjacency_list_size(V);
+  for(const auto e : edges) {
+     adjacency_list_size[e[1]]++;
+  }
+
+  two_dim_variable_array<std::size_t> adjacency_list(adjacency_list_size.begin(), adjacency_list_size.end());
+  std::fill(adjacency_list_size.begin(), adjacency_list_size.end(), 0);
+
+  // add edges in backward direction, since post_order will record nodes in backward topological sorting order.
+  for(const auto e : edges) {
+     adjacency_list(e[1],adjacency_list_size[e[1]]) = e[0];
+     adjacency_list_size[e[1]]++;
+  }
+
+  return topological_sort_adjacency_list(adjacency_list);
+
 }
 
 } // namespace Topological_Sort
 
 } // namespace LPMP
-
-#endif // LPMP_TOPOLOGICAL_SORT_HXX

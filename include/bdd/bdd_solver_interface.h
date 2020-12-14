@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ILP_input.h"
-#include "cuddObj.hh"
 
 namespace LPMP {
 

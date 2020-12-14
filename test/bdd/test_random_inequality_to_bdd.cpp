@@ -116,7 +116,7 @@ double log_exp(LHS_ITERATOR lhs_begin, LHS_ITERATOR lhs_end, const inequality_ty
 template<typename BDD_SOLVER>
 void test_random_inequality_min_sum()
 {
-    Cudd bdd_mgr;
+    BDD::bdd_mgr bdd_mgr;
     bdd_converter converter(bdd_mgr);
 
     for(std::size_t nr_vars = 3; nr_vars <= 15; ++nr_vars) {
@@ -133,7 +133,7 @@ void test_random_inequality_min_sum()
         std::cout << rhs << "\n";
 
         auto bdd = converter.convert_to_bdd(coefficients.begin(), coefficients.end(), ineq, rhs);
-        if(bdd.nodeCount() < 2) 
+        if(bdd.nr_nodes() < 2) 
             continue;
         BDD_SOLVER bdds;
         std::vector<std::size_t> vars(nr_vars);
@@ -164,7 +164,7 @@ void test_random_inequality_min_sum()
 
 void test_random_inequality_log_exp()
 {
-    Cudd bdd_mgr;
+    BDD::bdd_mgr bdd_mgr;
     bdd_converter converter(bdd_mgr);
 
     for(std::size_t nr_vars = 3; nr_vars <= 15; ++nr_vars) {
@@ -181,7 +181,7 @@ void test_random_inequality_log_exp()
         std::cout << rhs << "\n";
 
         auto bdd = converter.convert_to_bdd(coefficients.begin(), coefficients.end(), ineq, rhs);
-        if(bdd.nodeCount() < 2) 
+        if(bdd.nr_nodes() < 2) 
             continue;
         bdd_min_marginal_averaging_smoothed bdds;
         std::vector<std::size_t> vars(nr_vars);

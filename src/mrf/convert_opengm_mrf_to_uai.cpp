@@ -76,7 +76,7 @@ int main(int argc, char** argv)
        const std::size_t i = gm.variableOfFactor(f,0);
        uai << gm.numberOfLabels(i) << "\n";
        for(std::size_t l=0; l<gm[f].numberOfLabels(0); ++l){
-         uai << gm[f](std::array<std::size_t,1>({l}).begin()) << " ";
+         uai << -gm[f](std::array<std::size_t,1>({l}).begin()) << " ";
        } 
        uai << "\n\n";
      }
@@ -86,11 +86,11 @@ int main(int argc, char** argv)
        uai << gm.numberOfLabels(i)*gm.numberOfLabels(j) << "\n";
        for(std::size_t l1=0; l1<gm[f].numberOfLabels(0); ++l1){
          for(std::size_t l2=0; l2<gm[f].numberOfLabels(1); ++l2){
-           uai << gm[f](std::array<std::size_t,2>({l1,l2}).begin()) << " ";
+           uai << -gm[f](std::array<std::size_t,2>({l1,l2}).begin()) << " ";
          }
-         uai << "\n";
+         //uai << "\n";
        }
-       uai << "\n";
+       uai << "\n\n";
      }
    }
 }

@@ -6,7 +6,7 @@
 #include "LP.h"
 #include "andres/graph/digraph.hxx"
 #include "lifted_disjoint_paths/ldp_parameters.hxx"
-#include "disjoint-paths/completeStructure.hxx"
+#include "lifted_disjoint_paths/ldp_complete_structure.hxx"
 
 using namespace LPMP;
 
@@ -53,7 +53,8 @@ int main(int argc, char** argv) {
 
     LPMP::lifted_disjoint_paths::LdpParameters<> configParams(inputFileName);
 
-    disjointPaths::CompleteStructure<> completeStructure(configParams);
+    LPMP::CompleteStructure<> completeStructure(configParams);
+
     LPMP::lifted_disjoint_paths::LdpInstance ldpInstance(configParams,completeStructure);
 
 

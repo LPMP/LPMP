@@ -9,7 +9,7 @@ namespace lifted_disjoint_paths {
 
 
 
-LdpInstance::LdpInstance(LdpParameters<> &configParameters, disjointPaths::CompleteStructure<>& cs):
+LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>& cs):
     parameters(configParameters)
 {
 
@@ -21,6 +21,63 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, disjointPaths::Compl
     if(parameters.isUseAdaptiveThreshold()){
         if(diagnostics()) std::cout<<"using adaptive"<<std::endl;
        initAdaptiveThresholds(&cs.completeScore,nullptr);
+    }
+    else{
+        baseThreshold=parameters.getBaseUpperThreshold();
+        positiveLiftedThreshold=parameters.getPositiveThresholdLifted();
+        negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
+    }
+    if(debug()) std::cout<<"Adding automatic lifted edges"<<std::endl;
+    for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
+        size_t v0=graph_.vertexOfEdge(i,0);
+        size_t v1=graph_.vertexOfEdge(i,1);
+        if(v0!=s_&&v1!=t_){
+            //	if(secOrderDesc[v0][v1]){
+            graphLifted_.insertEdge(v0,v1);
+            liftedEdgeScore.push_back(edgeScore[i]);
+
+        }
+    }
+    numberOfVertices=graph_.numberOfVertices();
+
+    init();
+
+}
+
+
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
+    parameters(configParameters){
+    //std::cout<<"instance constructor"<<std::endl;
+    //graph_=BP.getOutputGraph();
+    edgeScore=BP.getEdgeScore();
+    vertexScore=BP.getVerticesScore();
+    //std::cout<<"edges and graph set, creating vg"<<std::endl;
+    BP.createLocalVG(vertexGroups);
+    //std::cout<<"created vg"<<std::endl;
+
+
+    numberOfVertices=BP.getOutputGraph().numberOfVertices()+2;
+    graph_=andres::graph::Digraph<>(numberOfVertices);
+    for (size_t i = 0; i < BP.getOutputGraph().numberOfEdges(); ++i) {
+        graph_.insertEdge(BP.getOutputGraph().vertexOfEdge(i,0),BP.getOutputGraph().vertexOfEdge(i,1));
+    }
+    s_=numberOfVertices-2;
+    t_=s_+1;
+
+
+    for (size_t v = 0; v < numberOfVertices-2; ++v) {
+        graph_.insertEdge(s_,v);
+        edgeScore.push_back(parameters.getInputCost());
+        graph_.insertEdge(v,t_);
+        edgeScore.push_back(parameters.getOutputCost());
+    }
+
+    graphLifted_ = BP.getOutputGraph();
+    liftedEdgeScore=BP.getEdgeScore();
+
+    if(parameters.isUseAdaptiveThreshold()){
+        if(diagnostics()) std::cout<<"using adaptive"<<std::endl;
+       initAdaptiveThresholds(&edgeScore,nullptr);
     }
     else{
         baseThreshold=parameters.getBaseUpperThreshold();
@@ -119,9 +176,9 @@ void LdpInstance::initAdaptiveThresholds(const std::vector<double>* baseCosts,co
 
 
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
-LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,const  py::array_t<double>& verticesCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,const  py::array_t<double>& verticesCosts,VertexGroups<>& pvg):parameters(configParameters){
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& baseEdges,const std::vector<std::array<size_t,2>>& liftedEdges,const  std::vector<double>& baseCosts,const  std::vector<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
-    disjointPaths::CompleteStructure<> csBase(pvg);
+    CompleteStructure<> csBase(pvg);
 
     vertexGroups=pvg;
 
@@ -149,7 +206,8 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 
     numberOfVertices=graph_.numberOfVertices();
 
-    disjointPaths::CompleteStructure<> csLifted(vertexGroups);
+    CompleteStructure<> csLifted(vertexGroups);
+    csLifted.setVerticesCosts(verticesCosts);
     csLifted.addEdgesFromVectorsAll(liftedEdges,liftedCosts);
 
     graphLifted_=csLifted.completeGraph;
@@ -166,12 +224,12 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
             negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
         }
         sparsifyBaseGraph();
-        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+        reachable=initReachableSet(graph_,parameters,&vertexGroups);
         //disjointPaths::keepFractionOfLifted(*this,configParameters);
         sparsifyLiftedGraph();
     }
     else{
-        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+        reachable=initReachableSet(graph_,parameters,&vertexGroups);
     }
 
 
@@ -182,7 +240,9 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     numberOfLiftedEdges=graphLifted_.numberOfEdges();
     numberOfEdges=graph_.numberOfEdges();
 
-    vertexScore=std::vector<double>(graph_.numberOfVertices()-2);
+   // vertexScore=std::vector<double>(graph_.numberOfVertices()-2);
+    vertexScore=csLifted.verticesScore;
+    assert(vertexScore.size()==numberOfVertices-2);
 
     myGraph=LdpDirectedGraph(graph_,edgeScore);
     myGraphLifted=LdpDirectedGraph(graphLifted_,liftedEdgeScore);
@@ -195,18 +255,8 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 
 void LdpInstance::init(){
 
-    if(debug()) std::cout<<"Adding automatic lifted edges"<<std::endl;
-    for (size_t i = 0; i < graph_.numberOfEdges(); ++i) {
-        size_t v0=graph_.vertexOfEdge(i,0);
-        size_t v1=graph_.vertexOfEdge(i,1);
-        if(v0!=s_&&v1!=t_){
-            //	if(secOrderDesc[v0][v1]){
-            graphLifted_.insertEdge(v0,v1);
-            liftedEdgeScore.push_back(edgeScore[i]);
 
-        }
-    }
-    numberOfVertices=graph_.numberOfVertices();
+
     if(debug()) std::cout<<"done"<<std::endl;
 
    if(diagnostics())  std::cout<<"number of vertices "<<graph_.numberOfVertices()<<std::endl;
@@ -217,14 +267,23 @@ void LdpInstance::init(){
         sparsifyBaseGraph();
         reachable=initReachableSet(graph_,parameters,&vertexGroups);
 
+        if(parameters.isAllBaseZero()){
+            //std::cout<<"base to zero"<<std::endl;
+            std::fill(edgeScore.begin(),edgeScore.end(),0);
+        }
+//        else{
+//            std::cout<<"base cost preserved"<<std::endl;
+//        }
         sparsifyLiftedGraph();
         initLiftedStructure();
 
 
     }
     else{
+        std::cout<<"Initialization of base and lifted graph from one graph without sparsification not supported"<<std::endl;
+        assert(false);
 
-        reachable=disjointPaths::initReachableSet(graph_,parameters,&vertexGroups);
+        reachable=initReachableSet(graph_,parameters,&vertexGroups);
         initLiftedStructure();
     }
 
@@ -239,11 +298,11 @@ void LdpInstance::init(){
 
 
 
-void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths::CompleteStructure<>* cs){
+void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs){
 
 	andres::graph::Digraph<>& completeGraph=cs->completeGraph;
 	std::vector<double>& completeScore=cs->completeScore;
-    disjointPaths::VertexGroups<> vg=cs->getVertexGroups();
+    VertexGroups<> vg=cs->getVertexGroups();
 
 	std::unordered_map<size_t,std::vector<size_t>> groups;
 
@@ -281,7 +340,7 @@ void LdpInstance::readGraphWithTime(size_t minTime,size_t maxTime,disjointPaths:
 		}
 	}
 
-    vertexGroups=disjointPaths::VertexGroups<>(groups,vToGroup);
+    vertexGroups=VertexGroups<>(groups,vToGroup);
 
 	graphLifted_ = andres::graph::Digraph<>(numberOfVertices);
 	graph_ = andres::graph::Digraph<>(numberOfVertices);
@@ -558,7 +617,142 @@ void LdpInstance::sparsifyLiftedGraph(){
 }
 
 
+//It could get complete structure and directly output two dim array
+void LdpInstance::sparsifyBaseGraphNew(andres::graph::Digraph<> &inputGraph){
+     parameters.getControlOutput()<<"Sparsify base graph"<<std::endl;
+     parameters.writeControlOutput();
 
+     std::vector<double> newBaseCosts;
+     //std::vector<size_t> inOutEdges;
+     size_t k=parameters.getKnnK();
+     //std::vector<size_t> goodLongEdges;
+
+   //  andres::graph::Digraph<> tempGraph(graph_.numberOfVertices());
+
+
+     size_t nrVertices=inputGraph.numberOfVertices();
+     std::vector<std::array<size_t,2>> edgesForMyGraph;
+
+     std::vector<bool> finalEdges(inputGraph.numberOfEdges(),false);
+     for (int v0 = 0; v0 < nrVertices; ++v0) {
+         std::unordered_map<int,std::list<size_t>> edgesToKeep;
+         size_t l0=vertexGroups.getGroupIndex(v0);
+         for (size_t ne = 0; ne < inputGraph.numberOfEdgesFromVertex(v0); ++ne) {
+             size_t e=inputGraph.edgeFromVertex(v0,ne);
+             size_t v1=inputGraph.vertexFromVertex(v0,ne);
+ //			std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<problemGraph.getEdgeScore(e)<<std::endl;
+             if(v0==s_||v1==t_){
+                 //tempGraph.insertEdge(v0,v1);
+                 //newBaseCosts.push_back(edgeScore[e]);
+                 finalEdges[e]=true;
+             }
+             else{
+                 size_t l1=vertexGroups.getGroupIndex(v1);
+                 size_t gap=l1-l0;
+                 if(gap<=parameters.getMaxTimeBase()){
+                 //if(gap<=parameters.getKnnTimeGap()){
+                     //gap=std::min(parameters.getKnnTimeGap()+1,gap);
+                     double cost=edgeScore[e];
+                     if(edgesToKeep.count(gap)>0){
+                         std::list<size_t>& smallList=edgesToKeep[gap];
+                         auto it=smallList.begin();
+                         double bsf=edgeScore[*it];
+                         //std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<bsf<<std::endl;
+                         while(bsf>cost&&it!=smallList.end()){
+                             it++;
+                             size_t index=*it;
+                             if(it!=smallList.end()){
+                                 bsf=edgeScore[index];
+                                 //	std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<bsf<<std::endl;
+                             }
+                         }
+                         if(it!=smallList.begin()){
+                             smallList.insert(it,e);
+                             if(smallList.size()>k) smallList.pop_front();
+                         }
+                         else if(smallList.size()<k){
+                             smallList.push_front(e);
+                         }
+                     }
+                     else{
+                         edgesToKeep[gap].push_front(e);
+                     }
+                 }
+ //				else if(gap<=parameters.getMaxTimeBase()){
+ //					if(getEdgeScore(e)<=parameters.getBaseUpperThreshold()){
+ //						//tempGraph.insertEdge(v0,v1);
+ //						//newBaseCosts.push_back(getEdgeScore(e));
+ //						finalEdges[e]=true;
+ //					}
+ //
+ //				}
+             }
+         }
+         //std::cout.precision(4);
+         double bsf=0;
+         for (int gap = 0; gap <= parameters.getKnnTimeGap(); ++gap) {
+             if(edgesToKeep.count(gap)>0){
+                 auto& smallList=edgesToKeep[gap];
+                 for(size_t e:smallList){
+                     finalEdges[e]=true;
+                     if(edgeScore[e]<bsf){
+                         bsf=edgeScore[e];
+                     }
+                 }
+             }
+         }
+
+         for (int gap =  parameters.getKnnTimeGap()+1;gap<=parameters.getMaxTimeBase(); ++gap) {
+             if(edgesToKeep.count(gap)>0){
+                 auto& smallList=edgesToKeep[gap];
+                 for(size_t e:smallList){
+                     double score=edgeScore[e];
+                     if(score<=baseThreshold){
+                         finalEdges[e]=true;
+                     }
+                 }
+
+             }
+         }
+
+     }
+
+     for (int e = 0; e < inputGraph.numberOfEdges(); ++e) {
+         if(finalEdges[e]){
+             size_t v0=inputGraph.vertexOfEdge(e,0);
+             size_t v1=inputGraph.vertexOfEdge(e,1);
+             //tempGraph.insertEdge(v0,v1);
+             edgesForMyGraph.push_back({v0,v1});
+             newBaseCosts.push_back(edgeScore[e]);
+         }
+     }
+
+     assert(edgesForMyGraph.size()==newBaseCosts.size());
+
+     edgeScore=newBaseCosts;
+
+
+     if(edgesForMyGraph.size()!=newBaseCosts.size()){
+         parameters.getControlOutput()<<"edge number mismatch, edge vector: "<<edgesForMyGraph.size()<<", cost vector "<<newBaseCosts.size()<<std::endl;
+         parameters.writeControlOutput();
+
+     }
+     else{
+
+         parameters.getControlOutput()<<"edge number and graph size match "<<std::endl;
+         parameters.writeControlOutput();
+     }
+
+     parameters.getControlOutput()<<"Left "<<newBaseCosts.size()<<" base edges"<<std::endl;
+     parameters.writeControlOutput();
+
+     myGraph=LdpDirectedGraph(edgesForMyGraph,newBaseCosts);
+
+ }
+
+
+
+//It could get complete structure and directly output two dim array
 void LdpInstance::sparsifyBaseGraph(){
      parameters.getControlOutput()<<"Sparsify base graph"<<std::endl;
      parameters.writeControlOutput();

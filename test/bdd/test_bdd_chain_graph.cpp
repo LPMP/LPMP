@@ -3,6 +3,7 @@
 #include "bdd/bdd_primal_fixing.h"
 #include "bdd/bdd_anisotropic_diffusion.h"
 #include "bdd/convert_pb_to_bdd.h"
+#include "ILP_sample_problems.h"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -13,7 +14,6 @@ using namespace LPMP;
 void test_problem_anisotropic(const std::string input_string, const double expected_lb)
 {
     const ILP_input input = ILP_parser::parse_string(input_string);
-    Cudd bdd_mgr;
     bdd_anisotropic_diffusion bdds;
     bdds.init(input);
 
@@ -134,37 +134,6 @@ void test_fixing(const std::string input_string)
     test(bdds_test.fix_variables(indices, feasible));
 
 }
-
-
-const char * small_chain = 
-R"(Minimize
-2 mu_1_0 + 1 mu_1_1 - 1 mu_2_0 + 0 mu_2_1
-+ 1 mu_00 + 2 mu_10 + 1 mu_01 + 0 mu_11
-Subject To
-mu_1_0 + mu_1_1 = 1
-mu_2_0 + mu_2_1 = 1
-mu_00 + mu_10 + mu_01 + mu_11 = 1
-mu_1_0 - mu_00 - mu_01 = 0
-mu_1_1 - mu_10 - mu_11 = 0
-mu_2_0 - mu_00 - mu_10 = 0
-mu_2_1 - mu_01 - mu_11 = 0
-End)";
-
-const char * small_chain_reversed = 
-R"(Minimize
--1 mu_1_0 + 0 mu_1_1 + 2 mu_2_0 + 1 mu_2_1
-+ 1 mu_00 + 1 mu_10 + 2 mu_01 + 0 mu_11
-Subject To
-mu_1_0 + mu_1_1 = 1
-mu_2_0 + mu_2_1 = 1
-mu_00 + mu_10 + mu_01 + mu_11 = 1
-mu_1_0 - mu_00 - mu_01 = 0
-mu_1_1 - mu_10 - mu_11 = 0
-mu_2_0 - mu_00 - mu_10 = 0
-mu_2_1 - mu_01 - mu_11 = 0
-End)";
-
-
 
 int main(int argc, char** arv)
 {
