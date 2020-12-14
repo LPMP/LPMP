@@ -38,7 +38,7 @@ namespace LPMP {
         std::vector<std::vector<edge_t>>& positive_edge_vec, std::vector<std::vector<edge_t>>& repulsive_edge_vec, 
         const int& nr_threads, std::vector<double>& lower) 
     {
-        auto Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+        auto Q = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t e = thread_no;
             while(e < input.edges().size()) {
                 auto edge = input.edges()[e];
@@ -50,7 +50,7 @@ namespace LPMP {
                 e += nr_threads;
             }
         });
-        return Q.second;
+        return Q;
     }
 
 
@@ -58,7 +58,7 @@ namespace LPMP {
         std::vector<std::vector<edge_t>>& positive_edge_vec, std::vector<std::vector<edge_t>>& repulsive_edge_vec, 
         const int& nr_threads, std::vector<double>& lower) 
     {
-        auto Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+        auto Q = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t edges_batch_size = input.edges().size()/nr_threads + 1;
             const std::size_t first_edge = thread_no*edges_batch_size;
             const std::size_t last_edge = std::min((thread_no+1)*edges_batch_size, input.edges().size());
@@ -71,7 +71,7 @@ namespace LPMP {
                 lower[thread_no] += std::min(0.0, edge.cost[0]);
             }
         });
-        return Q.second;
+        return Q;
     }
 
 
@@ -318,7 +318,7 @@ namespace LPMP {
             // for (auto& re: repulsive_edge_vec)
             //     std::random_shuffle(re.begin(), re.end());
 
-            auto CP = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
+            auto CP = taskflow.for_each_index(0, nr_threads, 1, [&](const std::size_t thread_no){
             //    std::cout << "#repulsive edges :" << repulsive_edge_vec[thread_no].size() << " remaining in thread " << thread_no << std::endl;
                 if (triangulation)
                     cp_single<true>(repulsive_edge_vec[thread_no], pos_edges_graph, cycle_length,  

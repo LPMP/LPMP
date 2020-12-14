@@ -74,7 +74,7 @@ namespace LPMP {
 
     void send_weights_to_triplets_parallel(tf::Taskflow& taskflow, std::vector<edge_item>& edge_to_triangle, std::vector<triangle_item>& triangle_to_edge, 
         const int nr_threads){
-        auto send = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
+        auto send = taskflow.for_each_index(0, nr_threads, 1, [&](const std::size_t thread_no){
             const std::size_t batch_size = edge_to_triangle.size()/nr_threads + 1;
             int first_edge = thread_no*batch_size;
             int last_edge = std::min((thread_no+1)*batch_size, edge_to_triangle.size());
@@ -86,7 +86,7 @@ namespace LPMP {
 
     void send_triplets_to_edge_parallel(tf::Taskflow& taskflow, std::vector<edge_item>& edge_to_triangle, std::vector<triangle_item>& triangle_to_edge, 
         const int nr_threads){
-         auto send = taskflow.parallel_for(0, nr_threads, 1, [&](const std::size_t thread_no){
+         auto send = taskflow.for_each_index(0, nr_threads, 1, [&](const std::size_t thread_no){
             const std::size_t batch_size = triangle_to_edge.size()/nr_threads + 1;
             int first_triangle = thread_no*batch_size;
             int last_triangle = std::min((thread_no+1)*batch_size, triangle_to_edge.size());
