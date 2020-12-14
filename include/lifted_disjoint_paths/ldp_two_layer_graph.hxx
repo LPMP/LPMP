@@ -9,53 +9,58 @@ public:
     LdpTwoLayerGraph(){}
     LdpTwoLayerGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts);
 
+    struct edge {
+        size_t head;
+        double cost;
+        size_t reverse_neighbor_index; 
+    };
+
 
     void setForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
         //todo asserts
         assert(vertex<numberOfInputs);
         assert(neighborIndex<forwardEdges[vertex].size());
-        forwardEdges[vertex][neighborIndex].second=value;
+        forwardEdges[vertex][neighborIndex].cost = value;
     }
-
 
     void updateForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
         assert(vertex<numberOfInputs);
         assert(neighborIndex<forwardEdges[vertex].size());
-        forwardEdges[vertex][neighborIndex].second+=value;
+        forwardEdges[vertex][neighborIndex].cost += value;
     }
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
         assert(vertex<numberOfInputs);
         assert(neighborIndex<forwardEdges[vertex].size());
-        return forwardEdges[vertex][neighborIndex].second;
+        return forwardEdges[vertex][neighborIndex].cost;
     }
 
     size_t getForwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
         assert(vertex<numberOfInputs);
         assert(neighborIndex<forwardEdges[vertex].size());
-        return forwardEdges[vertex][neighborIndex].first;
+        return forwardEdges[vertex][neighborIndex].head;
     }
 
 
 
-    const std::pair<size_t,double> * forwardNeighborsBegin(size_t i)const {
+    const edge* forwardNeighborsBegin(size_t i)const {
         assert(i<numberOfInputs);
         return forwardEdges[i].begin();
     }
 
-    const std::pair<size_t,double> * forwardNeighborsEnd(size_t i)const {
+    const edge* forwardNeighborsEnd(size_t i)const {
         assert(i<numberOfInputs);
         return forwardEdges[i].end();
     }
 
 
 
-    std::pair<size_t,double> * forwardNeighborsBegin(size_t i){
+    edge* forwardNeighborsBegin(size_t i){
         assert(i<numberOfInputs);
         return forwardEdges[i].begin();
     }
 
-    std::pair<size_t,double> * forwardNeighborsEnd(size_t i){
+    edge* forwardNeighborsEnd(size_t i){
         assert(i<numberOfInputs);
         return forwardEdges[i].end();
     }
@@ -68,7 +73,9 @@ public:
 
 private:
 
-    two_dim_variable_array<std::pair<size_t,double>> forwardEdges;
+    //two_dim_variable_array<std::pair<size_t,double>> forwardEdges;
+    two_dim_variable_array<edge> forwardEdges;
+    two_dim_variable_array<edge> backwardEdges;
     size_t numberOfInputs;
     size_t numberOfOutputs;
 
