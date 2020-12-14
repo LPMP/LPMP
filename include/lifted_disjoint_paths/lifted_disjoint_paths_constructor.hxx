@@ -1192,7 +1192,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                cut_factors_.push_back(newCutFactor);
 
                auto * pCutFactor=newCutFactor->get_factor();
-               pCutFactor->print();
+               //pCutFactor->print();
                //std::cout<<"improvement "<<improvement<<std::endl;
                const std::vector<size_t>& inputs=pCutFactor->getInputVertices();
                const std::vector<size_t>& outputs=pCutFactor->getOutputVertices();
@@ -1243,7 +1243,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
                //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
                path_factors_.push_back(newPathFactor);
-               pPathFactor->print();
+               //pPathFactor->print();
                //  std::cout<<"improvement value "<<improvement<<std::endl;
                // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
 

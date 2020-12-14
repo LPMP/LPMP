@@ -451,7 +451,7 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          tighteningMaxEdgeUsage=std::stoi(parameters["TIGHT_MAX_EDGE_USAGE"]);
      }
      else{
-         tighteningMaxEdgeUsage=2;
+         tighteningMaxEdgeUsage=4;
      }
      controlOutput<<"maximal edge usage for tightening "<<tighteningMinImprovement<<std::endl;
 
