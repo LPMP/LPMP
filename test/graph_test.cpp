@@ -7,6 +7,12 @@
 using namespace LPMP;
 
 static std::vector<std::array<std::size_t,2>> edges = { {0,1}, {1,2}, {2,3}, {0,3}, {0,2} };
+
+std::vector<std::vector<size_t>> maximal_cliques = {
+    {0,1,2},
+    {0,2,3}
+};
+
 struct empty {};
 
 template<typename GRAPH_TYPE>
@@ -36,6 +42,24 @@ GRAPH_TYPE construct_and_test_graph()
     return g;
 }
 
+void test_maximal_clique_enumeration()
+{
+    graph<empty> g(edges.begin(), edges.end());
+    std::vector<bool> clique_visited(maximal_cliques.size(), false);
+    auto check_clique = [&](auto v_begin, auto v_end) {
+        std::vector<size_t> v(v_begin, v_end);
+        std::sort(v.begin(), v.end());
+        const size_t clique_no = std::distance(maximal_cliques.begin(), std::find(maximal_cliques.begin(), maximal_cliques.end(), v));
+        test(v == maximal_cliques[0] || v == maximal_cliques[1]); 
+        test(clique_no < maximal_cliques.size());
+        test(v == maximal_cliques[clique_no]);
+        test(clique_visited[clique_no] == false);
+        clique_visited[clique_no] = true; 
+    };
+    g.for_each_maximal_clique(check_clique);
+    test(std::count(clique_visited.begin(), clique_visited.end(), false) == 0);
+}
+
 int main(int argc, char** argv)
 {
 	std::sort(edges.begin(), edges.end(), [](const auto& e1, const auto& e2) { return std::lexicographical_compare(e1.begin(), e1.end(), e2.begin(), e2.end()); });
@@ -43,6 +67,8 @@ int main(int argc, char** argv)
     construct_and_test_graph<dynamic_graph<empty>>();
     construct_and_test_graph<dynamic_graph_thread_safe<empty>>();
     auto g = construct_and_test_graph<graph<empty>>();
+
+    test_maximal_clique_enumeration();
 
 	std::vector<std::array<std::size_t,2>> edges_check;
 	g.for_each_edge([&](const std::size_t i, const std::size_t j, const empty&) { edges_check.push_back({i,j}); });

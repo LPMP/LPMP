@@ -1,12 +1,11 @@
-#ifndef LPMP_TOPOLOGICAL_SORT_HXX
-#define LPMP_TOPOLOGICAL_SORT_HXX
+#pragma once
 
 // Compute topological sorting of a DAG
 
 #include <vector>
 #include <array>
 #include <stack>
-#include <assert.h>
+#include <cassert>
 #include "help_functions.hxx"
 #include "two_dimensional_variable_array.hxx"
 
@@ -55,6 +54,59 @@ inline bool Graph::sorting_valid(const std::vector<std::size_t>& ordering) const
    return true; 
 }
 
+inline std::vector<std::size_t> topological_sort_adjacency_list(const two_dim_variable_array<size_t>& adj)
+{
+  constexpr unsigned char not_marked = 0;
+  constexpr unsigned char temp_marked = 1;
+  constexpr unsigned char perm_marked = 2;
+
+  std::vector<unsigned char> mark(adj.size(),not_marked); 
+  std::stack<std::pair<std::size_t,decltype(adj[0].begin())> > dfs;
+  std::vector<std::size_t> post_order;
+  post_order.reserve(adj.size());
+
+  for(std::size_t i=0; i<adj.size(); ++i){
+     if(mark[i] == not_marked) {
+        dfs.push(std::make_pair(i, adj[i].begin()));
+        while(!dfs.empty()){
+           const std::size_t node = dfs.top().first;
+           auto it = dfs.top().second;
+           //if(mark[node] == perm_marked) {
+           //   assert(false);
+           //   throw std::runtime_error("graph not a dag");
+           //}
+           if(it == adj[node].begin()) { // first visit
+              assert(mark[node] == not_marked);
+              mark[node] = temp_marked;
+           }
+           while(it != adj[node].end() && mark[*it] != not_marked) {
+              if(mark[*it] == temp_marked) {
+                 throw std::runtime_error("graph not a dag");
+              }
+              ++it;
+           }
+           if(it != adj[node].end()) {
+              std::size_t next = *it;
+              ++it;
+              dfs.top().second = it;
+              dfs.push(std::make_pair(next,adj[next].begin()));
+           } else {
+              dfs.pop();
+              mark[node] = perm_marked;
+              post_order.push_back(node);
+           }
+        }
+     }
+  }
+
+  assert(post_order.size() == adj.size());
+  assert(LPMP::HasUniqueValues(post_order));
+  //assert(sorting_valid(post_order));
+
+  return post_order;
+
+}
+
 inline std::vector<std::size_t> Graph::topologicalSort() const
 {
   std::vector<std::size_t> adjacency_list_size(V);
@@ -71,58 +123,10 @@ inline std::vector<std::size_t> Graph::topologicalSort() const
      adjacency_list_size[e[1]]++;
   }
 
-  constexpr unsigned char not_marked = 0;
-  constexpr unsigned char temp_marked = 1;
-  constexpr unsigned char perm_marked = 2;
+  return topological_sort_adjacency_list(adjacency_list);
 
-  std::vector<unsigned char> mark(V,not_marked); 
-  std::stack<std::pair<std::size_t,decltype(adjacency_list[0].begin())> > dfs;
-  std::vector<std::size_t> post_order;
-  post_order.reserve(V);
-
-  for(std::size_t i=0; i<V; ++i){
-     if(mark[i] == not_marked) {
-        dfs.push(std::make_pair(i, adjacency_list[i].begin()));
-        while(!dfs.empty()){
-           const std::size_t node = dfs.top().first;
-           auto it = dfs.top().second;
-           //if(mark[node] == perm_marked) {
-           //   assert(false);
-           //   throw std::runtime_error("graph not a dag");
-           //}
-           if(it == adjacency_list[node].begin()) { // first visit
-              assert(mark[node] == not_marked);
-              mark[node] = temp_marked;
-           }
-           while(it != adjacency_list[node].end() && mark[*it] != not_marked) {
-              if(mark[*it] == temp_marked) {
-                 throw std::runtime_error("graph not a dag");
-              }
-              ++it;
-           }
-           if(it != adjacency_list[node].end()) {
-              std::size_t next = *it;
-              ++it;
-              dfs.top().second = it;
-              dfs.push(std::make_pair(next,adjacency_list[next].begin()));
-           } else {
-              dfs.pop();
-              mark[node] = perm_marked;
-              post_order.push_back(node);
-           }
-        }
-     }
-  }
-
-  assert(post_order.size() == V);
-  assert(LPMP::HasUniqueValues(post_order));
-  assert(sorting_valid(post_order));
-
-  return post_order;
 }
 
 } // namespace Topological_Sort
 
 } // namespace LPMP
-
-#endif // LPMP_TOPOLOGICAL_SORT_HXX

@@ -2740,6 +2740,11 @@ public:
    }
 
    // add default operator+ for std::vector
+   void operator_equal_plus(double& l, const double& r)
+   {
+       l += r;
+   }
+
    template<typename T>
    void operator_equal_plus(std::vector<T>& l, const std::vector<T>& r)
    {
@@ -2755,6 +2760,23 @@ public:
        for(size_t i=0; i<l.size(); ++i)
            l[i] += r[i]; 
    }
+
+   template<typename T, size_t N>
+   void operator_equal_plus(array<T,N>& l, const array<T,N>& r)
+   {
+       assert(l.size() == r.size());
+       for(size_t i=0; i<N; ++i)
+           l[i] += r[i]; 
+   }
+
+   template<typename T>
+   void operator_equal_plus(matrix<T>& l, const matrix<T>& r)
+   {
+       assert(l.size() == r.size());
+       for(size_t i=0; i<l.size(); ++i)
+           l[i] += r[i]; 
+   }
+
    
    virtual void add(FactorTypeAdapter* other) final
    {

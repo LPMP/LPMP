@@ -1,20 +1,8 @@
 #include "test.h"
-#include "cuddObj.hh"
 #include "bdd/convert_pb_to_bdd.h"
 #include <vector>
 
 using namespace LPMP;
-
-void write_dd(DdManager *gbm, DdNode *dd, const char* filename)
-{
-    FILE *outfile; // output file pointer for .dot file
-    outfile = fopen(filename,"w");
-    DdNode **ddnodearray = (DdNode**)malloc(sizeof(DdNode*)); // initialize the function array
-    ddnodearray[0] = dd;
-    Cudd_DumpDot(gbm, 1, ddnodearray, NULL, NULL, outfile); // dump the function to .dot file
-    free(ddnodearray);
-    fclose (outfile); // close the file */
-}
 
 std::vector<int> create_vector(const std::vector<std::size_t> one_indices, const std::vector<std::size_t> minus_one_indices)
 {
@@ -37,18 +25,16 @@ std::vector<int> create_vector(const std::vector<std::size_t> one_indices, const
 
 int main(int argc, char** argv)
 {
-    Cudd bdd_mgr;
+    BDD::bdd_mgr bdd_mgr;
     bdd_converter converter(bdd_mgr);
 
     {
         std::vector<int> simplex_weights = {1,1,1,1,1};
         auto simplex_bdd = converter.convert_to_bdd(simplex_weights.begin(), simplex_weights.end(), inequality_type::equal, 1);
 
-        std::vector<BDD> bdds = {simplex_bdd};
+        std::vector<BDD::node_ref> bdds = {simplex_bdd};
 
         //auto add = Cudd_BddToAdd(bdd_mgr.getManager(), simplex_bdd.getNode());
-        //write_dd(bdd_mgr.getManager(), add, "kwas.dot");
-        bdd_mgr.DumpDot( bdds );
         //char const * const * inames = 0, 
         //      char const * const * onames = 0, 
         //      FILE * fp = stdout) const;
@@ -56,8 +42,6 @@ int main(int argc, char** argv)
 
     // mrf with three variables and Potts potentials
     { 
-        return 0;
-        Cudd bdd_mgr;
         auto simplex_1 = converter.convert_to_bdd(create_vector({0,1,2,3,4},{}), inequality_type::equal, 1);
         auto simplex_2 = converter.convert_to_bdd(create_vector({5,6,7,8,9},{}), inequality_type::equal, 1);
         auto simplex_3 = converter.convert_to_bdd(create_vector({10,11,12,13,14},{}), inequality_type::equal, 1);
@@ -95,16 +79,11 @@ int main(int argc, char** argv)
         auto potts_32_4 = converter.convert_to_bdd(create_vector({13},{8,17}), inequality_type::smaller_equal , 0);
         auto potts_32_5 = converter.convert_to_bdd(create_vector({14},{9,17}), inequality_type::smaller_equal , 0);
 
-        auto all_simplex = simplex_1.And(simplex_2.And( simplex_3));
-        auto bdd_potts_12 = potts_12_1.And(potts_12_2.And(potts_12_3.And(potts_12_4.And(potts_12_5.And(potts_21_1.And(potts_21_2.And(potts_21_3.And(potts_21_4.And(potts_21_5)))))))));
-        auto bdd_potts_13 = potts_13_1.And(potts_13_2.And(potts_13_3.And(potts_13_4.And(potts_13_5.And(potts_31_1.And(potts_31_2.And(potts_31_3.And(potts_31_4.And(potts_31_5)))))))));
-        auto bdd_potts_23 = potts_23_1.And(potts_23_2.And(potts_23_3.And(potts_23_4.And(potts_23_5.And(potts_32_1.And(potts_32_2.And(potts_32_3.And(potts_32_4.And(potts_32_5)))))))));
+        //auto all_simplex = simplex_1.And(simplex_2.And( simplex_3));
+        //auto bdd_potts_12 = potts_12_1.And(potts_12_2.And(potts_12_3.And(potts_12_4.And(potts_12_5.And(potts_21_1.And(potts_21_2.And(potts_21_3.And(potts_21_4.And(potts_21_5)))))))));
+        //auto bdd_potts_13 = potts_13_1.And(potts_13_2.And(potts_13_3.And(potts_13_4.And(potts_13_5.And(potts_31_1.And(potts_31_2.And(potts_31_3.And(potts_31_4.And(potts_31_5)))))))));
+        //auto bdd_potts_23 = potts_23_1.And(potts_23_2.And(potts_23_3.And(potts_23_4.And(potts_23_5.And(potts_32_1.And(potts_32_2.And(potts_32_3.And(potts_32_4.And(potts_32_5)))))))));
 
-        auto all = all_simplex.And(bdd_potts_12.And(bdd_potts_13.And(bdd_potts_23)));
-
-        bdd_mgr.ReduceHeap(CUDD_REORDER_EXACT);
-
-        std::vector<BDD> bdds = {all};
-        bdd_mgr.DumpDot( bdds ); 
+        //auto all = all_simplex.and_rec(bdd_potts_12.And(bdd_potts_13.And(bdd_potts_23)));
     }
 }

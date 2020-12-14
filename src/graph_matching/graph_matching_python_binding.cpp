@@ -88,7 +88,6 @@ void construct_from_arrays(LPMP::graph_matching_input& instance, const py::array
 
 py::array_t<char> get_assignment_mask(LPMP::graph_matching_input::labeling labeling, const py::array_t<double> assignments)
 {
-
     char* assignment_mask = new char[assignments.size()];
     assert(assignments.size() == assignments.shape(0)*assignments.shape(1));
     std::fill(assignment_mask, assignment_mask + assignments.size(), 0);

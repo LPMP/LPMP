@@ -30,7 +30,6 @@ target_include_directories(LPMP INTERFACE external/andres-graph/include)
 target_include_directories(LPMP INTERFACE external/tsl-robin-map/include)
 target_include_directories(LPMP INTERFACE external/cpp-taskflow) 
 target_include_directories(LPMP INTERFACE external/pybind11)
-target_include_directories(LPMP INTERFACE external/LifT_Solver/solverILP/include)
 
 include(ExternalProject)
 ExternalProject_Add(Cudd_external
@@ -45,6 +44,28 @@ add_library(Cudd INTERFACE)
 add_dependencies(Cudd Cudd_external)
 target_link_libraries(Cudd INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/cudd/.libs/libcudd.a)
 target_include_directories(Cudd INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/cudd/cudd)
+
+ExternalProject_Add(blossomV_external
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/"
+    BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/"
+    PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND make
+    INSTALL_COMMAND ""
+    )
+add_library(blossomV INTERFACE)
+add_dependencies(blossomV blossomV_external)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/misc.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/PMduals.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/PMexpand.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/PMinit.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/PMinterface.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/PMmain.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/PMrepair.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/PMshrink.o)
+target_link_libraries(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV/MinCost/MinCost.o)
+target_include_directories(blossomV INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/blossomV)
+
 
 target_compile_features(LPMP INTERFACE cxx_std_17)
 target_compile_options(LPMP INTERFACE -march=native)
@@ -81,7 +102,6 @@ add_subdirectory(external/BCFW-Bundle)
 add_subdirectory(external/DD_ILP)
 add_subdirectory(external/ConicBundle)
 add_subdirectory(external/arboricity)
-
 set(PYBIND11_CPP_STANDARD -std=c++17)
 set(PYBIND11_INSTALL ON CACHE BOOL "enable pybind11 bindings.")
 add_subdirectory(external/pybind11)

@@ -4,9 +4,9 @@
 
 namespace LPMP {
 
-    /////////////////////////////////
-    // Base Template Branch Node
-    /////////////////////////////////
+    ///////////////////////////////
+    // Base Template Branch Node //
+    ///////////////////////////////
 
     template<typename DERIVED>
     class bdd_branch_node {
@@ -82,9 +82,9 @@ namespace LPMP {
     }
 
 
-    /////////////////////////////////
-    // Optimization Branch Node
-    /////////////////////////////////
+    //////////////////////////////
+    // Optimization Branch Node //
+    //////////////////////////////
 
     template<typename DERIVED>
     class bdd_branch_node_opt_base : public bdd_branch_node<DERIVED> {
@@ -824,5 +824,113 @@ bdd_branch_node_exp_sum_entry bdd_branch_node_opt_smoothed_base<DERIVED>::exp_su
             return m * this->high_outgoing->m;
     }
 
+    // bdd branch node with individual arc costs, for use in decomposition bdd base (since there are Lagrange multipliers for individual arcs)
+    template<typename DERIVED>
+    class bdd_branch_node_opt_base2 : public bdd_branch_node<DERIVED> {
+        public:
+            double low_cost = std::numeric_limits<double>::infinity();
+            double high_cost = std::numeric_limits<double>::infinity();
+            double m = 0.0; // intermediate value of shortest path from either terminal or first node (depending on algorithm state)
+
+            // From C++20
+            friend bool operator==(const bdd_branch_node_opt_base<DERIVED>& x, const bdd_branch_node_opt_base<DERIVED>& y);
+
+            void backward_step();
+            void forward_step();
+
+            std::array<double,2> min_marginal() const;
+    };
+
+    template<typename DERIVED>
+void bdd_branch_node_opt_base2<DERIVED>::backward_step()
+{
+        // low edge
+        const double low_path_cost = [&]() {
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0()) {
+                return std::numeric_limits<double>::infinity();
+            } else if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1()) {
+                return low_cost;
+            } else {
+                return this->low_outgoing->m + low_cost;
+            }
+        }();
+
+        // high edge
+        const double high_path_cost = [&]() {
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0()) {
+                return std::numeric_limits<double>::infinity(); 
+            } else if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1()) {
+                return high_cost; 
+            } else {
+                return this->high_outgoing->m + high_cost;
+            }
+        }();
+
+        assert(!std::isnan(low_path_cost));
+        assert(!std::isnan(high_path_cost));
+        assert(std::isfinite(std::min(low_path_cost,high_path_cost)));
+        m = std::min(low_path_cost, high_path_cost); 
 }
 
+    template<typename DERIVED>
+    void bdd_branch_node_opt_base2<DERIVED>::forward_step()
+    {
+        check_bdd_branch_node(*this);
+
+        if(this->is_first()) {
+            m = 0.0;
+            return;
+        }
+
+        m = std::numeric_limits<double>::infinity();
+
+        // iterate over all incoming low edges 
+        {
+            auto* cur = this->first_low_incoming;
+            while(cur != nullptr) {
+                m = std::min(m, cur->m + cur->low_cost);
+                cur = cur->next_low_incoming;
+            }
+        }
+
+        // iterate over all incoming high edges 
+        {
+            auto* cur = this->first_high_incoming;
+            while(cur != nullptr) {
+                m = std::min(m, cur->m + cur->high_cost);
+                cur = cur->next_high_incoming;
+            }
+        }
+
+        assert(std::isfinite(m));
+    }
+
+
+    template<typename DERIVED>
+    std::array<double,2> bdd_branch_node_opt_base2<DERIVED>::min_marginal() const
+    {
+        const double m0 = [&]() {
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0())
+                return std::numeric_limits<double>::infinity();
+            if(this->low_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1())
+                return this->m + this->low_cost;
+            return this->m + this->low_cost + this->low_outgoing->m;
+        }();
+
+        const double m1 = [&]() {
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_0())
+                return std::numeric_limits<double>::infinity();
+            if(this->high_outgoing == bdd_branch_node_opt_base<DERIVED>::terminal_1())
+                return this->m + this->high_cost;
+            return this->m + this->high_cost + this->high_outgoing->m;
+        }();
+
+        assert(std::isfinite(std::min(m0,m1)));
+
+        return {m0,m1};
+    }
+
+    class bdd_branch_node_opt2 : public bdd_branch_node_opt_base2<bdd_branch_node_opt2>{
+    };
+
+}

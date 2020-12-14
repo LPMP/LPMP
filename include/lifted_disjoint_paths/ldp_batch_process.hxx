@@ -46,6 +46,10 @@ public:
         return maxLabelSoFar;
     }
 
+    size_t getIndexToDel() const{
+        return indexToDel;
+    }
+
     void createLocalVG(VertexGroups<>& localVG);
 private:
     size_t minValidVertex;
@@ -69,6 +73,7 @@ private:
     bool edgesCreated;
     bool labelsDecoded;
     std::vector<std::array<size_t,2>> decodedLabels;
+    size_t indexToDel;
 
 };
 //maybe vertex labels as vector<arra<size_t,2>> globID->label

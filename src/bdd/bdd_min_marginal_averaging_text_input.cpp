@@ -1,7 +1,8 @@
 #include "bdd/bdd_min_marginal_averaging.h"
 #include "bdd/bdd_primal_fixing.h"
 #include "bdd/ILP_parser.h"
-#include "cuddObj.hh"
+#include "bdd.h"
+#include "tclap/CmdLine.h"
 
 #include <fstream>
 
@@ -17,7 +18,10 @@ int main(int argc, char** argv)
 
     const auto start_time = std::chrono::steady_clock::now();
 
-    ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
+    TCLAP::CmdLine cmd("BDD based 0/1 ILP solver", ' ', "0.1"); 
+
+//    ILP_input input(ILP_parser::parse_file(std::string(argv[1])));
+    /*
     bdd_min_marginal_averaging_options options(argc-1, argv+1);
 
     if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::bfs)
@@ -26,10 +30,12 @@ int main(int argc, char** argv)
         input.reorder_Cuthill_McKee();
     else if (options.variable_order == bdd_min_marginal_averaging_options::variable_order::mindegree)
         input.reorder_minimum_degree_averaging();
+        */
 
-    bdd_mma_fixing solver;
-    solver.set_options(options);
-    solver.init(input);
+    bdd_mma_fixing solver(cmd);
+    cmd.parse(argc, argv);
+    //solver.set_options(options);
+    solver.init();
 
     std::cout << "\#variables: " << solver.nr_variables() << std::endl;
     std::cout << "\#constraints: " << solver.nr_bdds() << std::endl;

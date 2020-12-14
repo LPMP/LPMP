@@ -2,9 +2,9 @@
 #include <cmath>
 #include <cassert>
 
-const double PI = 3.141592653589793238463;
-
 namespace LPMP {
+
+    constexpr double PI = 3.141592653589793238463;
 
     class quadratic_function {
         public:

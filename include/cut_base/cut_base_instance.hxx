@@ -55,7 +55,7 @@ namespace LPMP {
         template<typename STREAM>
             void write_problem(STREAM& s) const;
 
-        private:
+        protected:
         std::size_t no_nodes_ = 0;
         std::size_t min_node_ = std::numeric_limits<std::size_t>::max();
         std::vector<weighted_edge> edges_; 

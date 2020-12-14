@@ -4,7 +4,7 @@ add_subdirectory(multigraph_matching)
 add_subdirectory(max_cut)
 add_subdirectory(horizon_tracking)
 add_subdirectory(multicut)
-#add_subdirectory(bdd)
+add_subdirectory(asymmetric_multiway_cut)
 
 add_executable(test_message_passing_schedule test_message_passing_schedule.cpp)
 target_link_libraries(test_message_passing_schedule LPMP m stdc++)

@@ -100,7 +100,7 @@ protected:
                 void set_costs(ITERATOR begin, ITERATOR end);
 
             template<typename BDD_VARIABLES_ITERATOR>
-                void add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR var_begin, BDD_VARIABLES_ITERATOR var_end, Cudd& bdd_mgr); 
+                void add_bdd(BDD::node_ref bdd, BDD_VARIABLES_ITERATOR var_begin, BDD_VARIABLES_ITERATOR var_end, BDD::bdd_mgr& bdd_mgr); 
 
             void forward_run();
             double backward_run();
@@ -178,7 +178,7 @@ protected:
 template<typename BDD_BRANCH_INSTRUCTION, typename BDD_VARIABLE>
 void bdd_base_consecutive<BDD_BRANCH_INSTRUCTION, BDD_VARIABLE>::init(const ILP_input &input, const bdd_order order)
 {
-    Cudd bdd_mgr;
+    BDD::bdd_mgr bdd_mgr;
     bdd_storage_ = bdd_storage(input, bdd_mgr);
     init(order);
     set_costs(input.objective().begin(), input.objective().end());
@@ -717,7 +717,7 @@ permutation bdd_base_consecutive<BDD_BRANCH_INSTRUCTION, BDD_VARIABLE>::find_bfs
     }
 
     template<typename BDD_VARIABLES_ITERATOR>
-        void bdd_anisotropic_diffusion::add_bdd(BDD& bdd, BDD_VARIABLES_ITERATOR var_begin, BDD_VARIABLES_ITERATOR var_end, Cudd& bdd_mgr)
+        void bdd_anisotropic_diffusion::add_bdd(BDD::node_ref bdd, BDD_VARIABLES_ITERATOR var_begin, BDD_VARIABLES_ITERATOR var_end, BDD::bdd_mgr& bdd_mgr)
         {
             bdd_storage_.add_bdd(bdd_mgr, bdd, var_begin, var_end);
         }

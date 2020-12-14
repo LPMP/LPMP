@@ -12,7 +12,6 @@ using namespace LPMP;
 void test_problem_anisotropic(const std::string input_string, const double expected_lb)
 {
     const ILP_input input = ILP_parser::parse_string(input_string);
-    Cudd bdd_mgr;
     bdd_anisotropic_diffusion bdds;
     bdds.init(input); 
 
