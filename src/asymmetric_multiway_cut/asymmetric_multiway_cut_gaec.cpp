@@ -5,17 +5,33 @@
 #include "asymmetric_multiway_cut/asymmetric_multiway_cut_gaec.h"
 #include "dynamic_graph.hxx"
 #include "union_find.hxx"
+#include <iostream>
 
 namespace LPMP {
 
     asymmetric_multiway_cut_labeling asymmetric_multiway_cut_gaec(const asymmetric_multiway_cut_instance& instance)
     {
+        double min_cost = std::numeric_limits<double>::infinity();
+        double max_cost = -std::numeric_limits<double>::infinity();
+        for(const auto& e : instance.edge_costs.edges())
+        {
+            min_cost = std::min(min_cost, e.cost[0]);
+            max_cost = std::max(max_cost, e.cost[0]);
+
+        }
+        std::cout << "minimum cost in edges: " << min_cost << "\n";
+        std::cout << "maximum cost in edges: " << max_cost << "\n";
         const size_t nr_nodes = instance.nr_nodes();
         const size_t nr_edges = instance.nr_edges();
         const size_t nr_labels = instance.nr_labels();
         constexpr static size_t no_label = std::numeric_limits<size_t>::max();
 
         std::vector<double> label_costs(nr_nodes*nr_labels);
+        for(size_t i=0; i<nr_nodes; ++i)
+        {
+            for(size_t l=0; l<nr_labels; ++l)
+                label_costs[i*nr_labels + l] = instance.node_costs(i,l);
+        }
 
         union_find partition(nr_nodes);
 
@@ -62,44 +78,53 @@ namespace LPMP {
 
         auto compute_edge_cost = [&](const double mc_edge_cost, const size_t i, const size_t j) -> std::tuple<double,size_t> {
             // cost of join nodes, assign partition of joint minimum cost
-            
             const size_t i_c = partition.find(i);
             const size_t j_c = partition.find(j);
             double min_label_cost = std::numeric_limits<double>::infinity();
             size_t min_label = 0;
             for(size_t l=0; l<nr_labels; ++l)
             {
-                if(instance.node_costs(i,l) + instance.node_costs(j,l) <= min_label_cost)
+                if(label_costs[i_c*nr_labels + l] + label_costs[j_c*nr_labels + l] <= min_label_cost)
                 {
                     min_label_cost = label_costs[i_c*nr_labels + l] + label_costs[j_c*nr_labels + l];
                     min_label = l;
                 } 
             }
-            return {mc_edge_cost + min_label_cost - label_costs[i_c*nr_labels + node_labels[i_c]] - label_costs[j_c*nr_labels + node_labels[j_c]] , min_label};
-
+            const double sep_cost = mc_edge_cost + label_costs[i_c*nr_labels + node_labels[i_c]] + label_costs[j_c*nr_labels + node_labels[j_c]];
+            const double join_cost = min_label_cost;
+            return {join_cost - sep_cost, min_label};
         };
 
+        double min_join_cost = std::numeric_limits<double>::infinity();
+        double max_join_cost = -std::numeric_limits<double>::infinity();
         for(const auto& e : instance.edge_costs.edges())
         {
             const auto [join_cost, join_label] = compute_edge_cost(e.cost, e[0], e[1]);
+            min_join_cost = std::min(min_join_cost, join_cost);
+            max_join_cost = std::max(max_join_cost, join_cost);
             assert(partition.find(e[0]) == e[0]);
             assert(partition.find(e[1]) == e[1]);
-            if(join_cost >= 0.0)
+            if(join_cost <= 0.0)
                 Q.push(edge_type_q{e[0], e[1], join_cost, join_label, 0});
         }
+
+        std::cout << "min join cost initial = " << min_join_cost << "\n";
+        std::cout << "max join cost initial = " << max_join_cost << "\n";
+        std::cout << "size of Q = " << Q.size() << "\n";
 
         while(!Q.empty()) {
             const edge_type_q e_q = Q.top();
             Q.pop();
             const size_t i = e_q[0];
             const size_t j = e_q[1];
+            //std::cout << "join " << i << " and " << j << ", cost = " << e_q.cost << "\n";
 
             if(!g.edge_present(i,j))
                 continue;
             const auto& e = g.edge(i,j);
             if(e_q.stamp < e.stamp)
                 continue;
-            if(e.cost <= 0.0)
+            if(e_q.cost >= 0.0)
                 break;
 
             const size_t c_i = partition.find(i);
@@ -129,13 +154,13 @@ namespace LPMP {
                     pp.stamp++;
 
                     const auto [join_cost, join_label] = compute_edge_cost(pp.cost, stable_node, head);
-                    if(join_cost >= 0.0)
+                    if(join_cost <= 0.0)
                     {
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, pp.stamp});
                     }
                 } else {
                     const auto [join_cost, join_label] = compute_edge_cost(p.cost, stable_node, head);
-                    if(join_cost >= 0.0)
+                    if(join_cost <= 0.0)
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, 0});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
                 } 
