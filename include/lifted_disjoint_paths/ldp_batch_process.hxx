@@ -1,11 +1,11 @@
 #ifndef LDP_BATCH_PROCESS_HXX
 #define LDP_BATCH_PROCESS_HXX
 #include<stdlib.h>
-#include"ldp_vertex_groups.hxx"
+#include"lifted_disjoint_paths/ldp_vertex_groups.hxx"
 #include<map>
 #include"andres-graph/include/andres/graph/digraph.hxx"
 #include "fstream"
-
+#include <chrono>
 
 namespace LPMP {
 
@@ -50,7 +50,13 @@ public:
         return indexToDel;
     }
 
-    void createLocalVG(VertexGroups<>& localVG);
+    void createLocalVG(LPMP::VertexGroups<>& localVG);
+
+
+    const std::chrono::steady_clock::time_point& getContructorBegin()const {
+        return constructorBegin;
+    }
+
 private:
     size_t minValidVertex;
     size_t maxTimeForLabeled;
@@ -74,6 +80,7 @@ private:
     bool labelsDecoded;
     std::vector<std::array<size_t,2>> decodedLabels;
     size_t indexToDel;
+    std::chrono::steady_clock::time_point constructorBegin;
 
 };
 //maybe vertex labels as vector<arra<size_t,2>> globID->label

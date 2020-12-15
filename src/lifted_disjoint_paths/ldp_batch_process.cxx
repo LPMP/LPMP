@@ -3,6 +3,7 @@
 namespace LPMP {
 
 LdpBatchProcess::LdpBatchProcess(VertexGroups<>& shiftedGroups, std::vector<std::array<size_t,2>>& shiftedVertexLabels_, size_t maxLabelSoFar_, size_t maxTimeForLabeled_, size_t minTimeToUse, size_t maxTimeToUse){ //shifted vertex labels assume that vertex with zero index is minVertex in VG
+  constructorBegin=std::chrono::steady_clock::now();
     size_t unset=std::numeric_limits<size_t>::max();
     pvg=&shiftedGroups;
     if(minTimeToUse!=unset){
@@ -56,7 +57,7 @@ LdpBatchProcess::LdpBatchProcess(VertexGroups<>& shiftedGroups, std::vector<std:
 
 }
 
-void LdpBatchProcess::createLocalVG(VertexGroups<>& localVG){
+void LdpBatchProcess::createLocalVG(LPMP::VertexGroups<>& localVG){
     {
             std::unordered_map<size_t,std::vector<size_t>> groups;
             std::vector<size_t> vToGroup;

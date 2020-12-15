@@ -503,11 +503,12 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
 
 
      if(parameters.count("TIGHT_MIN_IMPROVEMENT")>0){
-         tighteningMinImprovement=std::stoul(parameters["TIGHT_MIN_IMPROVEMENT"]);
+         tighteningMinImprovement=std::stod(parameters["TIGHT_MIN_IMPROVEMENT"]);
      }
      else{
          tighteningMinImprovement=0.00001;
      }
+     assert(tighteningMinImprovement>=0);
      controlOutput<<"minimal improvement for tightening "<<tighteningMinImprovement<<std::endl;
 
      if(parameters.count("TIGHT_MAX_EDGE_USAGE")>0){
@@ -516,7 +517,7 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
      else{
          tighteningMaxEdgeUsage=4;
      }
-     controlOutput<<"maximal edge usage for tightening "<<tighteningMinImprovement<<std::endl;
+     controlOutput<<"maximal edge usage for tightening "<<tighteningMaxEdgeUsage<<std::endl;
 
     writeControlOutput();
 

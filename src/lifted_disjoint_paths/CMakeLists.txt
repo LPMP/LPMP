@@ -25,7 +25,7 @@ target_link_libraries(ldp_batch_process LPMP)
 
 add_executable(lifted_disjoint_paths_text_input  lifted_disjoint_paths_text_input.cpp)
 
-target_link_libraries(lifted_disjoint_paths_text_input ldp_instance ldp_cut_factor ldp_path_factor ldp_directed_graph LPMP pybind11::module)
+target_link_libraries(lifted_disjoint_paths_text_input ldp_instance ldp_cut_factor ldp_path_factor ldp_directed_graph ldp_batch_process LPMP pybind11::module)
 
 pybind11_add_module(ldpMessagePassingPy ldp_python.cxx)
 

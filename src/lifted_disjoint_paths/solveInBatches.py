@@ -28,8 +28,8 @@ paramsMap["USE_ADAPTIVE_THRESHOLDS"]="0"
 
 
 
-#pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
-pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
+pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
+#pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of the solver
 solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","2","-v","1"]
@@ -61,13 +61,16 @@ while not stop:
   batchProc=ldpMP.BatchProcess(timeFrames,oldLabels,maxUsedLabel,maxTimeForUsingLabels,minTime,maxTime)
   batchProc.init_from_file(pathToFiles+"problemDesc")
 
+
+  firstSolver=ldpMP.Solver(solverParameters)
   #You will use instead:
   #batchProc.init_edges_from_vectors(arrayWithEdgeVertices,arrayWithCosts) #first argument n x 2 array with edge vertices, second n x 1 array of costs
   #batchProc.init_vertices_from_vectors(arrayWithVertices,arrayWithCostsOfVertices) #Not necessary, run AFTER initializing edges! State only those vertices that should have non-zero costs
   #Vertices and edges out of range can be present, they are ignored
 
+
   firstInstance=ldpMP.LdpInstance(params,batchProc)
-  firstSolver=ldpMP.Solver(solverParameters)
+
   ldpMP.construct(firstSolver,firstInstance)
   firstSolver.solve()
   firstPaths=firstSolver.get_best_primal()

@@ -380,7 +380,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
             continue;
         }
         //double cost=std::get<0>(edgesToSort[i]);
-        assert(cost>0);
+        assert(cost>=minImprovement);
 
         //std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
        // std::cout<<"number of closed "<<nrClosedNodes<<std::endl;
