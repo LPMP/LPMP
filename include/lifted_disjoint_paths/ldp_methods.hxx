@@ -47,8 +47,10 @@ namespace LPMP {
 template<class T,class PAR>
     std::vector<std::unordered_set<size_t>> initReachableSet(T & graph,PAR& parameters,VertexGroups<size_t>* vg=0){
 
+
 //        levinkov::Timer tfw;
 //                        tfw.start();
+
 
         parameters.getControlOutput()<<"Run Floyd Warshall"<<std::endl;
                 const size_t n=graph.numberOfVertices();
@@ -149,8 +151,10 @@ template<class T,class PAR>
 template<class T,class PAR>
     std::vector<std::vector<bool>> initReachable(T & graph,PAR& parameters,VertexGroups<size_t>* vg=0){
 
+
 //        levinkov::Timer tfw;
 //                        tfw.start();
+
 
         parameters.getControlOutput()<<"Run Floyd Warshall"<<std::endl;
                 const size_t n=graph.numberOfVertices();
@@ -240,9 +244,11 @@ template<class T,class PAR>
 
                 }
 
-//                tfw.stop();
 
-//        parameters.getControlOutput()<<"fw finished in time "<<tfw.get_elapsed_seconds() << std::endl;
+                //tfw.stop();
+
+        //parameters.getControlOutput()<<"fw finished in time "<<tfw.get_elapsed_seconds() << std::endl;
+
                 return desc;
 
 }

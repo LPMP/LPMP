@@ -43,8 +43,8 @@ namespace LPMP {
         }
     }
 
-    void distribute_edges_by_endnodes(tf::Taskflow& taskflow, const dynamic_graph_thread_safe<edge_type>& g, const multicut_instance& instance, std::pair<tf::Task, tf::Task>& Q, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
-        Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+    tf::Task distribute_edges_by_endnodes(tf::Taskflow& taskflow, const dynamic_graph_thread_safe<edge_type>& g, const multicut_instance& instance, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
+        auto Q = taskflow.for_each_index(0,nr_threads,1, [&](const size_t thread_no) {
             const std::size_t nodes_batch_size = instance.no_nodes()/nr_threads + 1;
             const std::size_t first_node = thread_no*nodes_batch_size;
             const std::size_t last_node = std::min((thread_no+1)*nodes_batch_size, instance.no_nodes());
@@ -59,7 +59,8 @@ namespace LPMP {
                 }
             }
         });
-        prev.precede(Q.first);
+        prev.precede(Q);
+        return Q;
     }
 
 
@@ -70,7 +71,7 @@ namespace LPMP {
             degree[edge[1]]++;
         }
         partial_graph.pre_allocate(degree.begin(), degree.end());
-        auto [extract_begin, extract_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+        auto extract = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             const std::size_t nodes_batch_size = instance.no_nodes()/nr_threads + 1;
             for (auto& edge: instance.edges()){
                 int nth = (int)(edge[0]/nodes_batch_size);
@@ -85,32 +86,33 @@ namespace LPMP {
                 }
             }
         });
-        return extract_end;
+        return extract;
     }
 
 
-    void distribute_edges_round_robin(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, std::pair<tf::Task, tf::Task>& Q, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
+    tf::Task distribute_edges_round_robin(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
         if (SHUFFLE) std::random_shuffle(positive_edges.begin(), positive_edges.end());
-        Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+        auto Q = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t e = thread_no;
             while(e < positive_edges.size()) {
                 queues[thread_no].push(positive_edges[e]);
                 e += nr_threads;
             }
         });
-        prev.precede(Q.first);
+        prev.precede(Q);
+        return Q;
     }
 
-    void distribute_edges_in_chunks(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, std::pair<tf::Task, tf::Task>& Q, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
+    tf::Task distribute_edges_in_chunks(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
         if (SHUFFLE) std::random_shuffle(positive_edges.begin(), positive_edges.end());
-        Q = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+        auto Q = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t positive_edges_batch_size = positive_edges.size()/nr_threads + 1;
             const std::size_t first_edge = thread_no*positive_edges_batch_size;
             const std::size_t last_edge = std::min((thread_no+1)*positive_edges_batch_size, positive_edges.size());
             for(std::size_t e=first_edge; e<last_edge; ++e)
             queues[thread_no].push(positive_edges[e]);
         });
-        prev.precede(Q.first);
+        prev.precede(Q);
     }
 
     static std::vector<std::size_t> empty_partition_node = {};
@@ -275,7 +277,6 @@ namespace LPMP {
         std::vector<pq_t> queues(nr_threads+1, pq_t(pq_cmp));
         std::vector<edge_type_q> positive_edges;
         std::vector<std::vector<std::tuple<std::size_t, std::size_t, double>>> remaining_edges(nr_threads+1);
-        std::pair<tf::Task, tf::Task> Q;
         std::vector<std::atomic_flag> mask(instance.no_nodes());
         std::cout << "Number of nodes: " << instance.no_nodes() << std::endl;
 
@@ -292,23 +293,18 @@ namespace LPMP {
 
             if(option == "round_robin_not_sorted"){
                 E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
-                distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
+                prev = distribute_edges_round_robin(taskflow, positive_edges, E, queues, nr_threads);
             } else if (option == "endnodes"){
-                distribute_edges_by_endnodes(taskflow, g, instance, Q, G, queues, nr_threads);
-                prev = Q.second;
+                prev = distribute_edges_by_endnodes(taskflow, g, instance, G, queues, nr_threads);
             } else if (option == "chunk_not_sorted"){
                 E = extract_positive_edges(taskflow, positive_edges, instance, false, g, G);
-                distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
+                prev = distribute_edges_in_chunks(taskflow, positive_edges, E, queues, nr_threads);
             } else if (option == "round_robin_sorted"){
                 E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
-                distribute_edges_round_robin(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
+                prev = distribute_edges_round_robin(taskflow, positive_edges, E, queues, nr_threads);
             } else {    // (option == "chunk_sorted")
                 E = extract_positive_edges(taskflow, positive_edges, instance, true, g, G);
-                distribute_edges_in_chunks(taskflow, positive_edges, Q, E, queues, nr_threads);
-                prev = Q.second;
+                prev = distribute_edges_in_chunks(taskflow, positive_edges, E, queues, nr_threads);
             }
         } else { 
             E = distribute_edges_no_conflicts(taskflow, instance, queues, nr_threads, g, remaining_edges);
@@ -322,14 +318,14 @@ namespace LPMP {
         auto IE = taskflow.emplace(int_end);
         prev.precede(IE);
 
-        auto [GAEC_begin,GAEC_end] = taskflow.parallel_for(0,nr_threads,1, [&](const std::size_t thread_no) {
+        auto GAEC = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             //    std::cout << "Edges in queue " << thread_no << ": " << queues[thread_no].size() << std::endl;
             if (option == "non-blocking")
                 gaec_single<false>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(partition_to_node));
             else
                 gaec_single<true>(std::ref(g), std::ref(queues[thread_no]), std::ref(partition), std::ref(partition_to_node), std::ref(mask));
         });
-        prev.precede(GAEC_begin);
+        prev.precede(GAEC);
         executor.run(taskflow);
         executor.wait_for_all();
 
