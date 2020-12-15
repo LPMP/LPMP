@@ -176,6 +176,16 @@ public:
 
 	//ConfigDisjoint<>& operator=(const ConfigDisjoint<>&);
 
+
+    size_t getTightenMaxEdgeUsage() const{
+        return tighteningMaxEdgeUsage;
+    }
+
+    double getTightenMinImprovement() const{
+        return tighteningMinImprovement;
+    }
+
+
     bool isAllBaseZero()const {
         return allBaseToZero;
     }
@@ -183,6 +193,7 @@ public:
     bool isKeepRedundantLifted()const{
         return keepRedundantLifted;
     }
+
 
 private:
     LdpParameters<T>(const LdpParameters<T>&);
@@ -228,8 +239,14 @@ private:
 
      std::stringstream controlOutput;
 
+
+     double tighteningMinImprovement;
+     size_t tighteningMaxEdgeUsage;
+
+
      bool allBaseToZero;
      bool keepRedundantLifted;
+
 
 };
 
@@ -483,6 +500,24 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
         useAdaptiveThresholds=false;
     }
      controlOutput<<"adaptive thresholds "<<useAdaptiveThresholds<<std::endl;
+
+
+     if(parameters.count("TIGHT_MIN_IMPROVEMENT")>0){
+         tighteningMinImprovement=std::stod(parameters["TIGHT_MIN_IMPROVEMENT"]);
+     }
+     else{
+         tighteningMinImprovement=0.00001;
+     }
+     assert(tighteningMinImprovement>=0);
+     controlOutput<<"minimal improvement for tightening "<<tighteningMinImprovement<<std::endl;
+
+     if(parameters.count("TIGHT_MAX_EDGE_USAGE")>0){
+         tighteningMaxEdgeUsage=std::stoi(parameters["TIGHT_MAX_EDGE_USAGE"]);
+     }
+     else{
+         tighteningMaxEdgeUsage=4;
+     }
+     controlOutput<<"maximal edge usage for tightening "<<tighteningMaxEdgeUsage<<std::endl;
 
     writeControlOutput();
 

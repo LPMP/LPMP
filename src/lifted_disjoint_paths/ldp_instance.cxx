@@ -12,6 +12,8 @@ namespace lifted_disjoint_paths {
 LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>& cs):
     parameters(configParameters)
 {
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
 
     size_t minT=1;
     size_t maxT=cs.maxTime+1;
@@ -42,11 +44,22 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
 
     init();
 
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    const std::chrono::steady_clock::time_point& csBegin=cs.getContructorBegin();
+    parameters.getControlOutput()<< "Time of instance constructor = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << " seconds" << std::endl;
+    parameters.getControlOutput()<< "Time of instance constructor and complete structure = " << std::chrono::duration_cast<std::chrono::seconds> (end - csBegin).count() << " seconds" << std::endl;
+    parameters.writeControlOutput();
+
+
+
+
 }
 
 
 LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
     parameters(configParameters){
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     //std::cout<<"instance constructor"<<std::endl;
     //graph_=BP.getOutputGraph();
     edgeScore=BP.getEdgeScore();
@@ -87,6 +100,14 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
 
 
     init();
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+   // if(diagnostics()) std::cout << "Time of instance constructor = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << " seconds" << std::endl;
+     parameters.getControlOutput() << "Time of instance constructor = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << " seconds" << std::endl;
+    const std::chrono::steady_clock::time_point& bpBegin=BP.getContructorBegin();
+    parameters.getControlOutput() << "Time of instance constructor and batch process = " << std::chrono::duration_cast<std::chrono::seconds> (end - bpBegin).count() << " seconds" << std::endl;
+    parameters.writeControlOutput();
+
 
 }
 
@@ -178,6 +199,8 @@ void LdpInstance::initAdaptiveThresholds(const std::vector<double>* baseCosts,co
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS):parameters(configParameters){
 LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,const  py::array_t<double>& verticesCosts,VertexGroups<>& pvg):parameters(configParameters){
 //LdpInstance::LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& baseEdges,const std::vector<std::array<size_t,2>>& liftedEdges,const  std::vector<double>& baseCosts,const  std::vector<double>& liftedCosts,disjointPaths::VertexGroups<>& pvg):parameters(configParameters){
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
     CompleteStructure<> csBase(pvg);
 
     vertexGroups=pvg;
@@ -250,11 +273,14 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
     minV=0;
     maxV=maxVertex;
 
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    parameters.getControlOutput() << "Time of instance constructor = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << " seconds" << std::endl;
+    parameters.writeControlOutput();
 
 }
 
 void LdpInstance::init(){
-
 
 
     if(debug()) std::cout<<"done"<<std::endl;

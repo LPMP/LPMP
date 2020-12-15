@@ -41,6 +41,8 @@
 #include "lifted_disjoint_paths/ldp_complete_structure.hxx"
 #include "lifted_disjoint_paths/ldp_vertex_groups.hxx"
 #include "ldp_batch_process.hxx"
+#include <chrono>
+
 
 namespace py = pybind11;
 namespace LPMP{
@@ -92,6 +94,10 @@ public:
 	const size_t getGapLifted() const {
 		return parameters.getMaxTimeLifted();
 	}
+
+    const size_t getGapBase() const {
+        return parameters.getMaxTimeBase();
+    }
 
 
     const std::vector<std::unordered_set<size_t>>* getPReachable(){
@@ -188,7 +194,7 @@ public:
 
 
     LdpParameters<>& parameters;
-    LPMP::VertexGroups<size_t> vertexGroups;
+    LPMP::VertexGroups<> vertexGroups;
 	size_t minV=0;
 	size_t maxV=0;
 

@@ -25,21 +25,23 @@ paramsMap["MAX_TIMEGAP_BASE"]="60"
 paramsMap["MAX_TIMEGAP_LIFTED"]="60"
 paramsMap["MAX_TIMEGAP_COMPLETE"]="60"
 paramsMap["USE_ADAPTIVE_THRESHOLDS"]="1"
-
+paramsMap["TIGHT_MIN_IMPROVEMENT"]="0.00001"
+paramsMap["TIGHT_MAX_EDGE_USAGE"]="4"
 
 
 pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
 #pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
 
 #Command line parameters of LPMP
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","5","-v","0"]
+#solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","5","-v","0"]
+#Command line parameters of the solver with tightening enabled
+solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsPercentage","0.02","--tightenInterval","10","--tightenIteration","10","-v","1"]
+
 
 
 #Construct the solver.
 solver=ldpMP.Solver(solverParameters)
 
-#Command line parameters of the solver with tightening enabled
-#solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","15","--tighten","--tightenConstraintsMax","10","--tightenInterval","4","--tightenIteration","8","-v","1"]
 
 #Initializes structure for holding solver parameters. It expects a string to string map (dictionary) as an input. ParametersParser.get_parsed_params() can be alternatively used for providing such map.
 params=ldpMP.LdpParams(paramsMap)

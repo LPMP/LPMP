@@ -28,6 +28,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <pybind11/numpy.h>
+#include<chrono>
 
 
 namespace py = pybind11;
@@ -39,6 +40,7 @@ public:
     template<class PAR>
     CompleteStructure(PAR & configParameters)
     {
+        constructorBegin=std::chrono::steady_clock::now();
 
         pVertexGroups=new VertexGroups<>(configParameters);
         VertexGroups<>& vg=*pVertexGroups;
@@ -59,6 +61,7 @@ public:
     CompleteStructure(VertexGroups<>& vertexGroups):
         pVertexGroups(&vertexGroups)
 {
+        constructorBegin=std::chrono::steady_clock::now();
         VertexGroups<>& vg=*pVertexGroups;
 
         maxTime=vg.getMaxTime();
@@ -79,16 +82,28 @@ public:
 
     template<class PAR>
     void addEdgesFromFile(const std::string& fileName,PAR& params);
+
     void addEdgesFromMatrix(size_t time1,size_t time2,const py::array_t<double> inputMatrix);
+
     template<class PAR>
     void addEdgesFromVectors(const py::array_t<size_t>& edges,const py::array_t<double>& costs,PAR& params);
+
     void addEdgesFromVectorsAll(const py::array_t<size_t>& edges,const py::array_t<double>& costs);
+
     void setVerticesCostsVector(const std::vector<double>& costs);
-     void setVerticesCosts(const py::array_t<double>& costs);
+
+    void setVerticesCosts(const py::array_t<double>& costs);
+
     std::vector<bool> getGraphEdgeLabels(const std::vector<std::vector<size_t>>& paths) const;
+
     std::vector<std::array<size_t,2>> getEdgeList() const;
+
     const VertexGroups<>& getVertexGroups(){
         return *pVertexGroups;
+    }
+
+    const std::chrono::steady_clock::time_point& getContructorBegin()const {
+        return constructorBegin;
     }
 
 
@@ -102,6 +117,7 @@ public:
 private:
     bool deleteVG;
     VertexGroups<>* pVertexGroups;
+    std::chrono::steady_clock::time_point constructorBegin;
 
 };
 
