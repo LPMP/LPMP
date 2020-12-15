@@ -1140,8 +1140,15 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
-   size_t numberOfCutsToSeparate=nr_constraints_to_add/2;
-   size_t numberOfPathsToSeparate=nr_constraints_to_add-numberOfCutsToSeparate;
+    double lbBefore=0;
+    double lbAfter=0;
+    if(debug()) lbBefore=controlLowerBound();
+    LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR> mmExtractor(cut_factors_,path_factors_,pInstance);
+    mmExtractor.initMinMarginals(true);
+    mmExtractor.sendMessagesToSncFactors(single_node_cut_factors_);
+    if(debug()) lbAfter=controlLowerBound();
+    assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
+
    minMarginalsExtractor.initMinMarginalsLiftedFirst();
 
    size_t maxEdgeUsage=pInstance->parameters.getTightenMaxEdgeUsage();
@@ -1162,7 +1169,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
    size_t counterCuts=0;
    size_t counterPaths=0;
    LdpCutSeparator<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> cutSeparator(pInstance,minMarginalsExtractor);
-   cutSeparator.separateCutInequalities(numberOfCutsToSeparate,minImprovement);
+   cutSeparator.separateCutInequalities(nr_constraints_to_add,minImprovement);
    std::priority_queue<std::pair<double,ldp_cut_factor*>>& queueWithCuts=cutSeparator.getPriorityQueue();
 
 
