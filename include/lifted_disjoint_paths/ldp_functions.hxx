@@ -72,6 +72,93 @@ template<class T=char>
     return strings;
 }
 
+//template<class T>
+//inline bool edgeCompare(const std::tuple<T,size_t,size_t,bool>& t1,const std::tuple<T,size_t,size_t,bool>& t2) {
+//     if(std::get<0>(t1)==std::get<0>(t2)){
+//         if(std::get<1>(t1)==std::get<1>(t2)){
+//             if(std::get<2>(t1)==std::get<2>(t2)){
+//                 if(std::get<3>(t1)==std::get<3>(t2)){
+//                     std::cout<<std::get<0>(t1)<<" ";
+//                     std::cout<<std::get<1>(t1)<<" ";
+//                     std::cout<<std::get<2>(t1)<<" ";
+//                     std::cout<<std::get<3>(t1)<<" ";
+//                     std::cout<<std::endl;
+//                     throw std::runtime_error("duplicated edge in edge list");
+//                 }
+//                 else {
+//                     return std::get<3>(t1)>std::get<3>(t2); //lifted first
+//                 }
+
+//             }
+//             else{
+//                 return std::get<2>(t1)<std::get<2>(t2);
+//             }
+
+//         }
+//         else{
+//             return std::get<1>(t1)<std::get<1>(t2);
+//         }
+//     }
+//     else{
+//         return std::get<0>(t1)<std::get<0>(t2);
+//     }
+// }
+
+
+template<class T>
+inline bool edgeCompare(const std::tuple<T,size_t,size_t,bool>& t1,const std::tuple<T,size_t,size_t,bool>& t2) {
+     if(abs(std::get<0>(t1)-std::get<0>(t2))<eps){
+         if(std::get<1>(t1)==std::get<1>(t2)){
+             if(std::get<2>(t1)==std::get<2>(t2)){
+                 if(std::get<3>(t1)==std::get<3>(t2)){
+                     std::cout<<std::get<0>(t1)<<" ";
+                     std::cout<<std::get<1>(t1)<<" ";
+                     std::cout<<std::get<2>(t1)<<" ";
+                     std::cout<<std::get<3>(t1)<<" ";
+                     std::cout<<std::endl;
+                     throw std::runtime_error("duplicated edge in edge list");
+                 }
+                 else {
+                     return std::get<3>(t1)>std::get<3>(t2); //lifted first
+                 }
+
+             }
+             else{
+                 return std::get<2>(t1)<std::get<2>(t2);
+             }
+
+         }
+         else{
+             return std::get<1>(t1)<std::get<1>(t2);
+         }
+     }
+     else{
+         return std::get<0>(t1)<std::get<0>(t2);
+     }
+ }
+
+template<class T>
+inline bool baseEdgeCompare(const std::tuple<T,size_t,size_t>& t1,const std::tuple<T,size_t,size_t>& t2) {
+    //if(std::get<0>(t1)==std::get<0>(t2)){
+     if(abs(std::get<0>(t1)-std::get<0>(t2))<eps){
+        if(std::get<1>(t1)==std::get<1>(t2)){
+            if(std::get<2>(t1)==std::get<2>(t2)){
+                throw std::runtime_error("duplicated edge in list");
+            }
+            else{
+                return std::get<2>(t1)<std::get<2>(t2);
+            }
+
+        }
+        else{
+            return std::get<1>(t1)<std::get<1>(t2);
+        }
+    }
+    else{
+        return std::get<0>(t1)<std::get<0>(t2);
+    }
+ }
+
 
 
 //template<class T = size_t>

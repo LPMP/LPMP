@@ -35,6 +35,7 @@ pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput
 solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","5","-v","0"]
 
 
+
 #Construct the solver.
 solver=ldpMP.Solver(solverParameters)
 

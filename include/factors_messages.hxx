@@ -550,7 +550,7 @@ public:
    using RightFactorType = typename RightFactorContainer::FactorType;
 
    template<typename ...ARGS>
-   MessageContainer(LeftFactorContainer* const l, RightFactorContainer* const r, ARGS... args) 
+   MessageContainer(LeftFactorContainer* const l, RightFactorContainer* const r, ARGS&&... args) 
    : msg_op_(std::forward<ARGS>(args)...),
    leftFactor_(l),
    rightFactor_(r)
@@ -1379,7 +1379,7 @@ public:
     static constexpr std::size_t capacity() { return N; }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR, typename ...ARGS>
-    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS... args) {
+    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS&&... args) {
         const std::size_t i = occupied();
         assert(i<N);
         auto* ptr = &storage_[i*sizeof(MESSAGE_CONTAINER_TYPE)];
@@ -1487,7 +1487,7 @@ public:
     }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR, typename ...ARGS>
-    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS... args) 
+    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS&&... args) 
     {
         auto* cur_chunk = last_chunk();
 #ifndef NDEBUG
@@ -1608,13 +1608,13 @@ public:
     }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR, typename ...ARGS>
-    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS... args) 
+    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS&&... args) 
     {
         assert(size() < this->capacity());
 #ifndef NDEBUG
         const auto n = size();
 #endif
-        new(end_) MESSAGE_CONTAINER_TYPE(l, r, args...); // placement new
+        new(end_) MESSAGE_CONTAINER_TYPE(l, r, std::forward<ARGS>(args)...); // placement new
         ++end_;
         assert(n+1 == size());
         return end_;
@@ -1676,7 +1676,7 @@ public:
     }
 
     template<typename LEFT_FACTOR, typename RIGHT_FACTOR, typename ...ARGS>
-    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS... args)
+    MESSAGE_CONTAINER_TYPE* push_back(LEFT_FACTOR* l, RIGHT_FACTOR* r, ARGS&&... args)
     {
         return nullptr;
     }
@@ -1859,7 +1859,7 @@ public:
    } 
 
    template<typename MESSAGE_CONTAINER_TYPE, Chirality CHIRALITY, typename ADJACENT_FACTOR, typename... ARGS>
-   auto add_message(ADJACENT_FACTOR* a_f, ARGS... args)
+   auto add_message(ADJACENT_FACTOR* a_f, ARGS&&... args)
    {
        if constexpr(CHIRALITY == Chirality::left) {
            constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<MessageDispatcher<MESSAGE_CONTAINER_TYPE,LeftMessageFuncGetter>>();

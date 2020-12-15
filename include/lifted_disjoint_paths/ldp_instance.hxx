@@ -93,6 +93,10 @@ public:
 		return parameters.getMaxTimeLifted();
 	}
 
+    const size_t getGapBase() const {
+        return parameters.getMaxTimeBase();
+    }
+
 
     const std::vector<std::unordered_set<size_t>>* getPReachable(){
         return &reachable;
