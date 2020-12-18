@@ -772,7 +772,10 @@ void LdpInstance::sparsifyBaseGraphNew(andres::graph::Digraph<> &inputGraph){
      parameters.getControlOutput()<<"Left "<<newBaseCosts.size()<<" base edges"<<std::endl;
      parameters.writeControlOutput();
 
-     myGraph=LdpDirectedGraph(edgesForMyGraph,newBaseCosts);
+     EdgeVector ev(edgesForMyGraph);
+     InfoVector iv(newBaseCosts);
+     //myGraph=LdpDirectedGraph(edgesForMyGraph,newBaseCosts);
+     myGraph=LdpDirectedGraph(ev,iv);
 
  }
 

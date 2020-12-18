@@ -6,6 +6,7 @@
 #include <stdexcept>
 //#include "disjoint-paths/disjointPathsMethods.hxx"
 #include "ldp_methods.hxx"
+#include "ldp_functions.hxx"
 #include <vector>
 #include <cmath>
 #include <iostream>
