@@ -60,6 +60,18 @@ py::array_t<char> get_label_mask(const LPMP::asymmetric_multiway_cut_instance& i
     return py::array({instance.nr_nodes(), instance.nr_labels()}, label_mask); 
 } 
 
+py::array_t<int> get_cc_ids_mask(const LPMP::asymmetric_multiway_cut_instance& instance, const LPMP::asymmetric_multiway_cut_labeling& labeling)
+{
+    int* cc_mask = new int[instance.nr_nodes()];
+    assert(instance.nr_nodes() == labeling.node_connected_components_ids.size());
+    for(size_t i=0; i<instance.nr_nodes(); ++i)
+    {
+        cc_mask[i] = labeling.node_connected_components_ids[i];
+    }
+
+    return py::array({instance.nr_nodes()}, cc_mask); 
+} 
+
 
 PYBIND11_MODULE(asymmetric_multiway_cut_py, m) {
     m.doc() = "python binding for LPMP asymmetric multiway cut";
@@ -76,9 +88,10 @@ PYBIND11_MODULE(asymmetric_multiway_cut_py, m) {
                     }))
         .def("evaluate", &LPMP::asymmetric_multiway_cut_instance::evaluate)
         .def("result_mask", [](const LPMP::asymmetric_multiway_cut_instance& instance, const LPMP::asymmetric_multiway_cut_labeling& labeling) {
-                return std::make_pair(
+                return std::make_tuple(
                         get_edge_mask(instance, labeling),
-                        get_label_mask(instance, labeling)
+                        get_label_mask(instance, labeling),
+                        get_cc_ids_mask(instance, labeling)
                         ); 
                 });
 

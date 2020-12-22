@@ -29,6 +29,7 @@ namespace LPMP {
     class asymmetric_multiway_cut_labeling {
         public:
             std::vector<size_t> node_labels;
+            std::vector<size_t> node_connected_components_ids;
             multicut_edge_labeling edge_labels; 
     };
 
