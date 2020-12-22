@@ -35,7 +35,7 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
 
      py::class_<LPMP::CompleteStructure<>>(m, "GraphStructure")
              .def(py::init<LPMP::VertexGroups<> &>())
-             .def("add_edges_from_array", &LPMP::CompleteStructure<>::addEdgesFromMatrix, "Initializes edges of the graph between two time frames from a matrix.")
+            // .def("add_edges_from_array", &LPMP::CompleteStructure<>::addEdgesFromMatrix, "Initializes edges of the graph between two time frames from a matrix.")
              .def("add_edges_from_file", &LPMP::CompleteStructure<>::addEdgesFromFile<LPMP::lifted_disjoint_paths::LdpParameters<>>, "Initializes all edges of the graph from a file.")
              .def("add_edges_from_vectors", &LPMP::CompleteStructure<>::addEdgesFromVectors<LPMP::lifted_disjoint_paths::LdpParameters<>>, "Initializes edges of the graph from an Nx2 array of size_t with edge vertices and an Nx1 array of doubles with costs. Restrictions on maximal vertex and maximal time gap from parameters apply.")
              .def("add_edges_from_vectors_all", &LPMP::CompleteStructure<>::addEdgesFromVectorsAll, "Initializes edges of the graph from an Nx2 array of size_t with edge vertices and an Nx1 array of doubles with costs. All edges added. No restriction on maximal timegap. ")

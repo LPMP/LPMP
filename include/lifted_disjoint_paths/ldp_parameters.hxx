@@ -149,7 +149,7 @@ public:
 
 
 	size_t getMaxTimeGapComplete() const {
-		return maxTimeGapComplete;
+        return maxTimeGapComplete;
 	}
 
 
@@ -485,12 +485,15 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
 
 
 
+    maxTimeGapComplete=0;
     if(parameters.count("MAX_TIMEGAP_COMPLETE")>0){
         maxTimeGapComplete=std::stoul(parameters["MAX_TIMEGAP_COMPLETE"]);
     }
-    else{
-        maxTimeGapComplete=maxTimeFrame;
-    }
+    maxTimeGapComplete=std::max(maxTimeGapComplete,maxTimeLifted);
+    maxTimeGapComplete=std::max(maxTimeGapComplete,maxTimeBase);
+//    else{
+//        maxTimeGapComplete=maxTimeFrame;
+//    }
     controlOutput<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
 
     if(parameters.count("USE_ADAPTIVE_THRESHOLDS")){

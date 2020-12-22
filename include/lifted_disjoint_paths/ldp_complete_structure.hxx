@@ -30,6 +30,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/numpy.h>
 #include<chrono>
+#include"ldp_directed_graph.hxx"
 
 
 namespace py = pybind11;
@@ -112,6 +113,7 @@ public:
         std::vector<double> completeScore;
         std::vector<double> verticesScore;
 
+        LdpDirectedGraph myCompleteGraph;
         size_t maxTime;
 
 
@@ -175,6 +177,8 @@ inline void CompleteStructure<T>::addEdgesFromVectorsAll(const py::array_t<size_
         completeScore.push_back(edgeCost);
 
     }
+
+    //myCompleteGraph(edgeVector,costVector);
 }
 
 
@@ -220,41 +224,44 @@ inline void CompleteStructure<T>::addEdgesFromVectors(const py::array_t<size_t>&
             completeScore.push_back(edgeCost);
         }
     }
+
+    //myCompleteGraph=LdpDirectedGraph<pybind11::detail::unchecked_reference<long unsigned int, 2>,pybind11::detail::unchecked_reference<double, 1>>(edgeVector,costVector);
+    myCompleteGraph=LdpDirectedGraph(edgeVector,costVector);
 }
 
 
 
 
-template<class T>
-inline void CompleteStructure<T>::addEdgesFromMatrix(size_t time1,size_t time2,const py::array_t<double> inputMatrix){
+//template<class T>
+//inline void CompleteStructure<T>::addEdgesFromMatrix(size_t time1,size_t time2,const py::array_t<double> inputMatrix){
 
-    VertexGroups<>& vg=*pVertexGroups;
-    const auto matrix=inputMatrix.unchecked<2>();
-    const std::size_t dim1=matrix.shape(0);
-    const std::size_t dim2=matrix.shape(1);
+//    VertexGroups<>& vg=*pVertexGroups;
+//    const auto matrix=inputMatrix.unchecked<2>();
+//    const std::size_t dim1=matrix.shape(0);
+//    const std::size_t dim2=matrix.shape(1);
 
-    size_t transformIndex1=vg.getGroupVertices(time1)[0];
-    size_t numberOfVertices1=vg.getGroupVertices(time1).size();
-    size_t transformIndex2=vg.getGroupVertices(time2)[0];
-    size_t numberOfVertices2=vg.getGroupVertices(time2).size();
+//    size_t transformIndex1=vg.getGroupVertices(time1)[0];
+//    size_t numberOfVertices1=vg.getGroupVertices(time1).size();
+//    size_t transformIndex2=vg.getGroupVertices(time2)[0];
+//    size_t numberOfVertices2=vg.getGroupVertices(time2).size();
 
-    if(dim1!=numberOfVertices1||dim2!=numberOfVertices2){
-        std::string message="Dimension mismatch, expected dimensions: "+std::to_string(numberOfVertices1)+", "+std::to_string(numberOfVertices2)+", got: "+std::to_string(dim1)+", "+std::to_string(dim2);
-        throw std::invalid_argument(message);
-    }
-    for(std::size_t i=0; i<dim1; ++i) {
-        size_t vertex1=i+transformIndex1;
-        for(std::size_t j=0; j<dim2; ++j) {
-            double score=matrix(i,j);
-            if(!isinf(score)){
-                size_t vertex2=j+transformIndex2;
-                completeGraph.insertEdge(vertex1,vertex2);
-                completeScore.push_back(score);
-            }
-        }
-    }
+//    if(dim1!=numberOfVertices1||dim2!=numberOfVertices2){
+//        std::string message="Dimension mismatch, expected dimensions: "+std::to_string(numberOfVertices1)+", "+std::to_string(numberOfVertices2)+", got: "+std::to_string(dim1)+", "+std::to_string(dim2);
+//        throw std::invalid_argument(message);
+//    }
+//    for(std::size_t i=0; i<dim1; ++i) {
+//        size_t vertex1=i+transformIndex1;
+//        for(std::size_t j=0; j<dim2; ++j) {
+//            double score=matrix(i,j);
+//            if(!isinf(score)){
+//                size_t vertex2=j+transformIndex2;
+//                completeGraph.insertEdge(vertex1,vertex2);
+//                completeScore.push_back(score);
+//            }
+//        }
+//    }
 
-}
+//}
 
 
 
@@ -297,6 +304,8 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
         params.getControlOutput()<<"Reading base edges from file. "<<std::endl;
         params.writeControlOutput();
         size_t maxLabel=0;
+
+        std::vector<std::array<size_t,2>> listOfEdges;
         while (std::getline(data, line) && !line.empty()) {
 
 
@@ -319,6 +328,7 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
                 double score = std::stod(strings[2]);
                 completeGraph.insertEdge(v,w);
                 completeScore.push_back(score);
+                listOfEdges.push_back({v,w});
             }
 
         }
@@ -327,6 +337,12 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
         //objValue+=maxLabel*parameters.getInputCost()+maxLabel*parameters.getOutputCost();
 
         data.close();
+
+        EdgeVector ev(listOfEdges);
+        InfoVector iv(completeScore);
+        std::cout<<"before my complete graph"<<std::endl;
+        myCompleteGraph=LdpDirectedGraph(ev,iv);
+        std::cout<<"after my complete graph "<<myCompleteGraph.getNumberOfVertices()<<std::endl;
     }
     catch (std::system_error& er) {
         std::clog << er.what() << " (" << er.code() << ")" << std::endl;

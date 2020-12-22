@@ -6,6 +6,8 @@
 #include"andres-graph/include/andres/graph/digraph.hxx"
 #include "fstream"
 #include <chrono>
+#include "ldp_functions.hxx"
+#include "ldp_directed_graph.hxx"
 
 namespace LPMP {
 
@@ -57,6 +59,10 @@ public:
         return constructorBegin;
     }
 
+    const LdpDirectedGraph& getMyCompleteGraph()const{
+        return myOutputGraph;
+    }
+
 private:
     size_t minValidVertex;
     size_t maxTimeForLabeled;
@@ -73,6 +79,7 @@ private:
     size_t numberOfUsedLabels;
     std::vector<size_t> localIndexToGlobalLabel;
     andres::graph::Digraph<> outputGraph;
+    LdpDirectedGraph myOutputGraph;
     std::vector<double> outputEdgeCosts;
     std::vector<double> outputVerticesScore;
     size_t numberOfOutputVertices;

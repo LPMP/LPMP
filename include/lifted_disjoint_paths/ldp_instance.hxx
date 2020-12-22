@@ -74,22 +74,22 @@ public:
 	}
 
 
-	const andres::graph::Digraph<>& getGraph() const  {
-		return graph_;
-	}
+//    const andres::graph::Digraph<>& getGraph() const  {
+//        return graph_;
+//    }
 
-    void setGraph(const andres::graph::Digraph<>& newGraph){
-        graph_=newGraph;
-    }
+//    void setGraph(const andres::graph::Digraph<>& newGraph){
+//        graph_=newGraph;
+//    }
 
 
-	const andres::graph::Digraph<>& getGraphLifted() const  {
-		return graphLifted_;
-	}
+//    const andres::graph::Digraph<>& getGraphLifted() const  {
+//        return graphLifted_;
+//    }
 
-    void setGraphLifted(const andres::graph::Digraph<>& newGraphLifted){
-        graphLifted_=newGraphLifted;
-    }
+//    void setGraphLifted(const andres::graph::Digraph<>& newGraphLifted){
+//        graphLifted_=newGraphLifted;
+//    }
 
 	const size_t getGapLifted() const {
 		return parameters.getMaxTimeLifted();
@@ -112,31 +112,31 @@ public:
 		return t_;
 	}
 
-	double getEdgeScore(size_t e) const {
-		return edgeScore[e];
-	}
+//    double getEdgeScore(size_t e) const {
+//        return edgeScore[e];
+//    }
 
-	double getEdgeScore(size_t v0,size_t v1) const {
-		auto findEdge=graph_.findEdge(v0,v1);
-		assert(findEdge.first);
-		return edgeScore[findEdge.second];
-	}
+//    double getEdgeScore(size_t v0,size_t v1) const {
+//        auto findEdge=graph_.findEdge(v0,v1);
+//        assert(findEdge.first);
+//        return edgeScore[findEdge.second];
+//    }
 
-	const std::vector<double>& getEdgesScore() {
-		return edgeScore;
-	}
+//    const std::vector<double>& getEdgesScore() {
+//        return edgeScore;
+//    }
 
-    void setEdgesScore(const std::vector<double>& newEdgesScore){
-        edgeScore=newEdgesScore;
-    }
+//    void setEdgesScore(const std::vector<double>& newEdgesScore){
+//        edgeScore=newEdgesScore;
+//    }
 
-	const std::vector<double>& getLiftedEdgesScore() {
-			return liftedEdgeScore;
-	}
+//    const std::vector<double>& getLiftedEdgesScore() {
+//            return liftedEdgeScore;
+//    }
 
-    void setLiftedEdgesScore(const std::vector<double>& newLiftedScore){
-        liftedEdgeScore=newLiftedScore;
-    }
+//    void setLiftedEdgesScore(const std::vector<double>& newLiftedScore){
+//        liftedEdgeScore=newLiftedScore;
+//    }
 
 
 
@@ -144,15 +144,15 @@ public:
 		return vertexScore;
 	}
 
-	double getLiftedEdgeScore(size_t e) const {
-		return liftedEdgeScore[e];
-	}
+//    double getLiftedEdgeScore(size_t e) const {
+//        return liftedEdgeScore[e];
+//    }
 
-	double getLiftedEdgeScore(size_t v0,size_t v1) const {
-		auto findEdge=graphLifted_.findEdge(v0,v1);
-		assert(findEdge.first);
-		return liftedEdgeScore[findEdge.second];
-	}
+//    double getLiftedEdgeScore(size_t v0,size_t v1) const {
+//        auto findEdge=graphLifted_.findEdge(v0,v1);
+//        assert(findEdge.first);
+//        return liftedEdgeScore[findEdge.second];
+//    }
 
 	double getVertexScore(size_t v) const {
 		return vertexScore[v];
@@ -191,6 +191,8 @@ public:
 
     bool isStrongBase(size_t v,size_t w) const;
 
+    std::vector<std::unordered_set<size_t>> initReachableLdp(const LdpDirectedGraph &graph, LdpParameters<> &parameters, const VertexGroups<size_t> *vg=nullptr);
+
 
 
     LdpParameters<>& parameters;
@@ -224,22 +226,27 @@ private:
 
     //LdpInstance(const LdpInstance& ldpI);
     void initAdaptiveThresholds(const std::vector<double>* baseCosts,const std::vector<double>* liftedCosts);
+    void initAdaptiveThresholds(const LdpDirectedGraph *pBaseGraph, const LdpDirectedGraph *pLiftedGraph);
     void init();
     void sparsifyBaseGraph();
     void sparsifyBaseGraphNew(andres::graph::Digraph<>& inputGraph);
-    void sparsifyLiftedGraph();
+    void sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph,bool zeroCost=false);
+
+    void sparsifyBaseGraphNew();
+    void sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGraph);
+
 
 	size_t s_;
 	size_t t_;
 
 	std::vector<double> vertexScore;
-	std::vector<double> edgeScore;
-	std::vector<double> liftedEdgeScore;
+    //std::vector<double> edgeScore;
+    //std::vector<double> liftedEdgeScore;
 	//std::vector<std::vector<bool>> desc;
 	std::vector<std::unordered_set<size_t>> reachable;
 
-	andres::graph::Digraph<> graph_;
-    andres::graph::Digraph<> graphLifted_;
+    //andres::graph::Digraph<> graph_;
+    //andres::graph::Digraph<> graphLifted_;
 
     LdpDirectedGraph myGraph;
     LdpDirectedGraph myGraphLifted;
@@ -260,7 +267,7 @@ private:
 	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
     void readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs);
    // void sparsifyBaseGraph();
-   // void sparsifyLiftedGraph();
+    void sparsifyLiftedGraph();
     void initLiftedStructure();
 
     std::vector<ShiftedVector<char>> liftedStructure;

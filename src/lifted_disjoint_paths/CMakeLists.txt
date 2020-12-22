@@ -17,7 +17,7 @@ target_link_libraries(ldp_path_factor LPMP pybind11::module)
 
 
 add_library(ldp_batch_process ldp_batch_process.cxx)
-target_link_libraries(ldp_batch_process LPMP)
+target_link_libraries(ldp_batch_process LPMP pybind11::module)
  
 
 #add_library(lifted_disjoint_paths_input lifted_disjoint_paths_input.cpp)

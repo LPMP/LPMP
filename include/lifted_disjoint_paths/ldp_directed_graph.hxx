@@ -3,6 +3,10 @@
 
 #include "two_dimensional_variable_array.hxx"
 #include "andres/graph/digraph.hxx"
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/operators.h>
+#include <pybind11/numpy.h>
 
 namespace LPMP {
 
@@ -22,6 +26,10 @@ public:
     template<class EDGES, class COSTS>
     LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts);
 
+    LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inputEdgeCost,double outputEdgeCost);
+
+    template<class EDGES, class COSTS>
+    void initFromEdgesAndCosts(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost);
 
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
@@ -94,18 +102,35 @@ public:
         return numberOfVertices;
     }
 
+    const size_t & getNumberOfEdges()const{
+        return numberOfEdges;
+    }
+
     size_t getNumberOfEdgesFromVertex(const size_t& i)const{
         assert(i<numberOfVertices);
         return forwardEdges[i].size();
     }
 
+    size_t getNumberOfEdgesToVertex(const size_t& i)const{
+        assert(i<numberOfVertices);
+        return backwardEdges[i].size();
+    }
 
+
+    const two_dim_variable_array<std::pair<size_t,double>>& getForwardEdges()const{
+        return forwardEdges;
+    }
+
+    const two_dim_variable_array<std::pair<size_t,double>>& getBackwardEdges()const{
+        return backwardEdges;
+    }
 
 
 private:
     two_dim_variable_array<std::pair<size_t,double>> forwardEdges;
     two_dim_variable_array<std::pair<size_t,double>> backwardEdges;
     size_t numberOfVertices;
+    size_t numberOfEdges;
     //two_dim_variable_array<double> forwardCost;
     //two_dim_variable_array<double> backwardCost;
 
@@ -115,14 +140,23 @@ private:
 template<class EDGES, class COSTS>
 LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts){
     //TODO the same as in the previous constructor but addd s and t nodes and edges with given cost
-    LdpDirectedGraph(edges,inputEdgeCosts,std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
+    initFromEdgesAndCosts(edges,inputEdgeCosts,std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
+    std::cout<<"small constructor vertices "<<numberOfVertices<<std::endl;
 }
+
 
 
 template<class EDGES, class COSTS>
 LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost){
+    initFromEdgesAndCosts(edges,inputEdgeCosts,inCost,outCost);
+}
+
+template<class EDGES, class COSTS>
+void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost){
 
     bool addST=inCost<=std::numeric_limits<double>::max();
+
+    numberOfEdges=0;
 
     std::vector<std::size_t> adjacencyForward;
     std::vector<std::size_t> adjacencyBackward;
@@ -169,6 +203,7 @@ LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCost
         size_t w=edges(i,1);
         forwardEdges[v][adjacencyForward[v]]={w,inputEdgeCosts(i)};
         adjacencyForward[v]++;
+        numberOfEdges++;
         backwardEdges[w][adjacencyBackward[w]]={v,inputEdgeCosts(i)};
         adjacencyBackward[w]++;
     }
@@ -179,9 +214,19 @@ LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCost
         for(size_t i=0;i<numberOfVertices;i++){
             forwardEdges[i][adjacencyForward[i]]={t,outCost};
             backwardEdges[i][adjacencyBackward[i]]={s,inCost};
+            numberOfEdges=numberOfEdges+2;
 
         }
+
+        if(numberOfEdges!=(edges.shape(0)+2*numberOfVertices)){
+            std::cout<<"number of edges "<<numberOfEdges<<std::endl;
+            std::cout<<"expected "<<(edges.shape(0)+2*numberOfVertices)<<std::endl;
+        }
+        assert(numberOfEdges==(edges.shape(0)+2*numberOfVertices));
         numberOfVertices+=2;
+    }
+    else{
+        assert(numberOfEdges==edges.shape(0));
     }
 
     for (size_t i=0;i<numberOfVertices;i++) {
@@ -189,6 +234,7 @@ LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCost
         std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
     }
 
+    std::cout<<"ldp graph, vertices: "<<numberOfVertices<<std::endl;
 
     //Need to sort within edges?
 }

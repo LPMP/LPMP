@@ -189,6 +189,8 @@ size_t LdpBatchProcess::localIndexToGlobalIndex(const size_t &localIndex){
 void LdpBatchProcess::initEdgesFromVector(const std::vector<std::array<size_t,2>>& edges,const std::vector<double> &costs){
 
     size_t i = 0;
+    std::vector<std::array<size_t,2>> outputEdges;
+
     assert(edges.size()==costs.size());
     while (i < edges.size()) {
         size_t v0=edges[i][0];
@@ -241,6 +243,7 @@ void LdpBatchProcess::initEdgesFromVector(const std::vector<std::array<size_t,2>
             double cost=iter2->second;
             size_t vertexLocalID=globalIndexToLocalIndex(vertexGlobID);
             outputGraph.insertEdge(lCounter,vertexLocalID);
+            outputEdges.push_back({lCounter,vertexLocalID});
             outputEdgeCosts.push_back(cost);
         }
 
@@ -268,10 +271,15 @@ void LdpBatchProcess::initEdgesFromVector(const std::vector<std::array<size_t,2>
         assert(transformedV1<numberOfOutputVertices);
         //std::cout<<"transformed "<<transformedV0<<", "<<transformedV1<<std::endl;
         outputGraph.insertEdge(transformedV0,transformedV1);
+        outputEdges.push_back({transformedV0,transformedV1});
         outputEdgeCosts.push_back(costs.at(i));
 
     }
     outputVerticesScore=std::vector<double>(numberOfOutputVertices);
+    EdgeVector ev(outputEdges);
+    InfoVector iv(outputEdgeCosts);
+
+    myOutputGraph=LdpDirectedGraph(ev,iv);
     //std::cout<<"edges finished "<<outputGraph.numberOfEdges()<<std::endl;
     edgesCreated=true;
 
