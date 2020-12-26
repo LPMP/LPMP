@@ -97,13 +97,17 @@ public:
 
 
     size_t getGroupIndex(size_t v) const{
+        if(v>maxVertex+2){
+            std::cout<<"v is "<<v<<", max vertex "<<maxVertex<<std::endl;
+        }
+        assert(v>=vertexShift&&v<=maxVertex+2);
+        assert(v-vertexShift<vToGroup.size());
         if(v<vertexShift){
             std::cout<<"v "<<v<<", time shift "<<vertexShift<<std::endl;
         }
         if(v>maxVertex+2){
             std::cout<<"v "<<v<<", max time "<<maxVertex<<std::endl;
-        }
-        assert(v>=vertexShift&&v<=maxVertex+2);
+        }        
         return vToGroup[v-vertexShift];
     }
 

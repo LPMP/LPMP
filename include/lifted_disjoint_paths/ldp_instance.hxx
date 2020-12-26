@@ -155,6 +155,7 @@ public:
 //    }
 
 	double getVertexScore(size_t v) const {
+                assert(v<vertexScore.size());
 		return vertexScore[v];
 	}
 

@@ -19,12 +19,14 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     //size_t maxT=cs.maxTime+1;
     //readGraphWithTime(minT,maxT,&cs);
 
-    std::cout<<"instance constructor "<<std::endl;
+    //std::cout<<"instance constructor "<<std::endl;
     myGraphLifted=cs.myCompleteGraph;
-    std::cout<<"complete graph assigned "<<myGraphLifted.getNumberOfVertices()<<std::endl;
+    vertexGroups=cs.getVertexGroups();
+    //std::cout<<"complete graph assigned "<<myGraphLifted.getNumberOfVertices()<<std::endl;
     s_=myGraphLifted.getNumberOfVertices();
     t_=s_+1;
     myGraph=LdpDirectedGraph(cs.myCompleteGraph,parameters.getInputCost(),parameters.getOutputCost());
+    vertexScore=cs.verticesScore;
 
 
     std::cout<<"graphs init"<<std::endl;
@@ -1116,17 +1118,22 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
 
 
     for (size_t v0 = 0; v0 < inputGraph.getNumberOfVertices(); ++v0) {
+        //std::cout<<"vertex 0 "<<v0<<std::endl;
         std::vector<std::multimap<double,size_t>> edgesToKeep(parameters.getMaxTimeBase());
         size_t l0=vertexGroups.getGroupIndex(v0);
+        //std::cout<<"layer "<<l0<<std::endl;
         auto iter=inputGraph.forwardNeighborsBegin(v0);
         for (; iter!=inputGraph.forwardNeighborsEnd(v0); iter++) {
+
             size_t v1=iter->first;
+           // std::cout<<"vertex 1 "<<v1<<std::endl;
             double cost=iter->second;
             //			std::cout<<"edge "<<e<<": "<<v0<<","<<v1<<": "<<problemGraph.getEdgeScore(e)<<std::endl;
             if(v0==s_||v1==t_){
                 //tempGraph.insertEdge(v0,v1);
                 //newBaseCosts.push_back(edgeScore[e]);
                 edgesToUse.push_back({v0,v1});
+                std::cout<<"st add "<<v0<<","<<v1<<std::endl;
                 costsToUse.push_back(cost);
             }
             else{
@@ -1135,6 +1142,7 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 size_t gap=l1-l0; //map to vector index
                 assert(gap<parameters.getMaxTimeBase());
                 if(gap<=parameters.getKnnTimeGap()||cost<=parameters.getBaseUpperThreshold()){
+                    assert(edgesToKeep.size()>gap-1);
                     if(edgesToKeep[gap-1].size()<parameters.getKnnK()){
                         edgesToKeep[gap-1].insert(std::pair<double,size_t>(cost,v1));
                     }
@@ -1157,6 +1165,7 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 double cost=it->first;
                 size_t v1=it->second;
                 edgesToUse.push_back({v0,v1});
+                std::cout<<"other add "<<v0<<","<<v1<<std::endl;
                 if(zeroCost){
                     costsToUse.push_back(0.0);
                 }

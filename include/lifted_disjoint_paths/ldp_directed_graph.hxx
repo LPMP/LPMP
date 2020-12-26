@@ -154,7 +154,7 @@ LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCost
 template<class EDGES, class COSTS>
 void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost){
 
-    bool addST=inCost<=std::numeric_limits<double>::max();
+    bool addST=inCost<std::numeric_limits<double>::max();
 
     numberOfEdges=0;
 
@@ -173,6 +173,9 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         adjacencyForward.resize(size);
         adjacencyForward[v]++;
         adjacencyBackward[w]++;
+        if(w==0){
+            std::cout<<"back to w "<<adjacencyBackward[w]<<std::endl;
+        }
     }
     numberOfVertices=adjacencyForward.size();
 

@@ -35,6 +35,9 @@ LdpDirectedGraph::LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inp
 
     std::cout<<"adjacency ok"<<std::endl;
     for (size_t i = 0; i < numberOfVertices-2; ++i) {
+        forwardEdges[s][i]={i,inputEdgeCost};
+
+        backwardEdges[t][i]={i,outputEdgeCost};
         size_t j = 0;
         for (; j < adjacencyForward[i]-1; ++j) {
             forwardEdges[i][j]=inputGraph.getForwardEdges()[i][j];
