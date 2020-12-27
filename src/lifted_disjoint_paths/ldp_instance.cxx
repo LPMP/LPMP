@@ -53,7 +53,7 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
 //    }
     numberOfVertices=myGraph.getNumberOfVertices();
 
-    std::cout<<"before method init"<<std::endl;
+   // std::cout<<"before method init"<<std::endl;
 
     init();
 
@@ -496,14 +496,14 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<siz
 void LdpInstance::init(){
 
 
-    if(debug()) std::cout<<"done"<<std::endl;
+    //if(debug()) std::cout<<"done"<<std::endl;
 
    if(diagnostics())  std::cout<<"number of vertices "<<myGraph.getNumberOfVertices()<<std::endl;
    strongBaseEdges=std::vector<std::unordered_set<size_t>>(myGraph.getNumberOfVertices());
     if(parameters.isSparsify()){
 
 
-        std::cout<<"before sparsify"<<std::endl;
+      //  std::cout<<"before sparsify"<<std::endl;
         sparsifyBaseGraphNew(myGraph,parameters.isAllBaseZero());
       //  reachable=initReachableSet(graph_,parameters,&vertexGroups);
           reachable=initReachableLdp(myGraph,parameters,&vertexGroups);
@@ -517,7 +517,7 @@ void LdpInstance::init(){
 //        }
         sparsifyLiftedGraphNew(myGraphLifted);
 
-        std::cout<<"after sparsify"<<std::endl;
+       // std::cout<<"after sparsify"<<std::endl;
         initLiftedStructure();
 
 
@@ -1133,7 +1133,7 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 //tempGraph.insertEdge(v0,v1);
                 //newBaseCosts.push_back(edgeScore[e]);
                 edgesToUse.push_back({v0,v1});
-                std::cout<<"st add "<<v0<<","<<v1<<std::endl;
+               // std::cout<<"st add "<<v0<<","<<v1<<std::endl;
                 costsToUse.push_back(cost);
             }
             else{
@@ -1165,7 +1165,7 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 double cost=it->first;
                 size_t v1=it->second;
                 edgesToUse.push_back({v0,v1});
-                std::cout<<"other add "<<v0<<","<<v1<<std::endl;
+                //std::cout<<"other add "<<v0<<","<<v1<<std::endl;
                 if(zeroCost){
                     costsToUse.push_back(0.0);
                 }

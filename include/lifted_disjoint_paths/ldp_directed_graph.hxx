@@ -141,7 +141,7 @@ template<class EDGES, class COSTS>
 LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts){
     //TODO the same as in the previous constructor but addd s and t nodes and edges with given cost
     initFromEdgesAndCosts(edges,inputEdgeCosts,std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
-    std::cout<<"small constructor vertices "<<numberOfVertices<<std::endl;
+   // std::cout<<"small constructor vertices "<<numberOfVertices<<std::endl;
 }
 
 
@@ -173,9 +173,9 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         adjacencyForward.resize(size);
         adjacencyForward[v]++;
         adjacencyBackward[w]++;
-        if(w==0){
-            std::cout<<"back to w "<<adjacencyBackward[w]<<std::endl;
-        }
+//        if(w==0){
+//            std::cout<<"back to w "<<adjacencyBackward[w]<<std::endl;
+//        }
     }
     numberOfVertices=adjacencyForward.size();
 
@@ -215,6 +215,8 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         size_t t=numberOfVertices+1;
 
         for(size_t i=0;i<numberOfVertices;i++){
+            forwardEdges[s][i]={i,inCost};
+            backwardEdges[t][i]={i,outCost};
             forwardEdges[i][adjacencyForward[i]]={t,outCost};
             backwardEdges[i][adjacencyBackward[i]]={s,inCost};
             numberOfEdges=numberOfEdges+2;
@@ -237,7 +239,7 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
     }
 
-    std::cout<<"ldp graph, vertices: "<<numberOfVertices<<std::endl;
+    //std::cout<<"ldp graph, vertices: "<<numberOfVertices<<std::endl;
 
     //Need to sort within edges?
 }

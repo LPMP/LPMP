@@ -340,9 +340,9 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
 
         EdgeVector ev(listOfEdges);
         InfoVector iv(completeScore);
-        std::cout<<"before my complete graph"<<std::endl;
+       // std::cout<<"before my complete graph"<<std::endl;
         myCompleteGraph=LdpDirectedGraph(ev,iv);
-        std::cout<<"after my complete graph "<<myCompleteGraph.getNumberOfVertices()<<std::endl;
+        //std::cout<<"after my complete graph "<<myCompleteGraph.getNumberOfVertices()<<std::endl;
     }
     catch (std::system_error& er) {
         std::clog << er.what() << " (" << er.code() << ")" << std::endl;

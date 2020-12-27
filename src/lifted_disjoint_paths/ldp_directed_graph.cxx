@@ -10,12 +10,12 @@ namespace LPMP {
 LdpDirectedGraph::LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inputEdgeCost,double outputEdgeCost){
 
 
-    std::cout<<"graph constructor "<<std::endl;
+    //std::cout<<"graph constructor "<<std::endl;
     numberOfVertices=inputGraph.getNumberOfVertices()+2;
     numberOfEdges=0;
     size_t numberOfBackwardEdges=0;
 
-    std::cout<<"vertices "<<numberOfVertices<<std::endl;
+    //std::cout<<"vertices "<<numberOfVertices<<std::endl;
     size_t s=numberOfVertices-2;
     size_t t=numberOfVertices-1;
     std::vector<std::size_t> adjacencyForward(numberOfVertices);
@@ -27,13 +27,13 @@ LdpDirectedGraph::LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inp
         adjacencyBackward[i]=inputGraph.getNumberOfEdgesToVertex(i)+1;
         //std::cout<<"adj backward "<<i<<": "<<adjacencyBackward[i]<<std::endl;
     }
-    std::cout<<"after for "<<std::endl;
+    //std::cout<<"after for "<<std::endl;
     adjacencyForward[s]=numberOfVertices-2;  //vertices from s
     adjacencyBackward[t]=numberOfVertices-2;              //vertices to t
     forwardEdges.resize(adjacencyForward.begin(),adjacencyForward.end());
     backwardEdges.resize(adjacencyBackward.begin(),adjacencyBackward.end());
 
-    std::cout<<"adjacency ok"<<std::endl;
+   // std::cout<<"adjacency ok"<<std::endl;
     for (size_t i = 0; i < numberOfVertices-2; ++i) {
         forwardEdges[s][i]={i,inputEdgeCost};
 
@@ -54,7 +54,7 @@ LdpDirectedGraph::LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inp
         numberOfBackwardEdges++;
 
     }
-    std::cout<<"edges added"<<std::endl;
+   // std::cout<<"edges added"<<std::endl;
 
     assert(numberOfBackwardEdges==numberOfEdges);
 

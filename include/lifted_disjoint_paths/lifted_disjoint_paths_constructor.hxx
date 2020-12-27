@@ -636,7 +636,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::construct(const lifted_disjoint_paths::LdpInstance &instance)
 {
-    std::cout<<"construct "<<std::endl;
+   // std::cout<<"construct "<<std::endl;
     pInstance=&instance;
     bestPrimalValue=std::numeric_limits<double>::max();
 
@@ -651,8 +651,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     //std::cout << "source = " << base_graph_source << ", terminal = " << base_graph_terminal << "\n";
 
     const std::size_t nr_mcf_nodes = 2*nr_base_graph_nodes + 2; // source/terminal vertex + 2*ordinary vertices to ensure unit capacity vertices
-    const std::size_t nr_mcf_edges = 3*nr_base_graph_nodes + instance.getMyGraph().getNumberOfEdges() + 1; // appearance/disappearance/uniqueness edge + connection edges + source/terminal edge
-    //const std::size_t nr_mcf_edges = nr_base_graph_nodes + instance.getMyGraph().getNumberOfEdges() + 1; // uniqueness edge + connection edges (contains appearance and disappearance) + source/terminal edge
+    //const std::size_t nr_mcf_edges = 3*nr_base_graph_nodes + instance.getMyGraph().getNumberOfEdges() + 1; // appearance/disappearance/uniqueness edge + connection edges + source/terminal edge
+    const std::size_t nr_mcf_edges = nr_base_graph_nodes + instance.getMyGraph().getNumberOfEdges() + 1; // uniqueness edge + connection edges (contains appearance and disappearance) + source/terminal edge
     mcf_ = std::make_unique<mcf_solver_type>(nr_mcf_nodes, nr_mcf_edges);
 
     const std::size_t mcf_source_node = nr_mcf_nodes - 2;
@@ -672,7 +672,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         mcf_->add_edge(outgoing_edge(i), mcf_terminal_node, 0, 1, 0.0);
     }
 
-    std::cout<<"mcf edges added"<<std::endl;
+    //std::cout<<"mcf edges added"<<std::endl;
     for(std::size_t i=0; i<nr_base_graph_nodes; ++i)
     {
         auto iter=instance.getMyGraph().forwardNeighborsBegin(i);
@@ -691,7 +691,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     mcf_->order();
 
-    std::cout<<"ordered"<<std::endl;
+   // std::cout<<"ordered"<<std::endl;
 
     // next add all single node cut factors
     single_node_cut_factors_.reserve(instance.getMyGraph().getNumberOfVertices());
@@ -707,7 +707,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         outgoing_snc->get_factor()->initNodeCost(0.5);
         single_node_cut_factors_.push_back({incoming_snc, outgoing_snc});
     }
-    std::cout<<"factors added"<<std::endl;
+    //std::cout<<"factors added"<<std::endl;
 
     assert(base_graph_source == this->base_graph_source_node());
     assert(base_graph_terminal == this->base_graph_terminal_node());
@@ -747,7 +747,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     currentPrimalLabels=std::vector<size_t>(nr_nodes(),0);
 
     minMarginalsExtractor =ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>(&single_node_cut_factors_,pInstance) ;
-    std::cout<<"construct finished"<<std::endl;
+   // std::cout<<"construct finished"<<std::endl;
 
    /* if(debug()) std::cout<<"messages added"<<std::endl;
     usedTriangles=std::vector<std::vector<std::unordered_set<size_t>>>(nr_nodes());
