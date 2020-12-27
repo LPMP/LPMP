@@ -779,7 +779,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
             assert(l1>l0);
             if(isReachable(i,w)){
                 double cost=iter->second;
-                if(cost<=negativeLiftedThreshold||cost>=positiveLiftedThreshold){ //Previously was strictly higher or lower
+                if(cost<negativeLiftedThreshold||cost>positiveLiftedThreshold){ //Previously was strictly higher or lower
                     if(l1-l0==1){
                         if(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1){
                             std::pair<size_t,double>* baseIt=myGraph.forwardNeighborsBegin(i);
@@ -787,7 +787,16 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                                 baseIt++;
                                 assert(baseIt!=myGraph.forwardNeighborsEnd(i));
                             }
+                            //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
                             baseIt->second+=cost;
+                            baseIt=myGraph.backwardNeighborsBegin(w);
+                            while(baseIt->first!=i){
+                                baseIt++;
+                                assert(baseIt!=myGraph.forwardNeighborsEnd(w));
+                            }
+                            //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
+                            baseIt->second+=cost;
+                             std::cout<<"base edge with cost "<<i<<" "<<w<<": "<<baseIt->second<<std::endl;
                         }
                         //TODO do not use lifted, add cost to base if max time lifted is geq 1
                     }
@@ -798,6 +807,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                             useEdge=((l1-l0)<=parameters.getMaxTimeLifted()&&(timeGapDiff%parameters.getLongerIntervalLifted())==0);
                         }
                         if(useEdge){
+                            std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
                             edges.push_back({i,w});
                             costs.push_back(cost);
                         }
@@ -1133,21 +1143,22 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 //tempGraph.insertEdge(v0,v1);
                 //newBaseCosts.push_back(edgeScore[e]);
                 edgesToUse.push_back({v0,v1});
-               // std::cout<<"st add "<<v0<<","<<v1<<std::endl;
+
+                std::cout<<"base edge "<<v0<<" "<<v1<<std::endl;
                 costsToUse.push_back(cost);
             }
             else{
                 size_t l1=vertexGroups.getGroupIndex(v1);
                 assert(l1>l0);
                 size_t gap=l1-l0; //map to vector index
-                assert(gap<parameters.getMaxTimeBase());
+                assert(gap<=parameters.getMaxTimeBase());
                 if(gap<=parameters.getKnnTimeGap()||cost<=parameters.getBaseUpperThreshold()){
                     assert(edgesToKeep.size()>gap-1);
                     if(edgesToKeep[gap-1].size()<parameters.getKnnK()){
                         edgesToKeep[gap-1].insert(std::pair<double,size_t>(cost,v1));
                     }
                     else{
-                        double lastValue=edgesToKeep[gap-1].rbegin()->second;
+                        double lastValue=edgesToKeep[gap-1].rbegin()->first;
                         if(cost<lastValue){
                             auto it=edgesToKeep[gap-1].end();
                             it--;
@@ -1160,11 +1171,12 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
             }
         }
         for (size_t i = 0; i < edgesToKeep.size(); ++i) {
-            auto it=edgesToKeep[i].begin();
-            for (;it!=edgesToKeep[i].end();it++) {
+            auto it=edgesToKeep[i].rbegin();
+            for (;it!=edgesToKeep[i].rend();it++) {
                 double cost=it->first;
                 size_t v1=it->second;
                 edgesToUse.push_back({v0,v1});
+                std::cout<<"base edge "<<v0<<" "<<v1<<": "<<cost<<std::endl;
                 //std::cout<<"other add "<<v0<<","<<v1<<std::endl;
                 if(zeroCost){
                     costsToUse.push_back(0.0);
@@ -1181,6 +1193,9 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
     EdgeVector ev(edgesToUse);
     InfoVector iv(costsToUse);
     myGraph=LdpDirectedGraph(ev,iv);
+
+    parameters.getControlOutput()<<"Left "<<myGraph.getNumberOfEdges()<<" base edges."<<std::endl;
+    parameters.writeControlOutput();
 
  }
 
