@@ -405,22 +405,24 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                 double cost=iter->second;
                 if(cost<negativeLiftedThreshold||cost>positiveLiftedThreshold){ //Previously was strictly higher or lower
                     if(l1-l0==1){
-                        if(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1){
-                            std::pair<size_t,double>* baseIt=myGraph.forwardNeighborsBegin(i);
-                            while(baseIt->first!=w){
-                                baseIt++;
-                                assert(baseIt!=myGraph.forwardNeighborsEnd(i));
+                        if(!parameters.isAllBaseZero()){
+                            if(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1){
+                                std::pair<size_t,double>* baseIt=myGraph.forwardNeighborsBegin(i);
+                                while(baseIt->first!=w){
+                                    baseIt++;
+                                    assert(baseIt!=myGraph.forwardNeighborsEnd(i));
+                                }
+                                //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
+                                baseIt->second+=cost;
+                                baseIt=myGraph.backwardNeighborsBegin(w);
+                                while(baseIt->first!=i){
+                                    baseIt++;
+                                    assert(baseIt!=myGraph.forwardNeighborsEnd(w));
+                                }
+                                //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
+                                baseIt->second+=cost;
+                                //std::cout<<"base edge with cost "<<i<<" "<<w<<": "<<baseIt->second<<std::endl;
                             }
-                            //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
-                            baseIt->second+=cost;
-                            baseIt=myGraph.backwardNeighborsBegin(w);
-                            while(baseIt->first!=i){
-                                baseIt++;
-                                assert(baseIt!=myGraph.forwardNeighborsEnd(w));
-                            }
-                            //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
-                            baseIt->second+=cost;
-                             //std::cout<<"base edge with cost "<<i<<" "<<w<<": "<<baseIt->second<<std::endl;
                         }
                         //TODO do not use lifted, add cost to base if max time lifted is geq 1
                     }
@@ -519,12 +521,18 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 size_t v1=it->second;
                 edgesToUse.push_back({v0,v1});
 
-                if(zeroCost){
-                    costsToUse.push_back(0.0);
-                }
-                else{
+                if(!zeroCost||i==0){
                     costsToUse.push_back(cost);
                 }
+                else{
+                    costsToUse.push_back(0.0);
+                }
+//                if(zeroCost){
+//                    costsToUse.push_back(0.0);
+//                }
+//                else{
+//                    costsToUse.push_back(cost);
+//                }
             }
 
         }
