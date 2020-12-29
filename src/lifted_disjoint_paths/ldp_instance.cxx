@@ -382,8 +382,85 @@ void LdpInstance::initLiftedStructure(){
 
 
 
-void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGraph){
+//void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGraph){
 
+
+//    parameters.getControlOutput()<<"Sparsify lifted graph"<<std::endl;
+//    parameters.writeControlOutput();
+//    //TODO run automaticLifted to find candidates first
+
+//    assert(parameters.getMaxTimeLifted()>=1);
+
+//    std::vector<std::array<size_t,2>> edges;
+//    std::vector<double> costs;
+
+//    for (size_t i = 0; i < inputLiftedGraph.getNumberOfVertices(); ++i) {
+//        size_t l0=vertexGroups.getGroupIndex(i);
+//        auto iter=inputLiftedGraph.forwardNeighborsBegin(i);
+//        for (;iter!=inputLiftedGraph.forwardNeighborsEnd(i);iter++) {
+//            size_t w=iter->first;
+//            size_t l1=vertexGroups.getGroupIndex(w);
+//            assert(l1>l0);
+//            if(isReachable(i,w)){
+//                double cost=iter->second;
+//                if(cost<negativeLiftedThreshold||cost>positiveLiftedThreshold){ //Previously was strictly higher or lower
+//                    if(l1-l0==1){
+//                        if(!parameters.isAllBaseZero()){
+//                            if(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1){
+//                                std::pair<size_t,double>* baseIt=myGraph.forwardNeighborsBegin(i);
+//                                while(baseIt->first!=w){
+//                                    baseIt++;
+//                                    assert(baseIt!=myGraph.forwardNeighborsEnd(i));
+//                                }
+//                                //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
+//                                baseIt->second+=cost;
+//                                baseIt=myGraph.backwardNeighborsBegin(w);
+//                                while(baseIt->first!=i){
+//                                    baseIt++;
+//                                    assert(baseIt!=myGraph.forwardNeighborsEnd(w));
+//                                }
+//                                //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
+//                                baseIt->second+=cost;
+//                                //std::cout<<"base edge with cost "<<i<<" "<<w<<": "<<baseIt->second<<std::endl;
+//                            }
+//                        }
+//                        //TODO do not use lifted, add cost to base if max time lifted is geq 1
+//                    }
+//                    else{
+//                        bool useEdge=l1-l0<=parameters.getDenseTimeLifted();
+//                        if(!useEdge){
+//                            size_t timeGapDiff=l1-l0-parameters.getDenseTimeLifted();
+//                            useEdge=((l1-l0)<=parameters.getMaxTimeLifted()&&(timeGapDiff%parameters.getLongerIntervalLifted())==0);
+//                        }
+//                        if(useEdge){
+//                            //std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
+//                            edges.push_back({i,w});
+//                            costs.push_back(cost);
+//                        }
+
+
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+//    EdgeVector ev(edges);
+//    InfoVector iv(costs);
+//    myGraphLifted=LdpDirectedGraph(ev,iv);
+
+//    parameters.getControlOutput()<<"left "<<myGraphLifted.getNumberOfEdges()<<" lifted edges"<<std::endl;
+
+
+//    parameters.writeControlOutput();
+//    initLiftedStructure();
+
+//}
+
+
+
+void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGraph){
+//TODO remove input parameter
 
     parameters.getControlOutput()<<"Sparsify lifted graph"<<std::endl;
     parameters.writeControlOutput();
@@ -396,25 +473,26 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
 
     for (size_t i = 0; i < inputLiftedGraph.getNumberOfVertices(); ++i) {
         size_t l0=vertexGroups.getGroupIndex(i);
-        auto iter=inputLiftedGraph.forwardNeighborsBegin(i);
-        for (;iter!=inputLiftedGraph.forwardNeighborsEnd(i);iter++) {
-            size_t w=iter->first;
+        auto iterLifted=inputLiftedGraph.forwardNeighborsBegin(i);
+        auto iterBase=myGraph.forwardNeighborsBegin(i);
+        auto baseEnd=myGraph.forwardNeighborsEnd(i);
+//        for (;iterLifted!=inputLiftedGraph.forwardNeighborsEnd(i);iterLifted++) {
+        while(iterLifted!=inputLiftedGraph.forwardNeighborsEnd(i)) {
+            while(iterBase!=baseEnd&&iterBase->first<iterLifted->first){
+                iterBase++;
+            }
+            bool isSame=iterBase!=baseEnd&&iterLifted->first==iterBase->first;
+            size_t w=iterLifted->first;
             size_t l1=vertexGroups.getGroupIndex(w);
             assert(l1>l0);
             if(isReachable(i,w)){
-                double cost=iter->second;
+                double cost=iterLifted->second;
                 if(cost<negativeLiftedThreshold||cost>positiveLiftedThreshold){ //Previously was strictly higher or lower
                     if(l1-l0==1){
                         if(!parameters.isAllBaseZero()){
-                            if(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1){
-                                std::pair<size_t,double>* baseIt=myGraph.forwardNeighborsBegin(i);
-                                while(baseIt->first!=w){
-                                    baseIt++;
-                                    assert(baseIt!=myGraph.forwardNeighborsEnd(i));
-                                }
-                                //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
-                                baseIt->second+=cost;
-                                baseIt=myGraph.backwardNeighborsBegin(w);
+                            if(isSame&&(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1)){
+                                iterBase->second+=cost;
+                                std::pair<size_t,double>*baseIt=myGraph.backwardNeighborsBegin(w);
                                 while(baseIt->first!=i){
                                     baseIt++;
                                     assert(baseIt!=myGraph.forwardNeighborsEnd(w));
@@ -436,12 +514,27 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                             //std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
                             edges.push_back({i,w});
                             costs.push_back(cost);
+                            if(isSame){
+                                if(parameters.isAllBaseZero()){
+                                    iterBase->second=0;
+
+                                    std::pair<size_t,double>*baseIt=myGraph.backwardNeighborsBegin(w);
+                                    while(baseIt->first!=i){
+                                        baseIt++;
+                                        assert(baseIt!=myGraph.forwardNeighborsEnd(w));
+                                    }
+                                    //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
+                                    baseIt->second=0;
+
+                                }
+                            }
                         }
 
 
                     }
                 }
             }
+            iterLifted++;
         }
     }
 
@@ -456,9 +549,6 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
     initLiftedStructure();
 
 }
-
-
-
 
 void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool zeroCost){
     parameters.getControlOutput()<<"Sparsify base graph"<<std::endl;
@@ -521,12 +611,12 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 size_t v1=it->second;
                 edgesToUse.push_back({v0,v1});
 
-                if(!zeroCost||i==0){
+               // if(!zeroCost||i==0){
                     costsToUse.push_back(cost);
-                }
-                else{
-                    costsToUse.push_back(0.0);
-                }
+               // }
+               // else{
+                 //   costsToUse.push_back(0.0);
+               // }
 //                if(zeroCost){
 //                    costsToUse.push_back(0.0);
 //                }
