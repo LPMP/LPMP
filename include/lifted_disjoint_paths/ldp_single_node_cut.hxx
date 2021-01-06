@@ -115,6 +115,7 @@ public:
 
     //Computing lower bound and min marginals
     double LowerBound() const;
+    double LowerBound(bool canChange) const;
 
     double getOneBaseEdgeMinMarginal(size_t vertex, const std::vector<double>*pBaseCosts, const std::vector<double>*pLiftedCosts) const;
     double getOneLiftedMinMarginal(size_t indexOfLiftedEdge, const std::vector<double>*pBaseCosts, const std::vector<double>*pLiftedCosts)const;
@@ -633,31 +634,32 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseM
 
 template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals() const{
-	updateOptimal();
+    return getAllBaseMinMarginals(&baseCosts,&liftedCosts);
+//	updateOptimal();
 
-    std::vector<double> minMarginals(baseCosts.size());
-    if(optBaseIndex==nodeNotActive){
-		for (int i = 0; i < solutionCosts.size()-1; ++i) {
-			minMarginals[i]=solutionCosts[i];
+//    std::vector<double> minMarginals(baseCosts.size());
+//    if(optBaseIndex==nodeNotActive){
+//		for (int i = 0; i < solutionCosts.size()-1; ++i) {
+//			minMarginals[i]=solutionCosts[i];
 
-		}
-	}
-	else{
-		double secondBest=std::numeric_limits<double>::infinity();
-        double optValue=solutionCosts.at(optBaseIndex);
-		for (int i = 0; i < solutionCosts.size(); ++i) {
-            if(i==optBaseIndex) continue;
-			if(solutionCosts[i]<secondBest){
-				secondBest=solutionCosts[i];
-			}
+//		}
+//	}
+//	else{
+//		double secondBest=std::numeric_limits<double>::infinity();
+//        double optValue=solutionCosts.at(optBaseIndex);
+//		for (int i = 0; i < solutionCosts.size(); ++i) {
+//            if(i==optBaseIndex) continue;
+//			if(solutionCosts[i]<secondBest){
+//				secondBest=solutionCosts[i];
+//			}
 
-		}
-		for (int i = 0; i < solutionCosts.size()-1; ++i) {
-			minMarginals[i]=solutionCosts[i]-secondBest;
+//		}
+//		for (int i = 0; i < solutionCosts.size()-1; ++i) {
+//			minMarginals[i]=solutionCosts[i]-secondBest;
 
-		}
-    }
-	return minMarginals;
+//		}
+//    }
+//	return minMarginals;
 }
 
 template<class LDP_INSTANCE>
@@ -806,19 +808,36 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 }
 
 
+
+template<class LDP_INSTANCE>
+inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound(bool canChange) const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
+    //if(canChange||optValueUpToDate){
+    if(canChange){
+        updateOptimal();
+        if(debug()){
+            double controlValue=0;
+            if(optBaseIndex!=nodeNotActive){
+                controlValue+=nodeCost;
+                controlValue+=baseCosts.at(optBaseIndex);
+
+            }
+        }
+
+        //std::cout<<"snc lower bound "<<optValue<<std::endl;
+        return optValue;
+    }
+    else{
+        StrForTopDownUpdate myStr(baseCosts,liftedCosts);
+        topDownUpdate(myStr);
+        return myStr.optValue;
+    }
+
+}
+
+
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound() const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
-    updateOptimal();
-    if(debug()){
-        double controlValue=0;
-        if(optBaseIndex!=nodeNotActive){
-            controlValue+=nodeCost;
-            controlValue+=baseCosts.at(optBaseIndex);
-
-        }
-    }
-    //std::cout<<"snc lower bound "<<optValue<<std::endl;
-    return optValue;
+    return LowerBound(false);
 
 }
 

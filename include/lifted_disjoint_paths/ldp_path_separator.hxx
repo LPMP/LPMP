@@ -136,7 +136,7 @@ public:
 
 private:
 
-    PATH_FACTOR* createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted);  //lifted edge vertices and the connecting base edge vertices
+    PATH_FACTOR* createPathFactor(const size_t& lv1,const size_t& lv2,const size_t& bv1,const size_t& bv2,bool isLifted,bool isMustCut);  //lifted edge vertices and the connecting base edge vertices
     std::list<std::pair<size_t,bool>> findShortestPath(const size_t& firstVertex,const size_t& lastVertex);
 
 
@@ -358,7 +358,13 @@ inline std::list<std::pair<size_t,bool>> ldp_path_separator<PATH_FACTOR,SINGLE_N
 
 
 template  <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createPathFactor(const size_t& lv1, const size_t& lv2, const size_t &bv1, const size_t &bv2,bool isLifted){
+inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createPathFactor(const size_t& lv1, const size_t& lv2, const size_t &bv1, const size_t &bv2,bool isLifted,bool isMustCut){
+
+//    if(bv1==160||bv2==160){
+//        std::cout<<"interesting case"<<std::endl;//TODO BREAKPOINT HERE
+//    }
+
+    assert(!isMustCut||pInstance->existLiftedEdge(lv1,lv2));
 
     std::list<std::pair<size_t,bool>> beginning;
     if(lv1!=bv1) beginning=findShortestPath(lv1,bv1);
@@ -415,7 +421,7 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     assert(pathVertices.front()==lv1);
     assert(pathVertices.back()==lv2);
 
-    PATH_FACTOR* pPathFactor=new PATH_FACTOR(pathVertices,costs,liftedEdgesIndices,pInstance);
+    PATH_FACTOR* pPathFactor=new PATH_FACTOR(pathVertices,costs,liftedEdgesIndices,pInstance,isMustCut);
     return pPathFactor;
 
 
@@ -514,30 +520,55 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
             //for (;iterPredV1!=endPredV1;iterPredV1++) {
             for (;iterPredV1!=endPredV1;iterPredV1++) {
                 const size_t& pred=*iterPredV1;
+                size_t l0=pInstance->getGroupIndex(pred);
+
                 assert(pred<numberOfVertices);
+
                 auto iterDescPred=descendants[pred].begin();  //Put descendants of V2 into descendants of pred
                 auto endDescPred=descendants[pred].end();
 
                 auto iterDescV2=descendants[vertex2].begin();
                 auto endDescV2=descendants[vertex2].end();
-                while(iterDescV2!=endDescV2){
-                    if(iterDescPred==endDescPred||*iterDescV2<*iterDescPred){ //exists desc of v2 not contained in desc of pred
-                        const size_t& descV2=*iterDescV2;
 
-                        size_t l0=pInstance->getGroupIndex(pred);
-                        size_t l1=pInstance->getGroupIndex(descV2);
+                auto iterLifted=positiveLifted[pred].begin();
+
+                while(iterDescV2!=endDescV2){
+                    const size_t& descV2=*iterDescV2;
+                    while(iterLifted!=positiveLifted[pred].end()&&iterLifted->first<descV2){
+                        iterLifted++;
+                    }
+                    if(iterDescPred==endDescPred||descV2<*iterDescPred){ //exists desc of v2 not contained in desc of pred
+
+                      size_t l1=pInstance->getGroupIndex(descV2);
 
                       if(debug()) assert(l1-l0>maxTimeGap||!alreadyConnected);
 
                         assert(descV2<numberOfVertices);
                         if(l1-l0<=maxTimeGap){                           // std::cout<<"exists new descendant "<<std::endl;
-                            auto f=positiveLifted[pred].find(descV2);
-                            if(f!=positiveLifted[pred].end()){  //Contradicting lifted edge exists!
+                            //auto f=positiveLifted[pred].find(descV2);    //TODO: iter over positive lifted: make it linear!
+                            //if(f!=positiveLifted[pred].end()){  //Contradicting lifted edge exists!
+                            if(iterLifted->first==descV2){  //Contradicting lifted edge exists!
                                 if(pred!=vertex1||descV2!=vertex2){
-                                    PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
-                                    double improvementValue=std::min(abs(edgeCost),f->second);
+                                    if(abs(edgeCost)>=0.248299){
+                                        std::cout<<"high cost"<<std::endl;
+                                    }
+                                    PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,false); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+                                    double improvementValue=std::min(abs(edgeCost),iterLifted->second);
                                     pQueue.push(std::pair(improvementValue,pPathFactor));
                                     constraintsCounter++;
+                                }
+                                assert(pInstance->canJoin(pred,descV2));
+
+                            }
+                            else{
+                                bool canJoin=pInstance->canJoin(pred,descV2);
+                                if(!canJoin){
+                                    PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,true); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+                                    double improvementValue=abs(edgeCost);
+                                    pQueue.push(std::pair(improvementValue,pPathFactor));
+                                    constraintsCounter++;
+
+                                    //TODO: separate must cut version of path ineq
                                 }
                             }
 

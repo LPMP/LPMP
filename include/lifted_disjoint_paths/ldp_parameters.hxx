@@ -194,6 +194,10 @@ public:
         return keepRedundantLifted;
     }
 
+    bool isMustCutMissing()const{
+        return missingAsMustCut;
+    }
+
 
 private:
     LdpParameters<T>(const LdpParameters<T>&);
@@ -247,6 +251,7 @@ private:
      bool allBaseToZero;
      bool keepRedundantLifted;
 
+     bool missingAsMustCut;
 
 };
 
@@ -522,7 +527,15 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
      }
      controlOutput<<"maximal edge usage for tightening "<<tighteningMaxEdgeUsage<<std::endl;
 
-    writeControlOutput();
+     if(parameters.count("MISSING_AS_MUST_CUT")>0){
+         missingAsMustCut=std::stoi(parameters["MISSING_AS_MUST_CUT"]);
+     }
+     else{
+         missingAsMustCut=0;
+     }
+     controlOutput<<"missing edges as must cut "<<missingAsMustCut<<std::endl;
+
+     writeControlOutput();
 
 
 }

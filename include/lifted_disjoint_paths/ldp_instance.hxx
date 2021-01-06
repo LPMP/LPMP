@@ -165,6 +165,19 @@ public:
         return myGraphLifted;
     }
 
+    bool checkStrongBase(const size_t& v,const size_t& w)const;
+
+    bool canJoin(const size_t& v,const size_t& w)const{
+        if(parameters.isMustCutMissing()){
+            bool value=canJoinStructure.at(v).isWithinBounds(w)&&canJoinStructure.at(v)[w]>0;
+            return value;
+        }
+        else{
+            return true;
+        }
+
+    }
+
 private:
 
 
@@ -176,6 +189,10 @@ private:
 
     void sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGraph);
 
+
+    void initLiftedStructure();
+
+    void initCanJoinStructure(const LdpDirectedGraph &completeGraph);
 
 	size_t s_;
 	size_t t_;
@@ -200,9 +217,10 @@ private:
     double positiveLiftedThreshold;
     double baseThreshold;
 
-    void initLiftedStructure();
+
 
     std::vector<ShiftedVector<char>> liftedStructure;
+    std::vector<ShiftedVector<char>> canJoinStructure;
 
 
 };

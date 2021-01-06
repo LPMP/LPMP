@@ -272,7 +272,7 @@ public:
 
 
     T& operator[](size_t idx){
-        if(debug()&&( idx<minVertex||idx>maxVertex)) std::cout<<"out of bounds, index "<<idx<<", interval "<<minVertex<<","<<maxVertex<<std::endl;
+       // if(debug()&&( idx<minVertex||idx>maxVertex)) std::cout<<"out of bounds, index "<<idx<<", interval "<<minVertex<<","<<maxVertex<<std::endl;
         assert(idx>=minVertex&&idx<=maxVertex);
         size_t shiftedIndex=idx-minVertex;
         return myVector[shiftedIndex];

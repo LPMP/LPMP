@@ -17,6 +17,10 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     myGraphLifted=cs.myCompleteGraph;
     vertexGroups=cs.getVertexGroups();
 
+    if(parameters.isMustCutMissing()){
+        initCanJoinStructure(cs.myCompleteGraph);
+    }
+
     s_=myGraphLifted.getNumberOfVertices();
     t_=s_+1;
     myGraph=LdpDirectedGraph(cs.myCompleteGraph,parameters.getInputCost(),parameters.getOutputCost());
@@ -65,6 +69,9 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
     t_=s_+1;
     myGraph=LdpDirectedGraph(BP.getMyCompleteGraph(),parameters.getInputCost(),parameters.getOutputCost());
 
+    if(parameters.isMustCutMissing()){
+        initCanJoinStructure(myGraphLifted);
+    }
 
     if(parameters.isUseAdaptiveThreshold()){
         if(diagnostics()) std::cout<<"using adaptive"<<std::endl;
@@ -379,6 +386,38 @@ void LdpInstance::initLiftedStructure(){
 
 
 
+void LdpInstance::initCanJoinStructure(const LdpDirectedGraph& completeGraph){
+    size_t n=completeGraph.getNumberOfVertices();
+
+
+    canJoinStructure=std::vector<ShiftedVector<char>>(n);
+    for (size_t i = 0; i < n; ++i) {
+        size_t maxVertex=0;
+        size_t minVertex=n;
+        auto iter=completeGraph.forwardNeighborsBegin(i);
+        for(;iter!=completeGraph.forwardNeighborsEnd(i);iter++){
+            size_t vertex2=iter->first;
+
+           if(vertex2<minVertex){
+               minVertex=vertex2;
+           }
+           if(vertex2>maxVertex){
+               maxVertex=vertex2;
+           }
+        }
+        canJoinStructure[i]=ShiftedVector<char>(minVertex,maxVertex,false);
+
+        iter=completeGraph.forwardNeighborsBegin(i);
+        for(;iter!=completeGraph.forwardNeighborsEnd(i);iter++){
+            size_t vertex2=iter->first;
+            canJoinStructure[i][vertex2]=1;
+        }
+    }
+}
+
+
+
+
 
 
 
@@ -641,6 +680,17 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
 
 
 
+bool LdpInstance::checkStrongBase(const size_t &v, const size_t &w) const{
+    auto iter=myGraph.forwardNeighborsBegin(v);
+    bool alternativePath=false;
+    while(!alternativePath&&iter!=myGraph.forwardNeighborsEnd(v)&&iter->first<w){
+        if(isReachable(iter->first,w)){
+            alternativePath=true;
+        }
+        iter++;
+    }
+    return !alternativePath;
+}
 
 
 
