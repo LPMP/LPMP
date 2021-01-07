@@ -477,7 +477,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         }
     }
 
-    std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::edgeCompare<double>);
+    std::stable_sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::edgeCompare<double>);
 
 
     for(size_t i=0;i<numberOfVertices;i++){

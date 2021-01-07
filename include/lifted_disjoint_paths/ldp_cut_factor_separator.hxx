@@ -320,7 +320,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
     }
 
    // std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::baseEdgeCompare<float>);
-     std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::baseEdgeCompare<double>);
+     std::stable_sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::baseEdgeCompare<double>);
 
    // std::cout<<"edges to sort sorted"<<std::endl;
 
