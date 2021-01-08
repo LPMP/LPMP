@@ -29,16 +29,12 @@ public:
 
     void separateCutInequalities(size_t maxConstraints,double minImprovement);
 
-//    stable_priority_queue<std::pair<double,CUT_FACTOR*>>& getPriorityQueue(){
-//        return pQueue;
-//    }
+
 
     LdpFactorQueue<CUT_FACTOR>& getPriorityQueue(){
         return factorQueue;
     }
 
-    //LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
-    void clearPriorityQueue();
 
     bool checkWithBlockedEdges(const CUT_FACTOR& cutFactor,const std::vector<std::set<size_t>>& blockedBaseEdges,const std::vector<std::set<size_t>>& blockedLiftedEdges)const;
     void updateUsedEdges(const CUT_FACTOR& cutFactor,std::vector<std::set<size_t>>& blockedBaseEdges,std::vector<std::map<size_t,size_t>>& usedBaseEdges,std::vector<std::set<size_t>>& blockedLiftedEdges,std::vector<std::map<size_t,size_t>>& usedLiftedEdges,const size_t& maxUsage)const;
@@ -64,17 +60,6 @@ private:
      size_t maxTimeGap;
 
 };
-
-//template <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-//inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
-//    while(!pQueue.empty()){
-//        std::pair<double,CUT_FACTOR*> p=pQueue.top();
-//        delete p.second;
-//        p.second=nullptr;
-//        pQueue.pop();
-//    }
-
-//}
 
 
 
@@ -268,8 +253,7 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
 
 template  <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCutInequalities(size_t maxConstraints,double minImprovement){
-  //  std::cout<<"separate cuts "<<std::endl;
-//    mmExtractor.initMinMarginals();
+
     baseEdgesWithCosts=mmExtractor.getBaseEdgesMinMarginals();
     liftedEdgesWithCosts=mmExtractor.getLiftedEdgesMinMarginals();
 
@@ -299,8 +283,6 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         descendants[node].push_back(node);
     }
 
-   // std::cout<<"desc and pred init done"<<std::endl;
-
 
     //list of base edges to be sorted
     for(size_t i=0;i<baseEdgesWithCosts.size();i++){
@@ -326,10 +308,10 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         }
     }
 
-   // std::sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::baseEdgeCompare<float>);
+
      std::stable_sort(edgesToSort.begin(),edgesToSort.end(),lifted_disjoint_paths::baseEdgeCompare<double>);
 
-   // std::cout<<"edges to sort sorted"<<std::endl;
+
 
 
     //Select candidate lifted edges: negative and disconnected
@@ -363,22 +345,14 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
 
     }
 
-   // std::cout<<"candidate lifted obtained "<<std::endl;
 
-
-
-
-   // std::cout<<"number of vertices "<<numberOfVertices<<std::endl;
     size_t i=0;
     while(nrClosedNodes<numberOfVertices&&i<edgesToSort.size()){
         size_t v=std::get<1>(edgesToSort[i]);
         size_t index=std::get<2>(edgesToSort[i]);
         size_t w=baseGraph.getForwardEdgeVertex(v,index);
-       // double cost=std::get<0>(edgesToSort[i]);
         double cost=std::get<0>(edgesToSort[i]);
 
-//        std::cout<<"cut edge to conect "<<v<<", "<<index<<": "<<std::setprecision(6)<<cost<<std::endl;
-//        std::cout<<std::setprecision(10);
 
         assert(v<isConnected.size());
         assert(index<isConnected[v].size());
@@ -389,12 +363,6 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separateCut
         //double cost=std::get<0>(edgesToSort[i]);
         assert(cost>=minImprovement);
 
-        //std::cout<<v<<", "<<w<<":"<<cost<<std::endl;
-       // std::cout<<"number of closed "<<nrClosedNodes<<std::endl;
-
-      //  std::tuple<double,size_t,size_t> bestLiftedEdge;  //lb improvement, cost, vertices
-      //  double bestLiftedCost=0;
-      //  std::cout<<"compute"<<cost<<std::endl;
 
         for(auto& pred: predecessors[v]){
            // std::cout<<"pred "<<pred<<std::endl;
