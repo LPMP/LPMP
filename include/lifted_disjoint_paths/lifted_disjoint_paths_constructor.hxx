@@ -1283,7 +1283,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                // std::cout<<"factor added, number of vertices "<<pPathFactor->getNumberOfEdges()<<std::endl;
 
                auto *myPathFactor=newPathFactor->get_factor();
-               myPathFactor->print();
+            //   myPathFactor->print();
                const std::vector<size_t>& pathVertices=myPathFactor->getListOfVertices();
                for (size_t i=0;i<myPathFactor->getNumberOfEdges();i++) {
                    size_t pathVertex=pathVertices[i];

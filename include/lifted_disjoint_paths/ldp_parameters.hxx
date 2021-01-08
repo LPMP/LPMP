@@ -190,8 +190,8 @@ public:
         return allBaseToZero;
     }
 
-    bool isKeepRedundantLifted()const{
-        return keepRedundantLifted;
+    bool isBaseCoverdWithLifted()const{
+        return coverBaseWithLifted;
     }
 
     bool isMustCutMissing()const{
@@ -249,7 +249,7 @@ private:
 
 
      bool allBaseToZero;
-     bool keepRedundantLifted;
+     bool coverBaseWithLifted;
 
      bool missingAsMustCut;
 
@@ -340,13 +340,13 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
     writeControlOutput();
 
 
-    if(parameters.count("KEEP_REDUNDANT_LIFTED")>0){
-        keepRedundantLifted=std::stoi(parameters["KEEP_REDUNDANT_LIFTED"]);
+    if(parameters.count("COVER_BASE_WITH_LIFTED")>0){
+        coverBaseWithLifted=std::stoi(parameters["COVER_BASE_WITH_LIFTED"]);
     }
     else{
-        keepRedundantLifted=1;
+        coverBaseWithLifted=1;
     }
-    controlOutput<<"keep redundant lifted "<<keepRedundantLifted<<std::endl;
+    controlOutput<<"cover base with lifted "<<coverBaseWithLifted<<std::endl;
     writeControlOutput();
 
 

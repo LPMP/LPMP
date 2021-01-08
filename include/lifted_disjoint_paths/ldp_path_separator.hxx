@@ -517,9 +517,9 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
                         if(iterLifted->first==descV2){  //Contradicting lifted edge exists!
                             if(pred!=vertex1||descV2!=vertex2){
-                                if(abs(edgeCost)>=0.248299){
-                                    std::cout<<"high cost"<<std::endl;
-                                }
+//                                if(abs(edgeCost)>=0.248299){
+//                                    std::cout<<"high cost"<<std::endl;
+//                                }
                                 PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,false); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
                                 double improvementValue=std::min(abs(edgeCost),iterLifted->second);
 

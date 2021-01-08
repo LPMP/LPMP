@@ -543,11 +543,12 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                             }
                         }
                     }
-                    //TODO do not use lifted, add cost to base if max time lifted is geq 1
+
                 }
                 else{
-                    bool useEdge=parameters.isAllBaseZero()&&isSame;
-                    if(!useEdge){
+                   // bool useEdge=parameters.isAllBaseZero()&&isSame;
+                    //if(!useEdge){
+                    bool useEdge=false;
                         bool goodCost=(cost<negativeLiftedThreshold||cost>positiveLiftedThreshold);
                         if(goodCost){
                             useEdge=(l1-l0<=parameters.getDenseTimeLifted());
@@ -557,13 +558,28 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                                 useEdge=((l1-l0)<=parameters.getMaxTimeLifted()&&(timeGapDiff%parameters.getLongerIntervalLifted())==0);
                             }
                         }
-                    }
-                    if(useEdge){
-                        //std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
-                        edges.push_back({i,w});
-                        costs.push_back(cost);
+                        if(useEdge){
+                            //std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
+                            edges.push_back({i,w});
+                            costs.push_back(cost);
 
-                    }
+                        }
+                        else if(isSame&&parameters.isAllBaseZero()){
+                            if(parameters.isBaseCoverdWithLifted()){ //add lifted edge
+                                edges.push_back({i,w});
+                                costs.push_back(cost);
+                            }
+                            else{  //add base cost
+                                iterBase->second+=cost;
+                                std::pair<size_t,double>*baseIt=myGraph.backwardNeighborsBegin(w);
+                                while(baseIt->first!=i){
+                                    baseIt++;
+                                    assert(baseIt!=myGraph.forwardNeighborsEnd(w));
+                                }
+                                //std::cout<<"base edge with cost "<<i<<" "<<w<<std::endl;
+                                baseIt->second+=cost;
+                            }
+                        }
 
 
                 }
