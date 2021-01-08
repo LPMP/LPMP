@@ -105,6 +105,32 @@ template<class T=char>
 // }
 
 
+// template<class T>
+// inline bool queueCompare(const std::pair<double,T>& t1,const std::pair<double,T>& t2) {
+//      if(abs(t1.first-t2.first)>=eps){
+//          return std::get<0>(t1)<std::get<0>(t2);
+//      }
+//      else{
+//          return false;
+//      }
+//  }
+
+// template <class T>
+// class ForQueueComparator{
+// public:
+//     bool operator()(const std::tuple<double,size_t,T>& lhs, const  std::tuple<double,size_t,T>& rhs) {
+//         if(std::abs(std::get<0>(rhs)-std::get<0>(lhs))<eps){
+//             return std::get<1>(rhs) < std::get<1>(lhs);
+//         }
+//         else{
+//             return std::get<0>(lhs)<std::get<0>(rhs);
+//         }
+//     }
+// };
+
+
+
+
 template<class T>
 inline bool edgeCompare(const std::tuple<T,size_t,size_t,bool>& t1,const std::tuple<T,size_t,size_t,bool>& t2) {
      if(abs(std::get<0>(t1)-std::get<0>(t2))<eps){

@@ -15,6 +15,7 @@
 #include "ldp_cut_message_creator.hxx"
 #include "ldp_cut_factor_separator.hxx"
 #include "ldp_special_min_marginals_extractor.hxx"
+#include "stable_priority_queue.hxx"
 
 namespace LPMP {
 
@@ -1195,30 +1196,31 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
    size_t counterPaths=0;
    LdpCutSeparator<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> cutSeparator(pInstance,minMarginalsExtractor);
    cutSeparator.separateCutInequalities(nr_constraints_to_add,minImprovement);
-   std::priority_queue<std::pair<double,ldp_cut_factor*>>& queueWithCuts=cutSeparator.getPriorityQueue();
+   LdpFactorQueue<ldp_cut_factor>& queueWithCuts=cutSeparator.getPriorityQueue();
 
 
    ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
    pathSeparator.separatePathInequalities(nr_constraints_to_add,minImprovement);
-   std::priority_queue<std::pair<double,ldp_path_factor_type*>>& queueWithPaths=pathSeparator.getPriorityQueue();
+   LdpFactorQueue<ldp_path_factor_type>& queueWithPaths=pathSeparator.getFactorQueue();
+ //  auto& queueWithPaths=pathSeparator.getStablePriorityQueue();
 
 
    size_t pathFactorsOriginalSize=path_factors_.size();
    size_t cutFactorOriginalSize=cut_factors_.size();
 
-   while(counterAdded<nr_constraints_to_add&&(!queueWithCuts.empty()||!queueWithPaths.empty())){
+   while(counterAdded<nr_constraints_to_add&&(!queueWithCuts.isQueueEmpty()||!queueWithPaths.isQueueEmpty())){
 
-       if(queueWithPaths.empty()||(!queueWithCuts.empty()&&queueWithCuts.top().first>queueWithPaths.top().first)){
+       if(queueWithPaths.isQueueEmpty()||(!queueWithCuts.isQueueEmpty()&&queueWithCuts.getTopImprovementValue()>queueWithPaths.getTopImprovementValue())){
 
            // while(!queueWithCuts.empty()&&counterAdded<numberOfCutsToSeparate){
-           ldp_cut_factor* pCutFromQueue=queueWithCuts.top().second;
+           const ldp_cut_factor* pCutFromQueue=queueWithCuts.getTopFactorPointer();
 
            bool isFree=cutSeparator.checkWithBlockedEdges(*pCutFromQueue,blockedBaseEdges,blockedLiftedEdges);
            if(isFree){
 
               // std::cout<<"cut is free"<<std::endl;
                cutSeparator.updateUsedEdges(*pCutFromQueue,blockedBaseEdges,baseEdgeUsage,blockedLiftedEdges,liftedEdgeUsage,maxEdgeUsage);
-               double improvement=queueWithCuts.top().first;
+               double improvement=queueWithCuts.getTopImprovementValue();
                possibleImprovement+=improvement;
                auto * newCutFactor=lp_->template add_factor<CUT_FACTOR_CONT>(*pCutFromQueue);
                cut_factors_.push_back(newCutFactor);
@@ -1259,20 +1261,19 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
            else{
                //std::cout<<"cut is not free"<<std::endl;
            }
-           delete pCutFromQueue;
-           pCutFromQueue=nullptr;
-           queueWithCuts.pop();
+
+           queueWithCuts.removeTopElement();
        }
        else{
 
            // while(!queueWithPaths.empty()&&counterAdded<nr_constraints_to_add){
 
-           ldp_path_factor_type* pPathFactor=queueWithPaths.top().second;
+           const ldp_path_factor_type* pPathFactor=queueWithPaths.getTopFactorPointer();
            bool isFree=pathSeparator.checkWithBlockedEdges(*pPathFactor,blockedBaseEdges,blockedLiftedEdges);
            if(isFree){
               // std::cout<<"path is free"<<std::endl;
                pathSeparator.updateUsedEdges(*pPathFactor,blockedBaseEdges,baseEdgeUsage,blockedLiftedEdges,liftedEdgeUsage,maxEdgeUsage);
-               double improvement=queueWithPaths.top().first;
+               double improvement=queueWithPaths.getTopImprovementValue();
                possibleImprovement+=improvement;
                auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(*pPathFactor);
                //auto* newPathFactor = lp_->template add_factor<PATH_FACTOR>(pPathFactor->getListOfVertices(),pPathFactor->getCosts(),pPathFactor->getLiftedInfo());
@@ -1315,9 +1316,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
            else{
                //std::cout<<"path is not free"<<std::endl;
            }
-           delete pPathFactor;
-           pPathFactor=nullptr;
-           queueWithPaths.pop();
+           queueWithPaths.removeTopElement();
 
 
        }
@@ -1326,9 +1325,9 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     if(diagnostics()) std::cout<<"added "<<counterCuts<<" cut ineq"<<std::endl;
     if(diagnostics()) std::cout<<"added "<<counterPaths<<" path ineq"<<std::endl;
 
-    cutSeparator.clearPriorityQueue();
+    queueWithCuts.clearPriorityQueue();
 
-    pathSeparator.clearPriorityQueue();
+    queueWithPaths.clearPriorityQueue();
 
     adjustCutLabels(cutFactorOriginalSize);
     adjustPathLabels(pathFactorsOriginalSize);

@@ -5,6 +5,8 @@
 #include"ldp_min_marginals_extractor.hxx"
 #include"ldp_two_layer_graph.hxx"
 #include<list>
+#include "stable_priority_queue.hxx"
+#include "ldp_factor_queue.hxx"
 
 namespace LPMP {
 
@@ -27,10 +29,13 @@ public:
 
     void separateCutInequalities(size_t maxConstraints,double minImprovement);
 
-    std::priority_queue<std::pair<double,CUT_FACTOR*>>& getPriorityQueue(){
-        return pQueue;
-    }
+//    stable_priority_queue<std::pair<double,CUT_FACTOR*>>& getPriorityQueue(){
+//        return pQueue;
+//    }
 
+    LdpFactorQueue<CUT_FACTOR>& getPriorityQueue(){
+        return factorQueue;
+    }
 
     //LdpPathMessageInputs getMessageInputsToPathFactor(PATH_FACTOR* myPathFactor,SINGLE_NODE_CUT_FACTOR_CONT* sncFactor,size_t index)const ;
     void clearPriorityQueue();
@@ -53,22 +58,23 @@ private:
     std::vector<std::list<size_t>> predecessors;
     std::vector<std::list<size_t>> descendants;
     std::vector<std::vector<char>> isConnected;
-    std::priority_queue<std::pair<double,CUT_FACTOR*>> pQueue;
+    //stable_priority_queue<std::pair<double,CUT_FACTOR*>> pQueue;
+    LdpFactorQueue<CUT_FACTOR> factorQueue;
      std::vector<std::list<size_t>> candidateLifted;
      size_t maxTimeGap;
 
 };
 
-template <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
-inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
-    while(!pQueue.empty()){
-        std::pair<double,CUT_FACTOR*> p=pQueue.top();
-        delete p.second;
-        p.second=nullptr;
-        pQueue.pop();
-    }
+//template <class CUT_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
+//inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::clearPriorityQueue() {
+//    while(!pQueue.empty()){
+//        std::pair<double,CUT_FACTOR*> p=pQueue.top();
+//        delete p.second;
+//        p.second=nullptr;
+//        pQueue.pop();
+//    }
 
-}
+//}
 
 
 
@@ -254,7 +260,8 @@ inline void LdpCutSeparator<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createCut(s
 
 
     CUT_FACTOR* pCutF=new CUT_FACTOR(v1,v2,0.0,cutEdges);
-    pQueue.push(std::pair(improvementValue,pCutF));
+    //pQueue.push(std::pair(improvementValue,pCutF));
+    factorQueue.insertToQueue(improvementValue,pCutF);
 }
 
 
