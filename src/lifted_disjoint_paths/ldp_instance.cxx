@@ -12,6 +12,7 @@ namespace lifted_disjoint_paths {
 LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>& cs):
     parameters(configParameters)
 {
+    pCompleteGraph=&cs.myCompleteGraph;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     myGraphLifted=cs.myCompleteGraph;
@@ -56,6 +57,8 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
 
 LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
     parameters(configParameters){
+
+    pCompleteGraph=&BP.getMyCompleteGraph();
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -221,11 +224,11 @@ void LdpInstance::initAdaptiveThresholds(const LdpDirectedGraph* pBaseGraph,cons
 
 
 
-
 LdpInstance::LdpInstance(LdpParameters<>& configParameters,const py::array_t<size_t>& baseEdges,const py::array_t<size_t>& liftedEdges,const  py::array_t<double>& baseCosts,const  py::array_t<double>& liftedCosts,const  py::array_t<double>& verticesCosts,VertexGroups<>& pvg):parameters(configParameters){
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
+    pCompleteGraph=nullptr;
 
     const auto baseEdgeVector=baseEdges.unchecked<2>();
     const std::size_t dimBase1=baseEdgeVector.shape(0);
@@ -341,6 +344,53 @@ void LdpInstance::init(){
 
 
 
+
+double LdpInstance::evaluateClustering(const std::vector<size_t>& labels) const{
+
+    double value=0;
+    size_t maxLabel=0;
+    if(pCompleteGraph!=nullptr){
+        assert(pCompleteGraph->getNumberOfVertices()==labels.size());
+        for (int i = 0; i < labels.size(); ++i) {
+            if(labels[i]!=0){
+                maxLabel=std::max(maxLabel,labels[i]);
+                auto iter=pCompleteGraph->forwardNeighborsBegin(i);
+                for (;iter!=pCompleteGraph->forwardNeighborsEnd(i);iter++) {
+                    size_t vertex=iter->first;
+                    double cost=iter->second;
+                    assert(vertex<labels.size());
+                    if(labels[vertex]==labels[i]) value+=cost;
+                }
+            }
+
+        }
+    }
+    if(parameters.isMustCutMissing()){
+        size_t mustCuts=0;
+        std::vector<std::vector<size_t>> verticesToLabels(maxLabel);
+        for (size_t i = 0; i < labels.size(); ++i) {
+            if(labels[i]>0){
+                size_t labelOrder=labels[i]-1;
+                assert(labelOrder<verticesToLabels.size());
+                size_t size=verticesToLabels[labelOrder].size();
+                for (size_t j = 0; j < size; ++j) {
+                    size_t vertex=verticesToLabels[labelOrder][j];
+                    if(isReachable(vertex,i)&&!canJoin(vertex,i)){
+                        mustCuts++;
+                    }
+                }
+
+            }
+
+        }
+        if(diagnostics()&&mustCuts>0){
+            std::cout<<"number of must cuts: "<<mustCuts<<std::endl;
+        }
+        value+=100*mustCuts;
+    }
+    return value;
+
+}
 
 
 

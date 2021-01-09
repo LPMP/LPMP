@@ -87,6 +87,8 @@ private:
     //std::vector<std::vector<std::unordered_set<size_t>>> usedTriangles;
     const lifted_disjoint_paths::LdpInstance * pInstance;
     double bestPrimalValue;
+    double clusteringValue;
+
     std::map<size_t,std::set<size_t>> addedCutFactorLiftedEdges;
     std::vector<std::vector<size_t>> bestPrimalSolution;
     std::vector<size_t> currentPrimalDescendants;
@@ -1148,6 +1150,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
         bestPrimalValue=primalValue;
         bestPrimalSolution=paths;
+        clusteringValue=pInstance->evaluateClustering(currentPrimalLabels);
+
      }
 
     if(debug()){
@@ -1155,7 +1159,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         sncDebug();
     }
 
-    if(diagnostics()) std::cout<<"primal value: "<<primalValue<<std::endl;
+    if(diagnostics()) std::cout<<"primal value: "<<primalValue<<", clustering value: "<<clusteringValue<<std::endl;
 }
 
 

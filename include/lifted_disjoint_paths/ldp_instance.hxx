@@ -134,7 +134,10 @@ public:
 
     bool isStrongBase(size_t v,size_t w) const;
 
+    double evaluateClustering(const std::vector<size_t>& labels) const;
+
     std::vector<std::unordered_set<size_t>> initReachableLdp(const LdpDirectedGraph &graph, LdpParameters<> &parameters, const VertexGroups<size_t> *vg=nullptr);
+
 
 
 
@@ -203,6 +206,7 @@ private:
 
     LdpDirectedGraph myGraph;
     LdpDirectedGraph myGraphLifted;
+    const LdpDirectedGraph* pCompleteGraph;
 
     std::vector<std::unordered_set<size_t>> strongBaseEdges;
 
