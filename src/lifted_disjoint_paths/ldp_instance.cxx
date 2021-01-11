@@ -662,10 +662,11 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
     std::vector<std::array<size_t,2>> edgesToUse;
     std::vector<double> costsToUse;
 
+    std::vector<std::multimap<double,size_t>> edgesToKeep(parameters.getMaxTimeBase());
 
     for (size_t v0 = 0; v0 < inputGraph.getNumberOfVertices(); ++v0) {
         //std::cout<<"vertex 0 "<<v0<<std::endl;
-        std::vector<std::multimap<double,size_t>> edgesToKeep(parameters.getMaxTimeBase());
+        //std::vector<std::multimap<double,size_t>> edgesToKeep(parameters.getMaxTimeBase());
         size_t l0=vertexGroups.getGroupIndex(v0);
         //std::cout<<"layer "<<l0<<std::endl;
         auto iter=inputGraph.forwardNeighborsBegin(v0);

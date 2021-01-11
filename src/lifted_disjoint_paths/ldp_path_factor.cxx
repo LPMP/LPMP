@@ -4,18 +4,20 @@ namespace LPMP {
 
 
 
-ldp_path_factor::ldp_path_factor(const std::vector<size_t>& _listOfVertices, const std::vector<double>& _listOfCosts, const std::vector<char>& _isLifted, const lifted_disjoint_paths::LdpInstance* pInstance, bool mustCut):
+ldp_path_factor::ldp_path_factor(const std::vector<size_t>& _listOfVertices, const std::vector<double>& _listOfCosts, const std::vector<char>& _isLifted, const lifted_disjoint_paths::LdpInstance* pInstance, bool _mustCut):
     listOfVertices(_listOfVertices),
     listOfCosts(_listOfCosts),
     isLifted(_isLifted),
-    isMustCut(mustCut)
+    mustCut(_mustCut)
 {
     if(mustCut){
         assert(listOfCosts.size()+1==listOfVertices.size());
+        assert(listOfCosts.size()>=2);
     }
     else{
         assert(listOfCosts.size()==listOfVertices.size());
         assert(isLifted.back()==1);
+        assert(listOfCosts.size()>2);
     }
 
    // assert(listOfCosts.size()==listOfVertices.size()&&listOfCosts.size()==isLifted.size());
@@ -24,7 +26,7 @@ ldp_path_factor::ldp_path_factor(const std::vector<size_t>& _listOfVertices, con
     isStrongBase=std::vector<char>(numberOfEdges);
     primalSolution=std::vector<char>(numberOfEdges);
     optSolution=std::vector<char>(numberOfEdges);
-    assert(listOfCosts.size()>2);
+   // assert(listOfCosts.size()>2);
     for (size_t i = 0; i < numberOfEdges; ++i) {
         if(!isLifted[i]){
             bool strongBase=pInstance->checkStrongBase(listOfVertices[i],listOfVertices[i+1]);
@@ -83,7 +85,7 @@ void ldp_path_factor::init_primal(){
 
 
 void ldp_path_factor::print() const{
-    std::cout<<"path factor, is must cut "<<isMustCut<<std::endl;
+    std::cout<<"path factor, is must cut "<<mustCut<<std::endl;
     for (size_t i = 0; i < listOfVertices.size(); ++i) {
         char il=isLifted.at(i);
         std::cout<<"vertex "<<listOfVertices[i]<<", is lifted "<<int(il)<<", cost "<<listOfCosts[i]<<std::endl;
@@ -102,7 +104,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
     size_t numberOfZeros=0;
     size_t indexOfZero=0;
     size_t maxNumber=numberOfEdges;
-    if(!isMustCut){
+    if(!mustCut){
         maxNumber--;
     }
     for (size_t i=0;i<listOfVertices.size()-1;i++) {
@@ -133,7 +135,7 @@ void ldp_path_factor::setPrimal(const std::vector<size_t>& primalDescendants, co
 
         }
     }
-    if(!isMustCut){
+    if(!mustCut){
         size_t vertex2=listOfVertices.back();
         size_t vertex1=listOfVertices[0];
         primalSolution.back()=(vertexLabels[vertex1]!=0&&vertexLabels[vertex1]==vertexLabels[vertex2]);
@@ -257,7 +259,7 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
     double optimalValue=0;
     size_t indexOfWeakestNegative=numberOfEdges;
     size_t numberOfPositive=0;
-    if(isMustCut){
+    if(mustCut){
         numberOfPositive=1;
     }
 
@@ -300,13 +302,13 @@ double ldp_path_factor::minimize(const std::vector<double>*pCosts,size_t edgeInd
 
     }
 
-    assert(isMustCut||numberOfPositive==0||indexOfPositive<numberOfEdges);
+    assert(mustCut||numberOfPositive==0||indexOfPositive<numberOfEdges);
 
-    if(numberOfPositive==1&&(isMustCut||isLifted[indexOfPositive]||isStrongBase[indexOfPositive])){
+    if(numberOfPositive==1&&(mustCut||isLifted[indexOfPositive]||isStrongBase[indexOfPositive])){
         assert(indexOfWeakestNegative<numberOfEdges);
-        assert(isMustCut||indexOfPositive<numberOfEdges);
+        assert(mustCut||indexOfPositive<numberOfEdges);
 
-        if(isMustCut||(edgeIndex<numberOfEdges&&!edgeLabel)){  //must cut the edge
+        if(mustCut||(edgeIndex<numberOfEdges&&!edgeLabel)){  //must cut the edge
 
             double value=optimalValue-costs[indexOfWeakestNegative];
             optSolution[indexOfWeakestNegative]=0;

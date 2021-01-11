@@ -1198,14 +1198,19 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
    size_t counterAdded=0;
    size_t counterCuts=0;
    size_t counterPaths=0;
+
+   ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
+   pathSeparator.separatePathInequalities(nr_constraints_to_add,minImprovement);
+   LdpFactorQueue<ldp_path_factor_type>& queueWithPaths=pathSeparator.getFactorQueue();
+
    LdpCutSeparator<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> cutSeparator(pInstance,minMarginalsExtractor);
    cutSeparator.separateCutInequalities(nr_constraints_to_add,minImprovement);
    LdpFactorQueue<ldp_cut_factor>& queueWithCuts=cutSeparator.getPriorityQueue();
 
 
-   ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
-   pathSeparator.separatePathInequalities(nr_constraints_to_add,minImprovement);
-   LdpFactorQueue<ldp_path_factor_type>& queueWithPaths=pathSeparator.getFactorQueue();
+//   ldp_path_separator<ldp_path_factor_type,SINGLE_NODE_CUT_FACTOR> pathSeparator(pInstance, minMarginalsExtractor);
+//   pathSeparator.separatePathInequalities(nr_constraints_to_add,minImprovement);
+//   LdpFactorQueue<ldp_path_factor_type>& queueWithPaths=pathSeparator.getFactorQueue();
  //  auto& queueWithPaths=pathSeparator.getStablePriorityQueue();
 
 

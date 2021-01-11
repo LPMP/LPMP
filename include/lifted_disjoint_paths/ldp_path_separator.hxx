@@ -155,8 +155,8 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::updateU
     const std::vector<size_t>& vertices= pFactor.getListOfVertices();
     const std::vector<char>& liftedInfo= pFactor.getLiftedInfo();
 
-    assert(liftedInfo.size()==vertices.size());
-    for (int i = 0; i < vertices.size(); ++i) {
+    //assert(liftedInfo.size()==vertices.size());
+    for (int i = 0; i < liftedInfo.size(); ++i) {
 
         size_t vertex1=vertices[i];
         size_t vertex2;
@@ -202,8 +202,14 @@ inline bool ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::checkWi
     bool isFree=true;
 
 
-    assert(liftedInfo.size()==vertices.size());
-    for (int i = 0; i < vertices.size(); ++i) {
+    if(!pFactor.isMustCut()){
+        assert(liftedInfo.size()==vertices.size());
+    }
+    else{
+        assert(liftedInfo.size()+1==vertices.size());
+    }
+
+    for (int i = 0; i < liftedInfo.size(); ++i) {
 
         size_t vertex1=vertices[i];
         size_t vertex2;
@@ -339,18 +345,31 @@ template  <class PATH_FACTOR,class SINGLE_NODE_CUT_FACTOR_CONT>
 inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::createPathFactor(const size_t& lv1, const size_t& lv2, const size_t &bv1, const size_t &bv2,bool isLifted,bool isMustCut){
 
 
-    assert(!isMustCut||pInstance->existLiftedEdge(lv1,lv2));
+//    if(isMustCut&&!pInstance->existLiftedEdge(lv1,lv2)){
+//        std::cout<<"required lifted edge between "<<lv1<<","<<lv2<<", not found"<<std::endl;
+//    }
+    assert(isMustCut||pInstance->existLiftedEdge(lv1,lv2));
 
     std::list<std::pair<size_t,bool>> beginning;
     if(lv1!=bv1) beginning=findShortestPath(lv1,bv1);
     std::list<std::pair<size_t,bool>> ending;
     if(bv2!=lv2) ending=findShortestPath(bv2,lv2);
     if(lv1==bv1&&lv2==bv2) std::cout<<"base covering lifted for path "<<std::endl;
-    std::vector<size_t> pathVertices(beginning.size()+ending.size()+2);
-    std::vector<char> liftedEdgesIndices(beginning.size()+ending.size()+2);
+    size_t edgeLength=0;
+    size_t verticesLength=0;
+    if(!isMustCut){
+        edgeLength=beginning.size()+ending.size()+2;
+        verticesLength=edgeLength;
+    }
+    else{
+        edgeLength=beginning.size()+ending.size()+1;
+        verticesLength=edgeLength+1;
+    }
+    std::vector<size_t> pathVertices(verticesLength);
+    std::vector<char> liftedEdgesIndices(edgeLength);
 
 
-    size_t numberOfVerticesInPath=pathVertices.size();
+    //size_t numberOfVerticesInPath=pathVertices.size();
 
     auto iter=beginning.begin();
     auto end=beginning.end();
@@ -384,13 +403,14 @@ inline PATH_FACTOR* ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>:
     }
     assert(counter<pathVertices.size());
     pathVertices[counter]=lv2;
-    liftedEdgesIndices[counter]=true; //this relates to the big lifted edge connecting the first and the last path vertex
-
-    assert(counter==numberOfVerticesInPath-1);
+    if(!isMustCut){
+        liftedEdgesIndices[counter]=true; //this relates to the big lifted edge connecting the first and the last path vertex
+    }
+    assert(counter==verticesLength-1);
     assert(pathVertices.front()<pInstance->getNumberOfVertices()-2&&pathVertices.back()<pInstance->getNumberOfVertices());
 
 
-    std::vector<double> costs(pathVertices.size(),0); //last member is the lifted edge cost
+    std::vector<double> costs(edgeLength,0); //last member is the lifted edge cost
     assert(pathVertices.front()==lv1);
     assert(pathVertices.back()==lv2);
 
@@ -529,18 +549,18 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                             assert(pInstance->canJoin(pred,descV2));
 
                         }
-                        else{
-                            bool canJoin=pInstance->canJoin(pred,descV2);
-                            if(!canJoin){
-                                PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,true); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
-                                double improvementValue=abs(edgeCost);
-                                //  pQueue.push(std::pair(improvementValue,pPathFactor));
-                                factorQueue.insertToQueue(improvementValue,pPathFactor);
-                                constraintsCounter++;
+//                        else{
+//                            bool canJoin=pInstance->canJoin(pred,descV2);
+//                            if(!canJoin){
+//                                PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,true); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+//                                double improvementValue=abs(edgeCost);
+//                                //  pQueue.push(std::pair(improvementValue,pPathFactor));
+//                                factorQueue.insertToQueue(improvementValue,pPathFactor);
+//                                constraintsCounter++;
 
-                                //TODO: separate must cut version of path ineq
-                            }
-                        }
+//                                //TODO: separate must cut version of path ineq
+//                            }
+//                        }
 
                         descendants[pred].insert(iterDescPred,descV2);
                         predecessors[descV2].push_back(pred);

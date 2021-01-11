@@ -141,6 +141,9 @@ public:
     }
 
 
+    const double& getMustCutPenalty()const{
+        return mustCutPenalty;
+    }
 
 
 //	void setMaxTimeLifted(size_t maxTimeLifted) {
@@ -252,6 +255,7 @@ private:
      bool coverBaseWithLifted;
 
      bool missingAsMustCut;
+     double mustCutPenalty;
 
 };
 
@@ -534,6 +538,16 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          missingAsMustCut=0;
      }
      controlOutput<<"missing edges as must cut "<<missingAsMustCut<<std::endl;
+
+
+     if(parameters.count("MUST_CUT_PENALTY")>0){
+         mustCutPenalty=std::stod(parameters["MUST_CUT_PENALTY"]);
+     }
+     else{
+         mustCutPenalty=100.0;
+     }
+     controlOutput<<"must cut penalty "<<mustCutPenalty<<std::endl;
+
 
      writeControlOutput();
 

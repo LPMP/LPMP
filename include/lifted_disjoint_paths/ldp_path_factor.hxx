@@ -11,7 +11,7 @@ namespace LPMP {
 class ldp_path_factor{
 
 public:
-    ldp_path_factor(const std::vector<size_t>& _listOfVertices,const std::vector<double>& _listOfCosts,const std::vector<char>& _isLifted,const lifted_disjoint_paths::LdpInstance* pInstance,bool mustCut=false);
+    ldp_path_factor(const std::vector<size_t>& _listOfVertices,const std::vector<double>& _listOfCosts,const std::vector<char>& _isLifted,const lifted_disjoint_paths::LdpInstance* pInstance,bool _mustCut=false);
 
 
     double LowerBound() const;
@@ -63,6 +63,10 @@ public:
         return primalBaseCost;
     }
 
+    bool isMustCut() const{
+        return mustCut;
+    }
+
     std::vector<double> getAllMinMarginals()const;
 
     void print() const;
@@ -80,7 +84,7 @@ private:
     mutable double primalBaseCost;
     mutable double primalLiftedCost;
     mutable std::vector<char> optSolution;
-    bool isMustCut;
+    bool mustCut;
 
 };
 
