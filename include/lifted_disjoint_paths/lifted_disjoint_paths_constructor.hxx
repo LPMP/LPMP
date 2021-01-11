@@ -15,7 +15,7 @@
 #include "ldp_cut_message_creator.hxx"
 #include "ldp_cut_factor_separator.hxx"
 #include "ldp_special_min_marginals_extractor.hxx"
-#include "stable_priority_queue.hxx"
+//#include "stable_priority_queue.hxx"
 
 namespace LPMP {
 
