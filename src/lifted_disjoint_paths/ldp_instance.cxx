@@ -858,6 +858,24 @@ std::vector<std::unordered_set<size_t>> LdpInstance::initReachableLdp(const LdpD
 
     }
 
+    size_t reachableMustCut=0;
+    if(parameters.isMustCutMissing()){
+        for (size_t i = 0; i < canJoinStructure.size(); ++i) {
+            for(auto& d:desc[i]){
+                if(vg!=nullptr){
+                    size_t l0=vg->getGroupIndex(i);
+                    size_t l1=vg->getGroupIndex(d);
+                    if(l1!=l0&&(l1-l0)<=parameters.getMaxTimeGapComplete()&&!canJoin(i,d)){
+                        reachableMustCut++;
+                    }
+                }
+            }
+
+        }
+    }
+   parameters.getControlOutput()<<"number of reachable must cuts: "<<reachableMustCut<<std::endl;
+
+   parameters.writeControlOutput();
     return desc;
 
 }
