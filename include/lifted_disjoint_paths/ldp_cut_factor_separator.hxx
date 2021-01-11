@@ -5,7 +5,7 @@
 #include"ldp_min_marginals_extractor.hxx"
 #include"ldp_two_layer_graph.hxx"
 #include<list>
-#include "stable_priority_queue.hxx"
+//#include "stable_priority_queue.hxx"
 #include "ldp_factor_queue.hxx"
 
 namespace LPMP {
