@@ -662,7 +662,13 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
     std::vector<std::array<size_t,2>> edgesToUse;
     std::vector<double> costsToUse;
 
-    std::vector<std::multimap<double,size_t>> edgesToKeep(parameters.getMaxTimeBase());
+    size_t n=inputGraph.getNumberOfVertices()-2;
+
+    std::vector<std::vector<std::multimap<double,size_t>>> edgesToKeep(n);
+
+    for (size_t i = 0; i < n; ++i) {
+        edgesToKeep[i]=std::vector<std::multimap<double,size_t>>(parameters.getMaxTimeBase());
+    }
 
     for (size_t v0 = 0; v0 < inputGraph.getNumberOfVertices(); ++v0) {
         //std::cout<<"vertex 0 "<<v0<<std::endl;
@@ -690,28 +696,30 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
                 assert(gap<=parameters.getMaxTimeBase());
                 if(gap<=parameters.getKnnTimeGap()||cost<=parameters.getBaseUpperThreshold()){
                     assert(edgesToKeep.size()>gap-1);
-                    if(edgesToKeep[gap-1].size()<parameters.getKnnK()){
-                        edgesToKeep[gap-1].insert(std::pair<double,size_t>(cost,v1));
+                    if(edgesToKeep[v0][gap-1].size()<parameters.getKnnK()){
+                        edgesToKeep[v0][gap-1].insert(std::pair<double,size_t>(cost,v1));
                     }
                     else{
-                        double lastValue=edgesToKeep[gap-1].rbegin()->first;
+                        double lastValue=edgesToKeep[v0][gap-1].rbegin()->first;
                         if(cost<lastValue){
-                            auto it=edgesToKeep[gap-1].end();
+                            auto it=edgesToKeep[v0][gap-1].end();
                             it--;
-                            edgesToKeep[gap-1].erase(it);
-                            edgesToKeep[gap-1].insert(std::pair<double,size_t>(cost,v1));
+                            edgesToKeep[v0][gap-1].erase(it);
+                            edgesToKeep[v0][gap-1].insert(std::pair<double,size_t>(cost,v1));
                         }
                     }
 
                 }
             }
         }
-        for (size_t i = 0; i < edgesToKeep.size(); ++i) {
-            auto it=edgesToKeep[i].rbegin();
-            for (;it!=edgesToKeep[i].rend();it++) {
+    }
+     for (size_t v = 0; v < n; ++v) {
+        for (size_t i = 0; i < edgesToKeep[v].size(); ++i) {
+            auto it=edgesToKeep[v][i].rbegin();
+            for (;it!=edgesToKeep[v][i].rend();it++) {
                 double cost=it->first;
                 size_t v1=it->second;
-                edgesToUse.push_back({v0,v1});
+                edgesToUse.push_back({v,v1});
 
                 if(!zeroCost||i==0){
                     costsToUse.push_back(cost);
