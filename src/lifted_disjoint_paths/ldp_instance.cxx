@@ -13,8 +13,7 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     parameters(configParameters)
 {
 
-    parameters.getControlOutput()<< "Edge file name " << cs.getEdgeFileName()<< std::endl;
-    parameters.writeControlOutput();
+
 
 
     pCompleteGraph=&cs.myCompleteGraph;
@@ -53,6 +52,9 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     const std::chrono::steady_clock::time_point& csBegin=cs.getContructorBegin();
     parameters.getControlOutput()<< "Time of instance constructor = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << " seconds" << std::endl;
     parameters.getControlOutput()<< "Time of instance constructor and complete structure = " << std::chrono::duration_cast<std::chrono::seconds> (end - csBegin).count() << " seconds" << std::endl;
+    parameters.writeControlOutput();
+
+    parameters.getControlOutput()<< "Edge file name " << cs.getEdgeFileName()<< std::endl;
     parameters.writeControlOutput();
 
 
