@@ -25,7 +25,7 @@ class lifted_disjoint_paths_constructor
 public:
     using FMC = FACTOR_MESSAGE_CONNECTION;
     using ldp_cut_factor = typename CUT_FACTOR_CONT::FactorType;
-       using ldp_path_factor_type = typename PATH_FACTOR::FactorType;
+    using ldp_path_factor_type = typename PATH_FACTOR::FactorType;
 
     template<typename SOLVER>
     lifted_disjoint_paths_constructor(SOLVER& solver) : lp_(&solver.GetLP()) {}
@@ -95,6 +95,10 @@ private:
     std::vector<size_t> currentPrimalStartingVertices;
     std::vector<size_t> currentPrimalLabels;
     ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR> minMarginalsExtractor;
+
+    //std::vector<std::tuple<size_t,size_t,const double*,const double*>> controlMCCosts;
+    std::vector<const double*> controlMCCostsIn;
+    std::vector<const double*> controlMCCostsOut;
 
 };
 
@@ -738,8 +742,18 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             auto* right_snc=single_node_cut_factors_[vertex2][0];
             size_t i=right_snc->get_factor()->getLiftedIDToOrder(vertex1);
             assert((right_snc->get_factor()->getLiftedIDs().size())>i);
-            auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
-            snc_lifted_messages_.push_back(message);
+            //if(pInstance->getMyGraphLifted().getForwardEdgeCost(vertex1,j)<100.0){
+                auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+                snc_lifted_messages_.push_back(message);
+
+            //}
+            const double* pOut=&left_snc_factor->getLiftedCosts().at(j);
+            const double* pIn=&right_snc->get_factor()->getLiftedCosts().at(i);
+            //     controlMCCosts.push_back(std::make_tuple(vertex1,vertex2,pIn,pOut));
+            if(pInstance->getMyGraphLifted().getForwardEdgeCost(vertex1,j)>=100.0){
+                controlMCCostsIn.push_back(pIn);
+                controlMCCostsOut.push_back(pOut);
+            }
 
         }
 
@@ -1239,7 +1253,8 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                //std::cout<<"improvement "<<improvement<<std::endl;
                const std::vector<size_t>& inputs=pCutFactor->getInputVertices();
                const std::vector<size_t>& outputs=pCutFactor->getOutputVertices();
-               bool liftedAdded=false;
+               bool liftedAddedToOut=false;
+               bool liftedAddedToIn=false;
                for(size_t i=0;i<inputs.size();i++){
                    size_t inputVertex=inputs[i];
                    assert(inputVertex<single_node_cut_factors_.size());
@@ -1248,11 +1263,11 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                    messageInputs.init(pCutFactor,snc,i);
 
 
-                   if(messageInputs.containsLifted) liftedAdded=true;
+                   if(messageInputs.containsLifted) liftedAddedToOut=true;
                    auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,messageInputs._nodeIndicesInCut,messageInputs._nodeIndicesInSnc,i,true,messageInputs.containsLifted,messageInputs._nodeIndexOfLiftedEdge);
                    snc_cut_messages_.push_back(message1);
                }
-               if(!liftedAdded){
+               if(!liftedAddedToOut){
                    std::vector<size_t> _nodeIndicesInCut;
                    std::vector<size_t> _nodeIndicesInSnc;
                    size_t v=pCutFactor->getLiftedInputVertex();
@@ -1263,9 +1278,34 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                    auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,_nodeIndicesInCut,_nodeIndicesInSnc,inputs.size(),true,true,_nodeIndexOfLiftedEdge);
                    snc_cut_messages_.push_back(message1);
                }
+               if(!liftedAddedToIn){
+                   std::vector<size_t> _nodeIndicesInCut;
+                   std::vector<size_t> _nodeIndicesInSnc;
+                   size_t v=pCutFactor->getLiftedInputVertex();
+                   size_t w=pCutFactor->getLiftedOutputVertex();
+                   assert(w<single_node_cut_factors_.size());
+                   auto * snc=single_node_cut_factors_[w][0];
+                   size_t _nodeIndexOfLiftedEdge=snc->get_factor()->getLiftedIDToOrder(v);
+                   auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,_nodeIndicesInCut,_nodeIndicesInSnc,inputs.size(),false,true,_nodeIndexOfLiftedEdge);
+                   snc_cut_messages_.push_back(message1);
+               }
+               for(size_t i=0;i<outputs.size();i++){
+                   size_t outputVertex=outputs[i];
+                   assert(outputVertex<single_node_cut_factors_.size());
+                   auto * snc=single_node_cut_factors_[outputVertex][0];
+                   LdpCutMessageInputs<ldp_cut_factor,SINGLE_NODE_CUT_FACTOR> messageInputs;
+                   messageInputs.init(pCutFactor,snc,i);
+
+
+                   if(messageInputs.containsLifted) liftedAddedToOut=true;
+                   auto * message1=lp_->template add_message<SNC_CUT_MESSAGE>(newCutFactor,snc,messageInputs._nodeIndicesInCut,messageInputs._nodeIndicesInSnc,i,false,messageInputs.containsLifted,messageInputs._nodeIndexOfLiftedEdge);
+                   snc_cut_messages_.push_back(message1);
+               }
+
+
                counterAdded++;
                counterCuts++;
-               if(diagnostics()) std::cout<<"cut improvement "<<improvement<<std::endl;
+               //if(diagnostics()) std::cout<<"cut improvement "<<improvement<<std::endl;
            }
            else{
                //std::cout<<"cut is not free"<<std::endl;
@@ -1320,7 +1360,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
                }
                counterAdded ++;
                counterPaths++;
-               if(diagnostics()) std::cout<<"path improvement "<<improvement<<std::endl;
+             //  if(diagnostics()) std::cout<<"path improvement "<<improvement<<std::endl;
            }
            else{
                //std::cout<<"path is not free"<<std::endl;

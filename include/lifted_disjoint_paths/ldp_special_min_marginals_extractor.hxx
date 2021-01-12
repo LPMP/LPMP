@@ -96,7 +96,7 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
                 double delta=iter->cost;
                 baseEdgesWithCosts[v1][v2]+=delta;
                 if(doCostUpdate){
-                    cFactor->updateCostBase(j,outputCounter,-delta);
+                    cFactor->updateCostBaseForward(j,outputCounter,-delta);
                 }
                 outputCounter++;
             }

@@ -55,6 +55,7 @@ public:
 
         configParameters.getControlOutput()<<"cg vertices "<<completeGraph.numberOfVertices()<<std::endl;
         addEdgesFromFile(configParameters.getGraphFileName(),configParameters);
+        edgeFileName=configParameters.getGraphFileName();
         deleteVG=true;
 
 }
@@ -72,6 +73,7 @@ public:
         completeGraph=andres::graph::Digraph<>(vg.getMaxVertex()+1);
        // std::cout<<"cg vertices "<<completeGraph.numberOfVertices()<<std::endl;
         deleteVG=false;
+        edgeFileName="";
 
 
 }
@@ -108,6 +110,10 @@ public:
         return constructorBegin;
     }
 
+    const std::string& getEdgeFileName()const {
+       return edgeFileName;
+    }
+
 
         andres::graph::Digraph<> completeGraph;
         std::vector<double> completeScore;
@@ -121,6 +127,7 @@ private:
     bool deleteVG;
     VertexGroups<>* pVertexGroups;
     std::chrono::steady_clock::time_point constructorBegin;
+    std::string edgeFileName;
 
 };
 
@@ -271,6 +278,7 @@ template<class PAR>
 inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,PAR& params){
     char delim=',';
     VertexGroups<>& vg=*pVertexGroups;
+    edgeFileName=fileName;
 
     std::string line;
     std::ifstream data;

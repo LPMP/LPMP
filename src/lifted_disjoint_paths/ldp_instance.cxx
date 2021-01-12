@@ -12,6 +12,11 @@ namespace lifted_disjoint_paths {
 LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>& cs):
     parameters(configParameters)
 {
+
+    parameters.getControlOutput()<< "Edge file name " << cs.getEdgeFileName()<< std::endl;
+    parameters.writeControlOutput();
+
+
     pCompleteGraph=&cs.myCompleteGraph;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 

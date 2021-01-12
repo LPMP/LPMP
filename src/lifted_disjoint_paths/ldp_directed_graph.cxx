@@ -66,50 +66,50 @@ LdpDirectedGraph::LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inp
 
 }
 
-LdpDirectedGraph::LdpDirectedGraph(const andres::graph::Digraph<>& inputGraph,const std::vector<double>& inputEdgeCosts){
-    numberOfVertices=inputGraph.numberOfVertices();
-    numberOfEdges=0;
-    std::vector<std::size_t> adjacencyForward(numberOfVertices);
-    std::vector<std::size_t> adjacencyBackward(numberOfVertices);
+//LdpDirectedGraph::LdpDirectedGraph(const andres::graph::Digraph<>& inputGraph,const std::vector<double>& inputEdgeCosts){
+//    numberOfVertices=inputGraph.numberOfVertices();
+//    numberOfEdges=0;
+//    std::vector<std::size_t> adjacencyForward(numberOfVertices);
+//    std::vector<std::size_t> adjacencyBackward(numberOfVertices);
 
-    assert(inputGraph.numberOfEdges()==inputEdgeCosts.size());
-    for(size_t i=0;i<numberOfVertices;i++){
-        size_t neForward=inputGraph.numberOfEdgesFromVertex(i);
-        adjacencyForward[i]=neForward;
-        size_t neBackward=inputGraph.numberOfEdgesToVertex(i);
-        adjacencyBackward[i]=neBackward;
-    }
+//    assert(inputGraph.numberOfEdges()==inputEdgeCosts.size());
+//    for(size_t i=0;i<numberOfVertices;i++){
+//        size_t neForward=inputGraph.numberOfEdgesFromVertex(i);
+//        adjacencyForward[i]=neForward;
+//        size_t neBackward=inputGraph.numberOfEdgesToVertex(i);
+//        adjacencyBackward[i]=neBackward;
+//    }
 
-    forwardEdges.resize(adjacencyForward.begin(),adjacencyForward.end());
+//    forwardEdges.resize(adjacencyForward.begin(),adjacencyForward.end());
 
-    backwardEdges.resize(adjacencyBackward.begin(),adjacencyBackward.end());
-    size_t numberOfBackwardEdges=0;
+//    backwardEdges.resize(adjacencyBackward.begin(),adjacencyBackward.end());
+//    size_t numberOfBackwardEdges=0;
 
-    for(size_t i=0;i<numberOfVertices;i++){
-        size_t neForward=inputGraph.numberOfEdgesFromVertex(i);
-        for(size_t j=0;j<neForward;j++){
-            size_t e=inputGraph.edgeFromVertex(i,j);
-            size_t w=inputGraph.vertexFromVertex(i,j);
-            forwardEdges[i][j]={w,inputEdgeCosts[e]};
-            numberOfEdges++;
+//    for(size_t i=0;i<numberOfVertices;i++){
+//        size_t neForward=inputGraph.numberOfEdgesFromVertex(i);
+//        for(size_t j=0;j<neForward;j++){
+//            size_t e=inputGraph.edgeFromVertex(i,j);
+//            size_t w=inputGraph.vertexFromVertex(i,j);
+//            forwardEdges[i][j]={w,inputEdgeCosts[e]};
+//            numberOfEdges++;
 
-        }
-        size_t neBackward=inputGraph.numberOfEdgesToVertex(i);
-        for(size_t j=0;j<neBackward;j++){
-            size_t w=inputGraph.vertexToVertex(i,j);
-            size_t e=inputGraph.edgeToVertex(i,j);
-            backwardEdges[i][j]={w,inputEdgeCosts[e]};
-            numberOfBackwardEdges++;
-        }
-    }
-    assert(numberOfEdges==numberOfBackwardEdges);
+//        }
+//        size_t neBackward=inputGraph.numberOfEdgesToVertex(i);
+//        for(size_t j=0;j<neBackward;j++){
+//            size_t w=inputGraph.vertexToVertex(i,j);
+//            size_t e=inputGraph.edgeToVertex(i,j);
+//            backwardEdges[i][j]={w,inputEdgeCosts[e]};
+//            numberOfBackwardEdges++;
+//        }
+//    }
+//    assert(numberOfEdges==numberOfBackwardEdges);
 
-    for (size_t i=0;i<numberOfVertices;i++) {
-        std::sort(forwardEdges[i].begin(),forwardEdges[i].end());
-        std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
-    }
-    //Need to sort within edges?
-}
+//    for (size_t i=0;i<numberOfVertices;i++) {
+//        std::sort(forwardEdges[i].begin(),forwardEdges[i].end());
+//        std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
+//    }
+//    //Need to sort within edges?
+//}
 
 
 //LdpDirectedGraph::LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts,double inCost,double outCost){

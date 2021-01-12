@@ -10,6 +10,7 @@ ldp_path_factor::ldp_path_factor(const std::vector<size_t>& _listOfVertices, con
     isLifted(_isLifted),
     mustCut(_mustCut)
 {
+    assert(!mustCut);
     if(mustCut){
         assert(listOfCosts.size()+1==listOfVertices.size());
         assert(listOfCosts.size()>=2);
