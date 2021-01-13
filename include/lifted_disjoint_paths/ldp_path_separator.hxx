@@ -438,6 +438,8 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
     addedFactors=0;
 
+    bool useOuterPath=false;
+
     assert(factorQueue.isQueueEmpty());
 
 
@@ -521,72 +523,53 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
             auto iterLifted=positiveLifted[pred].begin();
 
-            while(iterDescV2!=endDescV2){
-                const size_t& descV2=*iterDescV2;
-                while(iterLifted!=positiveLifted[pred].end()&&iterLifted->first<descV2){
-                    iterLifted++;
-                }
-                if(iterDescPred==endDescPred||descV2<*iterDescPred){ //exists desc of v2 not contained in desc of pred
+            if(pred==vertex1&&*iterDescPred==vertex2){
+                alreadyConnected=true;
+                if(!debug())break;
+            }
+            if(debug()||!alreadyConnected){
+                while(iterDescV2!=endDescV2){
+                    const size_t& descV2=*iterDescV2;
+                    while(iterLifted!=positiveLifted[pred].end()&&iterLifted->first<descV2){
+                        iterLifted++;
+                    }
+                    while(iterDescPred!=endDescPred&&*iterDescPred<descV2){
+                        iterDescPred++;
+                        if(pred==vertex1&&*iterDescPred==vertex2){
+                            alreadyConnected=true;
+                            if(!debug())break;
+                        }
+                    }
+                    if(alreadyConnected&&!debug()) break;
+                    if(iterDescPred==endDescPred||descV2<*iterDescPred){ //exists desc of v2 not contained in desc of pred
 
-                    size_t l1=pInstance->getGroupIndex(descV2);
+                        size_t l1=pInstance->getGroupIndex(descV2);
 
-                    if(debug()) assert(l1-l0>maxTimeGap||!alreadyConnected);
+                        if(debug()) assert(l1-l0>maxTimeGap||!alreadyConnected);
 
-                    assert(descV2<numberOfVertices);
-                    if(l1-l0<=maxTimeGap){                           // std::cout<<"exists new descendant "<<std::endl;
+                        assert(descV2<numberOfVertices);
+                        if(l1-l0<=maxTimeGap){                           // std::cout<<"exists new descendant "<<std::endl;
 
-                        if(iterLifted->first==descV2){  //Contradicting lifted edge exists!
-                            if(pred!=vertex1||descV2!=vertex2){
-//                                if(abs(edgeCost)>=0.248299){
-//                                    std::cout<<"high cost"<<std::endl;
-//                                }
-                                PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,false); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
-                                double improvementValue=std::min(abs(edgeCost),iterLifted->second);
+                            if(iterLifted->first==descV2){  //Contradicting lifted edge exists!
+                                if(pred!=vertex1||descV2!=vertex2){
 
-                                factorQueue.insertToQueue(improvementValue,pPathFactor);
-                                constraintsCounter++;
+                                    PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,false); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+                                    double improvementValue=std::min(abs(edgeCost),iterLifted->second);
+
+                                    factorQueue.insertToQueue(improvementValue,pPathFactor);
+                                    constraintsCounter++;
+                                }
                             }
-                            assert(pInstance->canJoin(pred,descV2));
+                            descendants[pred].insert(iterDescPred,descV2);
+                            predecessors[descV2].push_back(pred);
 
                         }
-//                        else{
-//                            bool canJoin=pInstance->canJoin(pred,descV2);
-//                            if(!canJoin){
-//                                PATH_FACTOR* pPathFactor= createPathFactor(pred,descV2,vertex1,vertex2,isLifted,true); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
-//                                double improvementValue=abs(edgeCost);
-//                                //  pQueue.push(std::pair(improvementValue,pPathFactor));
-//                                factorQueue.insertToQueue(improvementValue,pPathFactor);
-//                                constraintsCounter++;
-
-//                                //TODO: separate must cut version of path ineq
-//                            }
-//                        }
-
-                        descendants[pred].insert(iterDescPred,descV2);
-                        predecessors[descV2].push_back(pred);
 
                     }
                     iterDescV2++;
-
                 }
-                else{
-                    if(pred==vertex1&&*iterDescPred==vertex2){
-                        alreadyConnected=true;
 
-                        if(!debug())break;
-                    }
-
-                    if (*iterDescV2>*iterDescPred) { //not interesting
-
-                        iterDescPred++;
-                    }
-                    else{  //not interesting
-                        iterDescPred++;
-                        iterDescV2++;
-                    }
-                }
             }
-            if(alreadyConnected&&!debug()) break;
         }
         //}
         usedEdges[vertex1].push_back(std::pair(vertex2,isLifted));
