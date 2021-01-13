@@ -567,6 +567,9 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
     std::vector<std::array<size_t,2>> edges;
     std::vector<double> costs;
 
+    size_t highCostEdges=0;
+    size_t maxTimeGapInGraph=1;
+
     for (size_t i = 0; i < inputLiftedGraph.getNumberOfVertices(); ++i) {
         size_t l0=vertexGroups.getGroupIndex(i);
         auto iterLifted=inputLiftedGraph.forwardNeighborsBegin(i);
@@ -580,6 +583,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
             bool isSame=iterBase!=baseEnd&&iterLifted->first==iterBase->first;
             size_t w=iterLifted->first;
             size_t l1=vertexGroups.getGroupIndex(w);
+            maxTimeGapInGraph=std::max(maxTimeGapInGraph,size_t(l1-l0));
             assert(l1>l0);
             if(isReachable(i,w)){
                 double cost=iterLifted->second;
@@ -619,6 +623,9 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                             //std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
                             edges.push_back({i,w});
                             costs.push_back(cost);
+                            if(cost>=100.00){
+                                highCostEdges++;
+                            }
 
                         }
                         else if(isSame&&parameters.isAllBaseZero()){
@@ -645,6 +652,35 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
             iterLifted++;
         }
     }
+
+    parameters.getControlOutput()<<"number of high cost edges "<<highCostEdges<<std::endl;
+
+    parameters.writeControlOutput();
+
+    size_t reachableMustCut=0;
+    maxTimeGapInGraph=std::min(maxTimeGapInGraph,parameters.getMaxTimeLifted());
+
+    if(parameters.isMustCutMissing()){
+        for (size_t i = 0; i < inputLiftedGraph.getNumberOfVertices(); ++i) {
+            for(auto& d:reachable[i]){
+                if(d!=i&&d<inputLiftedGraph.getNumberOfVertices()&&!canJoin(i,d)){
+                    size_t l0=vertexGroups.getGroupIndex(i);
+                    size_t l1=vertexGroups.getGroupIndex(d);
+                    if((l1-l0)>1&&(l1-l0)<=maxTimeGapInGraph){
+                        if((l1-l0)<=parameters.getDenseTimeLifted()||((l1-l0-parameters.getDenseTimeLifted())%parameters.getLongerIntervalLifted()==0)){
+                            edges.push_back({i,d});
+                            costs.push_back(parameters.getMustCutPenalty());
+                            reachableMustCut++;
+                            //std::cout<<i<<", "<<d<<", time diff "<<(l1-l0)<<std::endl;
+                        }
+                    }
+                }
+
+            }
+
+        }
+    }
+   parameters.getControlOutput()<<"used reachable must cuts: "<<reachableMustCut<<std::endl;
 
     EdgeVector ev(edges);
     InfoVector iv(costs);
@@ -903,7 +939,7 @@ std::vector<std::unordered_set<size_t>> LdpInstance::initReachableLdp(const LdpD
     if(parameters.isMustCutMissing()){
         for (size_t i = 0; i < canJoinStructure.size(); ++i) {
             for(auto& d:desc[i]){
-                if(vg!=nullptr){
+                if(vg!=nullptr&&d<canJoinStructure.size()){
                     size_t l0=vg->getGroupIndex(i);
                     size_t l1=vg->getGroupIndex(d);
                     if(l1!=l0&&(l1-l0)<=parameters.getMaxTimeGapComplete()&&!canJoin(i,d)){
