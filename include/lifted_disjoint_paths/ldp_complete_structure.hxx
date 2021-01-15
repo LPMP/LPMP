@@ -42,6 +42,7 @@ public:
     template<class PAR>
     CompleteStructure(PAR & configParameters)
     {
+        //TODO min time in parameters
         constructorBegin=std::chrono::steady_clock::now();
 
         pVertexGroups=new VertexGroups<>(configParameters);
@@ -49,11 +50,13 @@ public:
         maxTime=vg.getMaxTime();
         assert(vg.getMinTime()==1);
 
+        vertexShiftBack=vg.getVertexShiftBack();
+
         configParameters.getControlOutput()<<"max time "<<maxTime<<std::endl;
-        completeGraph=andres::graph::Digraph<>(vg.getMaxVertex()+1);
+
         verticesScore=std::vector<double>(vg.getMaxVertex()+1);
 
-        configParameters.getControlOutput()<<"cg vertices "<<completeGraph.numberOfVertices()<<std::endl;
+        configParameters.getControlOutput()<<"vg vertices "<<(vg.getMaxVertex()+1)<<std::endl;
         addEdgesFromFile(configParameters.getGraphFileName(),configParameters);
         edgeFileName=configParameters.getGraphFileName();
         deleteVG=true;
@@ -67,10 +70,12 @@ public:
         constructorBegin=std::chrono::steady_clock::now();
         VertexGroups<>& vg=*pVertexGroups;
 
+        vertexShiftBack=vg.getVertexShiftBack();  //Carefully with this. There can be vertex shift even if we get zero from VG!
+
         maxTime=vg.getMaxTime();
         verticesScore=std::vector<double>(vg.getMaxVertex()+1);
        // std::cout<<"max time "<<maxTime<<std::endl;
-        completeGraph=andres::graph::Digraph<>(vg.getMaxVertex()+1);
+       // completeGraph=andres::graph::Digraph<>(vg.getMaxVertex()+1);
        // std::cout<<"cg vertices "<<completeGraph.numberOfVertices()<<std::endl;
         deleteVG=false;
         edgeFileName="";
@@ -115,7 +120,7 @@ public:
     }
 
 
-        andres::graph::Digraph<> completeGraph;
+      //  andres::graph::Digraph<> completeGraph;
         std::vector<double> completeScore;
         std::vector<double> verticesScore;
 
@@ -128,6 +133,7 @@ private:
     VertexGroups<>* pVertexGroups;
     std::chrono::steady_clock::time_point constructorBegin;
     std::string edgeFileName;
+    size_t vertexShiftBack;
 
 };
 
@@ -180,7 +186,7 @@ inline void CompleteStructure<T>::addEdgesFromVectorsAll(const py::array_t<size_
             throw std::invalid_argument("Input edges contain vertices out of the range.");
         }
 
-        completeGraph.insertEdge(v,w);
+    //    completeGraph.insertEdge(v,w);
         completeScore.push_back(edgeCost);
 
     }
@@ -227,7 +233,7 @@ inline void CompleteStructure<T>::addEdgesFromVectors(const py::array_t<size_t>&
         size_t l1=vg.getGroupIndex(w);
 
         if(l1-l0<=params.getMaxTimeGapComplete()){
-            completeGraph.insertEdge(v,w);
+      //      completeGraph.insertEdge(v,w);
             completeScore.push_back(edgeCost);
         }
     }
@@ -334,7 +340,7 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
 
             if(l1-l0<=params.getMaxTimeGapComplete()){
                 double score = std::stod(strings[2]);
-                completeGraph.insertEdge(v,w);
+             //   completeGraph.insertEdge(v,w);
                 completeScore.push_back(score);
                 listOfEdges.push_back({v,w});
             }
@@ -361,21 +367,25 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
 
 
 
-template<class T>
-inline std::vector<bool> CompleteStructure<T>::getGraphEdgeLabels(const std::vector<std::vector<size_t>>& paths) const{
-    std::vector<bool> labels=getEdgeLabels(completeGraph,paths);
-    //std::vector<bool> labels;
-    return labels;
-}
+//template<class T>
+//inline std::vector<bool> CompleteStructure<T>::getGraphEdgeLabels(const std::vector<std::vector<size_t>>& paths) const{
+//    std::vector<bool> labels=getEdgeLabels(completeGraph,paths);
+//    //std::vector<bool> labels;
+//    return labels;
+//}
 
 template<class T>
 inline std::vector<std::array<size_t,2>> CompleteStructure<T>::getEdgeList() const{
-    std::vector<std::array<size_t,2>> edges(completeGraph.numberOfEdges());
-    for (size_t e = 0; e < completeGraph.numberOfEdges(); ++e) {
-        size_t v=completeGraph.vertexOfEdge(e,0);
-        size_t w=completeGraph.vertexOfEdge(e,1);
-        edges[e]={v,w};
+    //std::vector<std::array<size_t,2>> edges(myCompleteGraph.getNumberOfEdges());
+    std::vector<std::array<size_t,2>> edges;
+    size_t edgeCounter=0;
+    for (size_t i = 0; i < myCompleteGraph.getNumberOfVertices(); ++i) {
+        for (auto iter=myCompleteGraph.forwardNeighborsBegin(i);iter!=myCompleteGraph.forwardNeighborsEnd(i);iter++) {
+            edges.push_back({i,iter->first});
+        }
     }
+    assert(edges.size()==myCompleteGraph.getNumberOfEdges());
+
     return edges;
 }
 

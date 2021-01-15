@@ -34,6 +34,7 @@ public:
     {
         timeShift=0;
         vertexShift=0;
+        vertexShiftBack=0;
         maxVertex=vToGroup_.size()-3;
         maxTime=vToGroup_.back()-1;
         std::cout<<"vg max vertex "<<maxVertex<<std::endl;
@@ -51,6 +52,7 @@ public:
         maxVertex=0;
         maxTime=0;
         timeShift=0;
+        vertexShiftBack=0;
         vertexShift=0;
     }
 
@@ -60,12 +62,13 @@ public:
     template<class PAR> VertexGroups(PAR& parameters){
         timeShift=0;
         vertexShift=0;
+        vertexShiftBack=0;
         initFromFile(parameters.getTimeFileName(),parameters);
 
     }
 
     template<class PAR>
-    void initFromFile(const std::string& fileName,const PAR& parameters, size_t firstTimeLayer=1);
+    void initFromFile(const std::string& fileName,const PAR& parameters);
 
     void initFromVector(const std::vector<size_t>& verticesInFrames,size_t timeShift_,size_t vertexShift_);
 
@@ -115,6 +118,10 @@ public:
         return vertexShift;
     }
 
+    size_t getVertexShiftBack() const{
+        return vertexShiftBack;
+    }
+
     size_t getMinVertexInTime(size_t time){
         assert(time<=maxTime);
         assert(time>timeShift);
@@ -150,6 +157,8 @@ private:
     size_t maxTime;
     size_t timeShift;  //If first layer is not one, but timeShift+1
     size_t vertexShift;  //First vertex is not zero but vertexShift
+
+    size_t vertexShiftBack;
 
 
 };
@@ -226,7 +235,7 @@ inline void VertexGroups<T>::initFromVector(const std::vector<size_t>& verticesI
 
 template<class T>
 template<class PAR>
-inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR &parameters, size_t firstTimeLayer){
+inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR &parameters){
     size_t lineCounter=0;
     std::vector<size_t> currentGroup;
     std::vector<std::string> strings;
@@ -246,9 +255,9 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
     timeShift=0;  //These two are not used
     vertexShift=0;
 
-    size_t minTimeToRead=firstTimeLayer;
+    size_t minTimeToRead=parameters.getMinTimeFrame();
     size_t timeShiftBack=minTimeToRead-1;
-    size_t vertexShiftBack=0;
+    vertexShiftBack=0;
 
 
     std::ifstream timeData;
