@@ -25,29 +25,7 @@ template<class T=size_t>
 class VertexGroups{
 public:
 
-//This constructor probably does not need shifts, it was intended for the oposite purpose - getting groups from zero extracted from bigger graph
-//    VertexGroups(std::unordered_map<size_t,std::vector<size_t>> groups_,std::vector<size_t> vToGroup_,size_t timeShift_): //assumes that the map entries in groups_ already contain big numbers
-//        vToGroup(vToGroup_)
-//    {
-//        //vertexShift=vertexShift_;
-//        timeShift=timeShift_;
-//        maxVertex=vToGroup_.size()-3;
-//        maxTime=vToGroup_.back();
-//        assert(maxTime>=timeShift); //equality means empty layers, s and t layer only
-//        size_t groupsSize=maxTime+2-timeShift;
-//        groups=std::vector<std::vector<size_t>>(groupsSize);
-//        for(auto pair:groups_){
-//            assert(pair.first>timeShift);
-//            groups[pair.first-timeShift]=pair.second;
-//        }
 
-//    }
-
-//    VertexGroups(std::unordered_map<size_t,std::vector<size_t>> groups_,std::vector<size_t> vToGroup_)
-//    {
-//        VertexGroups(groups_,vToGroup_,0);
-
-//    }
 
 
 
@@ -57,7 +35,9 @@ public:
         timeShift=0;
         vertexShift=0;
         maxVertex=vToGroup_.size()-3;
-        maxTime=vToGroup_.back();
+        maxTime=vToGroup_.back()-1;
+        std::cout<<"vg max vertex "<<maxVertex<<std::endl;
+        std::cout<<"vg max time "<<maxTime<<std::endl;
 //
         size_t groupsSize=maxTime+2-timeShift;
         groups=std::vector<std::vector<size_t>>(groupsSize);

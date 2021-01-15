@@ -269,7 +269,7 @@ void LdpBatchProcess::initEdgesFromVector(const std::vector<std::array<size_t,2>
 //            std::cout<<"tr v1 "<<transformedV1<<", graph size "<<numberOfOutputVertices<<std::endl;
 //        }
         assert(transformedV1<numberOfOutputVertices);
-        //std::cout<<"transformed "<<transformedV0<<", "<<transformedV1<<std::endl;
+      //  if(transformedV1>=1356) std::cout<<"transformed "<<transformedV0<<", "<<transformedV1<<std::endl;
         outputGraph.insertEdge(transformedV0,transformedV1);
         outputEdges.push_back({transformedV0,transformedV1});
         outputEdgeCosts.push_back(costs.at(i));

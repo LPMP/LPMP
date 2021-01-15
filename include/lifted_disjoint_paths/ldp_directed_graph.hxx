@@ -21,15 +21,15 @@ public:
 //    LdpDirectedGraph(const std::vector<std::array<size_t,2>>& edges,const std::vector<double>& inputEdgeCosts);
 
     template<class EDGES, class COSTS>
-    LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost);
+    LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost,size_t _numberOfVertices=0);
 
     template<class EDGES, class COSTS>
-    LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts);
+    LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts,size_t _numberOfVertices=0);
 
     LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inputEdgeCost,double outputEdgeCost);
 
     template<class EDGES, class COSTS>
-    void initFromEdgesAndCosts(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost);
+    void initFromEdgesAndCosts(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost,size_t _numberOfVertices);
 
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
@@ -79,6 +79,7 @@ public:
     }
 
     std::pair<size_t,double> * forwardNeighborsBegin(size_t i) {
+        if(i>=numberOfVertices) std::cout<<"i is "<<i<<", number of vertices "<<numberOfVertices<<std::endl;
          assert(i<numberOfVertices);
         return forwardEdges[i].begin();
     }
@@ -138,21 +139,21 @@ private:
 
 
 template<class EDGES, class COSTS>
-LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts){
+LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts,size_t _numberOfVertices){
     //TODO the same as in the previous constructor but addd s and t nodes and edges with given cost
-    initFromEdgesAndCosts(edges,inputEdgeCosts,std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
+    initFromEdgesAndCosts(edges,inputEdgeCosts,std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),_numberOfVertices);
    // std::cout<<"small constructor vertices "<<numberOfVertices<<std::endl;
 }
 
 
 
 template<class EDGES, class COSTS>
-LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost){
-    initFromEdgesAndCosts(edges,inputEdgeCosts,inCost,outCost);
+LdpDirectedGraph::LdpDirectedGraph(const EDGES& edges, const COSTS& inputEdgeCosts, double inCost, double outCost, size_t _numberOfVertices){
+    initFromEdgesAndCosts(edges,inputEdgeCosts,inCost,outCost,_numberOfVertices);
 }
 
 template<class EDGES, class COSTS>
-void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost){
+void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inputEdgeCosts,double inCost,double outCost,size_t _numberOfVertices){
 
     bool addST=inCost<std::numeric_limits<double>::max();
 
@@ -162,6 +163,12 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
     std::vector<std::size_t> adjacencyBackward;
 
 
+    if(_numberOfVertices>0){
+        adjacencyForward=std::vector<size_t>(_numberOfVertices);
+        adjacencyBackward=std::vector<size_t>(_numberOfVertices);
+    }
+
+
     assert(edges.shape(0)==inputEdgeCosts.shape(0));
 
     // first determine size for adjacency_list
@@ -169,6 +176,7 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         size_t v=edges(i,0);
         size_t w=edges(i,1);
         size_t size=std::max({v+1,w+1,adjacencyForward.size()});
+        assert(_numberOfVertices==0||size==adjacencyForward.size());
         adjacencyBackward.resize(size);
         adjacencyForward.resize(size);
         adjacencyForward[v]++;
