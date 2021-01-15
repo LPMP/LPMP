@@ -65,7 +65,7 @@ public:
     }
 
     template<class PAR>
-    void initFromFile(const std::string& fileName,const PAR& parameters);
+    void initFromFile(const std::string& fileName,const PAR& parameters, size_t firstTimeLayer=1);
 
     void initFromVector(const std::vector<size_t>& verticesInFrames,size_t timeShift_,size_t vertexShift_);
 
@@ -226,7 +226,7 @@ inline void VertexGroups<T>::initFromVector(const std::vector<size_t>& verticesI
 
 template<class T>
 template<class PAR>
-inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR &parameters){
+inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR &parameters, size_t firstTimeLayer){
     size_t lineCounter=0;
     std::vector<size_t> currentGroup;
     std::vector<std::string> strings;
@@ -243,8 +243,12 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
 //    size_t minTimeToRead=parameters.getMinTimeFrame();
 //    assert(minTimeToRead<maxTimeToRead);
 //    assert(minTimeToRead>0);
-    size_t minTimeToRead=1;
-    timeShift=minTimeToRead-1;
+    timeShift=0;  //These two are not used
+    vertexShift=0;
+
+    size_t minTimeToRead=firstTimeLayer;
+    size_t timeShiftBack=minTimeToRead-1;
+    size_t vertexShiftBack=0;
 
 
     std::ifstream timeData;
@@ -281,15 +285,15 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         assert(firstVertexFound);
         if(minTimeToRead==1){
             assert(firstVertex==0);
-            vertexShift=0;
+            vertexShiftBack=0;
         }
         else{
-            vertexShift=firstVertex;
+            vertexShiftBack=firstVertex;
         }
 
 
         currentGroup.push_back(firstVertex);
-        vToGroup.push_back(time);
+        vToGroup.push_back(time-timeShiftBack);
         previousTime=time;
 
 
@@ -309,30 +313,30 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
             if(time>maxTimeToRead){
                 break;
             }
-            assert(v>vertexShift);
-            if(vToGroup.size()!=v-vertexShift){
+          // assert(v>vertexShift);
+            if(vToGroup.size()!=v-vertexShiftBack){
                 std::cout<<"v to gr size "<<vToGroup.size()<<std::endl;
-                std::cout<<"v - shift "<<(v-vertexShift)<<std::endl;
+                std::cout<<"v - shift "<<(v-vertexShiftBack)<<std::endl;
                 throw std::runtime_error(
                             std::string("Wrong vertex numbering in time file"));
             }
             else{
 
-                vToGroup.push_back(time);
+                vToGroup.push_back(time-timeShiftBack);
 
                 if(time==previousTime){
-                    currentGroup.push_back(v);
+                    currentGroup.push_back(v-vertexShiftBack);
                 }
 
                 else{
 
                     groups.push_back(currentGroup);
                     currentGroup=std::vector<size_t>();
-                    while(groups.size()<time-timeShift){
+                    while(groups.size()<time-timeShiftBack){
                         groups.push_back(currentGroup);
                         currentGroup=std::vector<size_t>();
                     }
-                    currentGroup.push_back(v);
+                    currentGroup.push_back(v-vertexShiftBack);
                 }
                 previousTime=time;
 
@@ -345,12 +349,12 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         //assert(vToGroup.back()<=maxTime);
         maxTime=vToGroup.back();
 
-        maxVertex=vToGroup.size()-1+vertexShift;
+        maxVertex=vToGroup.size()-1;
 
         size_t s=maxVertex+1;
         size_t t=maxVertex+2;
 
-        vToGroup.push_back(timeShift);  //For s
+        vToGroup.push_back(0);  //For s
         vToGroup.push_back(maxTime+1);  //For t
 
         groups.at(0).push_back(s);
@@ -359,8 +363,8 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         currentGroup.push_back(t);
         groups.push_back(currentGroup);
 
-        assert(maxVertex-vertexShift==vToGroup.size()-3);
-        testCorrectness(false);
+        assert(maxVertex==vToGroup.size()-3);
+        //testCorrectness(false);
 
     }
     catch (std::system_error& er) {
