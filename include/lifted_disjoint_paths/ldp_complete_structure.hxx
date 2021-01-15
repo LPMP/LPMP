@@ -74,9 +74,7 @@ public:
 
         maxTime=vg.getMaxTime();
         verticesScore=std::vector<double>(vg.getMaxVertex()+1);
-       // std::cout<<"max time "<<maxTime<<std::endl;
-       // completeGraph=andres::graph::Digraph<>(vg.getMaxVertex()+1);
-       // std::cout<<"cg vertices "<<completeGraph.numberOfVertices()<<std::endl;
+
         deleteVG=false;
         edgeFileName="";
 
@@ -233,48 +231,15 @@ inline void CompleteStructure<T>::addEdgesFromVectors(const py::array_t<size_t>&
         size_t l1=vg.getGroupIndex(w);
 
         if(l1-l0<=params.getMaxTimeGapComplete()){
-      //      completeGraph.insertEdge(v,w);
+
             completeScore.push_back(edgeCost);
         }
     }
 
-    //myCompleteGraph=LdpDirectedGraph<pybind11::detail::unchecked_reference<long unsigned int, 2>,pybind11::detail::unchecked_reference<double, 1>>(edgeVector,costVector);
     myCompleteGraph=LdpDirectedGraph(edgeVector,costVector);
 }
 
 
-
-
-//template<class T>
-//inline void CompleteStructure<T>::addEdgesFromMatrix(size_t time1,size_t time2,const py::array_t<double> inputMatrix){
-
-//    VertexGroups<>& vg=*pVertexGroups;
-//    const auto matrix=inputMatrix.unchecked<2>();
-//    const std::size_t dim1=matrix.shape(0);
-//    const std::size_t dim2=matrix.shape(1);
-
-//    size_t transformIndex1=vg.getGroupVertices(time1)[0];
-//    size_t numberOfVertices1=vg.getGroupVertices(time1).size();
-//    size_t transformIndex2=vg.getGroupVertices(time2)[0];
-//    size_t numberOfVertices2=vg.getGroupVertices(time2).size();
-
-//    if(dim1!=numberOfVertices1||dim2!=numberOfVertices2){
-//        std::string message="Dimension mismatch, expected dimensions: "+std::to_string(numberOfVertices1)+", "+std::to_string(numberOfVertices2)+", got: "+std::to_string(dim1)+", "+std::to_string(dim2);
-//        throw std::invalid_argument(message);
-//    }
-//    for(std::size_t i=0; i<dim1; ++i) {
-//        size_t vertex1=i+transformIndex1;
-//        for(std::size_t j=0; j<dim2; ++j) {
-//            double score=matrix(i,j);
-//            if(!isinf(score)){
-//                size_t vertex2=j+transformIndex2;
-//                completeGraph.insertEdge(vertex1,vertex2);
-//                completeScore.push_back(score);
-//            }
-//        }
-//    }
-
-//}
 
 
 
@@ -340,15 +305,13 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
 
             if(l1-l0<=params.getMaxTimeGapComplete()){
                 double score = std::stod(strings[2]);
-             //   completeGraph.insertEdge(v,w);
+
                 completeScore.push_back(score);
                 listOfEdges.push_back({v,w});
             }
 
         }
 
-
-        //objValue+=maxLabel*parameters.getInputCost()+maxLabel*parameters.getOutputCost();
 
         data.close();
 
@@ -367,12 +330,6 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName,P
 
 
 
-//template<class T>
-//inline std::vector<bool> CompleteStructure<T>::getGraphEdgeLabels(const std::vector<std::vector<size_t>>& paths) const{
-//    std::vector<bool> labels=getEdgeLabels(completeGraph,paths);
-//    //std::vector<bool> labels;
-//    return labels;
-//}
 
 template<class T>
 inline std::vector<std::array<size_t,2>> CompleteStructure<T>::getEdgeList() const{
