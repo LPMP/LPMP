@@ -153,8 +153,8 @@ void LdpInstance::initAdaptiveThresholds(const LdpDirectedGraph* pBaseGraph,cons
     size_t negativeSetSize=size_t(std::round(parameters.getNegativeThresholdLifted()*numberOfNegative));
 
     //TODO if zero -> return zero
-    std::set<double> positiveCosts;
-    std::set<double> negativeCosts;
+    std::multiset<double> positiveCosts;
+    std::multiset<double> negativeCosts;
     for (int i = 0; i < pToSort->getNumberOfVertices(); ++i) {
         auto iter=pToSort->forwardNeighborsBegin(i);
         for (;iter!=pToSort->forwardNeighborsEnd(i);iter++) {
@@ -165,11 +165,15 @@ void LdpInstance::initAdaptiveThresholds(const LdpDirectedGraph* pBaseGraph,cons
                     negativeCosts.insert(cost);
                 }
                 else{
-                    auto iter=negativeCosts.begin();
-                    if(*iter<cost){
-                        negativeCosts.erase(iter);
+                    auto iter2=negativeCosts.begin();
+                    if(*iter2<cost){
+                        //  std::cout<<"neg costs size before erase "<<negativeCosts.size()<<std::endl;
+                        negativeCosts.erase(iter2);
+                          //std::cout<<"neg costs size after erase "<<negativeCosts.size()<<std::endl;
                         negativeCosts.insert(cost);
+                         // std::cout<<"neg costs size after insert "<<negativeCosts.size()<<std::endl;
                     }
+                    //std::cout<<"neg costs size "<<negativeCosts.size()<<std::endl;
 
                 }
             }
@@ -178,10 +182,10 @@ void LdpInstance::initAdaptiveThresholds(const LdpDirectedGraph* pBaseGraph,cons
                     positiveCosts.insert(cost);
                 }
                 else{
-                    auto iter=positiveCosts.end();
+                    auto iter2=positiveCosts.end();
                     iter--;
-                    if(*iter>cost){
-                        positiveCosts.erase(iter);
+                    if(*iter2>cost){
+                        positiveCosts.erase(iter2);
                         positiveCosts.insert(cost);
                     }
 
@@ -190,6 +194,7 @@ void LdpInstance::initAdaptiveThresholds(const LdpDirectedGraph* pBaseGraph,cons
 
         }
     }
+
     assert(negativeCosts.size()==negativeSetSize);
     assert(positiveCosts.size()==positiveSetSize);
     positiveLiftedThreshold=*positiveCosts.rbegin();
@@ -638,7 +643,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                             if(parameters.isBaseCoverdWithLifted()){ //add lifted edge
                                 edges.push_back({i,w});
                                 costs.push_back(cost);
-                                if(w>=1356) std::cout<<"edge "<<i<<","<<w<<std::endl;
+                               // if(w>=1356) std::cout<<"edge "<<i<<","<<w<<std::endl;
                             }
                             else{  //add base cost
                                 iterBase->second+=cost;
@@ -917,6 +922,7 @@ std::vector<std::unordered_set<size_t>> LdpInstance::initReachableLdp(const LdpD
                     for (size_t t = minTime; t < maxTime; ++t) {//TODO use time gap
                         const std::vector<size_t>& vertices=vg->getGroupVertices(t);
                         for (size_t i:vertices) {
+                            assert(i<descBit.size());
                             if(descBit[i][k1][k2]){
                                 for (size_t j = 0; j < columns; ++j) {
                                     descBit[i][j]|=descBit[k1*10000+k2][j];

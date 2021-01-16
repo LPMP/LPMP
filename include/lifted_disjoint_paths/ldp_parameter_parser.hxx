@@ -42,6 +42,7 @@ class ParametersParser{
                 }
             }
             initFromStream(data);
+
             data.close();
 
         }

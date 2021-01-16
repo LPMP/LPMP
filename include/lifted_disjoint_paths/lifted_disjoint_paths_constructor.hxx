@@ -91,6 +91,8 @@ private:
 
     std::map<size_t,std::set<size_t>> addedCutFactorLiftedEdges;
     std::vector<std::vector<size_t>> bestPrimalSolution;
+     std::vector<size_t> bestPrimalLabels;
+
     std::vector<size_t> currentPrimalDescendants;
     std::vector<size_t> currentPrimalStartingVertices;
     std::vector<size_t> currentPrimalLabels;
@@ -1164,9 +1166,95 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
         bestPrimalValue=primalValue;
         bestPrimalSolution=paths;
+        bestPrimalLabels=currentPrimalLabels;
+
         clusteringValue=pInstance->evaluateClustering(currentPrimalLabels);
 
      }
+    else{
+        std::cout<<"worse primal"<<std::endl;
+       // if((primalValue-bestPrimalValue)/abs(bestPrimalValue)>0.01){
+            std::cout<<"worse primal"<<std::endl;
+            const auto& liftedGraph=pInstance->getMyGraphLifted();
+             const auto& baseGraph=pInstance->getMyGraph();
+
+            std::vector<std::map<size_t,double>> mmIn(nr_nodes()+2);
+            std::vector<std::map<size_t,double>> mmOut(nr_nodes()+2);
+            std::vector<std::map<size_t,double>> mmAll(nr_nodes()+2);
+
+            size_t s=base_graph_source_node();
+            size_t t=base_graph_terminal_node();
+
+            for (int i = 0; i < nr_nodes(); ++i) {
+                auto * factorIn=single_node_cut_factors_[i][0]->get_factor();
+
+                auto mmInLocal=factorIn-> getAllBaseMinMarginalsForMCF();
+                const auto& baseids=factorIn->getBaseIDs();
+                assert(mmInLocal.size()==baseids.size());
+                for (int j = 0; j < mmInLocal.size(); ++j) {
+                    size_t vertex1=baseids[j];
+                    double cost=mmInLocal[j];
+                    mmIn[vertex1][i]=cost;
+                    mmAll[vertex1][i]+=cost;
+                }
+                 auto * factorOut=single_node_cut_factors_[i][1]->get_factor();
+
+                 auto mmOutLocal=factorOut-> getAllBaseMinMarginalsForMCF();
+                 const auto& baseidsOut=factorOut->getBaseIDs();
+                 assert(mmOutLocal.size()==baseidsOut.size());
+                 for (int j = 0; j < mmOutLocal.size(); ++j) {
+                     size_t vertex1=baseidsOut[j];
+                     double cost=mmOutLocal[j];
+                     mmOut[i][vertex1]=cost;
+                     mmAll[i][vertex1]+=cost;
+                 }
+
+            }
+
+            double mcfForOptPaths=0;
+            for (int i = 0; i < bestPrimalSolution.size(); ++i) {
+                mcfForOptPaths+=mmAll[s][bestPrimalSolution[i][0]];
+                for (int j = 0; j < bestPrimalSolution[i].size()-1; ++j) {
+                     size_t v1=bestPrimalSolution[i][j];
+                     size_t v2=bestPrimalSolution[i][j+1];
+                     mcfForOptPaths+=mmAll[v1][v2];
+                }
+                mcfForOptPaths+=mmAll[bestPrimalSolution[i].back()][t];
+
+            }
+            std::cout<<"mcf for optimal paths "<<mcfForOptPaths<<std::endl;
+
+             double mcfForCurrentPaths=0;
+            for (int i = 0; i < paths.size(); ++i) {
+                mcfForCurrentPaths+=mmAll[s][paths[i][0]];
+                for (int j = 0; j < paths[i].size()-1; ++j) {
+                     size_t v1=paths[i][j];
+                     size_t v2=paths[i][j+1];
+                     mcfForCurrentPaths+=mmAll[v1][v2];
+                }
+                mcfForCurrentPaths+=mmAll[paths[i].back()][t];
+
+            }
+                  std::cout<<"mcf for current paths "<<mcfForCurrentPaths<<std::endl;
+
+            for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
+
+                auto iter=liftedGraph.forwardNeighborsBegin(i);
+                auto myEnd=liftedGraph.forwardNeighborsEnd(i);
+                for (;iter!=myEnd;iter++) {
+                    size_t vertex2=iter->first;
+                    bool optSame=(bestPrimalLabels[i]!=0&&bestPrimalLabels[vertex2]==bestPrimalLabels[i]);
+                    bool currentSame=(currentPrimalLabels[i]!=0&&currentPrimalLabels[vertex2]==currentPrimalLabels[i]);
+                    if(optSame!=currentSame){
+                     //   std::cout<<"edge "<<i<<","<<vertex2<<std::endl;
+                      //  std::cout<<"active in opt "<<optSame<<", active in current "<<currentSame<<std::endl;
+                    }
+                }
+
+            }
+        //}
+
+    }
 
     if(debug()){
 
@@ -1460,6 +1548,38 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 //    }
 
 
+//    std::vector<std::map<size_t,double>> mmIn(nr_nodes()+2);
+//    std::vector<std::map<size_t,double>> mmOut(nr_nodes()+2);
+//    std::vector<std::map<size_t,double>> mmAll(nr_nodes()+2);
+
+//    for (int i = 0; i < nr_nodes(); ++i) {
+//        auto * factorIn=single_node_cut_factors_[i][0]->get_factor();
+
+//        auto mmInLocal=factorIn-> getAllBaseMinMarginalsForMCF();
+//        const auto& baseids=factorIn->getBaseIDs();
+//        assert(mmInLocal.size()==baseids.size());
+//        for (int j = 0; j < mmInLocal.size(); ++j) {
+//            size_t vertex1=baseids[j];
+//            double cost=mmInLocal[j];
+//            mmIn[vertex1][i]=cost;
+//            mmAll[vertex1][i]+=cost;
+//        }
+//         auto * factorOut=single_node_cut_factors_[i][1]->get_factor();
+
+//         auto mmOutLocal=factorOut-> getAllBaseMinMarginalsForMCF();
+//         const auto& baseidsOut=factorOut->getBaseIDs();
+//         assert(mmOutLocal.size()==baseidsOut.size());
+//         for (int j = 0; j < mmOutLocal.size(); ++j) {
+//             size_t vertex1=baseidsOut[j];
+//             double cost=mmOutLocal[j];
+//             mmOut[i][vertex1]=cost;
+//             mmAll[i][vertex1]+=cost;
+//         }
+
+//    }
+
+
+
     for(std::size_t i=0; i<nr_nodes(); ++i)
     {
         {
@@ -1487,6 +1607,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 const std::size_t start_node = mcf_->tail(e);
                 assert(mcf_->tail(e) == incoming_mcf_node(i));
                 const double m = incoming_min_marg[l];
+               // const double m=mmAll[j][i];
 
                 assert(mcf_->lower_bound(e) == 1 && mcf_->upper_bound(e) == 0);
                 if (j != base_graph_source_node())
@@ -1524,9 +1645,15 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 const std::size_t start_node = mcf_->tail(e);
                 assert(mcf_->tail(e) == outgoing_mcf_node(i));
                 const double m = outgoing_min_marg[l];
+                //const double m=mmAll[i][j];
+
 
                 assert(mcf_->lower_bound(e) == 0 && mcf_->upper_bound(e) == 1);
                 mcf_->update_cost(e, m);
+//                if (j != base_graph_terminal_node())
+//                    mcf_->update_cost(e, 0.5*m);
+//                else
+//                    mcf_->update_cost(e, m);
 //                auto iter=costsFromCuts[i].find(j);
 //                if(iter!=costsFromCuts[i].end()){
 //                    mcf_->update_cost(e,iter->second);
@@ -1659,6 +1786,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     const double primal_cost_before = this->lp_->EvaluatePrimal();
     read_in_mcf_costs(true);
     mcf_->solve();
+//    double obj=mcf_->objective() ;
    if(diagnostics())  std::cout << "mcf cost = " << mcf_->objective() << "\n";
     write_back_mcf_costs();
     const double primal_cost_after = this->lp_->EvaluatePrimal();

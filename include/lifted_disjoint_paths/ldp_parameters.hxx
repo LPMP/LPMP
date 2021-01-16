@@ -384,7 +384,7 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
 
         minTimeFrame=1;
     }
-    controlOutput<<"min time frame "<<maxTimeFrame<<std::endl;
+    controlOutput<<"min time frame "<<minTimeFrame<<std::endl;
     writeControlOutput();
 
 

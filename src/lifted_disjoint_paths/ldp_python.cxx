@@ -39,7 +39,7 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
              .def("add_edges_from_file", &LPMP::CompleteStructure<>::addEdgesFromFile<LPMP::lifted_disjoint_paths::LdpParameters<>>, "Initializes all edges of the graph from a file.")
              .def("add_edges_from_vectors", &LPMP::CompleteStructure<>::addEdgesFromVectors<LPMP::lifted_disjoint_paths::LdpParameters<>>, "Initializes edges of the graph from an Nx2 array of size_t with edge vertices and an Nx1 array of doubles with costs. Restrictions on maximal vertex and maximal time gap from parameters apply.")
              .def("add_edges_from_vectors_all", &LPMP::CompleteStructure<>::addEdgesFromVectorsAll, "Initializes edges of the graph from an Nx2 array of size_t with edge vertices and an Nx1 array of doubles with costs. All edges added. No restriction on maximal timegap. ")
-             .def("get_edge_labels",&LPMP::CompleteStructure<>::getGraphEdgeLabels,"Returns 0/1 labels of all input edges w.r.t. given set of paths. Label one is given iff detections belong to the same path." )
+             //.def("get_edge_labels",&LPMP::CompleteStructure<>::getGraphEdgeLabels,"Returns 0/1 labels of all input edges w.r.t. given set of paths. Label one is given iff detections belong to the same path." )
              .def("set_score_of_vertices",&LPMP::CompleteStructure<>::setVerticesCosts,"Expects array with score of all graph vertices.")
              .def("get_edge_list",&LPMP::CompleteStructure<>::getEdgeList,"Return list of edges present in this graph structure.");
 

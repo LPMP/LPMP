@@ -264,6 +264,7 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
     try{
         timeData.open(fileName);
         if(!timeData){
+            std::cout<<"file name "<<fileName<<std::endl;
             throw std::system_error(errno, std::system_category(), "failed to open file with vertices in time layers "+fileName);
         }
 
@@ -301,7 +302,7 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         }
 
 
-        currentGroup.push_back(firstVertex);
+        currentGroup.push_back(0);
         vToGroup.push_back(time-timeShiftBack);
         previousTime=time;
 
