@@ -43,7 +43,10 @@ public:
     // std::array<double,3> getAllMinMarginals();
 
 
-    void updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value);
+    void updateCostBaseForward(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value);
+
+
+    void updateCostBaseBackward(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value);
 
     void updateCostLifted(const double& value);
 
@@ -151,7 +154,7 @@ public:
         sncIsOut(_sncIsOut),   //if true, central node is in inputs, other nodes in outputs
         containsLiftedEdge(_containsLiftedEdge),
         nodeIndexOfLiftedEdge(_nodeIndexOfLiftedEdge){
-        assert(sncIsOut);
+
 
     }
 
@@ -163,8 +166,14 @@ public:
         assert(msg_dim <=nodeIndicesInCut.size());
         if(msg_dim==nodeIndicesInCut.size()){
             if(debug()){
-                lastV1=l.getLiftedInputVertex();
-                lastV2=l.getLiftedOutputVertex();
+                if(sncIsOut){
+                    lastV1=l.getLiftedInputVertex();
+                    lastV2=l.getLiftedOutputVertex();
+                }
+                else{
+                    lastV2=l.getLiftedInputVertex();
+                    lastV1=l.getLiftedOutputVertex();
+                }
                 lastValue=msg;
             }
 
@@ -172,11 +181,20 @@ public:
         }
         else{
             if(sncIsOut){
-                l.updateCostBase(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
+                l.updateCostBaseForward(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
                 if(debug()){
                     lastV1=l.getInputVertices().at(sncNodeIDindexInCut);
                     size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
                     lastV2=l.getOutputVertices().at(otherVertex);
+                    lastValue=msg;
+                }
+            }
+            else{
+                l.updateCostBaseBackward(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
+                if(debug()){
+                    lastV1=l.getOutputVertices().at(sncNodeIDindexInCut);
+                    size_t otherVertex=l.getCutGraph().getBackwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
+                    lastV2=l.getInputVertices().at(otherVertex);
                     lastValue=msg;
                 }
             }
@@ -281,10 +299,16 @@ public:
                 }
             }
             else{  //just for output nodes now
-                assert(false);
-                delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut,&cutGraph,&liftedCost);
-                cutGraph.updateForwardEdgeCost(nodeIndicesInCut[i],sncNodeIDindexInCut,-delta);
-                controlDelta=delta = l.getOneEdgeMinMarginal(nodeIndicesInCut[i],sncNodeIDindexInCut,&cutGraph,&liftedCost);
+
+                size_t otherVertex=l.getCutGraph().getBackwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[i]);
+                //std::cout<<"base edge mm, neighbor node "<<l.getOutputVertices()[otherVertex]<<std::endl;
+                delta = l.getOneEdgeMinMarginal(otherVertex,sncNodeIDindexInCut,&cutGraph,&liftedCost);
+                //std::cout<<"orig edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;;
+                cutGraph.updateBackwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i],-delta);
+                //std::cout<<"changed edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;
+                if(debug()){
+                    controlDelta=l.getOneEdgeMinMarginal(otherVertex,sncNodeIDindexInCut,&cutGraph,&liftedCost);
+                }
             }
             if(debug()){
                 if(abs(controlDelta)>eps){

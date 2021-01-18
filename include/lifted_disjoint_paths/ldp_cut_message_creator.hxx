@@ -22,32 +22,60 @@ inline void LdpCutMessageInputs<CUT_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::init(CU
     _nodeIndicesInCut;
     _nodeIndicesInSnc;
 
-    //bool _sncIsOut;
 
-    _nodeIndexOfLiftedEdge;
 
-    size_t inputVertex=myCutFactor->getInputVertices().at(i);
+    _nodeIndexOfLiftedEdge=0;
+
+    size_t singleVertex=0;
     const auto & outputVertices=myCutFactor->getOutputVertices();
+    const auto & inputVertices=myCutFactor->getInputVertices();
     const auto & cutGraph=myCutFactor->getCutGraph();
 
 
     containsLifted=false;
-    auto * sncFactorOut=snc->get_factor();
-    assert(inputVertex==sncFactorOut->nodeID);
-    auto iterCut=cutGraph.forwardNeighborsBegin(i);
-    auto iterEnd=cutGraph.forwardNeighborsEnd(i);
+    auto * sncFactor=snc->get_factor();
+    bool sncIsOut=sncFactor->isNodeOutFlow();
 
-    auto iterSnc=sncFactorOut->getBaseIDs().begin();
-    auto iterSncEnd=sncFactorOut->getBaseIDs().end();
-    if(inputVertex==myCutFactor->getLiftedInputVertex()){
+
+    auto iterCut=cutGraph.forwardNeighborsBegin(0);
+    auto iterEnd=cutGraph.forwardNeighborsEnd(0);
+
+    if(!sncIsOut){
+        iterCut=cutGraph.backwardNeighborsBegin(i);
+        iterEnd=cutGraph.backwardNeighborsEnd(i);
+        singleVertex=outputVertices.at(i);
+    }
+    else{
+       iterCut=cutGraph.forwardNeighborsBegin(i);
+       iterEnd=cutGraph.forwardNeighborsEnd(i);
+        singleVertex=inputVertices.at(i);
+    }
+
+    assert(singleVertex==sncFactor->nodeID);
+
+    auto iterSnc=sncFactor->getBaseIDs().begin();
+    auto iterSncEnd=sncFactor->getBaseIDs().end();
+    if(sncIsOut&&singleVertex==myCutFactor->getLiftedInputVertex()){
         containsLifted=true;
-        _nodeIndexOfLiftedEdge=sncFactorOut->getLiftedIDToOrder(myCutFactor->getLiftedOutputVertex());
+        _nodeIndexOfLiftedEdge=sncFactor->getLiftedIDToOrder(myCutFactor->getLiftedOutputVertex());
         //TODO lifted exists etc
     }
+    else if(!sncIsOut&&singleVertex==myCutFactor->getLiftedOutputVertex()){
+        containsLifted=true;
+        _nodeIndexOfLiftedEdge=sncFactor->getLiftedIDToOrder(myCutFactor->getLiftedInputVertex());
+    }
+
     size_t sncCounter=0;
     size_t cutCounter=0;
     while(iterCut!=iterEnd&&iterSnc!=iterSncEnd){
-        size_t vertexInCut=outputVertices.at(iterCut->head);
+
+        size_t vertexInCut=0;
+        if(sncIsOut){
+            vertexInCut=outputVertices.at(iterCut->head);
+        }
+        else{
+            vertexInCut=inputVertices.at(iterCut->head);
+        }
         if(vertexInCut<*iterSnc){
             iterCut++;
             cutCounter++;
