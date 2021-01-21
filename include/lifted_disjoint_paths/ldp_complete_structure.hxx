@@ -273,6 +273,7 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
 
     vertexShiftBack=std::max(minVertexToUse,vg.getVertexShiftBack());
 
+     params.getControlOutput()<<"vertex shift " << vertexShiftBack<<std::endl;
 
     std::string line;
     std::ifstream data;
@@ -289,7 +290,7 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
         params.getControlOutput()<<"Read big graph" << std::endl;
         std::vector<std::string> strings;
 
-        params.getControlOutput()<<"Reading vertices from file. "<<std::endl;
+        params.getControlOutput()<<"Reading vertices from file. "<<fileName<<std::endl;
         params.writeControlOutput();
         //Vertices that are not found have score=0. Appearance and disappearance cost are read here.
 
@@ -297,8 +298,8 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
             strings = split(line, delim);
 
             unsigned int v0 = std::stoul(strings[0]);
-            if(v0>=minVertexToUse){
-                size_t v=v0-minVertexToUse;
+            if(v0>=vertexShiftBack){
+                size_t v=v0-vertexShiftBack;
                 double c = std::stod(strings[1]);
                 assert(v<verticesScore.size());
                 verticesScore[v]=c;
@@ -313,7 +314,7 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
         std::vector<std::array<size_t,2>> listOfEdges;
         std::vector<double> completeScore;
 
-        if(minVertexToUse>0){
+        //if(vertexShiftBack>0){
             bool minVertexFound=false;
             while (std::getline(data, line) && !line.empty()) {
 
@@ -322,11 +323,11 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
 
                 unsigned int v0 = std::stoul(strings[0]);
 
-                if(v0>=minVertexToUse){
+                if(v0>=vertexShiftBack){
                     minVertexFound=true;
                     unsigned int w0 = std::stoul(strings[1]);
-                    size_t w=w0-minVertexToUse;
-                    size_t v=v0-minVertexToUse;
+                    size_t w=w0-vertexShiftBack;
+                    size_t v=v0-vertexShiftBack;
 
                     assert(v<=vg.getMaxVertex());
 
@@ -351,21 +352,22 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
             }
             assert(minVertexFound);
 
-        }
+       // }
 
         while (std::getline(data, line) && !line.empty()) {
 
 
             strings = split(line, delim);
-
             unsigned int v0 = std::stoul(strings[0]);
 
             unsigned int w0 = std::stoul(strings[1]);
-            assert(w0>v0);
-            assert(v0>=minVertexToUse);
 
-            size_t v=v0-minVertexToUse;
-            size_t w=w0-minVertexToUse;
+            //std::cout<<v0<<","<<w0<<std::endl;
+            assert(w0>v0);
+            assert(v0>=vertexShiftBack);
+
+            size_t v=v0-vertexShiftBack;
+            size_t w=w0-vertexShiftBack;
 
             if(v>vg.getMaxVertex()) break;
 
@@ -386,13 +388,14 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
         }
 
 
+        std::cout<<"after while"<<std::endl;
         data.close();
 
         EdgeVector ev(listOfEdges);
         InfoVector iv(completeScore);
-       // std::cout<<"before my complete graph"<<std::endl;
+        std::cout<<"before my complete graph"<<std::endl;
         myCompleteGraph=LdpDirectedGraph(ev,iv,vg.getMaxVertex()+1);
-        //std::cout<<"after my complete graph "<<myCompleteGraph.getNumberOfVertices()<<std::endl;
+        std::cout<<"after my complete graph "<<myCompleteGraph.getNumberOfVertices()<<std::endl;
     }
     catch (std::system_error& er) {
         std::clog << er.what() << " (" << er.code() << ")" << std::endl;

@@ -76,6 +76,8 @@ public:
         initFromVector(verticesInFrames,0,0);
     }
 
+    void print()const;
+
 
   //  std::vector<std::vector<size_t>> extractCorePaths(const std::vector<std::vector<size_t>>& paths, size_t cutoff,bool isFirst,bool isLast,size_t vertexShift) const;
 
@@ -163,6 +165,19 @@ private:
 
 
 };
+
+template<class T>
+inline void VertexGroups<T>::print() const{
+    for (size_t i = 0; i <= maxTime+1; ++i) {
+        std::cout<<"layer "<<i<<": ";
+        for (int j = 0; j < groups[i].size(); ++j) {
+            std::cout<<groups[i][j]<<",";
+
+        }
+        std::cout<<std::endl;
+    }
+
+}
 
 template<class T>
 inline void VertexGroups<T>::testCorrectness(bool printToo) const{
@@ -382,6 +397,7 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         std::clog << er.what() << " (" << er.code() << ")" << std::endl;
 
     }
+    //print();
 
 }
 
@@ -428,7 +444,7 @@ inline std::vector<std::vector<size_t>> VertexGroups<T>::extractInnerPaths(const
         while(j<paths[i].size()){
 
             time=getGroupIndex(paths[i][j]);
-            if(time<=maxTime){
+            if(time<=maxT){
                 outputPath.push_back(paths[i][j]+vShift);
                 j++;
             }

@@ -42,6 +42,7 @@
 #include "lifted_disjoint_paths/ldp_vertex_groups.hxx"
 #include "ldp_batch_process.hxx"
 #include <chrono>
+#include "ldp_interval_connection.hxx"
 
 
 namespace py = pybind11;
@@ -57,6 +58,7 @@ public:
 
      LdpInstance(LdpParameters<>& configParameters,CompleteStructure<>& cs);
      LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP);
+     LdpInstance(LdpParameters<>& configParameters,LdpIntervalConnection& IC);
      LdpInstance(LdpParameters<>& configParameters, const py::array_t<size_t>& baseEdges, const py::array_t<size_t>& liftedEdges, const  py::array_t<double>& baseCosts, const  py::array_t<double>& liftedCosts, const py::array_t<double> &verticesCosts, VertexGroups<>& pvg);
 
 	bool isReachable(size_t i,size_t j) const{
