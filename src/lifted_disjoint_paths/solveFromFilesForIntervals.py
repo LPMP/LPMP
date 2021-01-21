@@ -118,6 +118,8 @@ pathsExtractor2=ldpMP.PathsExtractor(timeFrames2,paths2,cutOff,isFirst2,isLast2,
 
 
 intervalConnection=ldpMP.IntervalConnection(pathsExtractor1,pathsExtractor2)
+#You will init from edge vectors instead:
+#intevalConnection.init_edges_from_vectors(edgeVector,costVector)
 intervalConnection.init_from_file(pathToFiles+"problemDesc")
 
 instanceConnection=ldpMP.LdpInstance(params,intervalConnection)
