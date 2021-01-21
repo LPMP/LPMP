@@ -1171,90 +1171,90 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         clusteringValue=pInstance->evaluateClustering(currentPrimalLabels);
 
      }
-    else{
-        std::cout<<"worse primal"<<std::endl;
-       // if((primalValue-bestPrimalValue)/abs(bestPrimalValue)>0.01){
-            std::cout<<"worse primal"<<std::endl;
-            const auto& liftedGraph=pInstance->getMyGraphLifted();
-             const auto& baseGraph=pInstance->getMyGraph();
+//    else{
+//        std::cout<<"worse primal"<<std::endl;
+//       // if((primalValue-bestPrimalValue)/abs(bestPrimalValue)>0.01){
+//            std::cout<<"worse primal"<<std::endl;
+//            const auto& liftedGraph=pInstance->getMyGraphLifted();
+//             const auto& baseGraph=pInstance->getMyGraph();
 
-            std::vector<std::map<size_t,double>> mmIn(nr_nodes()+2);
-            std::vector<std::map<size_t,double>> mmOut(nr_nodes()+2);
-            std::vector<std::map<size_t,double>> mmAll(nr_nodes()+2);
+//            std::vector<std::map<size_t,double>> mmIn(nr_nodes()+2);
+//            std::vector<std::map<size_t,double>> mmOut(nr_nodes()+2);
+//            std::vector<std::map<size_t,double>> mmAll(nr_nodes()+2);
 
-            size_t s=base_graph_source_node();
-            size_t t=base_graph_terminal_node();
+//            size_t s=base_graph_source_node();
+//            size_t t=base_graph_terminal_node();
 
-            for (int i = 0; i < nr_nodes(); ++i) {
-                auto * factorIn=single_node_cut_factors_[i][0]->get_factor();
+//            for (int i = 0; i < nr_nodes(); ++i) {
+//                auto * factorIn=single_node_cut_factors_[i][0]->get_factor();
 
-                auto mmInLocal=factorIn-> getAllBaseMinMarginalsForMCF();
-                const auto& baseids=factorIn->getBaseIDs();
-                assert(mmInLocal.size()==baseids.size());
-                for (int j = 0; j < mmInLocal.size(); ++j) {
-                    size_t vertex1=baseids[j];
-                    double cost=mmInLocal[j];
-                    mmIn[vertex1][i]=cost;
-                    mmAll[vertex1][i]+=cost;
-                }
-                 auto * factorOut=single_node_cut_factors_[i][1]->get_factor();
+//                auto mmInLocal=factorIn-> getAllBaseMinMarginalsForMCF();
+//                const auto& baseids=factorIn->getBaseIDs();
+//                assert(mmInLocal.size()==baseids.size());
+//                for (int j = 0; j < mmInLocal.size(); ++j) {
+//                    size_t vertex1=baseids[j];
+//                    double cost=mmInLocal[j];
+//                    mmIn[vertex1][i]=cost;
+//                    mmAll[vertex1][i]+=cost;
+//                }
+//                 auto * factorOut=single_node_cut_factors_[i][1]->get_factor();
 
-                 auto mmOutLocal=factorOut-> getAllBaseMinMarginalsForMCF();
-                 const auto& baseidsOut=factorOut->getBaseIDs();
-                 assert(mmOutLocal.size()==baseidsOut.size());
-                 for (int j = 0; j < mmOutLocal.size(); ++j) {
-                     size_t vertex1=baseidsOut[j];
-                     double cost=mmOutLocal[j];
-                     mmOut[i][vertex1]=cost;
-                     mmAll[i][vertex1]+=cost;
-                 }
+//                 auto mmOutLocal=factorOut-> getAllBaseMinMarginalsForMCF();
+//                 const auto& baseidsOut=factorOut->getBaseIDs();
+//                 assert(mmOutLocal.size()==baseidsOut.size());
+//                 for (int j = 0; j < mmOutLocal.size(); ++j) {
+//                     size_t vertex1=baseidsOut[j];
+//                     double cost=mmOutLocal[j];
+//                     mmOut[i][vertex1]=cost;
+//                     mmAll[i][vertex1]+=cost;
+//                 }
 
-            }
+//            }
 
-            double mcfForOptPaths=0;
-            for (int i = 0; i < bestPrimalSolution.size(); ++i) {
-                mcfForOptPaths+=mmAll[s][bestPrimalSolution[i][0]];
-                for (int j = 0; j < bestPrimalSolution[i].size()-1; ++j) {
-                     size_t v1=bestPrimalSolution[i][j];
-                     size_t v2=bestPrimalSolution[i][j+1];
-                     mcfForOptPaths+=mmAll[v1][v2];
-                }
-                mcfForOptPaths+=mmAll[bestPrimalSolution[i].back()][t];
+//            double mcfForOptPaths=0;
+//            for (int i = 0; i < bestPrimalSolution.size(); ++i) {
+//                mcfForOptPaths+=mmAll[s][bestPrimalSolution[i][0]];
+//                for (int j = 0; j < bestPrimalSolution[i].size()-1; ++j) {
+//                     size_t v1=bestPrimalSolution[i][j];
+//                     size_t v2=bestPrimalSolution[i][j+1];
+//                     mcfForOptPaths+=mmAll[v1][v2];
+//                }
+//                mcfForOptPaths+=mmAll[bestPrimalSolution[i].back()][t];
 
-            }
-            std::cout<<"mcf for optimal paths "<<mcfForOptPaths<<std::endl;
+//            }
+//            std::cout<<"mcf for optimal paths "<<mcfForOptPaths<<std::endl;
 
-             double mcfForCurrentPaths=0;
-            for (int i = 0; i < paths.size(); ++i) {
-                mcfForCurrentPaths+=mmAll[s][paths[i][0]];
-                for (int j = 0; j < paths[i].size()-1; ++j) {
-                     size_t v1=paths[i][j];
-                     size_t v2=paths[i][j+1];
-                     mcfForCurrentPaths+=mmAll[v1][v2];
-                }
-                mcfForCurrentPaths+=mmAll[paths[i].back()][t];
+//             double mcfForCurrentPaths=0;
+//            for (int i = 0; i < paths.size(); ++i) {
+//                mcfForCurrentPaths+=mmAll[s][paths[i][0]];
+//                for (int j = 0; j < paths[i].size()-1; ++j) {
+//                     size_t v1=paths[i][j];
+//                     size_t v2=paths[i][j+1];
+//                     mcfForCurrentPaths+=mmAll[v1][v2];
+//                }
+//                mcfForCurrentPaths+=mmAll[paths[i].back()][t];
 
-            }
-                  std::cout<<"mcf for current paths "<<mcfForCurrentPaths<<std::endl;
+//            }
+//                  std::cout<<"mcf for current paths "<<mcfForCurrentPaths<<std::endl;
 
-            for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
+//            for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
 
-                auto iter=liftedGraph.forwardNeighborsBegin(i);
-                auto myEnd=liftedGraph.forwardNeighborsEnd(i);
-                for (;iter!=myEnd;iter++) {
-                    size_t vertex2=iter->first;
-                    bool optSame=(bestPrimalLabels[i]!=0&&bestPrimalLabels[vertex2]==bestPrimalLabels[i]);
-                    bool currentSame=(currentPrimalLabels[i]!=0&&currentPrimalLabels[vertex2]==currentPrimalLabels[i]);
-                    if(optSame!=currentSame){
-                     //   std::cout<<"edge "<<i<<","<<vertex2<<std::endl;
-                      //  std::cout<<"active in opt "<<optSame<<", active in current "<<currentSame<<std::endl;
-                    }
-                }
+//                auto iter=liftedGraph.forwardNeighborsBegin(i);
+//                auto myEnd=liftedGraph.forwardNeighborsEnd(i);
+//                for (;iter!=myEnd;iter++) {
+//                    size_t vertex2=iter->first;
+//                    bool optSame=(bestPrimalLabels[i]!=0&&bestPrimalLabels[vertex2]==bestPrimalLabels[i]);
+//                    bool currentSame=(currentPrimalLabels[i]!=0&&currentPrimalLabels[vertex2]==currentPrimalLabels[i]);
+//                    if(optSame!=currentSame){
+//                     //   std::cout<<"edge "<<i<<","<<vertex2<<std::endl;
+//                      //  std::cout<<"active in opt "<<optSame<<", active in current "<<currentSame<<std::endl;
+//                    }
+//                }
 
-            }
-        //}
+//            }
+//        //}
 
-    }
+//    }
 
     if(debug()){
 

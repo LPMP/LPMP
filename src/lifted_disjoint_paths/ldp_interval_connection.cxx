@@ -116,7 +116,7 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
     std::vector<double> costOfFreeEdges;
     std::vector<std::map<size_t,double>> firstPathsToFree(n1);
     std::map<size_t,std::map<size_t,double>> freeToSecondPaths;
-    std::map<size_t,std::map<size_t,double>> pathsToPaths;
+   // std::map<size_t,std::map<size_t,double>> pathsToPaths;
 
     for (size_t i = 0; i < edges.size(); ++i) {
         size_t vertex1=edges[i][0];
@@ -133,8 +133,9 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
                     firstPathsToFree[pathLocalID][vertex2LocalIndex]+=costs[i];
                 }
                 else if(graphPart2==2){
-                    size_t vertex2LocalIndex=secondPathsVertexToLocalIndex(vertex2);
-                    pathsToPaths[pathLocalID][vertex2LocalIndex]+=costs[i];
+                    if(diagnostics()) std::cout<<"WARNIG: Edges directly between first and second interval tracklets are not supported and are skipped."<<std::endl;
+                   // size_t vertex2LocalIndex=secondPathsVertexToLocalIndex(vertex2);
+                   // pathsToPaths[pathLocalID][vertex2LocalIndex]+=costs[i];
                 }
             }
             else if (graphPart1==1) {
@@ -176,16 +177,16 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
         }
     }
 
-    for (auto iter=pathsToPaths.begin();iter!=pathsToPaths.end();iter++) {
-        size_t vertex1=iter->first;
-        auto edgesFromVertex1=iter->second;
-        for (auto iter2=edgesFromVertex1.begin();iter2!=edgesFromVertex1.end();iter2++) {
-            size_t vertex2=iter2->first;
-            double cost=iter2->second;
-            freeEdges.push_back({vertex1,vertex2});
-            costOfFreeEdges.push_back(cost);
-        }
-    }
+//    for (auto iter=pathsToPaths.begin();iter!=pathsToPaths.end();iter++) {
+//        size_t vertex1=iter->first;
+//        auto edgesFromVertex1=iter->second;
+//        for (auto iter2=edgesFromVertex1.begin();iter2!=edgesFromVertex1.end();iter2++) {
+//            size_t vertex2=iter2->first;
+//            double cost=iter2->second;
+//            freeEdges.push_back({vertex1,vertex2});
+//            costOfFreeEdges.push_back(cost);
+//        }
+//    }
 
 
     EdgeVector edgeVector(freeEdges);

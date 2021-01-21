@@ -314,7 +314,7 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
         std::vector<std::array<size_t,2>> listOfEdges;
         std::vector<double> completeScore;
 
-        //if(vertexShiftBack>0){
+        if(vertexShiftBack>0){
             bool minVertexFound=false;
             while (std::getline(data, line) && !line.empty()) {
 
@@ -352,7 +352,7 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
             }
             assert(minVertexFound);
 
-       // }
+        }
 
         while (std::getline(data, line) && !line.empty()) {
 
@@ -388,14 +388,14 @@ inline void CompleteStructure<T>::addEdgesFromFile(const std::string& fileName, 
         }
 
 
-        std::cout<<"after while"<<std::endl;
+      //  std::cout<<"after while"<<std::endl;
         data.close();
 
         EdgeVector ev(listOfEdges);
         InfoVector iv(completeScore);
-        std::cout<<"before my complete graph"<<std::endl;
+       //std::cout<<"before my complete graph"<<std::endl;
         myCompleteGraph=LdpDirectedGraph(ev,iv,vg.getMaxVertex()+1);
-        std::cout<<"after my complete graph "<<myCompleteGraph.getNumberOfVertices()<<std::endl;
+       // std::cout<<"after my complete graph "<<myCompleteGraph.getNumberOfVertices()<<std::endl;
     }
     catch (std::system_error& er) {
         std::clog << er.what() << " (" << er.code() << ")" << std::endl;

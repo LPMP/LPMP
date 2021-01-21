@@ -13,7 +13,7 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     parameters(configParameters)
 {
 
-    std::cout<<"constructor instance"<<std::endl;
+   // std::cout<<"constructor instance"<<std::endl;
 
 
     pCompleteGraph=&cs.myCompleteGraph;
@@ -26,7 +26,7 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
         initCanJoinStructure(cs.myCompleteGraph);
     }
 
-    std::cout<<"after can join"<<std::endl;
+   // std::cout<<"after can join"<<std::endl;
 
     s_=myGraphLifted.getNumberOfVertices();
     t_=s_+1;
@@ -34,7 +34,7 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     vertexScore=cs.verticesScore;
 
 
-    std::cout<<"before thresholds"<<std::endl;
+   // std::cout<<"before thresholds"<<std::endl;
     //vertexGroups.print();
 
     if(parameters.isUseAdaptiveThreshold()){
@@ -50,7 +50,7 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
 
     numberOfVertices=myGraph.getNumberOfVertices();
 
-    std::cout<<"before init"<<std::endl;
+    //std::cout<<"before init"<<std::endl;
     init();
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -806,16 +806,16 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
             else{
                 size_t l1=vertexGroups.getGroupIndex(v1);
                 if(l1<=l0){
-                    std::cout<<"l0: "<<l0<<", l1: "<<l1<<", v0: "<<v0<<", v1: "<<v1<<std::endl;
-                    vertexGroups.print();
-                    for (size_t v0 = 0; v0 < inputGraph.getNumberOfVertices(); ++v0) {
-                        auto iter2=inputGraph.forwardNeighborsBegin(v0);
-                        std::cout<<"neighbors of "<<v0<<":";
-                        for (; iter2!=inputGraph.forwardNeighborsEnd(v0); iter2++) {
-                            std::cout<<iter2->first<<",";
-                        }
-                        std::cout<<std::endl;
-                    }
+//                    std::cout<<"l0: "<<l0<<", l1: "<<l1<<", v0: "<<v0<<", v1: "<<v1<<std::endl;
+//                    vertexGroups.print();
+//                    for (size_t v0 = 0; v0 < inputGraph.getNumberOfVertices(); ++v0) {
+//                        auto iter2=inputGraph.forwardNeighborsBegin(v0);
+//                        std::cout<<"neighbors of "<<v0<<":";
+//                        for (; iter2!=inputGraph.forwardNeighborsEnd(v0); iter2++) {
+//                            std::cout<<iter2->first<<",";
+//                        }
+//                        std::cout<<std::endl;
+//                    }
 
                 }
                 assert(l1>l0);
