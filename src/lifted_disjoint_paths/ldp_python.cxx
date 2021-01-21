@@ -86,21 +86,30 @@ PYBIND11_MODULE(ldpMessagePassingPy, m) {
              .def(py::init<LPMP::VertexGroups<>&,const std::vector<std::vector<size_t>>&, size_t,bool,bool,size_t>(),"Requires: TimeFramesToVertices of the respective interval, solution paths,length to cut off, bool is this first interval,bool is this last interval,vertex shift (global id of the first valid vertex)")
              .def("get_extracted_paths",&LPMP::LdpPathsExtractor::getExtractedPaths,"Returns list of paths. Where vertices have their global IDs");
 
-     py::class_<LPMP::LdpIntervalConnectionResult>(m,"IntervalConnectionResults")
-             .def(py::init<>())
-             .def("get_middle_paths",&LPMP::LdpIntervalConnectionResult::getMiddleToSecond,"Getting paths between intervals.")
-             .def("get_start_in_middle",&LPMP::LdpIntervalConnectionResult::getStartInMiddle,"Getting paths in the middle interval that starting.")
-             .def("get_start_in_second",&LPMP::LdpIntervalConnectionResult::getStartInSecond,"Getting paths from the second interval that are starting")
-             .def("get_middle_to_second",&LPMP::LdpIntervalConnectionResult::getMiddleToSecond,"Mapping of middle interval paths to second interval paths.")
-             .def("get_first_to_middle",&LPMP::LdpIntervalConnectionResult::getFirstToMiddle,"Mapping of first interval paths to middle interval paths.");
+//     py::class_<LPMP::LdpIntervalConnectionResult>(m,"IntervalConnectionResults")
+//             .def(py::init<>())
+//             .def("get_middle_paths",&LPMP::LdpIntervalConnectionResult::getMiddleToSecond,"Getting paths between intervals.")
+//             .def("get_start_in_middle",&LPMP::LdpIntervalConnectionResult::getStartInMiddle,"Getting paths in the middle interval that starting.")
+//             .def("get_start_in_second",&LPMP::LdpIntervalConnectionResult::getStartInSecond,"Getting paths from the second interval that are starting")
+//             .def("get_middle_to_second",&LPMP::LdpIntervalConnectionResult::getMiddleToSecond,"Mapping of middle interval paths to second interval paths.")
+//             .def("get_first_to_middle",&LPMP::LdpIntervalConnectionResult::getFirstToMiddle,"Mapping of first interval paths to middle interval paths.");
 
+     py::class_<LPMP::LdpLabelsAssignment>(m,"LabelAssignment")
+             .def(py::init<>())
+             .def("init",&LPMP::LdpLabelsAssignment::init,"Initializes label assignment with paths from the first interval.")
+             .def("get_labels",&LPMP::LdpLabelsAssignment::getVerticesToLabels,"Returns vector nx2 of pairs: vertex ID-> vertex label")
+             .def("update",&LPMP::LdpLabelsAssignment::update,"Updates labels given new paths and connections from old to new paths.");
 
      py::class_<LPMP::LdpIntervalConnection>(m,"IntervalConnection")
              .def(py::init<const LPMP::LdpPathsExtractor&, const LPMP::LdpPathsExtractor&>(),"Requires: PathsExtractors of the first and of the second interval")
              .def("decode_paths",&LPMP::LdpIntervalConnection::decodePaths,"Decodes paths returned from the solver into the global vertex IDs.")
              .def("init_from_file",&LPMP::LdpIntervalConnection::initFromFile,"Initializes both edges and vectors from a file")
              .def("init_vertices_from_vectors",&LPMP::LdpIntervalConnection::initScoreOfVertices,"Requires n x 1 list of vertices and n x 1 list of their costs. Vertices not provided in the list have cost zero.")
-             .def("init_edges_from_vectors",&LPMP::LdpIntervalConnection::initEdgesFromVectors,"Requires n x 2 vector of edge vertices and n x 1 vector of costs for edges in the two intervals. Extra edges are ignored.");
+             .def("init_edges_from_vectors",&LPMP::LdpIntervalConnection::initEdgesFromVectors,"Requires n x 2 vector of edge vertices and n x 1 vector of costs for edges in the two intervals. Extra edges are ignored.")
+             .def("get_middle_paths",&LPMP::LdpIntervalConnection::getMiddleIntervalPaths,"Getting paths between intervals.")
+             .def("get_middle_to_second",&LPMP::LdpIntervalConnection::getMiddleToSecond,"Mapping of middle interval paths to second interval paths.")
+             .def("create_result_structures",&LPMP::LdpIntervalConnection::createResultsStructures,"Decodes output paths and creates resulting structures.")
+             .def("get_first_to_middle",&LPMP::LdpIntervalConnection::getFirstToMiddle,"Mapping of first interval paths to middle interval paths.");
 
 
 
