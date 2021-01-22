@@ -20,9 +20,9 @@ LdpIntervalConnection::LdpIntervalConnection( const LdpPathsExtractor& _pathExtr
     verticesScore=std::vector<double>(numberOfLocalVertices);
     minVertex=pathExtractor1.getMinIntevalVertex();
 
-    std::cout<<"first extracted paths"<<std::endl;
+   // std::cout<<"first extracted paths"<<std::endl;
     pathExtractor1.printExtractedPaths();
-    std::cout<<"second extracted paths"<<std::endl;
+    //std::cout<<"second extracted paths"<<std::endl;
     pathExtractor2.printExtractedPaths();
   //  pResultStructure=nullptr;
 
