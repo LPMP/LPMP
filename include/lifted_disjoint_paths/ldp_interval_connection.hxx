@@ -28,6 +28,8 @@ public:
             for (size_t j = 0; j < initialPaths[i].size(); ++j) {
                 size_t vertex=initialPaths[i][j];
                 size_t label=i+1;
+                assert(label!=0);
+               // std::cout<<vertex<<":"<<label<<std::endl;
                 verticesToLabels.push_back({vertex,label});
 
             }
@@ -40,6 +42,7 @@ public:
         assert(oldToNewPaths.size()==lastPathsLabels.size());
         std::vector<size_t> newPathsLabels(newPaths.size());
 
+
         std::vector<bool> processedPaths(newPaths.size(),false);
 
         for (size_t i = 0; i < oldToNewPaths.size(); ++i) {
@@ -51,7 +54,9 @@ public:
                 processedPaths[index]=true;
                 for (size_t j = 0; j < newPaths[index].size(); ++j) {
                     size_t vertex=newPaths[index][j];
+                    assert(label!=0);
                     verticesToLabels.push_back({vertex,label});
+                 //   std::cout<<vertex<<":"<<label<<std::endl;
 
                 }
 
@@ -62,9 +67,13 @@ public:
             if(!processedPaths[i]){
                 maxUsedLabel++;
                 size_t label=maxUsedLabel;
+                newPathsLabels[i]=label;
                 for (size_t j = 0; j < newPaths[i].size(); ++j) {
                     size_t vertex=newPaths[i][j];
+                    assert(label!=0);
                     verticesToLabels.push_back({vertex,label});
+
+                   // std::cout<<vertex<<":"<<label<<std::endl;
                 }
             }
         }
