@@ -118,7 +118,7 @@ setup(
     long_description='',
     ext_package='bindings',
     packages=find_packages(),
-    ext_modules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')],
+    ext_modules=[CMakeExtension(name='ldpMessagePassingPy')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
