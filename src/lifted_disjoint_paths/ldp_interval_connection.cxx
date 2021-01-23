@@ -120,9 +120,12 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
 
     size_t edgesToSecond=0;
     size_t negativeEdgesToSecond=0;
+    size_t firstToMiddleEdges=0;
+    size_t withinMiddleEdges=0;
     for (size_t i = 0; i < edges.size(); ++i) {
         size_t vertex1=edges[i][0];
         size_t vertex2=edges[i][1];
+
 
         assert(vertex2>vertex1);
         if(vertex1>=pathExtractor1.getMinPathsVertex()&&vertex2<=pathExtractor2.getMaxPathsVertex()){
@@ -133,6 +136,7 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
                 if(graphPart2==1){
                     size_t vertex2LocalIndex=globalToLocalFree(vertex2);
                     firstPathsToFree[pathLocalID][vertex2LocalIndex]+=costs[i];
+                    firstToMiddleEdges++;
                 }
                 else if(graphPart2==2){
                     if(diagnostics()) std::cout<<"WARNIG: Edges directly between first and second interval tracklets are not supported and are skipped."<<std::endl;
@@ -146,6 +150,7 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
                     size_t vertex2LocalIndex=globalToLocalFree(vertex2);
                     freeEdges.push_back({vertex1LocalIndex,vertex2LocalIndex});
                     costOfFreeEdges.push_back(costs[i]);
+                    withinMiddleEdges++;
                 }
                 else{
                     assert(graphPart2==2);
@@ -161,8 +166,10 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
         }
     }
 
-    std::cout<<"edges to second "<<edgesToSecond<<std::endl;
-    std::cout<<"negative edges to second "<<negativeEdgesToSecond<<std::endl;
+   if(debug()) std::cout<<"edges to second "<<edgesToSecond<<std::endl;
+   if(debug()) std::cout<<"negative edges to second "<<negativeEdgesToSecond<<std::endl;
+   if(debug()) std::cout<<"first to middle edges "<<firstToMiddleEdges<<std::endl;
+   if(debug()) std::cout<<"within middle "<<withinMiddleEdges<<std::endl;
 
     for (size_t i = 0; i < n1; ++i) {
         auto edgesFromVertex1=firstPathsToFree[i];

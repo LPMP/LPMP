@@ -1,5 +1,6 @@
 #include "lifted_disjoint_paths/ldp_paths_extractor.hxx"
 
+
 namespace LPMP {
 
 
@@ -67,6 +68,11 @@ LdpPathsExtractor::LdpPathsExtractor(const VertexGroups<>& vertexGroups,const st
             vertexToPath.at(vertex-minPathsVertex)=i;
         }
 
+    }
+
+   if(debug()){
+       std::cout<<"min paths time "<<minPathsTime<<", min paths vertex "<<minPathsVertex<<", maxPaths time: "<<maxPathsTime<<", max paths vertex "<<maxPathsVertex<<", min Interval vertex "<<minIntervalVertex<<std::endl;
+       std::cout<<"number of vertices in interval "<<(vg.getMaxVertex()+1)<<std::endl;
     }
 
 

@@ -2,6 +2,7 @@
 #define LDP_PATHS_EXTRACTOR_HXX
 
 #include "ldp_vertex_groups.hxx"
+#include "config.hxx"
 
 namespace LPMP {
 
