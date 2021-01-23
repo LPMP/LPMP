@@ -222,6 +222,8 @@ private:
     double negativeLiftedThreshold;
     double positiveLiftedThreshold;
     double baseThreshold;
+    bool keepAllToFirst;
+    bool keepAllToLast;
 
 
 

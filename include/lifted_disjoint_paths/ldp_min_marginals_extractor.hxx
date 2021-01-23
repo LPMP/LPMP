@@ -37,6 +37,24 @@ public:
        return liftedEdgesWithCosts;
     }
 
+    void updateCostBase(size_t v,size_t w){
+        auto pFactorIn=(*p_single_node_cut_factors_)[w][0]->get_factor();
+        auto pFactorOut=(*p_single_node_cut_factors_)[v][1]->get_factor();
+        size_t indexIn=pFactorIn->getBaseIDToOrder(v);
+         size_t indexOut=pFactorOut->getBaseIDToOrder(w);
+         pFactorIn->updateEdgeCost(-baseEdgesInput[v][w],indexIn,false);
+         pFactorOut->updateEdgeCost(-baseEdgesOutput[v][w],indexOut,false);
+    }
+
+
+    void updateCostLifted(size_t v,size_t w){
+        auto pFactorIn=(*p_single_node_cut_factors_)[w][0]->get_factor();
+        auto pFactorOut=(*p_single_node_cut_factors_)[v][1]->get_factor();
+        size_t indexIn=pFactorIn->getLiftedIDToOrder(v);
+         size_t indexOut=pFactorOut->getLiftedIDToOrder(w);
+         pFactorIn->updateEdgeCost(-liftedEdgesInput[v][w],indexIn,true);
+         pFactorOut->updateEdgeCost(-liftedEdgesOutput[v][w],indexOut,true);
+    }
 
 
 void initMinMarginals();
@@ -54,6 +72,11 @@ std::vector<std::array<SINGLE_NODE_CUT_FACTOR*,2>>* p_single_node_cut_factors_;
 size_t numberOfVerticesComplete;
 std::vector<std::map<size_t,double>> baseEdgesWithCosts;
 std::vector<std::map<size_t,double>> liftedEdgesWithCosts;
+std::vector<std::map<size_t,double>> baseEdgesInput;
+std::vector<std::map<size_t,double>> liftedEdgesInput;
+
+std::vector<std::map<size_t,double>> baseEdgesOutput;
+std::vector<std::map<size_t,double>> liftedEdgesOutput;
 //LdpDirectedGraph baseGraph;
 //LdpDirectedGraph liftedGraph;
 
@@ -73,6 +96,12 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
     liftedEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);
     baseEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVerticesComplete);
 
+    liftedEdgesInput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);
+    baseEdgesInput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete);
+
+    liftedEdgesOutput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);
+    baseEdgesOutput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete);
+
     //Getting the edge costs
     for (size_t i = 0; i < numberOfVerticesComplete-2; ++i) {
         // std::cout<<"node "<<i<<std::endl;
@@ -89,6 +118,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
             minMarginalsIn[j]*=0.5;
             localBaseCostsIn.at(j)-=minMarginalsIn.at(j);
             baseEdgesWithCosts[neighborID][i]+=minMarginalsIn[j];
+            baseEdgesInput[neighborID][i]+=minMarginalsIn[j];
 
 
         }
@@ -99,6 +129,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
         for (size_t j = 0; j < minMarginalsLiftedIn.size(); ++j) {
             size_t neighborID=sncFactorIn->getLiftedIDs()[j];
             liftedEdgesWithCosts[neighborID][i]+=minMarginalsLiftedIn[j];
+            liftedEdgesInput[neighborID][i]+=minMarginalsLiftedIn[j];
 
         }
 
@@ -115,6 +146,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
             minMarginalsOut[j]*=0.5;
               localBaseCostsOut.at(j)-=minMarginalsOut.at(j);
             baseEdgesWithCosts[i][neighborID]+=minMarginalsOut[j];
+            baseEdgesOutput[i][neighborID]+=minMarginalsOut[j];
 
         }
 
@@ -123,6 +155,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
          for (size_t j = 0; j < minMarginalsLiftedOut.size(); ++j) {
              size_t neighborID=sncFactorOut->getLiftedIDs()[j];
              liftedEdgesWithCosts[i][neighborID]+=minMarginalsLiftedOut[j];
+             liftedEdgesOutput[i][neighborID]+=minMarginalsLiftedOut[j];
          }
 
     }
@@ -143,6 +176,12 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
     liftedEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);
     baseEdgesWithCosts=std::vector<std::map<size_t,double>>(numberOfVerticesComplete);
 
+    liftedEdgesInput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);
+    baseEdgesInput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete);
+
+    liftedEdgesOutput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete-2);
+    baseEdgesOutput=std::vector<std::map<size_t,double>>(numberOfVerticesComplete);
+
     //Getting the edge costs
     for (size_t i = 0; i < numberOfVerticesComplete-2; ++i) {
         // std::cout<<"node "<<i<<std::endl;
@@ -161,6 +200,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
             localLiftedCostsIn[j]-=liftedMinMarginalsIn[j];
             size_t neighborID=sncFactorIn->getLiftedIDs()[j];
             liftedEdgesWithCosts[neighborID][i]+=liftedMinMarginalsIn[j];
+            liftedEdgesInput[neighborID][i]+=liftedMinMarginalsIn[j];
 
         }
 
@@ -171,6 +211,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
         for (size_t j = 0; j < baseMinMarginalsIn.size(); ++j) {
             size_t neighborID=sncFactorIn->getBaseIDs()[j];
             baseEdgesWithCosts[neighborID][i]+=baseMinMarginalsIn[j];
+            baseEdgesInput[neighborID][i]+=baseMinMarginalsIn[j];
         }
 
 
@@ -184,6 +225,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
             localLiftedCostsOut[j]-=liftedMinMarginalsOut[j];
             size_t neighborID=sncFactorOut->getLiftedIDs()[j];
             liftedEdgesWithCosts[i][neighborID]+=liftedMinMarginalsOut[j];
+            liftedEdgesOutput[i][neighborID]+=liftedMinMarginalsOut[j];
         }
 
         const std::vector<double>& baseCostsOut=sncFactorOut->getBaseCosts();
@@ -194,6 +236,7 @@ inline void ldp_min_marginals_extractor<SINGLE_NODE_CUT_FACTOR>::initMinMarginal
         for (size_t j = 0; j < baseMinMarginalsOut.size(); ++j) {
             size_t neighborID=sncFactorOut->getBaseIDs()[j];
             baseEdgesWithCosts[i][neighborID]+=baseMinMarginalsOut[j];
+            baseEdgesOutput[i][neighborID]+=baseMinMarginalsOut[j];
 
         }
 

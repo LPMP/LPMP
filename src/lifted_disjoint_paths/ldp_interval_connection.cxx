@@ -21,9 +21,9 @@ LdpIntervalConnection::LdpIntervalConnection( const LdpPathsExtractor& _pathExtr
     minVertex=pathExtractor1.getMinIntevalVertex();
 
    // std::cout<<"first extracted paths"<<std::endl;
-    pathExtractor1.printExtractedPaths();
+   // pathExtractor1.printExtractedPaths();
     //std::cout<<"second extracted paths"<<std::endl;
-    pathExtractor2.printExtractedPaths();
+   // pathExtractor2.printExtractedPaths();
   //  pResultStructure=nullptr;
 
 }
@@ -118,6 +118,8 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
     std::map<size_t,std::map<size_t,double>> freeToSecondPaths;
    // std::map<size_t,std::map<size_t,double>> pathsToPaths;
 
+    size_t edgesToSecond=0;
+    size_t negativeEdgesToSecond=0;
     for (size_t i = 0; i < edges.size(); ++i) {
         size_t vertex1=edges[i][0];
         size_t vertex2=edges[i][1];
@@ -148,11 +150,19 @@ void LdpIntervalConnection::initEdgesFromVectors(const std::vector<std::array<si
                 else{
                     assert(graphPart2==2);
                     size_t vertex2LocalIndex=secondPathsVertexToLocalIndex(vertex2);
+                    size_t pathIndex=secondPathsLocalIndexToPathIndex(vertex2LocalIndex);
                     freeToSecondPaths[vertex1LocalIndex][vertex2LocalIndex]+=costs[i];
+                    edgesToSecond++;
+                    if(costs[i]<0){
+                        negativeEdgesToSecond++;
+                    }
                 }
             }
         }
     }
+
+    std::cout<<"edges to second "<<edgesToSecond<<std::endl;
+    std::cout<<"negative edges to second "<<negativeEdgesToSecond<<std::endl;
 
     for (size_t i = 0; i < n1; ++i) {
         auto edgesFromVertex1=firstPathsToFree[i];
@@ -341,13 +351,13 @@ std::vector<std::vector<size_t>> LdpIntervalConnection::decodePaths(const std::v
         pathsToReturn.push_back(newPath);
     }
 
-     for (size_t i = 0; i < pathsToReturn.size(); ++i) {
-         for (size_t j = 0; j < pathsToReturn[i].size(); ++j) {
-             std::cout<<pathsToReturn[i][j]<<",";
-         }
-         std::cout<<std::endl<<std::endl;
+//     for (size_t i = 0; i < pathsToReturn.size(); ++i) {
+//         for (size_t j = 0; j < pathsToReturn[i].size(); ++j) {
+//             std::cout<<pathsToReturn[i][j]<<",";
+//         }
+//         std::cout<<std::endl<<std::endl;
 
-     }
+//     }
      return pathsToReturn;
 }
 

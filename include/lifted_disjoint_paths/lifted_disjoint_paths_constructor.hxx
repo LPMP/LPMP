@@ -1462,6 +1462,88 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     if(diagnostics()) std::cout<<"added "<<counterCuts<<" cut ineq"<<std::endl;
     if(diagnostics()) std::cout<<"added "<<counterPaths<<" path ineq"<<std::endl;
 
+   /* const std::vector<std::map<size_t,double>>& baseMM=minMarginalsExtractor.getBaseEdgesMinMarginals();
+    const std::vector<std::map<size_t,double>>& liftedMM=minMarginalsExtractor.getLiftedEdgesMinMarginals();
+
+
+
+    for (size_t i = cutFactorOriginalSize; i < cut_factors_.size(); ++i) {
+        auto pCutFactor=cut_factors_[i]->get_factor();
+        const auto& cutGraph=pCutFactor->getCutGraph();
+        for (int j = 0; j < pCutFactor->getNumberOfInputs(); ++j) {
+            size_t vertex=pCutFactor->getInputVertices()[j];
+            auto iter=cutGraph.forwardNeighborsBegin(j);
+            size_t counter=0;
+            for (;iter!=cutGraph.forwardNeighborsEnd(j);iter++) {
+                size_t index2=iter->head;
+                size_t vertex2=pCutFactor->getOutputVertices().at(index2);
+                double value=baseMM[vertex].at(vertex2);
+                size_t usage=baseEdgeUsage[vertex][vertex2];
+                assert(usage>=1);
+                value=value/(double(usage));
+                pCutFactor->updateCostBaseForward(j,counter,value);
+                counter++;
+            }
+        }
+        size_t vertex1=pCutFactor->getLiftedInputVertex();
+        size_t vertex2=pCutFactor->getLiftedOutputVertex();
+        double liftedValue=liftedMM[vertex1].at(vertex2);
+        size_t usage=liftedEdgeUsage[vertex1][vertex2];
+        liftedValue=liftedValue/(double(usage));
+        pCutFactor->updateCostLifted(liftedValue);
+    }
+
+    for (size_t i = pathFactorsOriginalSize; i < path_factors_.size(); ++i) {
+        auto pPathFactor=path_factors_[i]->get_factor();
+        const std::vector<size_t>& vertices= pPathFactor->getListOfVertices();
+        const std::vector<char>& isLifted= pPathFactor->getLiftedInfo();
+        for (size_t j = 0; j < vertices.size()-1; ++j) {
+            size_t vertex1=vertices[j];
+            size_t vertex2=vertices[j+1];
+            double value=0;
+            if(isLifted[j]){
+                value=liftedMM[vertex1].at(vertex2);
+                size_t usage=liftedEdgeUsage[vertex1][vertex2];
+                value=value/(double(usage));
+
+            }
+            else{
+                value=baseMM[vertex1].at(vertex2);
+                size_t usage=baseEdgeUsage[vertex1][vertex2];
+                value=value/(double(usage));
+
+            }
+            pPathFactor->updateEdgeCost(j,value);
+        }
+        size_t vertex1=vertices[0];
+        size_t vertex2=vertices.back();
+        double value=liftedMM[vertex1].at(vertex2);
+        size_t usage=liftedEdgeUsage[vertex1][vertex2];
+        value=value/(double(usage));
+        pPathFactor->updateEdgeCost(vertices.size()-1,value);
+    }
+
+    for (size_t i = 0; i < baseEdgeUsage.size(); ++i) {
+        for(auto iter=baseEdgeUsage[i].begin();iter!=baseEdgeUsage[i].end();iter++){
+            size_t vertex2=iter->first;
+            size_t usage=iter->second;
+            if(usage>0){
+                minMarginalsExtractor.updateCostBase(i,vertex2);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < liftedEdgeUsage.size(); ++i) {
+        for(auto iter=liftedEdgeUsage[i].begin();iter!=liftedEdgeUsage[i].end();iter++){
+            size_t vertex2=iter->first;
+            size_t usage=iter->second;
+            if(usage>0){
+                minMarginalsExtractor.updateCostLifted(i,vertex2);
+            }
+        }
+    }
+*/
+
     queueWithCuts.clearPriorityQueue();
 
     queueWithPaths.clearPriorityQueue();

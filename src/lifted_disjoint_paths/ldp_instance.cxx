@@ -13,6 +13,8 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     parameters(configParameters)
 {
 
+    keepAllToFirst=false;
+    keepAllToLast=false;
    // std::cout<<"constructor instance"<<std::endl;
 
 
@@ -71,6 +73,9 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpIntervalConnection
     parameters(configParameters){
     pCompleteGraph=&IC.getCompleteGraph();
 
+    keepAllToFirst=true;
+    keepAllToLast=true;
+
     parameters.getControlOutput()<< "Vertices in the complete graph "<<pCompleteGraph->getNumberOfVertices()<< std::endl;
     parameters.writeControlOutput();
 
@@ -121,6 +126,8 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
     parameters.getControlOutput()<< "Vertices in the complete graph "<<pCompleteGraph->getNumberOfVertices()<< std::endl;
     parameters.writeControlOutput();
 
+    keepAllToFirst=true;
+    keepAllToLast=false;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     vertexScore=BP.getVerticesScore();
@@ -682,6 +689,12 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                                 useEdge=((l1-l0)<=parameters.getMaxTimeLifted()&&(timeGapDiff%parameters.getLongerIntervalLifted())==0);
                             }
                         }
+                        if(!useEdge){
+                            if((keepAllToFirst&&l0==1)||(keepAllToLast&&l1==vertexGroups.getMaxTime())){
+                                useEdge=true;
+                            }
+                        }
+
                         if(useEdge){
                             //if(w>=1356) std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
                             edges.push_back({i,w});
@@ -796,6 +809,7 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
 
             double cost=iter->second;
 
+            size_t l1=vertexGroups.getGroupIndex(v1);
             if(v0==s_||v1==t_){
 
                 edgesToUse.push_back({v0,v1});
@@ -803,8 +817,14 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
 
                 costsToUse.push_back(cost);
             }
+            else if((keepAllToFirst&&l0==1)||(keepAllToLast&&l1==vertexGroups.getMaxTime())){
+                edgesToUse.push_back({v0,v1});
+
+                costsToUse.push_back(cost);
+
+            }
             else{
-                size_t l1=vertexGroups.getGroupIndex(v1);
+
                 if(l1<=l0){
 //                    std::cout<<"l0: "<<l0<<", l1: "<<l1<<", v0: "<<v0<<", v1: "<<v1<<std::endl;
 //                    vertexGroups.print();
