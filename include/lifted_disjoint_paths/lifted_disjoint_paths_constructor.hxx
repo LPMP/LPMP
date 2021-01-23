@@ -1272,6 +1272,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::Tighten(const std::size_t nr_constraints_to_add)
 {
+    if(diagnostics()) std::cout<<"tighten max constraints "<<nr_constraints_to_add<<std::endl;
     double lbBefore=0;
     double lbAfter=0;
     if(debug()) lbBefore=controlLowerBound();
@@ -1462,7 +1463,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
     if(diagnostics()) std::cout<<"added "<<counterCuts<<" cut ineq"<<std::endl;
     if(diagnostics()) std::cout<<"added "<<counterPaths<<" path ineq"<<std::endl;
 
-   /* const std::vector<std::map<size_t,double>>& baseMM=minMarginalsExtractor.getBaseEdgesMinMarginals();
+   const std::vector<std::map<size_t,double>>& baseMM=minMarginalsExtractor.getBaseEdgesMinMarginals();
     const std::vector<std::map<size_t,double>>& liftedMM=minMarginalsExtractor.getLiftedEdgesMinMarginals();
 
 
@@ -1542,7 +1543,7 @@ std::size_t lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_
             }
         }
     }
-*/
+
 
     queueWithCuts.clearPriorityQueue();
 

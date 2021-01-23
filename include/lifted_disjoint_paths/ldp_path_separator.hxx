@@ -440,7 +440,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
 
     addedFactors=0;
 
-    bool useOuterPath=false;
+    bool useOuterPath=true;
     size_t numberOfOuterPaths=0;
     size_t numberOfStandardPaths=0;
 
@@ -581,53 +581,54 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         }
 
 
-//        if(useOuterPath&&isLifted){
-//           //TODO
-//            //for desc: descendants of vertex1 lower than vertex2:
-//            //  for pl: positvelifted[pl] lower than vertex2
-//            //     if(descendants[pl.end] contain vertex2) add factor
-//               size_t l1=pInstance->getGroupIndex(vertex2);
-//               size_t l0=pInstance->getGroupIndex(vertex1);
-//               if(l1-l0>=4){
-////                   std::sort(predecessors[vertex2].begin(),predecessors[vertex2].end()); //or use set for predecessors
-//                   for (auto idV1=descendants[vertex1].begin();idV1!=descendants[vertex1].end();idV1++) {
-//                       size_t descV1=*idV1;
-//                       size_t lMiddle=pInstance->getGroupIndex(descV1);
-//                       if(lMiddle>=l1) break;
-//                       auto plIt=positiveLifted[descV1].begin();
-//                       auto predIt=predecessors[vertex2].begin();
-//                       auto endPred=predecessors[vertex2].end();
-//                       auto descDesc=descendants[descV1].begin();
-//                       while(plIt!=positiveLifted[descV1].end()&&predIt!=endPred){
-//                           while(descDesc!=descendants[descV1].end()&&*descDesc<plIt->first){
-//                               descDesc++;
-//                           }
-//                           if(*predIt<plIt->first){
-//                               predIt++;
-//                           }
-//                           else if(*predIt>plIt->first){
-//                               plIt++;
-//                               if(plIt->second>vertex2) break;
-//                           }
-//                           else{ if(descDesc==descendants[descV1].end()||*descDesc>plIt->first){ //We do not wand add positive lifted edges that have already been processed via an inner path
-//                                  // std::cout<<"outer path"<<std::endl;
-//                                   PATH_FACTOR* pPathFactor= createPathFactor(vertex1,vertex2,descV1,plIt->first,isLifted,false); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
-//                                   double improvementValue=std::min(abs(edgeCost),plIt->second);
+        if(useOuterPath&&isLifted){
+           //TODO
+            //for desc: descendants of vertex1 lower than vertex2:
+            //  for pl: positvelifted[pl] lower than vertex2
+            //     if(descendants[pl.end] contain vertex2) add factor
+               size_t l1=pInstance->getGroupIndex(vertex2);
+               size_t l0=pInstance->getGroupIndex(vertex1);
+               if(l1-l0>=4){
+//                   std::sort(predecessors[vertex2].begin(),predecessors[vertex2].end()); //or use set for predecessors
+                   for (auto idV1=descendants[vertex1].begin();idV1!=descendants[vertex1].end();idV1++) {
+                       size_t descV1=*idV1;
+                       size_t lMiddle=pInstance->getGroupIndex(descV1);
+                       if(lMiddle>=l1) break;
+                       auto plIt=positiveLifted[descV1].begin();
+                       auto predIt=predecessors[vertex2].begin();
+                       auto endPred=predecessors[vertex2].end();
+                       auto descDesc=descendants[descV1].begin();
+                       while(plIt!=positiveLifted[descV1].end()&&predIt!=endPred){
+                           while(descDesc!=descendants[descV1].end()&&*descDesc<plIt->first){
+                               descDesc++;
+                           }
+                           if(*predIt<plIt->first){
+                               predIt++;
+                           }
+                           else if(*predIt>plIt->first){
+                               plIt++;
+                               if(plIt->second>vertex2) break;
+                           }
+                           else{
+                               //if(descDesc==descendants[descV1].end()||*descDesc>plIt->first){ //We do not wand add positive lifted edges that have already been processed via an inner path
+                                  // std::cout<<"outer path"<<std::endl;
+                                   PATH_FACTOR* pPathFactor= createPathFactor(vertex1,vertex2,descV1,plIt->first,isLifted,false); //TODO first just put to a queue (list of vertices and information if the edges are lifted) and then select the best
+                                   double improvementValue=std::min(abs(edgeCost),plIt->second);
 
-//                                   factorQueue.insertToQueue(improvementValue,pPathFactor);
-//                                   constraintsCounter++;
-//                                   numberOfOuterPaths++;
-//                               }
-//                               predIt++;
-//                               plIt++;
+                                   factorQueue.insertToQueue(improvementValue,pPathFactor);
+                                   constraintsCounter++;
+                                   numberOfOuterPaths++;
+                               //}
+                               predIt++;
+                               plIt++;
 
-//                           }
-//                       }
+                           }
+                       }
 
-//                   }
+                   }
 
-//               }
-//        }
+               }
+        }
         //}
         usedEdges[vertex1].push_back(std::pair(vertex2,isLifted));
         if(debug()){
