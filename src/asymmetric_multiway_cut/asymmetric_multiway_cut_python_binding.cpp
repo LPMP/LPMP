@@ -1,5 +1,7 @@
 #include "asymmetric_multiway_cut/asymmetric_multiway_cut_instance.h"
+#include "asymmetric_multiway_cut/asymmetric_multiway_cut_parser.h"
 #include "asymmetric_multiway_cut/asymmetric_multiway_cut_gaec.h"
+#include <fstream>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
@@ -93,6 +95,17 @@ PYBIND11_MODULE(asymmetric_multiway_cut_py, m) {
                         get_label_mask(instance, labeling),
                         get_cc_ids_mask(instance, labeling)
                         ); 
+                })
+        .def("write", [](const LPMP::asymmetric_multiway_cut_instance& instance, const std::string& filename)
+                {
+                std::ofstream f;
+                f.open(filename);
+                instance.write(f); 
+                f.close();
+                })
+        .def("read", [](LPMP::asymmetric_multiway_cut_instance& instance, const std::string& filename)
+                {
+                instance = LPMP::asymmetric_multiway_cut_parser::parse_file(filename);
                 });
 
         m.def("asymmetric_multiway_cut_gaec", [](const LPMP::asymmetric_multiway_cut_instance& instance) {

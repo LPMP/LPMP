@@ -54,13 +54,10 @@ class LdpInstance {
 public:
 
 
-  //  LdpInstance(LdpParameters<>& configParameters);
+
      LdpInstance(LdpParameters<>& configParameters,CompleteStructure<>& cs);
      LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP);
-//     LdpInstance(LdpParameters<>& configParameters,const disjointPaths::TwoGraphsInputStructure& twoGraphsIS);
      LdpInstance(LdpParameters<>& configParameters, const py::array_t<size_t>& baseEdges, const py::array_t<size_t>& liftedEdges, const  py::array_t<double>& baseCosts, const  py::array_t<double>& liftedCosts, const py::array_t<double> &verticesCosts, VertexGroups<>& pvg);
-    // LdpInstance(LdpParameters<>& configParameters,const std::vector<std::array<size_t,2>>& completeEdges,const  std::vector<double>& completeCosts,disjointPaths::VertexGroups<>& pvg);
-   // LdpInstance(const ConfigDisjoint<>& configParameters,char delim=',',disjointPaths::CompleteStructure<>* cs=0,size_t minTime=0,size_t maxTime=0);
 
 	bool isReachable(size_t i,size_t j) const{
 		if(i==t_||j==s_) return false;  //Assume no path from the terminal node
@@ -74,22 +71,6 @@ public:
 	}
 
 
-	const andres::graph::Digraph<>& getGraph() const  {
-		return graph_;
-	}
-
-    void setGraph(const andres::graph::Digraph<>& newGraph){
-        graph_=newGraph;
-    }
-
-
-	const andres::graph::Digraph<>& getGraphLifted() const  {
-		return graphLifted_;
-	}
-
-    void setGraphLifted(const andres::graph::Digraph<>& newGraphLifted){
-        graphLifted_=newGraphLifted;
-    }
 
 	const size_t getGapLifted() const {
 		return parameters.getMaxTimeLifted();
@@ -112,49 +93,14 @@ public:
 		return t_;
 	}
 
-	double getEdgeScore(size_t e) const {
-		return edgeScore[e];
-	}
-
-	double getEdgeScore(size_t v0,size_t v1) const {
-		auto findEdge=graph_.findEdge(v0,v1);
-		assert(findEdge.first);
-		return edgeScore[findEdge.second];
-	}
-
-	const std::vector<double>& getEdgesScore() {
-		return edgeScore;
-	}
-
-    void setEdgesScore(const std::vector<double>& newEdgesScore){
-        edgeScore=newEdgesScore;
-    }
-
-	const std::vector<double>& getLiftedEdgesScore() {
-			return liftedEdgeScore;
-	}
-
-    void setLiftedEdgesScore(const std::vector<double>& newLiftedScore){
-        liftedEdgeScore=newLiftedScore;
-    }
-
-
 
 	const std::vector<double>& getVerticesScore() const{
 		return vertexScore;
 	}
 
-	double getLiftedEdgeScore(size_t e) const {
-		return liftedEdgeScore[e];
-	}
-
-	double getLiftedEdgeScore(size_t v0,size_t v1) const {
-		auto findEdge=graphLifted_.findEdge(v0,v1);
-		assert(findEdge.first);
-		return liftedEdgeScore[findEdge.second];
-	}
 
 	double getVertexScore(size_t v) const {
+                assert(v<vertexScore.size());
 		return vertexScore[v];
 	}
 
@@ -185,11 +131,13 @@ public:
         return value;
     }
 
-//	std::vector<bool>& getBaseEdgeLabels()  {
-//		return baseEdgeLabels;
-//	}
 
     bool isStrongBase(size_t v,size_t w) const;
+
+    double evaluateClustering(const std::vector<size_t>& labels) const;
+
+    std::vector<std::unordered_set<size_t>> initReachableLdp(const LdpDirectedGraph &graph, LdpParameters<> &parameters, const VertexGroups<size_t> *vg=nullptr);
+
 
 
 
@@ -220,29 +168,45 @@ public:
         return myGraphLifted;
     }
 
+    bool checkStrongBase(const size_t& v,const size_t& w)const;
+
+    bool canJoin(const size_t& v,const size_t& w)const{
+        if(parameters.isMustCutMissing()){
+            bool value=canJoinStructure.at(v).isWithinBounds(w)&&canJoinStructure.at(v)[w]>0;
+            return value;
+        }
+        else{
+            return true;
+        }
+
+    }
+
 private:
 
-    //LdpInstance(const LdpInstance& ldpI);
-    void initAdaptiveThresholds(const std::vector<double>* baseCosts,const std::vector<double>* liftedCosts);
+
+    void initAdaptiveThresholds(const LdpDirectedGraph *pBaseGraph, const LdpDirectedGraph *pLiftedGraph);
     void init();
-    void sparsifyBaseGraph();
-    void sparsifyBaseGraphNew(andres::graph::Digraph<>& inputGraph);
-    void sparsifyLiftedGraph();
+
+    void sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph,bool zeroCost=false);
+
+
+    void sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGraph);
+
+
+    void initLiftedStructure();
+
+    void initCanJoinStructure(const LdpDirectedGraph &completeGraph);
 
 	size_t s_;
 	size_t t_;
 
 	std::vector<double> vertexScore;
-	std::vector<double> edgeScore;
-	std::vector<double> liftedEdgeScore;
-	//std::vector<std::vector<bool>> desc;
-	std::vector<std::unordered_set<size_t>> reachable;
+   std::vector<std::unordered_set<size_t>> reachable;
 
-	andres::graph::Digraph<> graph_;
-    andres::graph::Digraph<> graphLifted_;
 
     LdpDirectedGraph myGraph;
     LdpDirectedGraph myGraphLifted;
+    const LdpDirectedGraph* pCompleteGraph;
 
     std::vector<std::unordered_set<size_t>> strongBaseEdges;
 
@@ -257,13 +221,10 @@ private:
     double positiveLiftedThreshold;
     double baseThreshold;
 
-	void readGraph(std::ifstream& data,size_t maxVertex,char delim);
-    void readGraphWithTime(size_t minTime,size_t maxTime,CompleteStructure<>* cs);
-   // void sparsifyBaseGraph();
-   // void sparsifyLiftedGraph();
-    void initLiftedStructure();
+
 
     std::vector<ShiftedVector<char>> liftedStructure;
+    std::vector<ShiftedVector<char>> canJoinStructure;
 
 
 };

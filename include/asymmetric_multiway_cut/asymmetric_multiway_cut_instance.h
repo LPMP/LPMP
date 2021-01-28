@@ -42,6 +42,8 @@ namespace LPMP {
             size_t nr_edges() const { return edge_costs.no_edges(); }
             double evaluate(const asymmetric_multiway_cut_labeling& labeling) const;
             bool feasible(const asymmetric_multiway_cut_labeling& labeling) const;
+            template<typename STREAM>
+                void write(STREAM& s) const;
     };
 
     ////////////////////
@@ -59,5 +61,26 @@ namespace LPMP {
 
             for(auto it=cost_begin; it!=cost_end; ++it)
                 costs.push_back(*it); 
+        }
+
+    template<typename STREAM>
+        void asymmetric_multiway_cut_instance::write(STREAM& s) const
+        {           
+            s << "ASYMMETRIC MULTIWAY CUT\n";
+            s << "MULTICUT\n";
+            for(const auto& e : edge_costs.edges())
+                s << e[0] << " " << e[1] << " " << e.cost << "\n";
+
+            s << "NODE COSTS\n";
+            for(size_t i=0; i<nr_nodes(); ++i)
+            {
+                for(size_t l=0; l<nr_labels(); ++l)
+                {
+                    if(l > 0)
+                        s << " ";
+                    s << node_costs(i,l);
+                }
+                s << "\n";
+            }
         }
 }

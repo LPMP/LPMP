@@ -123,10 +123,18 @@ namespace TorresaniEtAlInput {
          const std::size_t left_2 = gmInput.assignments[assignments2].left_node;
          const std::size_t right_2 = gmInput.assignments[assignments2].right_node;
 
+         // It seems that many graph matching instances have quadratic potentials that point to the same node.
+         // Ignore those instead of throwing
          if(left_1 == left_2 && left_1 != graph_matching_input::no_assignment)
-            throw std::runtime_error("assignments in quadratic infeasible: origin from same node");
+         {
+            return;
+            // throw std::runtime_error("assignments in quadratic infeasible: origin from same node");
+         }
          if(right_1 == right_2 && right_1 != graph_matching_input::no_assignment)
-            throw std::runtime_error("assignments in quadratic infeasible: point to same node");
+         {
+            return;
+            // throw std::runtime_error("assignments in quadratic infeasible: point to same node");
+         }
 
          gmInput.quadratic_terms.push_back({assignments1, assignments2, cost});
       }

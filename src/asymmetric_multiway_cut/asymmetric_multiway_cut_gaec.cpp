@@ -71,7 +71,7 @@ namespace LPMP {
             size_t stamp;
         };
 
-        auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost > e2.cost; };
+        auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost > e2.cost; }; 
         std::priority_queue<edge_type_q, std::vector<edge_type_q>, decltype(pq_cmp)> Q(pq_cmp);
 
         std::vector<std::pair<std::array<size_t,2>, edge_type>> insert_candidates; // vector stores elements to be added later. if we first remove a node and then add edges, we will reuse the space of the deleted edges. This gives a slight, but real performance improvement.
@@ -95,11 +95,20 @@ namespace LPMP {
             return {join_cost - sep_cost, min_label};
         };
 
+        // Divide by size of component to obtain more balanced partitions during optimization
+        auto compute_balanced_edge_cost = [&](const double mc_edge_cost, const size_t i, const size_t j) -> std::tuple<double,size_t> {
+            const auto c = compute_edge_cost(mc_edge_cost, i, j);
+            const size_t i_size = partition.no_elements(partition.find(i));
+            const size_t j_size = partition.no_elements(partition.find(j));
+            return {std::get<0>(c)/double(i_size+j_size), std::get<1>(c)};
+        };
+
         double min_join_cost = std::numeric_limits<double>::infinity();
         double max_join_cost = -std::numeric_limits<double>::infinity();
         for(const auto& e : instance.edge_costs.edges())
         {
-            const auto [join_cost, join_label] = compute_edge_cost(e.cost, e[0], e[1]);
+            //const auto [join_cost, join_label] = compute_edge_cost(e.cost, e[0], e[1]);
+            const auto [join_cost, join_label] = compute_balanced_edge_cost(e.cost, e[0], e[1]);
             min_join_cost = std::min(min_join_cost, join_cost);
             max_join_cost = std::max(max_join_cost, join_cost);
             assert(partition.find(e[0]) == e[0]);
@@ -143,7 +152,7 @@ namespace LPMP {
             }();
 
             for(size_t edge_index=g.first_outgoing_edge_index(merge_node); edge_index!=decltype(g)::no_next_edge; edge_index=g.next_outgoing_edge_index(edge_index)) {
-                const size_t head  = g.head(edge_index);
+                const size_t head = g.head(edge_index);
                 if(head == stable_node)
                     continue;
                 auto& p = g.edge(merge_node,head);
@@ -153,13 +162,15 @@ namespace LPMP {
                     pp.cost += p.cost;
                     pp.stamp++;
 
-                    const auto [join_cost, join_label] = compute_edge_cost(pp.cost, stable_node, head);
+                    //const auto [join_cost, join_label] = compute_edge_cost(pp.cost, stable_node, head);
+                    const auto [join_cost, join_label] = compute_balanced_edge_cost(pp.cost, stable_node, head);
                     if(join_cost <= 0.0)
                     {
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, pp.stamp});
                     }
                 } else {
-                    const auto [join_cost, join_label] = compute_edge_cost(p.cost, stable_node, head);
+                    //const auto [join_cost, join_label] = compute_edge_cost(p.cost, stable_node, head);
+                    const auto [join_cost, join_label] = compute_balanced_edge_cost(p.cost, stable_node, head);
                     if(join_cost <= 0.0)
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, 0});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
