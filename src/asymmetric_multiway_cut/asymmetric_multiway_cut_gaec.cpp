@@ -71,7 +71,7 @@ namespace LPMP {
             size_t stamp;
         };
 
-        auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost < e2.cost; };
+        auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost > e2.cost; };
         std::priority_queue<edge_type_q, std::vector<edge_type_q>, decltype(pq_cmp)> Q(pq_cmp);
 
         std::vector<std::pair<std::array<size_t,2>, edge_type>> insert_candidates; // vector stores elements to be added later. if we first remove a node and then add edges, we will reuse the space of the deleted edges. This gives a slight, but real performance improvement.
