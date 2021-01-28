@@ -1169,7 +1169,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     std::cout<<"original primal value "<<primalValue<<std::endl;
 
 
-
+/*
     LdpPrimalHeuristics<SINGLE_NODE_CUT_FACTOR> primalHeuristics(currentPrimalLabels,startingNodes,descendants,pInstance,&single_node_cut_factors_);
 
     primalHeuristics.evaluateAll();
@@ -1178,7 +1178,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     currentPrimalStartingVertices=primalHeuristics.getStartingVertices();
     currentPrimalLabels=primalHeuristics.getVertexLabels();
     currentPrimalDescendants=primalHeuristics.getNeighboringVertices();
-
+*/
 
 
     if(primalValue < bestPrimalValue){
