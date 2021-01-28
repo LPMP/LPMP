@@ -87,6 +87,9 @@ public:
 		return primalBase_;
 	}
 
+    const std::unordered_map<size_t,size_t>& getBaseIDsToIndices()const {
+        return baseIDToIndex;
+    }
 
 	size_t getPrimalBaseVertexID() const {
         assert(primalBase_<baseIDs.size());
