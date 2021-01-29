@@ -72,6 +72,8 @@ public:
 	void setBaseEdgeActive(size_t index);
 	void setNoBaseEdgeActive();
 
+    void setBaseEdgeActiveWithID(size_t vertexID);
+
     void setPrimalLifted(std::vector<size_t> &verticesOfActiveEdges);
 
 	bool isNodeActive() const
@@ -504,6 +506,14 @@ template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeActive(size_t index){
 	assert(index<baseCosts.size());
 	primalBase_=index;
+
+}
+
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeActiveWithID(size_t vertexID){
+    auto iter=baseIDToIndex.find(vertexID);
+    assert(iter!=baseIDToIndex.end());
+    primalBase_=iter->second;
 
 }
 

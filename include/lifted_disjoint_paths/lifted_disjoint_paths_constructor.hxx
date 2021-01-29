@@ -1164,18 +1164,60 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         primalValue+=pFactor->EvaluatePrimal();
     }
 
-    std::cout<<"original primal value "<<primalValue<<std::endl;
+    if(diagnostics()) std::cout<<"original primal value "<<primalValue<<std::endl;
 
 
 
-    LdpPrimalHeuristics<SINGLE_NODE_CUT_FACTOR> primalHeuristics(currentPrimalLabels,startingNodes,descendants,pInstance,&single_node_cut_factors_);
+    if(pInstance->parameters.getPrimalHeuristicIterations()>0){
+        LdpPrimalHeuristics<SINGLE_NODE_CUT_FACTOR> primalHeuristics(currentPrimalLabels,startingNodes,descendants,pInstance,&single_node_cut_factors_);
 
-    primalHeuristics.evaluateAll();
+        primalHeuristics.evaluateAll();
 
-    paths=primalHeuristics.getPaths();
-    currentPrimalStartingVertices=primalHeuristics.getStartingVertices();
-    currentPrimalLabels=primalHeuristics.getVertexLabels();
-    currentPrimalDescendants=primalHeuristics.getNeighboringVertices();
+        paths=primalHeuristics.getPaths();
+        currentPrimalStartingVertices=primalHeuristics.getStartingVertices();
+        currentPrimalLabels=primalHeuristics.getVertexLabels();
+        currentPrimalDescendants=primalHeuristics.getNeighboringVertices();
+        double newPrimalValue=primalHeuristics.getPrimalValue();
+
+        if(diagnostics()) std::cout<<"new primal value from heuristics "<<newPrimalValue<<std::endl;
+
+
+        isFeasible=this->checkFeasibilityBaseInSnc();
+        if(diagnostics()) std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
+        assert(isFeasible);
+        adjustLiftedLabels();
+        isFeasible=this->checkFeasibilityLiftedInSnc();
+        assert(isFeasible);
+        adjustCutLabels(0);
+        adjustPathLabels(0);
+
+        double primalFromFactors=0;
+
+
+        //TODO make this function
+        for (int i = 0; i < nr_nodes(); ++i) {
+
+            const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
+            const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+            primalFromFactors+=sncFactorIn->EvaluatePrimal();
+            primalFromFactors+=sncFactorOut->EvaluatePrimal();
+        }
+
+        for (int i = 0; i < cut_factors_.size(); ++i) {
+            auto * cFactor=cut_factors_[i]->get_factor();
+            primalFromFactors+=cFactor->EvaluatePrimal();
+        }
+
+        for (int i = 0; i < path_factors_.size(); ++i) {
+            auto * pFactor=path_factors_[i]->get_factor();
+            primalFromFactors+=pFactor->EvaluatePrimal();
+        }
+
+        if(diagnostics()) std::cout<<"primal value from factors "<<primalFromFactors<<std::endl;
+
+        double difference=(abs(newPrimalValue-primalFromFactors)/std::max(abs(primalFromFactors),1.0));
+        assert(difference<1e-10);
+    }
 
 
 

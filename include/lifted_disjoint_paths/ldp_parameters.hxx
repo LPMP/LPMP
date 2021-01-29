@@ -202,6 +202,11 @@ public:
     }
 
 
+    size_t getPrimalHeuristicIterations()const{
+        return primalHeuristicIterations;
+    }
+
+
 private:
     LdpParameters<T>(const LdpParameters<T>&);
     LdpParameters();
@@ -256,6 +261,8 @@ private:
 
      bool missingAsMustCut;
      double mustCutPenalty;
+
+     size_t primalHeuristicIterations;
 
 };
 
@@ -547,6 +554,16 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          mustCutPenalty=100.0;
      }
      controlOutput<<"must cut penalty "<<mustCutPenalty<<std::endl;
+
+
+
+     if(parameters.count("PRIMAL_HEURISTIC_ITERATIONS")>0){
+         primalHeuristicIterations=std::stoul(parameters["PRIMAL_HEURISTIC_ITERATIONS"]);
+     }
+     else{
+         primalHeuristicIterations=10;
+     }
+     controlOutput<<"primal heuristic iterations "<<primalHeuristicIterations<<std::endl;
 
 
      writeControlOutput();
