@@ -1171,8 +1171,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     if(pInstance->parameters.getPrimalHeuristicIterations()>0){
         LdpPrimalHeuristics<SINGLE_NODE_CUT_FACTOR> primalHeuristics(currentPrimalLabels,startingNodes,descendants,pInstance,&single_node_cut_factors_);
 
-        primalHeuristics.evaluateAll();
+       // primalHeuristics.evaluateAll();
 
+        primalHeuristics.cutAllPaths();
         paths=primalHeuristics.getPaths();
         currentPrimalStartingVertices=primalHeuristics.getStartingVertices();
         currentPrimalLabels=primalHeuristics.getVertexLabels();

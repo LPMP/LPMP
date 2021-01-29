@@ -28,12 +28,30 @@ public:
         pSNCFactors=_p_single_node_cut_factors;
 
         numberOfPaths=startingVertices.size();
-        cummulativeCosts=std::vector<std::vector<double>>(numberOfPaths);
-        for (int i = 0; i < numberOfPaths; ++i) {
-            cummulativeCosts[i]=std::vector<double>(numberOfPaths);
+        const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
+
+        baseEdges=std::vector<std::map<size_t,double>>(baseGraph.getNumberOfVertices());
+        for (int i = 0; i < baseGraph.getNumberOfVertices(); ++i) {
+            for (auto iter=baseGraph.forwardNeighborsBegin(i);iter!=baseGraph.forwardNeighborsEnd(i);iter++) {
+                baseEdges[i][iter->first]=iter->second;
+            }
+
         }
 
-        pointersToLiftedNeighbors=std::vector<size_t>(pInstance->getNumberOfVertices()-2);
+        double pValue=currentPrimal();
+        if(diagnostics()) std::cout<<"init primal value "<<pValue<<std::endl;
+
+       // cutAllPaths();
+        pValue=currentPrimal();
+        if(diagnostics()) std::cout<<"init primal value "<<pValue<<std::endl;
+
+
+//        cummulativeCosts=std::vector<std::vector<double>>(numberOfPaths);
+//        for (int i = 0; i < numberOfPaths; ++i) {
+//            cummulativeCosts[i]=std::vector<double>(numberOfPaths);
+//        }
+
+        //pointersToLiftedNeighbors=std::vector<size_t>(pInstance->getNumberOfVertices()-2);
 
         //pointersToPaths=std::vector<size_t>(numberOfPaths,-1); //some paths have not started yet
         currentTime=1;
@@ -44,7 +62,9 @@ public:
 
        currentPrimalValue=0;
 
-        currentPrimal();
+
+
+
 
 
 
@@ -78,13 +98,19 @@ public:
 
     void evaluateAll();
 
-
+void cutAllPaths();
 
 
 private:
     void finalizeResults(bool changeSNC);
     void evaluateTimeCuts();
     double currentPrimal();
+
+
+    std::vector<double> initCutValues();
+    void updateCutValues(const std::vector<size_t>& oldLabels, const std::vector<size_t>& oldNeighbors, std::vector<double>& cutValues);
+    std::vector<size_t> findCutCandidates(const std::vector<double>& cutValues);
+    void cutPaths(const std::vector<size_t>& cutCandidates,const std::vector<size_t> indicesOfPathsToCut);
 
     void initCummulativeCosts();
     std::vector<std::array<int,2>> setPathPointers();
@@ -107,6 +133,7 @@ private:
 
 
 
+    std::vector<std::map<size_t,double>> baseEdges;
     std::vector<size_t> vertexLabels;
     std::vector<size_t> startingVertices;
     std::vector<std::vector<size_t>> adjustedPaths;
@@ -130,18 +157,202 @@ private:
 };
 
 template<class SNC_FACTOR>
+std::vector<double> LdpPrimalHeuristics<SNC_FACTOR>::initCutValues(){  //get lifted values of cutting behind a vertex
+    std::vector<double> cutValues(pInstance->getNumberOfVertices()-2);
+
+    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+
+
+    //Addding new lifted edges to cummulative costs
+    for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
+        size_t label=vertexLabels[i];
+        if(label>0){
+            auto iter=liftedGraph.forwardNeighborsBegin(i);
+            for (;iter!=liftedGraph.forwardNeighborsEnd(i);iter++) {
+                size_t vertex2=iter->first;
+                size_t label2=vertexLabels[vertex2];
+                if(label2==label){
+                    double cost=iter->second;
+                    size_t vertex1=i;
+                    while(vertex1!=vertex2){
+                        cutValues[vertex1]+=cost;
+                        vertex1=neighboringVertices[vertex1];
+                        assert(vertex1!=pInstance->getTerminalNode());
+                    }
+                }
+            }
+        }
+    }
+    return cutValues;
+
+}
+
+
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::updateCutValues(const std::vector<size_t>& oldLabels, const std::vector<size_t>& oldNeighbors, std::vector<double>& cutValues){  //get lifted values of cutting behind a vertex
+   // std::vector<double> cutValues(pInstance->getNumberOfVertices()-2);
+
+    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+
+
+    for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
+        size_t label=oldLabels[i];
+        size_t newLabel=vertexLabels[i];
+        if(label>0){
+            auto iter=liftedGraph.forwardNeighborsBegin(i);
+            for (;iter!=liftedGraph.forwardNeighborsEnd(i);iter++) {
+                size_t vertex2=iter->first;
+                size_t label2=oldLabels[vertex2];
+                size_t newLabel2=vertexLabels[vertex2];
+                if(label2==label&&newLabel!=newLabel2){
+                    double cost=iter->second;
+                    size_t vertex1=i;
+                    while(vertex1!=vertex2){
+                        cutValues[vertex1]-=cost;
+//                        if(vertex1==975){
+//                            std::cout<<"subtract from 975 "<<cost<<", cut value "<<cutValues[vertex1]<<std::endl;
+
+//                        }
+
+                        vertex1=oldNeighbors[vertex1];
+                        assert(vertex1!=pInstance->getTerminalNode());
+                    }
+                }
+            }
+        }
+    }
+
+
+}
+
+
+
+template<class SNC_FACTOR>
+std::vector<size_t> LdpPrimalHeuristics<SNC_FACTOR>::findCutCandidates(const std::vector<double>& cutValues){
+    double minValueToCut=0;
+    //std::vector<double> cutValues=initCandiadteCuts();
+    std::vector<size_t> bestCutsInPaths(numberOfPaths,pInstance->getTerminalNode());
+    for (size_t i = 0; i < numberOfPaths; ++i) {
+        size_t currentVertex=startingVertices[i];
+        if(currentVertex!=pInstance->getTerminalNode()){
+            double bestCutValue=minValueToCut;
+            while(currentVertex!=pInstance->getTerminalNode()){
+                double cutValue=cutValues[currentVertex];
+                size_t nextVertex=neighboringVertices[currentVertex];
+                assert(baseEdges[currentVertex].count(nextVertex)>0);
+                cutValue+=baseEdges[currentVertex][nextVertex];
+
+                if(cutValue>bestCutValue&&nextVertex!=pInstance->getTerminalNode()){
+                    bestCutsInPaths[i]=currentVertex;
+                    bestCutValue=cutValue;
+                }
+                currentVertex=nextVertex;
+            }
+        }
+
+    }
+    return bestCutsInPaths;
+
+}
+
+
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::cutPaths(const std::vector<size_t>& cutCandidates,const std::vector<size_t> indicesOfPathsToCut){
+    size_t newNumberOfPaths=numberOfPaths;
+    std::vector<size_t> newLabels=vertexLabels;
+    for (size_t p = 0; p < indicesOfPathsToCut.size(); ++p) {
+        size_t i=indicesOfPathsToCut[p];
+        assert(cutCandidates[i]!=pInstance->getTerminalNode());
+        size_t cutVertex=cutCandidates[i];
+        size_t nextVertex=neighboringVertices[cutVertex];
+        assert(nextVertex!=pInstance->getTerminalNode());
+        assert(vertexLabels[cutVertex]==i+1);
+        assert(vertexLabels[nextVertex]==i+1);
+        neighboringVertices[cutVertex]=pInstance->getTerminalNode();
+        startingVertices.push_back(nextVertex);
+        size_t newLabel=startingVertices.size();
+        while(nextVertex!=pInstance->getTerminalNode()){
+            newLabels[nextVertex]=newLabel;
+            nextVertex=neighboringVertices[nextVertex];
+        }
+
+    }
+    numberOfPaths=startingVertices.size();
+    vertexLabels=newLabels;
+
+
+}
+
+
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::cutAllPaths(){
+
+    double primal=currentPrimal();
+    //std::cout<<"primal value "<<primal<<std::endl;
+
+    bool tryCut=true;
+    std::vector<double> cutValues=initCutValues();
+    while(tryCut){
+        std::vector<size_t> cutCandidates=findCutCandidates(cutValues);
+        std::vector<size_t> indicesOfPathsToCut;
+        double improvement=0;
+        for (size_t i = 0; i < numberOfPaths; ++i) {
+
+            if(cutCandidates[i]!=pInstance->getTerminalNode()){
+                indicesOfPathsToCut.push_back(i);
+                size_t cutVertex=cutCandidates[i];
+                double value=cutValues[cutVertex];
+                size_t nextVertex=neighboringVertices[cutVertex];
+                value+=baseEdges[cutVertex][nextVertex];
+                improvement+=value;
+              //  std::cout<<"improvement from path "<<i<<": "<<value<<std::endl;
+
+            }
+        }
+        if(diagnostics()) std::cout<<"expected new primal "<<(primal-improvement)<<std::endl;
+        if(indicesOfPathsToCut.size()>0){
+            std::vector<size_t> oldVertexLabels=vertexLabels;
+            std::vector<size_t> oldNeighbors=neighboringVertices;
+            cutPaths(cutCandidates,indicesOfPathsToCut);
+            primal=currentPrimal();
+            if(diagnostics()) std::cout<<"primal value "<<primal<<std::endl;
+            updateCutValues(oldVertexLabels,oldNeighbors,cutValues);
+
+        }
+        else{
+            tryCut=false;
+        }
+    }
+
+
+    finalizeResults(true);
+
+
+}
+
+
+
+
+template<class SNC_FACTOR>
 double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(){
     const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
     const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
+    std::vector<double> costsOfPaths(numberOfPaths);
 
     size_t counterPaths=0;
     double newPrimalValue=0;
     std::vector<size_t> newStartingVertices;
     assert(startingVertices.size()==numberOfPaths);
     for (int i = 0; i < numberOfPaths; ++i) {
+        double pathCost=0;
         if(startingVertices[i]!=pInstance->getTerminalNode()){
             newPrimalValue+=pInstance->parameters.getOutputCost();
             newPrimalValue+=pInstance->parameters.getInputCost();
+            pathCost+=pInstance->parameters.getOutputCost();
+            pathCost+=pInstance->parameters.getInputCost();
             counterPaths++;
             size_t currentVertex=startingVertices[i];
             newStartingVertices.push_back(currentVertex);
@@ -152,29 +363,46 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(){
                 newPath.push_back(currentVertex);
                 size_t newVertex=neighboringVertices[currentVertex];
                 if(newVertex!=pInstance->getTerminalNode()){
-                    newPrimalValue+=getBaseEdgeCost(currentVertex,newVertex);
+                    double beCost=getBaseEdgeCost(currentVertex,newVertex);
+                    newPrimalValue+=beCost;
+                    pathCost+=beCost;
                 }
                 currentVertex=newVertex;
 
             }
            // adjustedPaths.push_back(newPath);
         }
+        costsOfPaths[i]=pathCost;
     }
     //startingVertices=newStartingVertices;
     //assert(counterPaths==startingVertices.size());
     //assert(adjustedPaths.size()==counterPaths);
     //numberOfPaths=counterPaths;
 
+    double edgeLoss=0;
     for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
         if(vertexLabels[i]!=0){
             for (auto iter=liftedGraph.forwardNeighborsBegin(i);iter!=liftedGraph.forwardNeighborsEnd(i);iter++) {
                 size_t vertex2=iter->first;
+//                if(vertexLabels[i]==45&&vertexLabels[vertex2]==52){
+//                     std::cout<<"lost edge "<<i<<" "<<vertex2<<": "<<iter->second<<std::endl;
+//                     edgeLoss+=iter->second;
+//                }
                 if(vertexLabels[vertex2]==vertexLabels[i]){
+                    costsOfPaths[vertexLabels[vertex2]-1]+=iter->second;
                     newPrimalValue+=iter->second;
+//                    if(vertexLabels[vertex2]==52){
+//                       // std::cout<<"edge "<<i<<" "<<vertex2<<": "<<iter->second<<std::endl;
+//                    }
                 }
             }
         }
     }
+
+//    for (int i = 0; i < numberOfPaths; ++i) {
+//        std::cout<<"cost of path "<<i<<":"<<costsOfPaths[i]<<std::endl;
+
+//    }
 
     currentPrimalValue=newPrimalValue;
     return newPrimalValue;
