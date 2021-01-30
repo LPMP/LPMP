@@ -199,7 +199,10 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
     const VertexGroups<>& vg=(pInstance->vertexGroups);
 
     size_t maxTimeToUse=vg.getGroupIndex(startingVertices[bestNeighborIndex]);
+    std::vector<size_t> bestPathSoFar={indexOfPath};
 
+
+    /*
     //The following for can be already part of DFS
     std::stack<size_t> stackOfPathIndices;
     stackOfPathIndices.push(indexOfPath);
@@ -207,7 +210,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
     std::stack<size_t> stackOfPredecessors;
     stackOfCosts.push(0.0);
     std::vector<size_t> currentPath;
-    std::vector<size_t> bestPathSoFar={indexOfPath};
+
     double bestCostSoFar=costsBetweenPaths[indexOfPath].at(bestNeighborIndex);
 
 
@@ -259,14 +262,18 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
 
 
     }
+
+*/
     bestPathSoFar.push_back(bestNeighborIndex);
 
-    if(diagnostics()){
-        std::cout<<"merging path "<<indexOfPath<<" with "<<bestNeighborIndex<<"usning "<<std::endl;
+    if(debug()){
+        std::cout<<"merging path "<<indexOfPath<<" with "<<bestNeighborIndex<<" using "<<std::endl;
         for (int i = 0; i < bestPathSoFar.size(); ++i) {
             std::cout<<bestPathSoFar[i]<<",";
         }
         std::cout<<std::endl;
+        std::cout<<"merge cost "<<costsBetweenPaths[indexOfPath].at(bestNeighborIndex)<<std::endl;
+        std::cout<<"paths cummulative costs "<<cummulativeCosts[indexOfPath][indexOfPath]<<" "<<cummulativeCosts[bestNeighborIndex][bestNeighborIndex]<<std::endl;
     }
 
     assert(bestPathSoFar.front()==indexOfPath);
@@ -349,8 +356,11 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
                             costsBetweenPaths[i][j]=cost;
 
                             if(cost<bestNeighborValue){
-                                bestNeighborValue=cost;
-                                bestNeighbor=j;
+                                double worsePath=std::max(cummulativeCosts[i][i],cummulativeCosts[j][j]);
+                                if(bestNeighborValue<=0.5*worsePath){
+                                    bestNeighborValue=cost;
+                                    bestNeighbor=j;
+                                }
 
                             }
                         }
@@ -564,16 +574,18 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutAllPaths(){
                 size_t nextVertex=neighboringVertices[cutVertex];
                 value+=baseEdges[cutVertex][nextVertex];
                 improvement+=value;
-                std::cout<<"improvement from path "<<i<<": "<<value<<", cut vertex: "<<cutVertex<<std::endl;
+                if(debug())std::cout<<"improvement from path "<<i<<": "<<value<<", cut vertex: "<<cutVertex<<std::endl;
 
             }
         }
+        double expectedPrimal=primal-improvement;
         if(diagnostics()) std::cout<<"expected new primal "<<(primal-improvement)<<std::endl;
         if(indicesOfPathsToCut.size()>0){
             std::vector<size_t> oldVertexLabels=vertexLabels;
             std::vector<size_t> oldNeighbors=neighboringVertices;
             cutPaths(cutCandidates,indicesOfPathsToCut);
             primal=currentPrimal();
+            assert(std::abs(primal-expectedPrimal)/abs(expectedPrimal)<1e-10);
             if(diagnostics()) std::cout<<"primal value "<<primal<<std::endl;
             updateCutValues(oldVertexLabels,oldNeighbors,cutValues);
 
