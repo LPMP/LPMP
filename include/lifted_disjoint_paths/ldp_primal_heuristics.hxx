@@ -106,7 +106,14 @@ private:
     void evaluateTimeCuts();
     double currentPrimal();
 
+    void prepareCummulativeCostsInCurrentTime();
 
+    void initLastVertices();
+    void mergePaths();
+    void connectTwoPaths(size_t indexFirst,size_t indexLast);
+    void connectToOnePath(size_t indexOfPath, const std::vector<std::map<size_t,double>>& costsBetweenPaths, size_t bestNeighborIndex);
+
+    void computeCummulativeCostsGlobal();
     std::vector<double> initCutValues();
     void updateCutValues(const std::vector<size_t>& oldLabels, const std::vector<size_t>& oldNeighbors, std::vector<double>& cutValues);
     std::vector<size_t> findCutCandidates(const std::vector<double>& cutValues);
@@ -142,6 +149,7 @@ private:
     size_t numberOfPaths;
     double currentPrimalValue;
 
+    std::vector<size_t> lastVertices;
    // const std::vector<std::array<SNC_FACTOR*,2>>& single_node_cut_factors_;
     std::vector<std::array<SNC_FACTOR*,2>>* pSNCFactors;
 
@@ -155,6 +163,239 @@ private:
     std::vector<std::vector<double>> cummulativeCosts;  //dimension number of paths x number of paths, really the full dimension!
 
 };
+
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::computeCummulativeCostsGlobal(){
+    initCummulativeCosts();
+
+    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+
+
+    //Addding new lifted edges to cummulative costs
+    for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
+        size_t label=vertexLabels[i];
+        if(label>0){
+            auto iter=liftedGraph.forwardNeighborsBegin(i);
+            for (;iter!=liftedGraph.forwardNeighborsEnd(i);iter++) {
+                size_t vertex2=iter->first;
+                size_t label2=vertexLabels[vertex2];
+                if(label==1&&label2==51){
+                    std::cout<<"from 0 to 50, edge "<<i<<","<<vertex2<<":"<<iter->second<<std::endl;
+                }
+                cummulativeCosts[label-1][label2-1]+=iter->second;
+            }
+        }
+    }
+
+}
+
+
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const std::vector<std::map<size_t,double>>& costsBetweenPaths,size_t bestNeighborIndex){
+
+    const VertexGroups<>& vg=(pInstance->vertexGroups);
+
+    size_t maxTimeToUse=vg.getGroupIndex(startingVertices[bestNeighborIndex]);
+
+    //The following for can be already part of DFS
+    std::stack<size_t> stackOfPathIndices;
+    stackOfPathIndices.push(indexOfPath);
+    std::stack<double> stackOfCosts;
+    std::stack<size_t> stackOfPredecessors;
+    stackOfCosts.push(0.0);
+    std::vector<size_t> currentPath;
+    std::vector<size_t> bestPathSoFar={indexOfPath};
+    double bestCostSoFar=costsBetweenPaths[indexOfPath].at(bestNeighborIndex);
+
+
+    while(!stackOfPathIndices.empty()){
+        //std::vector<size_t> alternativeNeighbors;
+        size_t currentVertex=stackOfPathIndices.top();
+        double currentPathCost=stackOfCosts.top();
+        const std::map<size_t,double>& neighbors=costsBetweenPaths[currentVertex];
+        currentPath.push_back(currentVertex);
+
+        if(!stackOfPredecessors.empty()&&stackOfPredecessors.top()==currentVertex){
+            auto it=neighbors.find(bestNeighborIndex);
+            if(it!=neighbors.end()){
+                double costToLast=it->second;
+                if(costToLast<0){
+                    costToLast+=currentPathCost;
+                    if(costToLast<bestCostSoFar){
+                        bestPathSoFar=currentPath;
+                    }
+                }
+            }
+            stackOfPredecessors.pop();
+            stackOfCosts.pop();
+            stackOfPathIndices.pop();
+            currentPath.pop_back();
+
+        }
+        else{
+            stackOfPredecessors.push(currentVertex);
+            for (auto iter=neighbors.begin();iter!=neighbors.end();iter++) {
+                if(iter->second<0&&iter->first!=bestNeighborIndex){
+                    size_t middleNeighbor=iter->first;
+                    auto it=costsBetweenPaths[middleNeighbor].find(bestNeighborIndex);
+                    if(it!=costsBetweenPaths[middleNeighbor].end()&&it->second<0){
+                        stackOfPathIndices.push(middleNeighbor);
+                        stackOfCosts.push(currentPathCost+iter->second);
+                    }
+                    else{
+                        size_t timeMiddle=vg.getGroupIndex(lastVertices[middleNeighbor]);
+                        if(timeMiddle+1<maxTimeToUse&&cummulativeCosts[middleNeighbor][bestNeighborIndex]<0){
+                            stackOfPathIndices.push(middleNeighbor);
+                            stackOfCosts.push(currentPathCost+iter->second);
+                        }
+                    }
+                    //maybe add anoter option whre middle neighbor and best neighbor are not connected but reachable?
+                }
+            }
+        }
+
+
+    }
+    bestPathSoFar.push_back(bestNeighborIndex);
+
+    assert(bestPathSoFar.front()==indexOfPath);
+
+    size_t indexToConnect=1;
+    size_t currentLastVertex=lastVertices[indexOfPath];
+    size_t labelToAssign=indexOfPath+1;
+    while(indexToConnect<bestPathSoFar.size()){
+        assert(neighboringVertices[currentLastVertex]==pInstance->getTerminalNode());
+
+        size_t pathToConnect=bestPathSoFar[indexToConnect];
+        assert(pathToConnect<numberOfPaths);
+        size_t vertexToConnect=startingVertices[pathToConnect];
+        neighboringVertices[currentLastVertex]=vertexToConnect;
+        startingVertices[pathToConnect]=pInstance->getTerminalNode();
+        while(vertexToConnect!=pInstance->getTerminalNode()){
+            vertexLabels[vertexToConnect]=labelToAssign;
+            vertexToConnect=neighboringVertices[vertexToConnect];
+        }
+        indexToConnect++;
+
+    }
+
+    for (size_t j = 1; j < bestPathSoFar.size(); ++j) {
+        size_t oldPathIndex=bestPathSoFar[j];
+        std::fill(cummulativeCosts[oldPathIndex].begin(),cummulativeCosts[oldPathIndex].end(),0);
+
+    }
+
+    for (size_t i = 0; i < numberOfPaths; ++i) {
+        for (size_t j = 1; j < bestPathSoFar.size(); ++j) {
+            size_t oldPathIndex=bestPathSoFar[j];
+            cummulativeCosts[i][indexOfPath]+=cummulativeCosts[i][oldPathIndex];
+            cummulativeCosts[i][oldPathIndex]=0;
+
+        }
+
+    }
+
+
+
+}
+
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
+    initLastVertices();
+    computeCummulativeCostsGlobal();
+
+
+    //  std::set<std::tuple<double,size_t,size_t>> queueOfEdges;
+    //TODO remember best neighbor of each last vertex, plus set of best starting vertex candidates
+    //The first is the costs between paths, second map <cost,path index>. Or the second always find.
+
+    bool tryNext=true;
+
+    while(tryNext){
+        size_t bestStartingPathIndex=numberOfPaths; //Probably using multimap <double,size_t>, always update all paths that need to be updated? Or for over paths and find best during update
+        double bestStartingPathValue=0;
+        std::vector<size_t> bestNeighboringPaths(numberOfPaths,numberOfPaths);
+
+
+        std::vector<std::map<size_t,double>> costsBetweenPaths(numberOfPaths);
+        assert(numberOfPaths==lastVertices.size());
+        for (size_t i = 0; i < numberOfPaths; ++i) {
+            size_t lastVertex=lastVertices[i];
+            size_t bestNeighbor=numberOfPaths;
+            double bestNeighborValue=0;
+            for (size_t j = 0; j < numberOfPaths; ++j) {
+                size_t firstVertex=startingVertices[j];
+                if(firstVertex!=pInstance->getTerminalNode()){
+                    if(firstVertex>lastVertex){
+                        auto it=baseEdges[lastVertex].find(firstVertex);
+                        if(it!=baseEdges[lastVertex].end()){
+                            double cost=it->second;
+                            cost+=cummulativeCosts[i][j];
+                            costsBetweenPaths[i][j]=cost;
+
+                            if(cost<bestNeighborValue){
+                                bestNeighborValue=cost;
+                                bestNeighbor=j;
+
+                            }
+                        }
+                    }
+                }
+
+            }
+            bestNeighboringPaths[i]=bestNeighbor;
+            if(bestNeighborValue<bestStartingPathValue){
+                bestStartingPathValue=bestNeighborValue;
+                bestStartingPathIndex=i;
+            }
+        }
+
+        if(bestStartingPathIndex<numberOfPaths){
+            assert(bestNeighboringPaths[bestStartingPathIndex]<numberOfPaths);
+            connectToOnePath(bestStartingPathIndex, costsBetweenPaths,bestNeighboringPaths[bestStartingPathIndex]);
+
+            double primal=currentPrimal();
+            if(diagnostics()) std::cout<<"primal after merge "<<primal<<std::endl;
+            //TODO merge paths, update cummulative costs, best neigbor, cost between paths etc., labels, starting last vertices, neighbors
+        }
+        else{
+            tryNext=false;
+        }
+
+
+
+    }
+
+    //TODO after implementing path merge? change to greedy with shorter edge check!
+    //Maybe: order good neighboring paths according to starting vertices, try to find possible connections
+    //DFS: try nearest, from nerest nearest...
+    //Greedy can select best starting path, then dfs on its neighbors (but only withint the negative neighbors), other connections in next iterations
+
+
+
+
+
+
+
+}
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::initLastVertices(){
+    lastVertices=std::vector<size_t>(startingVertices.size());
+    for (size_t i = 0; i < neighboringVertices.size(); ++i) {
+        if(neighboringVertices[i]==pInstance->getTerminalNode()&&vertexLabels[i]!=0){
+            size_t pathIndex=vertexLabels[i]-1;
+            assert(lastVertices[pathIndex]==0);
+            lastVertices[pathIndex]=i;
+        }
+
+    }
+
+}
+
 
 template<class SNC_FACTOR>
 std::vector<double> LdpPrimalHeuristics<SNC_FACTOR>::initCutValues(){  //get lifted values of cutting behind a vertex
@@ -172,6 +413,9 @@ std::vector<double> LdpPrimalHeuristics<SNC_FACTOR>::initCutValues(){  //get lif
                 size_t vertex2=iter->first;
                 size_t label2=vertexLabels[vertex2];
                 if(label2==label){
+//                    if(label2==1){
+//                        std::cout<<"within path 0: "<<i<<","<<vertex2<<": "<<iter->second<<std::endl;
+//                    }
                     double cost=iter->second;
                     size_t vertex1=i;
                     while(vertex1!=vertex2){
@@ -308,7 +552,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutAllPaths(){
                 size_t nextVertex=neighboringVertices[cutVertex];
                 value+=baseEdges[cutVertex][nextVertex];
                 improvement+=value;
-              //  std::cout<<"improvement from path "<<i<<": "<<value<<std::endl;
+                std::cout<<"improvement from path "<<i<<": "<<value<<", cut vertex: "<<cutVertex<<std::endl;
 
             }
         }
@@ -327,6 +571,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutAllPaths(){
         }
     }
 
+    if(diagnostics()) std::cout<<"call merge paths"<<std::endl;
+    mergePaths();
 
     finalizeResults(true);
 
@@ -515,6 +761,16 @@ void LdpPrimalHeuristics<SNC_FACTOR>::evaluateAll(){
 
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::initCummulativeCosts(){
+    cummulativeCosts=std::vector<std::vector<double>>(numberOfPaths);
+    for (int i = 0; i < numberOfPaths; ++i) {
+        cummulativeCosts[i]=std::vector<double>(numberOfPaths);
+    }
+}
+
+template<class SNC_FACTOR>
+void LdpPrimalHeuristics<SNC_FACTOR>::prepareCummulativeCostsInCurrentTime(){
+
+
     const VertexGroups<>& vg=pInstance->getVertexGroups();
     const std::vector<size_t>& verticesInTimeLayer=vg.getGroupVertices(currentTime);
     const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
