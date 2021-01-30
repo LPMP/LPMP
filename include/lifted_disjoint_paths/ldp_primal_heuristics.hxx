@@ -62,13 +62,9 @@ public:
 
        currentPrimalValue=0;
 
+    }
 
-
-
-
-
-
-
+    ~LdpPrimalHeuristics(){
 
     }
 
@@ -180,10 +176,15 @@ void LdpPrimalHeuristics<SNC_FACTOR>::computeCummulativeCostsGlobal(){
             for (;iter!=liftedGraph.forwardNeighborsEnd(i);iter++) {
                 size_t vertex2=iter->first;
                 size_t label2=vertexLabels[vertex2];
-                if(label==1&&label2==51){
-                    std::cout<<"from 0 to 50, edge "<<i<<","<<vertex2<<":"<<iter->second<<std::endl;
+//                if(label==1&&label2==51){
+//                    std::cout<<"from 0 to 50, edge "<<i<<","<<vertex2<<":"<<iter->second<<std::endl;
+                //                }
+                if(label2>0){
+                    assert(label2>0);
+                    assert(label-1<cummulativeCosts.size());
+                    assert(label2-1<cummulativeCosts[label-1].size());
+                    cummulativeCosts[label-1][label2-1]+=iter->second;
                 }
-                cummulativeCosts[label-1][label2-1]+=iter->second;
             }
         }
     }
@@ -260,6 +261,14 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
     }
     bestPathSoFar.push_back(bestNeighborIndex);
 
+    if(diagnostics()){
+        std::cout<<"merging path "<<indexOfPath<<" with "<<bestNeighborIndex<<"usning "<<std::endl;
+        for (int i = 0; i < bestPathSoFar.size(); ++i) {
+            std::cout<<bestPathSoFar[i]<<",";
+        }
+        std::cout<<std::endl;
+    }
+
     assert(bestPathSoFar.front()==indexOfPath);
 
     size_t indexToConnect=1;
@@ -277,6 +286,9 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
             vertexLabels[vertexToConnect]=labelToAssign;
             vertexToConnect=neighboringVertices[vertexToConnect];
         }
+        currentLastVertex=lastVertices[pathToConnect];
+        lastVertices[pathToConnect]=pInstance->getTerminalNode();
+        lastVertices[indexOfPath]=currentLastVertex;
         indexToConnect++;
 
     }
@@ -650,6 +662,7 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(){
 
 //    }
 
+    assert(newPrimalValue<=currentPrimalValue+eps);
     currentPrimalValue=newPrimalValue;
     return newPrimalValue;
    // std::cout<<"current primal value "<<newPrimalValue<<std::endl;
