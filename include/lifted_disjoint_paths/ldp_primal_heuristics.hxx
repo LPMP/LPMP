@@ -71,6 +71,7 @@ public:
        pointersToPaths=startingVertices;
 
        currentPrimalValue=0;
+       maxMoveForEndCut=10;
 
     }
 
@@ -109,6 +110,8 @@ void cutAllPaths();
 
 
 private:
+
+    double mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward);
     void finalizeResults(bool changeSNC);
     void evaluateTimeCuts();
     double currentPrimal();
@@ -150,6 +153,8 @@ private:
 
 
 
+    size_t maxMoveForEndCut;
+
     std::vector<std::map<size_t,double>> baseEdges;
     std::vector<size_t> vertexLabels;
     std::vector<size_t> startingVertices;
@@ -185,10 +190,16 @@ void LdpPrimalHeuristics<SNC_FACTOR>::initReverseNeighbors(){
     for (size_t i = 0; i < numberOfVertices; ++i) {
         if(vertexLabels[i]>0){
             size_t neighbor=neighboringVertices[i];
-            if(neighbor<numberOfVertices);
-
+            if(neighbor<numberOfVertices){
+                reverseNeighbors[neighbor]=i;
+            }
         }
+    }
 
+    for (size_t i = 0; i < startingVertices.size(); ++i) {
+        if(startingVertices[i]!=pInstance->getTerminalNode()){
+            reverseNeighbors[startingVertices[i]]=pInstance->getSourceNode();
+        }
     }
     //TODO for starting vertices neighbor is s
 
@@ -240,14 +251,14 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
 
     double negativeCost=negativeMutualCosts[indexOfPath][bestNeighborIndex];
     double positiveCost=cummulativeCosts[indexOfPath][bestNeighborIndex]-negativeMutualCosts[indexOfPath][bestNeighborIndex];
-    if(abs(negativeCost)*0.1>=positiveCost){
-        if(diagnostics()) std::cout<<"connection: good"<<std::endl;
-    }
-    else{
-        if(diagnostics()) std::cout<<"connection: not good"<<std::endl;
-        std::cout<<"negative cost "<<negativeCost<<std::endl;
-        std::cout<<"positive cost "<<positiveCost<<std::endl;
-    }
+//    if(abs(negativeCost)*0.1>=positiveCost){
+//        if(diagnostics()) std::cout<<"connection: good"<<std::endl;
+//    }
+//    else{
+//        if(diagnostics()) std::cout<<"connection: not good"<<std::endl;
+//        std::cout<<"negative cost "<<negativeCost<<std::endl;
+//        std::cout<<"positive cost "<<positiveCost<<std::endl;
+//    }
 
 
 
@@ -370,6 +381,39 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
     }
 }
 
+template<class SNC_FACTOR>
+double LdpPrimalHeuristics<SNC_FACTOR>::mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward){
+    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const std::pair<size_t,double> * beginPointer=nullptr;
+    const std::pair<size_t,double> * endPointer=nullptr;
+
+    size_t timeOfOtherVertex=pInstance->vertexGroups.getGroupIndex(otherPathVertex);
+    if(useForward){
+        beginPointer=liftedGraph.forwardNeighborsBegin(vertex);
+        endPointer=liftedGraph.forwardNeighborsEnd(vertex);
+    }
+    else{
+        beginPointer=liftedGraph.backwardNeighborsBegin(vertex);
+        endPointer=liftedGraph.backwardNeighborsEnd(vertex);
+    }
+
+    double valueToSubtract=0;
+
+    for (auto iter=beginPointer;iter!=endPointer;iter++) {
+        size_t vertex2=iter->first;
+        if(vertexLabels[vertex2]==targetPathIndex+1){
+            size_t vertex2Time=pInstance->vertexGroups.getGroupIndex(otherPathVertex);
+            if(useForward&&vertex2Time>=timeOfOtherVertex){
+                valueToSubtract+=iter->second;
+            }
+            else if(!useForward&&vertex2Time<=otherPathVertex){
+                valueToSubtract+=iter->second;
+            }
+        }
+    }
+
+    return valueToSubtract;
+}
 
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathIndex2){
@@ -377,6 +421,23 @@ void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathI
     size_t pointerSecond=startingVertices[pathIndex2];
     assert(pointerFirst!=pInstance->getTerminalNode());
     assert(pointerSecond!=pInstance->getTerminalNode());
+
+    double firstCutValue=0;
+    double secondCutValue=0;
+    size_t shiftsDone=0;
+
+    size_t predFirst=reverseNeighbors[pointerFirst];
+    size_t descSecond=neighboringVertices[pointerSecond];
+
+    double lossOfFirstCost=mutualCostToSubtract(pointerFirst,pointerSecond,pathIndex2,true); //TODO take into account what has been removed on the other side
+    double lossOfSecondCost=mutualCostToSubtract(pointerSecond,pointerFirst,pathIndex1,false);
+
+    double candidateCutFirst=cutValues[pointerFirst]-firstCutValue-lossOfFirstCost;
+    double candidateCutSecond=0;
+
+    while(shiftsDone<maxMoveForEndCut){
+
+    }
 
 
 
@@ -387,6 +448,7 @@ template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
     initLastVertices();
     computeCummulativeCostsGlobal();
+    initReverseNeighbors();
 
     for (size_t i = 0; i < numberOfPaths; ++i) {
         size_t lastVertex=lastVertices[i];
@@ -403,6 +465,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
                         if(abs(negativeCost)*0.1>=positiveCost){
                             //TODO run algorithm for preparing alternative connection
+                            //TODO add constraint on path length
                         }
 
                     }
@@ -488,7 +551,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
             }
         }
 
-        std::cout<<"missed connections "<<missedConnections<<", with cost "<<missedConnectionsCost<<std::endl;
+      //  std::cout<<"missed connections "<<missedConnections<<", with cost "<<missedConnectionsCost<<std::endl;
         if(bestStartingPathIndex<numberOfPaths){
             assert(bestNeighboringPaths[bestStartingPathIndex]<numberOfPaths);
             connectToOnePath(bestStartingPathIndex, costsBetweenPaths,bestNeighboringPaths[bestStartingPathIndex]);
