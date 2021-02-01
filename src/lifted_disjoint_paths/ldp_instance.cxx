@@ -739,6 +739,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
 
     size_t reachableMustCut=0;
     maxTimeGapInGraph=std::min(maxTimeGapInGraph,parameters.getMaxTimeLifted());
+   // std::cout<<"max time gap in graph"<<maxTimeGapInGraph<<std::endl;
 
     if(parameters.isMustCutMissing()){
         for (size_t i = 0; i < inputLiftedGraph.getNumberOfVertices(); ++i) {
