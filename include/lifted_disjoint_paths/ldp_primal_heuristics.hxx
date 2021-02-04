@@ -703,7 +703,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                     if(it==baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                        if(abs(negativeCost)*0.1>=positiveCost){
+                        if(abs(negativeCost)*0.25>=positiveCost){
                             if(diagnostics())std::cout<<"finding best cut "<<i<<","<<j<<std::endl;
                             std::array<size_t,2> baseEdge=findBestCut(i,j);
                             if(baseEdge[0]!=pInstance->getTerminalNode()){
