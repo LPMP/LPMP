@@ -112,7 +112,7 @@ private:
     void prepareCummulativeCostsInCurrentTime();
     void initReverseNeighbors();
 
-    void findBestCut(size_t pathIndex1,size_t pathIndex2);
+    std::array<size_t,2> findBestCut(size_t pathIndex1,size_t pathIndex2);
     void cutToEnableConnections();
     void initLastVertices();
     void mergePaths();
@@ -215,21 +215,15 @@ void LdpPrimalHeuristics<SNC_FACTOR>::computeCummulativeCostsGlobal(){
             auto iter=liftedGraph.forwardNeighborsBegin(i);
             for (;iter!=liftedGraph.forwardNeighborsEnd(i);iter++) {
                 size_t vertex2=iter->first;
-//                if(checkMap.count(i)>0&&checkMap[i].count(vertex2)>0){
-//                    std::cout<<" important edge "<<std::endl;
-//                }
+
                 size_t label2=vertexLabels[vertex2];
-//                if(label==1&&label2==51){
-//                    std::cout<<"from 0 to 50, edge "<<i<<","<<vertex2<<":"<<iter->second<<std::endl;
-                //                }
+
                 if(label2>0){
                     assert(label2>0);
                     assert(label-1<cummulativeCosts.size());
                     assert(label2-1<cummulativeCosts[label-1].size());
                     cummulativeCosts[label-1][label2-1]+=iter->second;
-                    if(label==21&&label2==131){
-                        std::cout<<"mutual cost 20 130: "<<i<<","<<vertex2<<":"<<iter->second;
-                    }
+
                     if(iter->second<0){
                         negativeMutualCosts[label-1][label2-1]+=iter->second;
                     }
@@ -245,10 +239,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::computeCummulativeCostsGlobal(){
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const std::vector<std::map<size_t,double>>& costsBetweenPaths,size_t bestNeighborIndex){
 
-    if(indexOfPath==20&&bestNeighborIndex==130){
-        double cost=cummulativeCosts[indexOfPath][bestNeighborIndex];
-        std::cout<<"problematic merge "<<std::endl;
-    }
+
     if(diagnostics()) std::cout<<"merging "<<indexOfPath<<", "<<bestNeighborIndex<<std::endl;
 
     const VertexGroups<>& vg=(pInstance->vertexGroups);
@@ -258,15 +249,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
 
     double negativeCost=negativeMutualCosts[indexOfPath][bestNeighborIndex];
     double positiveCost=cummulativeCosts[indexOfPath][bestNeighborIndex]-negativeMutualCosts[indexOfPath][bestNeighborIndex];
-//    if(abs(negativeCost)*0.1>=positiveCost){
-//        if(diagnostics()) std::cout<<"connection: good"<<std::endl;
-//    }
-//    else{
-//        if(diagnostics()) std::cout<<"connection: not good"<<std::endl;
-//        std::cout<<"negative cost "<<negativeCost<<std::endl;
-//        std::cout<<"positive cost "<<positiveCost<<std::endl;
-//    }
-
 
 
 
@@ -368,16 +350,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
 
     }
 
-//    for (size_t j = 1; j < bestPathSoFar.size(); ++j) {
-//        size_t oldPathIndex=bestPathSoFar[j];
-//        std::fill(cummulativeCosts[oldPathIndex].begin(),cummulativeCosts[oldPathIndex].end(),0);
-//         std::fill(negativeMutualCosts[oldPathIndex].begin(),negativeMutualCosts[oldPathIndex].end(),0);
-
-//    }
-
-//    if(indexOfPath==20&&bestNeighborIndex==55){
-//        std::cout<<"check connection results"<<std::endl;
-//    }
 
     for (size_t i = 0; i < numberOfPaths; ++i) {
         for (size_t j = 1; j < bestPathSoFar.size(); ++j) {
@@ -493,7 +465,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutOnePathWithMutualCostUpdate(size_t cutV
 
     assert(cummulativeCosts.size()==newPathIndex+1);
 
-    double interestingCostChange=0;
+
     nextVertex=startingVertices.back();
     while(nextVertex!=pInstance->getTerminalNode()){
         for (auto iter=liftedGraph.forwardNeighborsBegin(nextVertex);iter!=liftedGraph.forwardNeighborsEnd(nextVertex);iter++) {
@@ -501,13 +473,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutOnePathWithMutualCostUpdate(size_t cutV
             size_t label2=vertexLabels[vertex2];
             if(label2>0&&label2-1!=oldPathIndex){
                 double cost=iter->second;
-
-//                if(label2==45&&newPathIndex==52){
-//                    interestingCostChange+=cost;
-//                    std::cout<<"edge to new path 48 52 "<<vertex2<<", "<<nextVertex<<":"<<cost<<std::endl;
-//                }
-
-
 
                 cummulativeCosts[newPathIndex][label2-1]+=cost;
                if(label2-1!=newPathIndex) cummulativeCosts[oldPathIndex][label2-1]-=cost;
@@ -525,10 +490,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutOnePathWithMutualCostUpdate(size_t cutV
             if(label2>0&&label2-1!=newPathIndex){
                 double cost=iter->second;
 
-//                if(label2==53&&newPathIndex==53){
-//                    interestingCostChange+=cost;
-//                    std::cout<<"edge to new path 52,53 "<<vertex2<<", "<<nextVertex<<":"<<cost<<std::endl;
-//                }
                 if(label2-1==oldPathIndex){
                     size_t v=vertex2;
                     while(v!=pInstance->getTerminalNode()){
@@ -556,11 +517,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutOnePathWithMutualCostUpdate(size_t cutV
         nextVertex=neighboringVertices[nextVertex];
     }
 
-
-    std::cout<<"cost change between new paths "<<interestingCostChange<<std::endl;
-
-    //assert(abs(cummulativeCosts[oldPathIndex][newPathIndex]-cutValues[cutVertex])<eps);
-
     numberOfPaths=startingVertices.size();
 
 }
@@ -568,7 +524,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutOnePathWithMutualCostUpdate(size_t cutV
 
 
 template<class SNC_FACTOR>
-void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathIndex2){
+std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathIndex2){
     size_t pointerFirst=lastVertices[pathIndex1];
     size_t pointerSecond=startingVertices[pathIndex2];
     assert(pointerFirst!=pInstance->getTerminalNode());
@@ -581,6 +537,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathI
     double firstCutValue=0;
     double secondCutValue=0;
     size_t shiftsDone=0;
+
+    std::array<size_t,2> baseEdgeVertices={pInstance->getTerminalNode(),pInstance->getTerminalNode()};
 
     size_t predFirst=reverseNeighbors[pointerFirst];
     size_t descSecond=neighboringVertices[pointerSecond];
@@ -616,6 +574,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathI
                     currentMutualCost-=lossOfSecondCost;
                     size_t newPathIndex2=numberOfPaths-1;
                     assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                    baseEdgeVertices={pointerFirst,descSecond};
+                    //cutFound=true;
                 }
                 proceedSearch=false;
                 //cut from first and terminate
@@ -624,13 +584,17 @@ void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathI
             else if(secondExists&&!firstExists){  //move the first pointer
                 double cutPrice=itSecond->second+secondCutValue+firstCutShifted;
                 if(cutPrice+currentMutualCost<-eps){
+                    size_t newPathIndex2=pathIndex2;
                     if(pointerSecond!=startingVertices[pathIndex2]){
                         cutOnePathWithMutualCostUpdate(reverseNeighbors[pointerSecond]);
+                        newPathIndex2=numberOfPaths-1;
                     }
                     cutOnePathWithMutualCostUpdate(predFirst);
-                    size_t newPathIndex2=numberOfPaths-2;
+
                     currentMutualCost-=lossOfFirstCost;
                     assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                    baseEdgeVertices={predFirst,pointerSecond};
+                    //cutFound=true;
                 }
                 proceedSearch=false;
 
@@ -641,13 +605,16 @@ void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathI
 
                 if(cutPriceShiftFirst<cutPriceShiftSecond&&cutPriceShiftFirst+currentMutualCost<-eps){   //move first
 
+                    size_t newPathIndex2=pathIndex2;
                     if(pointerSecond!=startingVertices[pathIndex2]){
                         cutOnePathWithMutualCostUpdate(reverseNeighbors[pointerSecond]);
+                        newPathIndex2=numberOfPaths-1;
                     }
                     cutOnePathWithMutualCostUpdate(predFirst);
                     currentMutualCost-=lossOfFirstCost;
-                    size_t newPathIndex2=numberOfPaths-2;
-                    assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                     assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                     baseEdgeVertices={predFirst,pointerSecond};
+                   // cutFound=true;
 
 
                 }
@@ -657,19 +624,11 @@ void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathI
                         cutOnePathWithMutualCostUpdate(pointerFirst);
                     }
                     cutOnePathWithMutualCostUpdate(pointerSecond);
-//                    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
-//                    double testCost=0;
-//                    for (auto iter=liftedGraph.backwardNeighborsBegin(pointerSecond);iter!=liftedGraph.backwardNeighborsEnd(pointerSecond);iter++) {
-//                        size_t vertex2=iter->first;
-//                        if(vertexLabels[vertex2]==pathIndex1+1){
-//                            std::cout<<"44 to 48: "<<vertex2<<","<<pointerSecond<<":"<<iter->second<<std::endl;
-//                            testCost+=iter->second;
-//                        }
-//                    }
-
                     currentMutualCost-=lossOfSecondCost;
                     size_t newPathIndex2=numberOfPaths-1;
                     assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                     baseEdgeVertices={pointerFirst,descSecond};
+                  //  cutFound=true;
 
                 }
                 proceedSearch=false;
@@ -718,7 +677,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathIndex1,size_t pathI
         }
     }
 
-
+    return baseEdgeVertices;
 
 }
 
@@ -745,8 +704,12 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
                         if(abs(negativeCost)*0.1>=positiveCost){
-                            std::cout<<"finding best cut "<<i<<","<<j<<std::endl;
-                            findBestCut(i,j);
+                            if(diagnostics())std::cout<<"finding best cut "<<i<<","<<j<<std::endl;
+                            std::array<size_t,2> baseEdge=findBestCut(i,j);
+                            if(baseEdge[0]!=pInstance->getTerminalNode()){
+                                auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
+                                assert(itBE!=baseEdges[baseEdge[0]].end());
+                            }
                         }
 
                     }
@@ -764,14 +727,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
 
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
-   // initLastVertices();
-   // computeCummulativeCostsGlobal();
+
     cutToEnableConnections();
-
-
-    //  std::set<std::tuple<double,size_t,size_t>> queueOfEdges;
-    //TODO remember best neighbor of each last vertex, plus set of best starting vertex candidates
-    //The first is the costs between paths, second map <cost,path index>. Or the second always find.
 
     bool tryNext=true;
 
@@ -801,13 +758,10 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
                             costsBetweenPaths[i][j]=cost;
 
                             if(cost<bestNeighborValue){
-                               // double worsePath=std::max(cummulativeCosts[i][i],cummulativeCosts[j][j]);
+
                                 double negativeCost=negativeMutualCosts[i][j];
                                 double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                                if(abs(negativeCost)*0.1>=positiveCost){
-//                                    if(diagnostics()) std::cout<<"connection: good"<<std::endl;
-//                                }
-//                                if(bestNeighborValue<=0.5*worsePath){
+                                if(abs(negativeCost)*0.25>=positiveCost){
 
                                     bestNeighborValue=cost;
                                     bestNeighbor=j;
@@ -815,14 +769,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
 
                             }
                         }
-                        //TODO enable to create candidate cuts from the advanced connections
-//                        else if(i!=j&&cummulativeCosts[i][j]<0){
-//                            missedConnections++;
-//                            missedConnectionsCost+=cummulativeCosts[i][j];
-//                            std::cout<<"missed connection "<<i<<","<<j<<":"<<cummulativeCosts[i][j]<<std::endl;
-//                            std::cout<<"original cummulative costs "<<cummulativeCosts[i][i]<<","<<cummulativeCosts[j][j]<<std::endl;
 
-//                        }
                     }
                 }
 
@@ -834,14 +781,14 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
             }
         }
 
-      //  std::cout<<"missed connections "<<missedConnections<<", with cost "<<missedConnectionsCost<<std::endl;
+
         if(bestStartingPathIndex<numberOfPaths){
             assert(bestNeighboringPaths[bestStartingPathIndex]<numberOfPaths);
             connectToOnePath(bestStartingPathIndex, costsBetweenPaths,bestNeighboringPaths[bestStartingPathIndex]);
 
             double primal=currentPrimal(false);
             if(diagnostics()) std::cout<<"primal after merge "<<primal<<std::endl;
-            //TODO merge paths, update cummulative costs, best neigbor, cost between paths etc., labels, starting last vertices, neighbors
+
         }
         else{
             tryNext=false;
@@ -850,16 +797,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
 
 
     }
-
-    //TODO after implementing path merge? change to greedy with shorter edge check!
-    //Maybe: order good neighboring paths according to starting vertices, try to find possible connections
-    //DFS: try nearest, from nerest nearest...
-    //Greedy can select best starting path, then dfs on its neighbors (but only withint the negative neighbors), other connections in next iterations
-
-
-
-
-
 
 
 }
@@ -895,9 +832,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::initCutValues(){  //get lifted values of c
                 size_t vertex2=iter->first;
                 size_t label2=vertexLabels[vertex2];
                 if(label2==label){
-//                    if(label2==1){
-//                        std::cout<<"within path 0: "<<i<<","<<vertex2<<": "<<iter->second<<std::endl;
-//                    }
+
                     double cost=iter->second;
                     size_t vertex1=i;
                     while(vertex1!=vertex2){
@@ -936,10 +871,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::updateCutValues(const std::vector<size_t>&
                     size_t vertex1=i;
                     while(vertex1!=vertex2){
                         cutValues[vertex1]-=cost;
-//                        if(vertex1==975){
-//                            std::cout<<"subtract from 975 "<<cost<<", cut value "<<cutValues[vertex1]<<std::endl;
-
-//                        }
 
                         vertex1=oldNeighbors[vertex1];
                         assert(vertex1!=pInstance->getTerminalNode());
@@ -1119,29 +1050,17 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
         if(vertexLabels[i]!=0){
             for (auto iter=liftedGraph.forwardNeighborsBegin(i);iter!=liftedGraph.forwardNeighborsEnd(i);iter++) {
                 size_t vertex2=iter->first;
-//                if(vertexLabels[i]==45&&vertexLabels[vertex2]==52){
-//                     std::cout<<"lost edge "<<i<<" "<<vertex2<<": "<<iter->second<<std::endl;
-//                     edgeLoss+=iter->second;
-//                }
+
                 if(vertexLabels[vertex2]==vertexLabels[i]){
-//                    if(vertexLabels[i]==21&&i<=5893&&vertex2>5893){
-//                        std::cout<<"new cost within 20, edge: "<<i<<", "<<vertex2<<", cost: "<<iter->second<<std::endl;
-//                    }
+
                     costsOfPaths[vertexLabels[vertex2]-1]+=iter->second;
                     costOfPathsLifted[vertexLabels[vertex2]-1]+=iter->second;
                     newPrimalValue+=iter->second;
-//                    if(vertexLabels[vertex2]==52){
-//                       // std::cout<<"edge "<<i<<" "<<vertex2<<": "<<iter->second<<std::endl;
-//                    }
+
                 }
             }
         }
     }
-
-//    for (int i = 0; i < numberOfPaths; ++i) {
-//        std::cout<<"cost of path "<<i<<": complete: "<<costsOfPaths[i]<<", base: "<<costOfPathsBase[i]<<", lifted: "<<costOfPathsLifted[i]<<std::endl;
-
-//    }
 
 
     assert(!checkImprovement||newPrimalValue<=currentPrimalValue+eps);
@@ -1451,9 +1370,6 @@ void LdpPrimalHeuristics<SNC_FACTOR>::evaluateTimeCuts(){
     std::vector<bool> usedLabels(numberOfPaths);
     size_t newNumberOfPaths=numberOfPaths;
 
-
-   // std::cout<<"orig value "<<origValue<<std::endl;
-   // std::cout<<"mcf objective "<<mcfValue<<std::endl;
 
 
     for (size_t i = 0; i < mcf.no_edges(); ++i) {
