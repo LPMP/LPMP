@@ -266,6 +266,12 @@ void fillWithValue(std::vector<T>& myVector,size_t first,size_t last, T value){
 template<class T>
 struct ShiftedVector{
 public:
+//    ShiftedVector<T>(){
+//        minVertex=1;
+//        maxVertex=0;
+//        myVector=std::vector<T>(0);
+//    }
+
     ShiftedVector<T>(size_t boundary1,size_t boundary2,const T& value): //inclusive both min and max vertex
     minVertex(std::min(boundary1,boundary2)),maxVertex(std::max(boundary1,boundary2))
     {
@@ -338,6 +344,14 @@ public:
     bool isWithinBounds(const size_t index)const{
         return index>=minVertex&&index<=maxVertex;
 
+    }
+
+    size_t getMaxVertex()const{
+        return maxVertex;
+    }
+
+    size_t getMinVertex()const{
+        return minVertex;
     }
 
 private:
