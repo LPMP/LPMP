@@ -104,6 +104,8 @@ private:
     std::vector<const double*> controlMCCostsIn;
     std::vector<const double*> controlMCCostsOut;
 
+    bool useGAEC=false;
+
 };
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE, class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
@@ -1061,12 +1063,12 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     assert((lbBefore-lbAfter)/std::max(abs(lbAfter),1.0)<=(1e-13));
 
 
-    bool useNewPrimal=true;
+    //bool useNewPrimal=true;
     double primalFromFactors=0;
     double primalValue=0;
     std::vector<std::vector<size_t>> paths;
 
-    if(!useNewPrimal){
+    if(!useGAEC){
         read_in_mcf_costs();
         mcf_->solve();
 
@@ -1915,16 +1917,18 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::reparametrize_snc_factors()
 {
-    const double primal_cost_before = this->lp_->EvaluatePrimal();
-    //read_in_mcf_costs(true);
-    //mcf_->solve();
-    //    double obj=mcf_->objective() ;
-    if(diagnostics())  std::cout << "mcf cost = " << mcf_->objective() << "\n";
-    //write_back_mcf_costs();
-    const double primal_cost_after = this->lp_->EvaluatePrimal();
-    if(diagnostics()) std::cout << "primal cost before = " << primal_cost_before << ", primal cost after = " << primal_cost_after << "\n";
-    assert(std::abs(primal_cost_before - primal_cost_after) <= 1e-6);
-    //   sncDebug();
+    if(!useGAEC){
+        const double primal_cost_before = this->lp_->EvaluatePrimal();
+        //read_in_mcf_costs(true);
+        //mcf_->solve();
+        //    double obj=mcf_->objective() ;
+        if(diagnostics())  std::cout << "mcf cost = " << mcf_->objective() << "\n";
+        //write_back_mcf_costs();
+        const double primal_cost_after = this->lp_->EvaluatePrimal();
+        if(diagnostics()) std::cout << "primal cost before = " << primal_cost_before << ", primal cost after = " << primal_cost_after << "\n";
+        assert(std::abs(primal_cost_before - primal_cost_after) <= 1e-6);
+        //   sncDebug();
+    }
 }
 
 

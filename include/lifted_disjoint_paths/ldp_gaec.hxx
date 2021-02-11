@@ -46,6 +46,7 @@ public:
 
         for (size_t i = 0; i < numberOfVertices; ++i) { //init costs, lifted costs and time stamps, costs in forward direction only
             lastVertices[i]=i;
+            firstVertices[i]=i;
 
             auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
             costs[i]=pOutFactor->getBaseCosts();
@@ -101,6 +102,7 @@ public:
 //            }
 //        }
 
+        liftedCostsOriginal=liftedCostsFull;
         for (size_t i = 0; i < costs.size(); ++i) {
             auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
             const std::vector<size_t>& baseIDs=pOutFactor->getBaseIDs();
@@ -132,13 +134,62 @@ public:
             size_t secondVertex=pOutFactor->getBaseID(e.neighborIndex);
             size_t timeStamp=timeStamps[e.firstVertex][e.neighborIndex];
             if(startingVertices[secondVertex]&&neighbors[e.firstVertex]==t&&timeStamp==e.timeStamp){
+               // std::cout<<"connecting "<<e.firstVertex<<","<<secondVertex<<std::endl;
+                size_t first=firstVertices[e.firstVertex];
+                size_t last=lastVertices[secondVertex];
+
                 startingVertices[secondVertex]=false;
                 //endingVertices[e.firstVertex]=false;
                 neighbors[e.firstVertex]=secondVertex;
+
+                assert(abs(e.cost-costs[e.firstVertex][e.neighborIndex]-liftedCostsFull[e.firstVertex][secondVertex])<eps);
+                size_t f=first;
+                double controlLiftedCost=0;
+                while(f!=secondVertex){
+                    assert(f!=t);
+                    size_t sec=secondVertex;
+                    while(sec!=t){
+                        if(liftedCostsOriginal[f].isWithinBounds(sec)){
+                            controlLiftedCost+=liftedCostsOriginal[f][sec];
+                        }
+                        sec=neighbors[sec];
+
+                        //assert(sec!=t);
+
+                    }
+                    f=neighbors[f];
+                }
+
+                double currentLiftedCost=liftedCostsFull[e.firstVertex][secondVertex];
+                if(abs(controlLiftedCost-currentLiftedCost)>=eps){
+                    f=first;
+                    double controlLiftedCost=0;
+                    while(f!=secondVertex){
+                        assert(f!=t);
+                        size_t sec=secondVertex;
+                        while(sec!=t){
+                            if(liftedCostsOriginal[f].isWithinBounds(sec)){
+                                controlLiftedCost+=liftedCostsOriginal[f][sec];
+                            }
+
+                            std::cout<<f<<","<<sec<<":"<<liftedCostsOriginal[f][sec]<<std::endl;
+                            sec=neighbors[sec];
+                            //assert(sec!=t);
+
+                        }
+                        f=neighbors[f];
+                    }
+
+                }
+
+                assert(abs(controlLiftedCost-currentLiftedCost)<eps);
+                controlLiftedCost+=costs[e.firstVertex][e.neighborIndex];
+                assert(abs(controlLiftedCost-e.cost)<eps);
+
+
                 updateCostOutgoing(e.firstVertex,secondVertex);
                 updateCostIncomming(e.firstVertex,secondVertex);
-                size_t first=firstVertices[e.firstVertex];
-                size_t last=lastVertices[secondVertex];
+
                 firstVertices[last]=first;
                 lastVertices[first]=last;
                 expectedPrimal+=e.cost;
@@ -230,10 +281,18 @@ private:
         size_t minCommonVertex=getMinBackwardNeighbor(j);
         size_t maxCommonVertex=getMaxBackwardNeighbor(first);
 
+//        if(i==1290&&j==1303){
+//            std::cout<<"interesting join "<<std::endl;
+//        }
+
 
         if(maxCommonVertex!=s){
             for (size_t l = minCommonVertex; l <= maxCommonVertex; ++l) {
+                if(l==1277&&first==1290&&j==1303){
+                    std::cout<<"interesting join, orig "<<liftedCostsFull[l][first]<<", to add "<<liftedCostsFull[l][j]<<std::endl;
+                }
                 liftedCostsFull[l][first]+=liftedCostsFull[l][j];
+
             }
         }
 
@@ -289,7 +348,7 @@ private:
             return s;
         }
         else{
-            return vg.getMinVertexInTime(time-1);
+            return vg.getMaxVertexInTime(time-1);
         }
     }
 
@@ -304,7 +363,7 @@ private:
             return 0;
         }
         else{
-            return vg.getMaxVertexInTime(time-pInstance->parameters.getMaxTimeGapComplete());
+            return vg.getMinVertexInTime(time-pInstance->parameters.getMaxTimeGapComplete());
         }
     }
 
@@ -346,7 +405,8 @@ private:
          bool operator <(Edge const& other) const
          {
              return -cost/double(timeGap) < -other.cost/double(other.timeGap);
-              //return cost > other.cost;
+            // return -cost/double(timeGap*timeGap) < -other.cost/double(other.timeGap*other.timeGap);
+             // return cost > other.cost;
          }
 
     };
@@ -358,6 +418,7 @@ private:
    // std::vector<std::map<size_t, double>> liftedCosts; //TODO replace with LdpDirectedGraph
 
     std::vector<ShiftedVector<double>> liftedCostsFull;
+    std::vector<ShiftedVector<double>> liftedCostsOriginal;
 
     std::vector<std::vector<double>> costs;   //TODO replace with LdpDirectedGraph
     //std::vector<std::vector<double>> liftedCosts; //TODO replace with LdpDirectedGraph
@@ -391,197 +452,6 @@ private:
 
 
 
-//LdpGreedyAdditive(std::vector<std::array<SNC_FACTOR*,2>>* _pSNCFactors, const lifted_disjoint_paths::LdpInstance * _pInstance){
-//    pSNCFactors=_pSNCFactors;
-//    pInstance=_pInstance;
-
-//    numberOfVertices=pSNCFactors->size();
-//    t=numberOfVertices+2;
-
-//    costs=std::vector<std::vector<double>>(numberOfVertices);
-//    liftedCosts=std::vector<std::vector<double>>(numberOfVertices);
-//    timeStamps=std::vector<std::vector<size_t>>(numberOfVertices);
-
-//    startingVertices=std::vector<char>(numberOfVertices,1);
-//    endingVertices=std::vector<char>(numberOfVertices,1);
-
-//    neighbors=std::vector<size_t>(numberOfVertices,t);
-
-//    const std::vector<std::array<SNC_FACTOR*,2>>& single_node_cut_factors_=*pSNCFactors;
-
-//    for (size_t i = 0; i < numberOfVertices; ++i) { //init costs, lifted costs and time stamps, costs in forward direction only
-
-//        auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
-//        costs[i]=pOutFactor->getBaseCosts();
-//        timeStamps[i]=std::vector<size_t>(costs[i].size());
-//        liftedCosts[i]=pOutFactor->getLiftedCosts();
-//    }
-
-//    for (size_t i = 0; i < numberOfVertices; ++i) { //update costs with opposite direction
-
-//        auto pInFactor=single_node_cut_factors_[i][0]->get_factor();
-//        const std::vector<double>& baseCosts=pInFactor->getBaseCosts();
-//        const std::vector<size_t>& baseIDs=pInFactor->getBaseIDs();
-
-//        for (int j = 0; j < baseCosts.size(); ++j) {
-//            size_t vertexID=baseIDs[j];
-//            auto pOutFactor=single_node_cut_factors_[vertexID][1]->get_factor();
-
-//            size_t index=pOutFactor->getBaseIDToOrder(i);
-//            assert(index<costs[vertexID].size());
-//            costs[vertexID][index]+=baseCosts[j];
-
-//        }
-
-//        const std::vector<double>& localLiftedCosts=pInFactor->getLiftedCosts();
-//        const std::vector<size_t>& liftedIDs=pInFactor->getLiftedIDs();
-
-//        for (int j = 0; j < liftedIDs.size(); ++j) {
-//            size_t vertexID=liftedIDs[j];
-//            auto pOutFactor=single_node_cut_factors_[vertexID][1]->get_factor();
-
-//            size_t indexLifted=pOutFactor->getLiftedIDToOrder(i);
-//            assert(indexLifted<liftedCosts[vertexID].size());
-//            liftedCosts[vertexID][indexLifted]+=localLiftedCosts[j];
-
-//        }
-//    }
-
-//    for (int i = 0; i < costs.size(); ++i) {
-//        auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
-//        const std::vector<size_t>& liftedIDs=pOutFactor->getLiftedIDs();
-//        const std::vector<size_t>& baseIDs=pOutFactor->getBaseIDs();
-
-
-//        size_t baseCounter=0;
-//        size_t liftedCounter=0;
-
-//        while(liftedCounter<liftedIDs.size()&&baseCounter<baseIDs.size()){  //add lifted costs to base costs
-//            while(liftedCounter<liftedIDs.size()&&liftedIDs[liftedCounter]<baseIDs[baseCounter]) liftedCounter++;
-//            if(liftedIDs[liftedCounter]==baseIDs[baseCounter]){
-//                costs[i][baseCounter]+=liftedCosts[i][liftedCounter];
-//            }
-//            baseCounter++;
-//        }
-//    }
-
-//    for (size_t i = 0; i < costs.size(); ++i) {
-//        auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
-//        const std::vector<size_t>& baseIDs=pOutFactor->getBaseIDs();
-
-//        assert(baseIDs.size()==costs[i].size());
-//        for (size_t j = 0; j < costs[i].size(); ++j) {
-//            size_t vertex2=baseIDs[j];
-//            size_t timeGap=getTimeGap(i,vertex2);
-//            Edge e={i,j,costs[i][j],timeGap,0};
-//            Q.push(e);
-//        }
-//    }
-
-
-
-//}
-
-
-
-//LdpGreedyAdditive(std::vector<std::array<SNC_FACTOR*,2>>* _pSNCFactors, const lifted_disjoint_paths::LdpInstance * _pInstance):
-//    vg(pInstance->getVertexGroups())
-//{
-//    pSNCFactors=_pSNCFactors;
-//    pInstance=_pInstance;
-
-//    numberOfVertices=pSNCFactors->size();
-//    t=numberOfVertices+2;
-//    s=numberOfVertices+1;
-
-//    costs=std::vector<std::vector<double>>(numberOfVertices);
-//    liftedCosts=std::vector<std::map<size_t,double>>(numberOfVertices);
-//    timeStamps=std::vector<std::vector<size_t>>(numberOfVertices);
-
-//    startingVertices=std::vector<char>(numberOfVertices,1);
-//    endingVertices=std::vector<char>(numberOfVertices,1);
-
-//    neighbors=std::vector<size_t>(numberOfVertices,t);
-
-
-//    const std::vector<std::array<SNC_FACTOR*,2>>& single_node_cut_factors_=*pSNCFactors;
-
-//    for (size_t i = 0; i < numberOfVertices; ++i) { //init costs, lifted costs and time stamps, costs in forward direction only
-
-//        auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
-//        costs[i]=pOutFactor->getBaseCosts();
-//        timeStamps[i]=std::vector<size_t>(costs[i].size());
-
-//        std::vector<double> lc=pOutFactor->getLiftedCosts();
-//        std::vector<size_t> liftedIDs=pOutFactor->getLiftedCosts();
-
-//        assert(lc.size()==liftedIDs.size());
-//        for (size_t j = 0; j < liftedIDs.size(); ++j) {
-//            size_t vertex2=liftedIDs[j];
-//            liftedCosts[i][vertex2]=lc[j];
-//        }
-
-//    }
-
-//    for (size_t i = 0; i < numberOfVertices; ++i) { //update costs with opposite direction
-
-//        auto pInFactor=single_node_cut_factors_[i][0]->get_factor();
-//        const std::vector<double>& baseCosts=pInFactor->getBaseCosts();
-//        const std::vector<size_t>& baseIDs=pInFactor->getBaseIDs();
-
-//        for (int j = 0; j < baseCosts.size(); ++j) {
-//            size_t vertexID=baseIDs[j];
-//            auto pOutFactor=single_node_cut_factors_[vertexID][1]->get_factor();
-
-//            size_t index=pOutFactor->getBaseIDToOrder(i);
-//            assert(index<costs[vertexID].size());
-//            costs[vertexID][index]+=baseCosts[j];
-
-//        }
-
-//        const std::vector<double>& localLiftedCosts=pInFactor->getLiftedCosts();
-//        const std::vector<size_t>& liftedIDs=pInFactor->getLiftedIDs();
-
-//        for (int j = 0; j < liftedIDs.size(); ++j) {
-//            size_t vertexID=liftedIDs[j];
-//            liftedCosts[vertexID][i]+=localLiftedCosts[j];
-//        }
-//    }
-
-//    for (int i = 0; i < costs.size(); ++i) {
-//        auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
-//        const std::vector<size_t>& liftedIDs=pOutFactor->getLiftedIDs();
-//        const std::vector<size_t>& baseIDs=pOutFactor->getBaseIDs();
-
-
-//        size_t baseCounter=0;
-//        auto pLifted=liftedCosts[i].begin();
-
-//        while(pLifted!=liftedCosts[i].end()&&baseCounter<baseIDs.size()){  //add lifted costs to base costs
-//            while(pLifted!=liftedCosts[i].end()&&pLifted->first<baseIDs[baseCounter]) pLifted++;
-//            if(pLifted->first==baseIDs[baseCounter]){
-//                costs[i][baseCounter]+=pLifted->second;
-//            }
-//            baseCounter++;
-//        }
-//    }
-
-//    for (size_t i = 0; i < costs.size(); ++i) {
-//        auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
-//        const std::vector<size_t>& baseIDs=pOutFactor->getBaseIDs();
-
-//        assert(baseIDs.size()==costs[i].size());
-//        for (size_t j = 0; j < costs[i].size(); ++j) {
-//            size_t vertex2=baseIDs[j];
-//            size_t timeGap=getTimeGap(i,vertex2);
-//            Edge e={i,j,costs[i][j],timeGap,0};
-//            Q.push(e);
-//        }
-//    }
-
-
-
-//}
 
 
 
