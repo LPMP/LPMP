@@ -1919,11 +1919,11 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 {
     if(!useGAEC){
         const double primal_cost_before = this->lp_->EvaluatePrimal();
-        //read_in_mcf_costs(true);
-        //mcf_->solve();
+        read_in_mcf_costs(true);
+        mcf_->solve();
         //    double obj=mcf_->objective() ;
         if(diagnostics())  std::cout << "mcf cost = " << mcf_->objective() << "\n";
-        //write_back_mcf_costs();
+        write_back_mcf_costs();
         const double primal_cost_after = this->lp_->EvaluatePrimal();
         if(diagnostics()) std::cout << "primal cost before = " << primal_cost_before << ", primal cost after = " << primal_cost_after << "\n";
         assert(std::abs(primal_cost_before - primal_cost_after) <= 1e-6);
