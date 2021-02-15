@@ -30,6 +30,9 @@ public:
         costs=std::vector<std::vector<double>>(numberOfVertices);
         //liftedCosts=std::vector<std::map<size_t,double>>(numberOfVertices);
         liftedCostsFull=std::vector<ShiftedVector<double>>(numberOfVertices);
+        liftedPotentialForward=std::vector<ShiftedVector<double>>(numberOfVertices);
+        liftedPotentialBackward=std::vector<ShiftedVector<double>>(numberOfVertices);
+
         timeStamps=std::vector<std::vector<size_t>>(numberOfVertices);
 
         startingVertices=std::vector<char>(numberOfVertices,1);
@@ -56,12 +59,33 @@ public:
             std::vector<size_t> liftedIDs=pOutFactor->getLiftedIDs();
 
             liftedCostsFull[i]=ShiftedVector<double>(getMinForwardNeighbor(i),getMaxForwardNeighbor(i),0);
+
+
+
             assert(lc.size()==liftedIDs.size());
             for (size_t j = 0; j < liftedIDs.size(); ++j) {
                 size_t vertex2=liftedIDs[j];
                 //liftedCosts[i][vertex2]=lc[j];
                 liftedCostsFull[i][vertex2]=lc[j];
             }
+
+            liftedPotentialForward[i]=ShiftedVector<double>(getMinForwardNeighbor(i),getMaxForwardNeighbor(i),0);
+            pOutFactor->LowerBound(false);
+            const std::vector<size_t>& traverseOrder=pOutFactor->getTraverseOrder();
+
+            for (size_t j = 0; j < traverseOrder.size(); ++j) {
+                size_t vertex2=traverseOrder[j];
+                if(vertex2>=numberOfVertices||vertex2==i) continue;
+                //liftedCosts[i][vertex2]=lc[j];
+                double potential=0;
+                size_t next=pInstance->sncNeighborStructure[vertex2];
+                if(next!=t){
+                    potential=pInstance->sncTDStructure[next];
+                }
+                liftedPotentialForward[i][vertex2]=potential;
+            }
+
+
 
         }
 
@@ -90,7 +114,29 @@ public:
                 //liftedCosts[vertexID][i]+=localLiftedCosts[j];
                 liftedCostsFull[vertexID][i]+=localLiftedCosts[j];
             }
+
+
+
+            liftedPotentialBackward[i]=ShiftedVector<double>(getMinBackwardNeighbor(i),getMaxBackwardNeighbor(i),0);
+            pInFactor->LowerBound(false);
+            const std::vector<size_t>& traverseOrder=pInFactor->getTraverseOrder();
+
+            for (size_t j = 0; j < traverseOrder.size(); ++j) {
+                size_t vertex2=traverseOrder[j];
+                if(vertex2>=numberOfVertices||vertex2==i) continue;
+                //liftedCosts[i][vertex2]=lc[j];
+                double potential=0;
+                size_t next=pInstance->sncNeighborStructure[vertex2];
+                if(next!=t){
+                    potential=pInstance->sncTDStructure[next];
+                }
+                liftedPotentialBackward[i][vertex2]=potential;
+            }
         }
+
+
+
+
 
 //        for (int i = 0; i < costs.size(); ++i) {
 //            auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
@@ -103,16 +149,30 @@ public:
 //        }
 
         liftedCostsOriginal=liftedCostsFull;
+        liftedPotentialForwardOrig=liftedPotentialForward;
+        liftedPotentialBackwardOrig=liftedPotentialBackward;
+
         for (size_t i = 0; i < costs.size(); ++i) {
             auto pOutFactor=single_node_cut_factors_[i][1]->get_factor();
             const std::vector<size_t>& baseIDs=pOutFactor->getBaseIDs();
 
+            std::vector<double> mmCheckForward=pOutFactor->getAllBaseMinMarginalsForMCF();
+
             assert(baseIDs.size()==costs[i].size());
             for (size_t j = 0; j < costs[i].size(); ++j) {
                 size_t vertex2=baseIDs[j];
+
                 if(vertex2>=numberOfVertices) continue;
                 size_t timeGap=getTimeGap(i,vertex2);
-                double cost=costs[i][j]+liftedCostsFull[i][vertex2];
+                double mmCheckF=mmCheckForward[j];
+                auto pInFactor=single_node_cut_factors_[vertex2][0]->get_factor();
+                size_t index=pInFactor->getBaseIDToOrder(i);
+                std::vector<double> mmCheckBackward=pInFactor->getAllBaseMinMarginalsForMCF();
+                double mmCheckB=mmCheckBackward[index];
+
+                //TODO compare the cost with base min marginals for mcf
+                double cost=costs[i][j]+liftedCostsFull[i][vertex2]+liftedPotentialForward[i][vertex2]+liftedPotentialBackward[vertex2][i];
+                assert(abs(cost-mmCheckB-mmCheckF)<eps);
                 if(cost<inOutCost){
                     Edge e={i,j,cost,timeGap,0};
                     Q.push(e);
@@ -142,19 +202,23 @@ public:
                 //endingVertices[e.firstVertex]=false;
                 neighbors[e.firstVertex]=secondVertex;
 
-                assert(abs(e.cost-costs[e.firstVertex][e.neighborIndex]-liftedCostsFull[e.firstVertex][secondVertex])<eps);
+                //assert(abs(e.cost-costs[e.firstVertex][e.neighborIndex]-liftedCostsFull[e.firstVertex][secondVertex])<eps);
                 size_t f=first;
                 double controlLiftedCost=0;
+                double controlPotentialForward=0;
+                double controlPotentialBackward=0;
                 while(f!=secondVertex){
                     assert(f!=t);
+                    if(last<=getMaxForwardNeighbor(f)) controlPotentialForward+=liftedPotentialForwardOrig[f][last];
                     size_t sec=secondVertex;
                     while(sec!=t){
                         if(liftedCostsOriginal[f].isWithinBounds(sec)){
                             controlLiftedCost+=liftedCostsOriginal[f][sec];
                         }
+                        if(f==first){
+                            if(first>=getMinBackwardNeighbor(sec)) controlPotentialBackward+=liftedPotentialBackwardOrig[sec][first];
+                        }
                         sec=neighbors[sec];
-
-                        //assert(sec!=t);
 
                     }
                     f=neighbors[f];
@@ -182,8 +246,13 @@ public:
 
                 }
 
+                //TODO cost with potentials can be checked with all base min marginals for mcf
                 assert(abs(controlLiftedCost-currentLiftedCost)<eps);
+                assert(abs(controlPotentialForward-liftedPotentialForward[e.firstVertex][secondVertex])<eps);
+                assert(abs(controlPotentialBackward-liftedPotentialBackward[secondVertex][e.firstVertex])<eps);
                 controlLiftedCost+=costs[e.firstVertex][e.neighborIndex];
+                controlLiftedCost+=controlPotentialForward;
+                controlLiftedCost+=controlPotentialBackward;
                 assert(abs(controlLiftedCost-e.cost)<eps);
 
 
@@ -252,6 +321,14 @@ private:
 
         for (size_t l = liftedCostsFull[last].getMinVertex(); l <= liftedCostsFull[i].getMaxVertex(); ++l) {
             liftedCostsFull[last][l]+=liftedCostsFull[i][l];
+            liftedPotentialBackward[l][last]=liftedPotentialBackward[l][i];
+            liftedPotentialForward[last][l]+=liftedPotentialForward[i][l];
+        }
+        size_t m=std::max(liftedCostsFull[i].getMaxVertex()+1,liftedCostsFull[last].getMinVertex());
+        if(m<numberOfVertices){
+            for (size_t l = m; l<=liftedCostsFull[last].getMaxVertex() ;++l) {
+                liftedPotentialBackward[l][last]=0;
+            }
         }
 
 
@@ -263,7 +340,7 @@ private:
             size_t vertex2=baseIDs[k];
             if(vertex2==t) continue;
             size_t timeGap=getTimeGap(last,vertex2);
-            double cost=costs[last][k]+liftedCostsFull[last][vertex2];
+            double cost=costs[last][k]+liftedCostsFull[last][vertex2]+liftedPotentialForward[last][vertex2]+liftedPotentialBackward[vertex2][last];
             timeStamps[last][k]++;
             if(cost<inOutCost){
                 Edge e={last,k,cost,timeGap,timeStamps[last][k]};
@@ -292,8 +369,19 @@ private:
                     std::cout<<"interesting join, orig "<<liftedCostsFull[l][first]<<", to add "<<liftedCostsFull[l][j]<<std::endl;
                 }
                 liftedCostsFull[l][first]+=liftedCostsFull[l][j];
+                 liftedPotentialForward[l][first]=liftedPotentialForward[l][j];
+
+                liftedPotentialBackward[first][l]+=liftedPotentialBackward[j][l];
 
             }
+            size_t m=std::min(minCommonVertex,getMaxBackwardNeighbor(first)+1);
+            if(m<numberOfVertices){
+                for (size_t l = getMinBackwardNeighbor(first); l < m; ++l) {
+                    liftedPotentialForward[l][first]=0;
+
+                }
+            }
+
         }
 
         auto pInFactor=(*pSNCFactors)[first][0]->get_factor();
@@ -306,7 +394,7 @@ private:
             auto pOutFactor=(*pSNCFactors)[vertex2][1]->get_factor();
             size_t index=pOutFactor->getBaseIDToOrder(first);
             size_t timeGap=getTimeGap(vertex2,first);
-            double cost=costs[vertex2][index]+liftedCostsFull[vertex2][first];
+            double cost=costs[vertex2][index]+liftedCostsFull[vertex2][first]+liftedPotentialForward[vertex2][first]+liftedPotentialBackward[first][vertex2];
             timeStamps[vertex2][index]++;
             if(cost<inOutCost){
                 Edge e={vertex2,index,cost,timeGap,timeStamps[vertex2][index]};
@@ -404,9 +492,9 @@ private:
 
          bool operator <(Edge const& other) const
          {
-             return -cost/double(timeGap) < -other.cost/double(other.timeGap);
+             //return -cost/double(timeGap) < -other.cost/double(other.timeGap);
             // return -cost/double(timeGap*timeGap) < -other.cost/double(other.timeGap*other.timeGap);
-             // return cost > other.cost;
+              return cost > other.cost;
          }
 
     };
@@ -418,6 +506,12 @@ private:
    // std::vector<std::map<size_t, double>> liftedCosts; //TODO replace with LdpDirectedGraph
 
     std::vector<ShiftedVector<double>> liftedCostsFull;
+    std::vector<ShiftedVector<double>> liftedPotentialForward;
+    std::vector<ShiftedVector<double>> liftedPotentialBackward;
+
+    std::vector<ShiftedVector<double>> liftedPotentialForwardOrig;
+    std::vector<ShiftedVector<double>> liftedPotentialBackwardOrig;
+
     std::vector<ShiftedVector<double>> liftedCostsOriginal;
 
     std::vector<std::vector<double>> costs;   //TODO replace with LdpDirectedGraph

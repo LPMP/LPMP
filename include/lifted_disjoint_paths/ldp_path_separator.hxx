@@ -429,6 +429,9 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
     liftedMM=mmExtractor.getLiftedEdgesMinMarginals();
     usedEdges= std::vector<std::vector<std::pair<size_t,bool>>> (numberOfVertices);
 
+    bool removeUsedPositive=false;
+    bool onlyBasePaths=false;
+
 
 
     assert(baseMM.size()==numberOfVertices+2);
@@ -468,7 +471,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         for(;iter!=end;iter++){
             //if(iter->second<-eps){
             if(iter->second<-minImprovement){
-                edgesToSort.push_back(std::tuple(iter->second,i,iter->first,true));
+               if(!onlyBasePaths) edgesToSort.push_back(std::tuple(iter->second,i,iter->first,true));
             }
             //else if(iter->second>eps){
             else if(iter->second>minImprovement){
@@ -565,7 +568,14 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
                                     constraintsCounter++;
                                     numberOfStandardPaths++;
                                 }
+                                if(removeUsedPositive){
+                                    auto iterToDel=iterLifted;
+                                    iterLifted++;
+                                    positiveLifted[pred].erase(iterToDel);
+                                }
+
                             }
+
                             descendants[pred].insert(iterDescPred,descV2);
                             predecessors[descV2].push_back(pred);
                             //  predecessors[descV2].insert(pred);
@@ -581,7 +591,7 @@ inline void ldp_path_separator<PATH_FACTOR,SINGLE_NODE_CUT_FACTOR_CONT>::separat
         }
 
 
-        if(useOuterPath&&isLifted){
+        if(!onlyBasePaths&&useOuterPath&&isLifted){
            //TODO
             //for desc: descendants of vertex1 lower than vertex2:
             //  for pl: positvelifted[pl] lower than vertex2

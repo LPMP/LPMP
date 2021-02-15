@@ -58,6 +58,10 @@ public:
 		return baseCosts;
 	}
 
+    const std::vector<size_t>& getTraverseOrder()const{
+        return traverseOrder;
+    }
+
     const double& getNodeCost()const{
         return nodeCost;
     }
