@@ -68,16 +68,18 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
                 pFactor->updateEdgeCost(j,-minMarginals[j]);
             }
         }
-        if(debug()){
-            std::vector<double> minMarginalsControl=pFactor->getAllMinMarginals();
-            for (int i = 0; i < pathVertices.size(); ++i) {
-                assert(abs(minMarginals[i])<eps);
-            }
-        }
+
 
         liftedEdgesWithCosts[pathVertices.front()][pathVertices.back()]+=minMarginals.back();
         if(doCostUpdate){
             pFactor->updateEdgeCost(pathVertices.size()-1,-minMarginals.back());
+        }
+
+        if(debug()&&doCostUpdate){
+            std::vector<double> minMarginalsControl=pFactor->getAllMinMarginals();
+            for (int i = 0; i < pathVertices.size()-1; ++i) {
+                assert(abs(minMarginalsControl[i])<eps);
+            }
         }
     }
 
@@ -86,9 +88,13 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
 
 
     for (int i = 0; i < cutFactors.size(); ++i) {
+//        if(i==26){
+//            std::cout<<i<<std::endl;
+//        }
         auto * cFactor=cutFactors[i]->get_factor();
-        auto minMarginals=cFactor->getAllMinMarginals().first;
-        auto liftedMinMarginal=cFactor->getAllMinMarginals().second;
+        auto allMinMarginals=cFactor->getAllMinMarginals();
+        auto minMarginals=allMinMarginals.first;
+        auto liftedMinMarginal=allMinMarginals.second;
 
         const auto & inputs=cFactor->getInputVertices();
         const auto & outputs=cFactor->getOutputVertices();
@@ -108,14 +114,21 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
                 outputCounter++;
             }
         }
+
+
+        liftedEdgesWithCosts[cFactor->getLiftedInputVertex()][cFactor->getLiftedOutputVertex()]+=liftedMinMarginal;
+        if(doCostUpdate){
+            cFactor->updateCostLifted(-liftedMinMarginal);
+        }
+
         if(debug()){
             auto minMarginalsControl=cFactor->getAllMinMarginals().first;
             auto liftedMinMarginalControl=cFactor->getAllMinMarginals().second;
             assert(abs(liftedMinMarginalControl)<eps);
             for (int j = 0; j < inputs.size(); ++j) {
                 size_t v1=inputs[j];
-                const auto * iter=minMarginals.forwardNeighborsBegin(j);
-                const auto * end=minMarginals.forwardNeighborsEnd(j);
+                const auto * iter=minMarginalsControl.forwardNeighborsBegin(j);
+                const auto * end=minMarginalsControl.forwardNeighborsEnd(j);
                 size_t outputCounter=0;
                 for (;iter!=end;iter++) {
                     double delta=iter->cost;
@@ -123,11 +136,6 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
                     outputCounter++;
                 }
             }
-        }
-
-        liftedEdgesWithCosts[cFactor->getLiftedInputVertex()][cFactor->getLiftedOutputVertex()]+=liftedMinMarginal;
-        if(doCostUpdate){
-            cFactor->updateCostLifted(-liftedMinMarginal);
         }
 
     }

@@ -78,18 +78,18 @@ std::pair<LdpTwoLayerGraph, double> ldp_cut_factor::getAllMinMarginals()const{
         auto *end=localCutGraph.forwardNeighborsEnd(i);
         size_t counter=0;
         for (;iter!=end;iter++) {
-            if(counter==optLabeling[i]){
+            if(iter->head==optLabeling[i]){
                 double restrictZero=advancedMinimizer(i,iter->head,false,addLiftedCost,&localCutGraph,&liftedCost);
                 double delta=currentOpt-restrictZero;
                 currentOpt=restrictZero;
-                iter->cost-=delta;
+                localCutGraph.updateForwardEdgeCost(i,counter,-delta);
                 minMarginals.setForwardEdgeCost(i,counter,delta);
 
             }
             else{
                 double restrictOne=advancedMinimizer(i,iter->head,true,addLiftedCost,&localCutGraph,&liftedCost);
                 double delta=restrictOne-currentOpt;
-                iter->cost-=delta;
+                localCutGraph.updateForwardEdgeCost(i,counter,-delta);
                 minMarginals.setForwardEdgeCost(i,counter,delta);
             }
             counter++;

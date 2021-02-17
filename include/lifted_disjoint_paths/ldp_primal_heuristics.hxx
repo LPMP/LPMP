@@ -241,6 +241,8 @@ LdpPrimalHeuristics<SNC_FACTOR>::LdpPrimalHeuristics(const std::vector<size_t>& 
            assert(liftedCosts.size()==numberOfNeighbors);
            for (size_t j = 0; j < numberOfNeighbors; ++j) {
                pRepamLiftedGraph->updateBackwardEdgeCost(i,j,liftedCosts[j]);
+               double controlCost=pInstance->getMyGraphLifted().getBackwardEdgeCost(i,j);
+             //  assert(abs(controlCost-pRepamLiftedGraph->getBackwardEdgeCost(i,j))<eps);
                assert(pRepamLiftedGraph->getBackwardEdgeVertex(i,j)==pInFactor->getLiftedIDs()[j]);
            }
        }
@@ -248,11 +250,13 @@ LdpPrimalHeuristics<SNC_FACTOR>::LdpPrimalHeuristics(const std::vector<size_t>& 
        for (size_t i = 0; i < baseGraph.getNumberOfVertices()-2; ++i) {
            //size_t numberOfNeighbors=pRepamLiftedGraph->getNumberOfEdgesFromVertex(i);
            auto pOutFactor=(*pSNCFactors)[i][1]->get_factor();
+           double nodeCost=pOutFactor->getNodeCost();
            const std::vector<double>& baseCosts=pOutFactor->getBaseCosts();
            const std::vector<size_t>& baseIDs=pOutFactor->getBaseIDs();
            size_t numberOfNeighbors=baseCosts.size();
            for (size_t j = 0; j < numberOfNeighbors; ++j) {
                baseEdges[i][baseIDs[j]]=baseCosts[j];
+               baseEdges[i][baseIDs[j]]+=nodeCost;
 
            }
        }
@@ -260,11 +264,15 @@ LdpPrimalHeuristics<SNC_FACTOR>::LdpPrimalHeuristics(const std::vector<size_t>& 
        for (size_t i = 0; i < baseGraph.getNumberOfVertices()-2; ++i) {
            //size_t numberOfNeighbors=pRepamLiftedGraph->getNumberOfEdgesFromVertex(i);
            auto pInFactor=(*pSNCFactors)[i][0]->get_factor();
+           double nodeCost=pInFactor->getNodeCost();
            const std::vector<double>& baseCosts=pInFactor->getBaseCosts();
            const std::vector<size_t>& baseIDs=pInFactor->getBaseIDs();
            size_t numberOfNeighbors=baseCosts.size();
            for (size_t j = 0; j < numberOfNeighbors; ++j) {
                baseEdges[baseIDs[j]][i]+=baseCosts[j];
+               baseEdges[baseIDs[j]][i]+=nodeCost;
+               double controlCost=pInstance->getMyGraph().getBackwardEdgeCost(i,j);
+              // assert(abs(controlCost-baseEdges[baseIDs[j]][i])<eps);
 
            }
        }
@@ -516,7 +524,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
 
 template<class SNC_FACTOR>
 double LdpPrimalHeuristics<SNC_FACTOR>::mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward){
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph();
     const LdpDirectedGraph::edge * beginPointer=nullptr;
     const LdpDirectedGraph::edge * endPointer=nullptr;
 
@@ -579,7 +587,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutOnePathWithMutualCostUpdate(size_t cutV
 
 
     //TODO also update lastVertices
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted(); //maybe can be in a separate method
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph(); //maybe can be in a separate method
 
     for (size_t i = 0; i < numberOfPaths; ++i) {
         cummulativeCosts[i].push_back(0.0);
@@ -946,7 +954,7 @@ template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::initCutValues(){  //get lifted values of cutting behind a vertex
     cutValues=std::vector<double> (pInstance->getNumberOfVertices()-2);
 
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph();
 
 
     //Addding new lifted edges to cummulative costs
@@ -980,7 +988,7 @@ template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::updateCutValues(const std::vector<size_t>& oldLabels, const std::vector<size_t>& oldNeighbors){  //get lifted values of cutting behind a vertex
    // std::vector<double> cutValues(pInstance->getNumberOfVertices()-2);
 
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph();
 
 
     for (int i = 0; i < liftedGraph.getNumberOfVertices(); ++i) {
@@ -1126,7 +1134,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutAllPaths(){
 
 template<class SNC_FACTOR>
 double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph();
     const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
     std::vector<double> costsOfPaths(numberOfPaths);
 
@@ -1202,7 +1210,7 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
 
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::finalizeResults(bool changeSNC){
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph();
     const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
     std::vector<std::array<SNC_FACTOR*,2>>& single_node_cut_factors_=*pSNCFactors;
     if(changeSNC){
@@ -1315,7 +1323,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::prepareCummulativeCostsInCurrentTime(){
 
     const VertexGroups<>& vg=pInstance->getVertexGroups();
     const std::vector<size_t>& verticesInTimeLayer=vg.getGroupVertices(currentTime);
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph();
 
 
     //Addding new lifted edges to cummulative costs
@@ -1463,7 +1471,7 @@ double LdpPrimalHeuristics<SNC_FACTOR>::initLAP(LPMP::linear_assignment_problem_
 
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::evaluateTimeCuts(){
-    const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
+    const LdpDirectedGraph& liftedGraph=getLiftedGraph();
     const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
 
 

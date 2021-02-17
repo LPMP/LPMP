@@ -206,6 +206,16 @@ public:
         return primalHeuristicIterations;
     }
 
+    bool isUsePreIter()const{
+        return usePreIter;
+    }
+
+    bool isRepamCostInPrimalHeuristic()const{
+        return repamCostInHeuristic;
+    }
+
+
+
 
 private:
     LdpParameters<T>(const LdpParameters<T>&);
@@ -263,6 +273,9 @@ private:
      double mustCutPenalty;
 
      size_t primalHeuristicIterations;
+
+     bool usePreIter;
+     bool repamCostInHeuristic;
 
 };
 
@@ -564,6 +577,23 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          primalHeuristicIterations=10;
      }
      controlOutput<<"primal heuristic iterations "<<primalHeuristicIterations<<std::endl;
+
+     if(parameters.count("REPAM_COST_IN_HEURISTIC")>0){
+         repamCostInHeuristic=std::stoi(parameters["REPAM_COST_IN_HEURISTIC"]);
+     }
+     else{
+         repamCostInHeuristic=0;
+     }
+     controlOutput<<"Use reparametrized cost in primal heuristic "<<repamCostInHeuristic<<std::endl;
+
+     if(parameters.count("USE_PRE_ITERATE")>0){
+         usePreIter=std::stoi(parameters["USE_PRE_ITERATE"]);
+     }
+     else{
+         usePreIter=1;
+     }
+     controlOutput<<"Using mcf reparametrization in pre-iteration step "<<usePreIter<<std::endl;
+
 
 
      writeControlOutput();

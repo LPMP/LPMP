@@ -1178,7 +1178,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 
         if(pInstance->parameters.getPrimalHeuristicIterations()>0){
-            LdpPrimalHeuristics<SINGLE_NODE_CUT_FACTOR> primalHeuristics(currentPrimalLabels,startingNodes,descendants,pInstance,&single_node_cut_factors_);
+            bool useRepamCost=pInstance->parameters.isRepamCostInPrimalHeuristic();
+            LdpPrimalHeuristics<SINGLE_NODE_CUT_FACTOR> primalHeuristics(currentPrimalLabels,startingNodes,descendants,pInstance,&single_node_cut_factors_,useRepamCost);
 
             // primalHeuristics.evaluateAll();
 
@@ -1228,7 +1229,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             if(diagnostics()) std::cout<<"primal value from factors "<<primalFromFactors<<std::endl;
 
             double difference=(abs(newPrimalValue-primalFromFactors)/std::max(abs(primalFromFactors),1.0));
-            assert(difference<1e-10);
+            assert(useRepamCost||difference<1e-10);
         }
     }
     else{
@@ -1917,7 +1918,8 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::reparametrize_snc_factors()
 {
-    if(!useGAEC){
+   // bool usePreIter=false;
+    if(pInstance->parameters.isUsePreIter()&&!useGAEC){
         const double primal_cost_before = this->lp_->EvaluatePrimal();
         read_in_mcf_costs(true);
         mcf_->solve();
