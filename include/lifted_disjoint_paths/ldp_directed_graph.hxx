@@ -70,6 +70,44 @@ public:
         return backwardEdges[vertex][neighborIndex].first;
     }
 
+    void setForwardEdgeCost(size_t vertex,size_t neighborIndex,double value){
+        assert(vertex<numberOfVertices);
+        assert(neighborIndex<forwardEdges[vertex].size());
+        edge& e=forwardEdges[vertex][neighborIndex];
+        e.second=value;
+        assert(backwardEdges[e.first][e.reverse_neighbor_index].first==vertex);
+        backwardEdges[e.first][e.reverse_neighbor_index].second=value;
+    }
+
+    void setBackwardEdgeCost(size_t vertex,size_t neighborIndex,double value){
+        assert(vertex<numberOfVertices);
+        assert(neighborIndex<backwardEdges[vertex].size());
+        edge& e=backwardEdges[vertex][neighborIndex];
+        e.second=value;
+        assert(forwardEdges[e.first][e.reverse_neighbor_index].first==vertex);
+        forwardEdges[e.first][e.reverse_neighbor_index].second=value;
+    }
+
+    void updateForwardEdgeCost(size_t vertex,size_t neighborIndex,double value){
+        assert(vertex<numberOfVertices);
+        assert(neighborIndex<forwardEdges[vertex].size());
+        edge& e=forwardEdges[vertex][neighborIndex];
+        e.second+=value;
+        assert(backwardEdges[e.first][e.reverse_neighbor_index].first==vertex);
+        backwardEdges[e.first][e.reverse_neighbor_index].second+=value;
+        assert(e.second==backwardEdges[e.first][e.reverse_neighbor_index].second);
+    }
+
+    void updateBackwardEdgeCost(size_t vertex,size_t neighborIndex,double value){
+        assert(vertex<numberOfVertices);
+        assert(neighborIndex<backwardEdges[vertex].size());
+        edge& e=backwardEdges[vertex][neighborIndex];
+        e.second+=value;
+        assert(forwardEdges[e.first][e.reverse_neighbor_index].first==vertex);
+        forwardEdges[e.first][e.reverse_neighbor_index].second+=value;
+        assert(e.second==forwardEdges[e.first][e.reverse_neighbor_index].second);
+    }
+
     const edge * forwardNeighborsBegin(size_t i)const {
          assert(i<numberOfVertices);
         return forwardEdges[i].begin();
