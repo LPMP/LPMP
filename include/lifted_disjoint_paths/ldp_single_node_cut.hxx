@@ -210,7 +210,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsBegin(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsBegin(const size_t& nodeIndex)const{
         if(isOutFlow){
             return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
         }
@@ -219,7 +219,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsEnd(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsEnd(const size_t& nodeIndex)const{
         if(isOutFlow){
             return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
         }
@@ -228,7 +228,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsRevBegin(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsRevBegin(const size_t& nodeIndex)const{
         if(!isOutFlow){
             return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
         }
@@ -237,7 +237,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsRevEnd(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsRevEnd(const size_t& nodeIndex)const{
         if(!isOutFlow){
             return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
         }
@@ -401,8 +401,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
             bool descClosed=true;
              //Traverse all base neighbors in direction out from central node
             //Not closed vertices store to the stack.
-            const std::pair<size_t,double>* vertexIt=neighborsBegin(currentNode);
-            const std::pair<size_t,double>* end=neighborsEnd(currentNode);
+            const LdpDirectedGraph::edge* vertexIt=neighborsBegin(currentNode);
+            const LdpDirectedGraph::edge* end=neighborsEnd(currentNode);
 
 
             for (;vertexIt!=end;vertexIt++) {
@@ -730,7 +730,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
     const LdpDirectedGraph& myLiftedGraph=ldpInstance.getMyGraphLifted();
 
     if(isOutFlow){
-        const std::pair<size_t,double>* edgeIt=myLiftedGraph.forwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myLiftedGraph.forwardNeighborsBegin(nodeID);
 
         size_t counter=0;
         for (;edgeIt!=myLiftedGraph.forwardNeighborsEnd(nodeID);edgeIt++) {
@@ -747,7 +747,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
         }
     }
     else{
-        const std::pair<size_t,double>* edgeIt=myLiftedGraph.backwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myLiftedGraph.backwardNeighborsBegin(nodeID);
         size_t counter=0;
         for (;edgeIt!=myLiftedGraph.backwardNeighborsEnd(nodeID);edgeIt++) {
             const size_t& node=edgeIt->first;
@@ -780,7 +780,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 
     if(isOutFlow){
 
-        const std::pair<size_t,double>* edgeIt=myBaseGraph.forwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myBaseGraph.forwardNeighborsBegin(nodeID);
         size_t counter=0;
         for (;edgeIt!=myBaseGraph.forwardNeighborsEnd(nodeID);edgeIt++) {
             const size_t& node=edgeIt->first;
@@ -797,7 +797,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
         }
     }
     else{
-        const std::pair<size_t,double>* edgeIt=myBaseGraph.backwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myBaseGraph.backwardNeighborsBegin(nodeID);
         size_t counter=0;
         for (;edgeIt!=myBaseGraph.backwardNeighborsEnd(nodeID); edgeIt++) {
             const size_t& node=edgeIt->first;
@@ -911,8 +911,8 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         size_t bestDescVertexID=getVertexToReach();
 
          //Search for best descendant
-        const std::pair<size_t,double>* vertexIt=neighborsBegin(currentNode);
-        const std::pair<size_t,double>* end=neighborsEnd(currentNode);
+        const LdpDirectedGraph::edge* vertexIt=neighborsBegin(currentNode);
+        const LdpDirectedGraph::edge* end=neighborsEnd(currentNode);
 
 
         for (;vertexIt!=end;vertexIt++) {
@@ -1075,8 +1075,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
             bestValue=ldpInstance.sncBUStructure[currentVertex]+nodeCost;
             bestIndex=nodeID;
         }
-        const std::pair<size_t,double>* vertexIt=neighborsRevBegin(currentVertex);
-        const std::pair<size_t,double>* end=neighborsRevEnd(currentVertex);
+        const LdpDirectedGraph::edge* vertexIt=neighborsRevBegin(currentVertex);
+        const LdpDirectedGraph::edge* end=neighborsRevEnd(currentVertex);
         for (;vertexIt!=end;vertexIt++) {
 
             size_t pred=vertexIt->first;

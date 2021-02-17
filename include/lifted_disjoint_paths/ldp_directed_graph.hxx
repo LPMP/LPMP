@@ -12,6 +12,18 @@ namespace LPMP {
 
 class LdpDirectedGraph{
 public:
+    struct edge{
+        size_t first;
+        double second;
+        size_t reverse_neighbor_index;
+
+        bool operator <(edge const& other) const
+        {
+            return first < other.first;
+        }
+
+    };
+
     LdpDirectedGraph(){}
 
 
@@ -58,43 +70,43 @@ public:
         return backwardEdges[vertex][neighborIndex].first;
     }
 
-    const std::pair<size_t,double> * forwardNeighborsBegin(size_t i)const {
+    const edge * forwardNeighborsBegin(size_t i)const {
          assert(i<numberOfVertices);
         return forwardEdges[i].begin();
     }
 
-    const std::pair<size_t,double> * forwardNeighborsEnd(size_t i)const {
+    const edge * forwardNeighborsEnd(size_t i)const {
          assert(i<numberOfVertices);
         return forwardEdges[i].end();
     }
 
-    const std::pair<size_t,double> * backwardNeighborsBegin(size_t i)const {
+    const edge * backwardNeighborsBegin(size_t i)const {
          assert(i<numberOfVertices);
         return backwardEdges[i].begin();
     }
 
-    const std::pair<size_t,double> * backwardNeighborsEnd(size_t i)const {
+    const edge * backwardNeighborsEnd(size_t i)const {
          assert(i<numberOfVertices);
         return backwardEdges[i].end();
     }
 
-    std::pair<size_t,double> * forwardNeighborsBegin(size_t i) {
+    edge * forwardNeighborsBegin(size_t i) {
         if(i>=numberOfVertices) std::cout<<"i is "<<i<<", number of vertices "<<numberOfVertices<<std::endl;
          assert(i<numberOfVertices);
         return forwardEdges[i].begin();
     }
 
-     std::pair<size_t,double> * forwardNeighborsEnd(size_t i) {
+     edge * forwardNeighborsEnd(size_t i) {
           assert(i<numberOfVertices);
         return forwardEdges[i].end();
     }
 
-     std::pair<size_t,double> * backwardNeighborsBegin(size_t i) {
+     edge * backwardNeighborsBegin(size_t i) {
          assert(i<numberOfVertices);
         return backwardEdges[i].begin();
     }
 
-     std::pair<size_t,double> * backwardNeighborsEnd(size_t i) {
+     edge * backwardNeighborsEnd(size_t i) {
         assert(i<numberOfVertices);
         return backwardEdges[i].end();
     }
@@ -118,18 +130,21 @@ public:
     }
 
 
-    const two_dim_variable_array<std::pair<size_t,double>>& getForwardEdges()const{
+    const two_dim_variable_array<edge>& getForwardEdges()const{
         return forwardEdges;
     }
 
-    const two_dim_variable_array<std::pair<size_t,double>>& getBackwardEdges()const{
+    const two_dim_variable_array<edge>& getBackwardEdges()const{
         return backwardEdges;
     }
 
 
 private:
-    two_dim_variable_array<std::pair<size_t,double>> forwardEdges;
-    two_dim_variable_array<std::pair<size_t,double>> backwardEdges;
+    //two_dim_variable_array<std::pair<size_t,double>> forwardEdges;
+    //two_dim_variable_array<std::pair<size_t,double>> backwardEdges;
+    void setNeighborPointers();
+    two_dim_variable_array<edge> forwardEdges;
+    two_dim_variable_array<edge> backwardEdges;
     size_t numberOfVertices;
     size_t numberOfEdges;
     //two_dim_variable_array<double> forwardCost;
@@ -223,10 +238,10 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         size_t t=numberOfVertices+1;
 
         for(size_t i=0;i<numberOfVertices;i++){
-            forwardEdges[s][i]={i,inCost};
-            backwardEdges[t][i]={i,outCost};
-            forwardEdges[i][adjacencyForward[i]]={t,outCost};
-            backwardEdges[i][adjacencyBackward[i]]={s,inCost};
+            forwardEdges[s][i]={i,inCost,numberOfVertices};
+            backwardEdges[t][i]={i,outCost,numberOfVertices};
+            forwardEdges[i][adjacencyForward[i]]={t,outCost,numberOfVertices};
+            backwardEdges[i][adjacencyBackward[i]]={s,inCost,numberOfVertices};
             numberOfEdges=numberOfEdges+2;
 
         }
@@ -234,6 +249,7 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         if(numberOfEdges!=(edges.shape(0)+2*numberOfVertices)){
             std::cout<<"number of edges "<<numberOfEdges<<std::endl;
             std::cout<<"expected "<<(edges.shape(0)+2*numberOfVertices)<<std::endl;
+            assert(false);
         }
         assert(numberOfEdges==(edges.shape(0)+2*numberOfVertices));
         numberOfVertices+=2;
@@ -246,6 +262,9 @@ void LdpDirectedGraph::initFromEdgesAndCosts(const EDGES& edges,const COSTS& inp
         std::sort(forwardEdges[i].begin(),forwardEdges[i].end());
         std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
     }
+
+    setNeighborPointers();
+
 
     //std::cout<<"ldp graph, vertices: "<<numberOfVertices<<std::endl;
 

@@ -662,7 +662,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                         if(!parameters.isAllBaseZero()){
                             if(isSame&&(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1)){
                                 iterBase->second+=cost;
-                                std::pair<size_t,double>*baseIt=myGraph.backwardNeighborsBegin(w);
+                                LdpDirectedGraph::edge *baseIt=myGraph.backwardNeighborsBegin(w);
                                 while(baseIt->first!=i){
                                     baseIt++;
                                     assert(baseIt!=myGraph.forwardNeighborsEnd(w));
@@ -712,7 +712,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                             }
                             else{  //add base cost
                                 iterBase->second+=cost;
-                                std::pair<size_t,double>*baseIt=myGraph.backwardNeighborsBegin(w);
+                                LdpDirectedGraph::edge *baseIt=myGraph.backwardNeighborsBegin(w);
                                 while(baseIt->first!=i){
                                     baseIt++;
                                     assert(baseIt!=myGraph.forwardNeighborsEnd(w));

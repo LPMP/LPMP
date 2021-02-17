@@ -391,8 +391,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
 template<class SNC_FACTOR>
 double LdpPrimalHeuristics<SNC_FACTOR>::mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward){
     const LdpDirectedGraph& liftedGraph=pInstance->getMyGraphLifted();
-    const std::pair<size_t,double> * beginPointer=nullptr;
-    const std::pair<size_t,double> * endPointer=nullptr;
+    const LdpDirectedGraph::edge * beginPointer=nullptr;
+    const LdpDirectedGraph::edge * endPointer=nullptr;
 
     size_t timeOfOtherVertex=pInstance->vertexGroups.getGroupIndex(otherPathVertex);
     if(useForward){

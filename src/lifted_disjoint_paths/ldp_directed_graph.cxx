@@ -63,7 +63,26 @@ LdpDirectedGraph::LdpDirectedGraph(const LdpDirectedGraph& inputGraph,double inp
         std::sort(backwardEdges[i].begin(),backwardEdges[i].end());
     }
 
+    setNeighborPointers();
+}
 
+
+void LdpDirectedGraph::setNeighborPointers(){
+    std::vector<size_t> backCounters(numberOfVertices,0);
+    for (size_t i = 0; i < numberOfVertices; ++i) {
+        edge* iterForward=forwardEdges[i].begin();
+        size_t counter=0;
+        while(iterForward!=forwardEdges[i].end()){
+            size_t neighborID=iterForward->first;
+            edge& backwardEdge=backwardEdges[neighborID][backCounters[neighborID]];
+            assert(backwardEdge.first==i);
+            iterForward->reverse_neighbor_index=backCounters[neighborID];
+            backwardEdge.reverse_neighbor_index=counter;
+            backCounters[neighborID]++;
+            counter++;
+            iterForward++;
+        }
+    }
 }
 
 //LdpDirectedGraph::LdpDirectedGraph(const andres::graph::Digraph<>& inputGraph,const std::vector<double>& inputEdgeCosts){
