@@ -1068,7 +1068,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     double primalValue=0;
     std::vector<std::vector<size_t>> paths;
 
-    if(!useGAEC){
+    //if(!useGAEC){
         read_in_mcf_costs();
         mcf_->solve();
 
@@ -1230,68 +1230,69 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             double difference=(abs(newPrimalValue-primalFromFactors)/std::max(abs(primalFromFactors),1.0));
             assert(useRepamCost||difference<1e-10);
+            primalValue=primalFromFactors;
         }
-    }
-    else{
+//    }
+//    else{
 
-        LdpGreedyAdditive<SINGLE_NODE_CUT_FACTOR> greedy(&single_node_cut_factors_,pInstance);
-        greedy.runGAEC();
-        greedy.finalizeResults();
-
-
-
-        currentPrimalDescendants=greedy.getNeighbors();
-        currentPrimalStartingVertices=greedy.getStartingVertices();
-        std::fill(currentPrimalLabels.begin(),currentPrimalLabels.end(),0);
-
-
-        double toAdd=0;
-        //std::vector<size_t>  labels(nr_nodes());
-        for (size_t i = 0; i < currentPrimalStartingVertices.size(); ++i) {
-            std::vector<size_t> path;
-            size_t currentNode=currentPrimalStartingVertices[i];
-
-            while(currentNode!=base_graph_terminal_node()){
-                path.push_back(currentNode);
-                currentPrimalLabels[currentNode]=i+1;
-                currentNode=currentPrimalDescendants[currentNode];
-            }
-            paths.push_back(path);
-        }
-
-        bool isFeasible=this->checkFeasibilityBaseInSnc();
-        if(diagnostics()) std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
-        assert(isFeasible);
-        adjustLiftedLabels();
-        isFeasible=this->checkFeasibilityLiftedInSnc();
-        assert(isFeasible);
-        adjustCutLabels(0);
-        adjustPathLabels(0);
+//        LdpGreedyAdditive<SINGLE_NODE_CUT_FACTOR> greedy(&single_node_cut_factors_,pInstance);
+//        greedy.runGAEC();
+//        greedy.finalizeResults();
 
 
 
-        for (int i = 0; i < nr_nodes(); ++i) {
-
-            const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
-            const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
-            primalValue+=sncFactorIn->EvaluatePrimal();
-            primalValue+=sncFactorOut->EvaluatePrimal();
-        }
-
-        for (int i = 0; i < cut_factors_.size(); ++i) {
-            auto * cFactor=cut_factors_[i]->get_factor();
-            primalValue+=cFactor->EvaluatePrimal();
-        }
-
-        for (int i = 0; i < path_factors_.size(); ++i) {
-            auto * pFactor=path_factors_[i]->get_factor();
-            primalValue+=pFactor->EvaluatePrimal();
-        }
-
-        if(diagnostics()) std::cout<<"primal value "<<primalValue<<std::endl;
+//        currentPrimalDescendants=greedy.getNeighbors();
+//        currentPrimalStartingVertices=greedy.getStartingVertices();
+//        std::fill(currentPrimalLabels.begin(),currentPrimalLabels.end(),0);
 
 
-    }
+//        double toAdd=0;
+//        //std::vector<size_t>  labels(nr_nodes());
+//        for (size_t i = 0; i < currentPrimalStartingVertices.size(); ++i) {
+//            std::vector<size_t> path;
+//            size_t currentNode=currentPrimalStartingVertices[i];
+
+//            while(currentNode!=base_graph_terminal_node()){
+//                path.push_back(currentNode);
+//                currentPrimalLabels[currentNode]=i+1;
+//                currentNode=currentPrimalDescendants[currentNode];
+//            }
+//            paths.push_back(path);
+//        }
+
+//        bool isFeasible=this->checkFeasibilityBaseInSnc();
+//        if(diagnostics()) std::cout<<"checked feasibility: "<<isFeasible<<std::endl;
+//        assert(isFeasible);
+//        adjustLiftedLabels();
+//        isFeasible=this->checkFeasibilityLiftedInSnc();
+//        assert(isFeasible);
+//        adjustCutLabels(0);
+//        adjustPathLabels(0);
+
+
+
+//        for (int i = 0; i < nr_nodes(); ++i) {
+
+//            const auto* sncFactorIn=single_node_cut_factors_[i][0]->get_factor();
+//            const auto* sncFactorOut=single_node_cut_factors_[i][1]->get_factor();
+//            primalValue+=sncFactorIn->EvaluatePrimal();
+//            primalValue+=sncFactorOut->EvaluatePrimal();
+//        }
+
+//        for (int i = 0; i < cut_factors_.size(); ++i) {
+//            auto * cFactor=cut_factors_[i]->get_factor();
+//            primalValue+=cFactor->EvaluatePrimal();
+//        }
+
+//        for (int i = 0; i < path_factors_.size(); ++i) {
+//            auto * pFactor=path_factors_[i]->get_factor();
+//            primalValue+=pFactor->EvaluatePrimal();
+//        }
+
+//        if(diagnostics()) std::cout<<"primal value "<<primalValue<<std::endl;
+
+
+//    }
 
 
 
@@ -1919,7 +1920,7 @@ template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CU
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::reparametrize_snc_factors()
 {
    // bool usePreIter=false;
-    if(pInstance->parameters.isUsePreIter()&&!useGAEC){
+    if(pInstance->parameters.isUsePreIter()){
         const double primal_cost_before = this->lp_->EvaluatePrimal();
         read_in_mcf_costs(true);
         mcf_->solve();
