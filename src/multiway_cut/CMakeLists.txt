@@ -1,0 +1,15 @@
+add_library(multiway_cut_instance multiway_cut_instance.cpp)
+target_link_libraries(multiway_cut_instance LPMP)
+
+#add_library(multiway_cut_parser multiway_cut_parser.cpp)
+#target_link_libraries(multiway_cut_parser multiway_cut_instance LPMP)
+
+add_library(multiway_cut_gaec multiway_cut_gaec.cpp)
+target_link_libraries(multiway_cut_gaec multiway_cut_instance multiway_cut_gaec LPMP)
+
+#add_executable(multiway_cut_gaec_text_input multiway_cut_gaec_text_input.cpp)
+#target_link_libraries(multiway_cut_gaec_text_input multiway_cut_instance multiway_cut_parser multiway_cut_gaec)
+
+pybind11_add_module(multiway_cut_py multiway_cut_python_binding.cpp)
+target_link_libraries(multiway_cut_py PRIVATE LPMP multiway_cut_instance multiway_cut_gaec)
+
