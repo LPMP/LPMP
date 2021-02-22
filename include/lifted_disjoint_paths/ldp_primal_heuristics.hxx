@@ -828,28 +828,60 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
         size_t lastVertex=lastVertices[i];
         size_t bestNeighbor=originalNumberOfPaths;
         double bestNeighborValue=0;
+
         for (size_t j = 0; j < originalNumberOfPaths; ++j) {
             if(i==j) continue;
             size_t firstVertex=startingVertices[j];
             if(firstVertex!=pInstance->getTerminalNode()){
-                if(firstVertex>lastVertex){
+                //if(firstVertex>lastVertex){
                     auto it=baseEdges[lastVertex].find(firstVertex);
                     if(it==baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                        if(abs(negativeCost)*0.25>=positiveCost){
-                            if(diagnostics())std::cout<<"finding best cut "<<i<<","<<j<<std::endl;
-                            std::array<size_t,2> baseEdge=findBestCut(i,j);
-                            if(baseEdge[0]!=pInstance->getTerminalNode()){
-                                auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
-                                assert(itBE!=baseEdges[baseEdge[0]].end());
-                            }
+                        if(cummulativeCosts[i][j]<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
+                              bestNeighbor=j;
+                              bestNeighborValue=cummulativeCosts[i][j];
+
+//                            if(diagnostics())std::cout<<"finding best cut "<<i<<","<<j<<std::endl;
+//                            std::array<size_t,2> baseEdge=findBestCut(i,j);
+//                            if(baseEdge[0]!=pInstance->getTerminalNode()){
+//                                auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
+//                                assert(itBE!=baseEdges[baseEdge[0]].end());
+//                            }
                         }
 
                     }
-                }
+                    else if(it!=baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
+                        double connectionValue=cummulativeCosts[i][j]+it->second;
+                        double negativeCost=negativeMutualCosts[i][j];
+                        double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
+                        if(connectionValue<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
+                            bestNeighbor=j;
+                            bestNeighborValue=connectionValue;
+                        }
+
+                    }
+               // }
             }
 
+        }
+        if(bestNeighbor<originalNumberOfPaths){
+            size_t firstVertex=startingVertices[bestNeighbor];
+            assert(firstVertex!=pInstance->getTerminalNode());
+            //if(firstVertex>lastVertex){
+            auto it=baseEdges[lastVertex].find(firstVertex);
+            if(it==baseEdges[lastVertex].end()){
+                double negativeCost=negativeMutualCosts[i][bestNeighbor];
+                double positiveCost=cummulativeCosts[i][bestNeighbor]-negativeMutualCosts[i][bestNeighbor];
+                assert(cummulativeCosts[i][bestNeighbor]<0&&abs(negativeCost)*0.25>=positiveCost);
+                if(diagnostics())std::cout<<"finding best cut "<<i<<","<<bestNeighbor<<std::endl;
+                std::array<size_t,2> baseEdge=findBestCut(i,bestNeighbor);
+                if(baseEdge[0]!=pInstance->getTerminalNode()){
+                    auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
+                    assert(itBE!=baseEdges[baseEdge[0]].end());
+                }
+
+            }
         }
     }
 

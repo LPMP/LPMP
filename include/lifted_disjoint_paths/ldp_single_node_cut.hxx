@@ -451,17 +451,22 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
             if(isLiftedVertex(vertexInOptimalPath)){
 
                 optLifted.push_back(vertexInOptimalPath);
-                if(debug()){
-                    double toAdd=myStr.liftedCosts.at(liftedIDToOrder.at(vertexInOptimalPath));
-                    optValueComputed+=toAdd;
-                }
+                //if(debug()){
+#ifndef NDEBUG
+                double toAdd=myStr.liftedCosts.at(liftedIDToOrder.at(vertexInOptimalPath));
+                optValueComputed+=toAdd;
+#endif
+                //}
 
             }
 
             assert(vertexInOptimalPath<ldpInstance.getNumberOfVertices());
             vertexInOptimalPath=ldpInstance.sncNeighborStructure[vertexInOptimalPath];
-		}
-        if(debug()) assert(std::abs(optValueComputed-myStr.optValue)<eps);
+        }
+        //if(debug())
+#ifndef NDEBUG
+        assert(std::abs(optValueComputed-myStr.optValue)<eps);
+#endif
     }
 
     return optLifted;
@@ -831,14 +836,14 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound(bool canChang
     //if(canChange||optValueUpToDate){
     if(canChange){
         updateOptimal();
-        if(debug()){
-            double controlValue=0;
-            if(optBaseIndex!=nodeNotActive){
-                controlValue+=nodeCost;
-                controlValue+=baseCosts.at(optBaseIndex);
+//        if(debug()){
+//            double controlValue=0;
+//            if(optBaseIndex!=nodeNotActive){
+//                controlValue+=nodeCost;
+//                controlValue+=baseCosts.at(optBaseIndex);
 
-            }
-        }
+//            }
+//        }
 
         //std::cout<<"snc lower bound "<<optValue<<std::endl;
         return optValue;
@@ -1294,14 +1299,16 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     std::vector<double> messagesToOutput=std::vector<double>(liftedCosts.size());
 	for (int i = 0; i < messagesToOutput.size(); ++i) {
         messagesToOutput[i]=ldpInstance.sncLiftedMessages[liftedIDs[i]];
-	}
-
-    if(debug()){
-        StrForTopDownUpdate myStr2(localBaseCosts,localLiftedCosts);
-        topDownUpdate(myStr2);
-        assert(std::abs(myStr2.optValue-currentOptValue)<eps);
-        assert(myStr2.optValue+minMarginalsImproving-origOptValue>-eps);
     }
+
+    //if(debug()){
+#ifndef NDEBUG
+    StrForTopDownUpdate myStr2(localBaseCosts,localLiftedCosts);
+    topDownUpdate(myStr2);
+    assert(std::abs(myStr2.optValue-currentOptValue)<eps);
+    assert(myStr2.optValue+minMarginalsImproving-origOptValue>-eps);
+#endif
+    //}
 	return messagesToOutput;
 }
 
@@ -1344,35 +1351,39 @@ public:
         const std::vector<double>& liftedCosts=r.getLiftedCosts();
         //if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
         const double delta = r.getOneLiftedMinMarginal(left_node,&baseCosts,&liftedCosts);
-        if(debug()){
-            std::vector<double> controlLiftedCosts=liftedCosts;
-            controlLiftedCosts[left_node]-=delta;
-            double controlDelta=r.getOneLiftedMinMarginal(left_node,&baseCosts,&controlLiftedCosts);
-            if(abs(controlDelta)>eps){
-                throw std::runtime_error("different min marginal after lower bound");
-            }
+        //if(debug()){
+#ifndef NDEBUG
+        std::vector<double> controlLiftedCosts=liftedCosts;
+        controlLiftedCosts[left_node]-=delta;
+        double controlDelta=r.getOneLiftedMinMarginal(left_node,&baseCosts,&controlLiftedCosts);
+        if(abs(controlDelta)>eps){
+            throw std::runtime_error("different min marginal after lower bound");
         }
-		msg[0] -= omega * delta;
-    //    if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
+#endif
+        //}
+        msg[0] -= omega * delta;
+        //    if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
 	void send_message_to_right(const SINGLE_NODE_CUT_FACTOR& l, MSG& msg, const double omega)
-	{
+    {
         const std::vector<double>& baseCosts=l.getBaseCosts();
         const std::vector<double>& liftedCosts=l.getLiftedCosts();
-       // if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
+        // if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
         const double delta = l.getOneLiftedMinMarginal(right_node,&baseCosts,&liftedCosts);
-        if(debug()){
-            std::vector<double> controlLiftedCosts=liftedCosts;
-            controlLiftedCosts[right_node]-=delta;
-            double controlDelta=l.getOneLiftedMinMarginal(right_node,&baseCosts,&controlLiftedCosts);
-            if(abs(controlDelta)>eps){
-                throw std::runtime_error("different min marginal after lower bound");
-            }
+        // if(debug()){
+#ifndef NDEBUG
+        std::vector<double> controlLiftedCosts=liftedCosts;
+        controlLiftedCosts[right_node]-=delta;
+        double controlDelta=l.getOneLiftedMinMarginal(right_node,&baseCosts,&controlLiftedCosts);
+        if(abs(controlDelta)>eps){
+            throw std::runtime_error("different min marginal after lower bound");
         }
-		msg[0] -= omega * delta;
-	}
+#endif
+        //}
+        msg[0] -= omega * delta;
+    }
 
 
 
@@ -1381,26 +1392,28 @@ public:
     {
         const std::vector<double> msg_vec = r.getAllLiftedMinMarginals();
 
-        if(debug()){
-            std::vector<double> liftedCosts=r.getLiftedCosts();
-            std::vector<double> baseCosts=r.getBaseCosts();
+        //if(debug()){
+#ifndef NDEBUG
+        std::vector<double> liftedCosts=r.getLiftedCosts();
+        std::vector<double> baseCosts=r.getBaseCosts();
 
-            for (int i = 0; i < liftedCosts.size(); ++i) {
-                 liftedCosts[i]-=msg_vec[i];
-            }
-
-            const std::vector<double> controlMessages=r.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
-
-            for (int i = 0; i < controlMessages.size(); ++i) {
-
-
-                if(abs(controlMessages.at(i))>eps){
-                    std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
-                    throw std::runtime_error("wrong lifted min marginal in snc lifted message");
-                }
-            }
-
+        for (int i = 0; i < liftedCosts.size(); ++i) {
+            liftedCosts[i]-=msg_vec[i];
         }
+
+        const std::vector<double> controlMessages=r.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
+
+        for (int i = 0; i < controlMessages.size(); ++i) {
+
+
+            if(abs(controlMessages.at(i))>eps){
+                std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
+                throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+            }
+        }
+
+#endif
+        //}
 
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
@@ -1426,27 +1439,28 @@ public:
 
         const std::vector<double> msg_vec = l.getAllLiftedMinMarginals();
 
-        if(debug()){
-            std::vector<double> liftedCosts=l.getLiftedCosts();
-            std::vector<double> baseCosts=l.getBaseCosts();
+        //if(debug()){
+#ifndef NDEBUG
+        std::vector<double> liftedCosts=l.getLiftedCosts();
+        std::vector<double> baseCosts=l.getBaseCosts();
 
-            for (int i = 0; i < liftedCosts.size(); ++i) {
+        for (int i = 0; i < liftedCosts.size(); ++i) {
 
-                 liftedCosts[i]-=msg_vec[i];
-
-             }
-
-            const std::vector<double> controlMessages=l.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
-
-            for (int i = 0; i < controlMessages.size(); ++i) {
-
-                if(abs(controlMessages.at(i))>eps){
-                    std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
-                    throw std::runtime_error("wrong lifted min marginal in snc lifted message");
-                }
-            }
+            liftedCosts[i]-=msg_vec[i];
 
         }
+
+        const std::vector<double> controlMessages=l.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
+
+        for (int i = 0; i < controlMessages.size(); ++i) {
+
+            if(abs(controlMessages.at(i))>eps){
+                std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
+                throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+            }
+        }
+#endif
+        //}
 
 
         for(auto it=msg_begin; it!=msg_end; ++it)

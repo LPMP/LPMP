@@ -75,12 +75,14 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
             pFactor->updateEdgeCost(pathVertices.size()-1,-minMarginals.back());
         }
 
-        if(debug()&&doCostUpdate){
+#ifndef NDEBUG
+        if(doCostUpdate){
             std::vector<double> minMarginalsControl=pFactor->getAllMinMarginals();
             for (int i = 0; i < pathVertices.size()-1; ++i) {
                 assert(abs(minMarginalsControl[i])<eps);
             }
         }
+#endif
     }
 
    // std::cout<<"path factors processed"<<std::endl;
@@ -121,22 +123,24 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
             cFactor->updateCostLifted(-liftedMinMarginal);
         }
 
-        if(debug()){
-            auto minMarginalsControl=cFactor->getAllMinMarginals().first;
-            auto liftedMinMarginalControl=cFactor->getAllMinMarginals().second;
-            assert(abs(liftedMinMarginalControl)<eps);
-            for (int j = 0; j < inputs.size(); ++j) {
-                size_t v1=inputs[j];
-                const auto * iter=minMarginalsControl.forwardNeighborsBegin(j);
-                const auto * end=minMarginalsControl.forwardNeighborsEnd(j);
-                size_t outputCounter=0;
-                for (;iter!=end;iter++) {
-                    double delta=iter->cost;
-                    assert(abs(delta)<eps);
-                    outputCounter++;
-                }
+#ifndef NDEBUG
+        // if(debug()){
+        auto minMarginalsControl=cFactor->getAllMinMarginals().first;
+        auto liftedMinMarginalControl=cFactor->getAllMinMarginals().second;
+        assert(abs(liftedMinMarginalControl)<eps);
+        for (int j = 0; j < inputs.size(); ++j) {
+            size_t v1=inputs[j];
+            const auto * iter=minMarginalsControl.forwardNeighborsBegin(j);
+            const auto * end=minMarginalsControl.forwardNeighborsEnd(j);
+            size_t outputCounter=0;
+            for (;iter!=end;iter++) {
+                double delta=iter->cost;
+                assert(abs(delta)<eps);
+                outputCounter++;
             }
         }
+        //}
+#endif
 
     }
     //std::cout<<"cut factors processed"<<std::endl;

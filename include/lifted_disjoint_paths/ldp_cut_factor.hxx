@@ -165,38 +165,44 @@ public:
        // l.LowerBound();
         assert(msg_dim <=nodeIndicesInCut.size());
         if(msg_dim==nodeIndicesInCut.size()){
-            if(debug()){
-                if(sncIsOut){
-                    lastV1=l.getLiftedInputVertex();
-                    lastV2=l.getLiftedOutputVertex();
-                }
-                else{
-                    lastV2=l.getLiftedInputVertex();
-                    lastV1=l.getLiftedOutputVertex();
-                }
-                lastValue=msg;
+#ifndef NDEBUG
+            //if(debug()){
+            if(sncIsOut){
+                lastV1=l.getLiftedInputVertex();
+                lastV2=l.getLiftedOutputVertex();
             }
+            else{
+                lastV2=l.getLiftedInputVertex();
+                lastV1=l.getLiftedOutputVertex();
+            }
+            lastValue=msg;
+            // }
+#endif
 
             l.updateCostLifted(msg);
         }
         else{
             if(sncIsOut){
                 l.updateCostBaseForward(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
-                if(debug()){
-                    lastV1=l.getInputVertices().at(sncNodeIDindexInCut);
-                    size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
-                    lastV2=l.getOutputVertices().at(otherVertex);
-                    lastValue=msg;
-                }
+#ifndef NDEBUG
+                //if(debug()){
+                lastV1=l.getInputVertices().at(sncNodeIDindexInCut);
+                size_t otherVertex=l.getCutGraph().getForwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
+                lastV2=l.getOutputVertices().at(otherVertex);
+                lastValue=msg;
+                //}
+#endif
             }
             else{
                 l.updateCostBaseBackward(sncNodeIDindexInCut,nodeIndicesInCut.at(msg_dim),msg);
-                if(debug()){
+#ifndef NDEBUG
+                //if(debug()){
                     lastV1=l.getOutputVertices().at(sncNodeIDindexInCut);
                     size_t otherVertex=l.getCutGraph().getBackwardEdgeVertex(sncNodeIDindexInCut,nodeIndicesInCut[msg_dim]);
                     lastV2=l.getInputVertices().at(otherVertex);
                     lastValue=msg;
-                }
+                //}
+#endif
             }
 
         }
@@ -209,20 +215,25 @@ public:
     {
 
         assert(msg_dim <=nodeIndicesInSnc.size());
-      // if(debug()) r.LowerBound();
+        // if(debug()) r.LowerBound();
         size_t secondVertex;
         if(msg_dim==nodeIndicesInSnc.size()){
 
             assert(containsLiftedEdge);
             r.updateEdgeCost(msg,nodeIndexOfLiftedEdge,true);
-            if(debug()) secondVertex=r.getLiftedIDs().at(nodeIndexOfLiftedEdge);
+#ifndef NDEBUG
+            secondVertex=r.getLiftedIDs().at(nodeIndexOfLiftedEdge);
+#endif
 
         }
         else{
             r.updateEdgeCost(msg,nodeIndicesInSnc.at(msg_dim),false);
-            if(debug()) secondVertex=r.getBaseIDs().at(nodeIndicesInSnc.at(msg_dim));
+#ifndef NDEBUG
+            secondVertex=r.getBaseIDs().at(nodeIndicesInSnc.at(msg_dim));
+#endif
         }
-        if(debug()){
+#ifndef NDEBUG
+ //       if(debug()){
             assert(lastV1==r.nodeID);
             if(lastV2!=secondVertex){
                 std::cout<<"cut mismatch, first vertex "<<lastV1<<", vertex in cut "<<lastV2<<",  vertex in snc "<<secondVertex<<", index in cut"<<nodeIndicesInCut[msg_dim]<<", is lifted "<<(msg_dim==nodeIndicesInSnc.size())<<std::endl;
@@ -230,7 +241,8 @@ public:
             }
             assert(lastV2==secondVertex);
             assert(std::abs(lastValue+msg)<eps);
-        }
+#endif
+        //}
       //  if(debug()) r.LowerBound();
 
     }
@@ -249,25 +261,29 @@ public:
             delta = r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i],&baseCosts,&liftedCosts);
             baseCosts[nodeIndicesInSnc[i]]-=delta;
             //if(debug()){
-                double controlDelta=r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i],&baseCosts,&liftedCosts);
-                if(abs(controlDelta)>eps){
-                    std::cout<<"base control value "<<controlDelta<<", original delta: "<<delta<<std::endl;
-                    throw std::runtime_error("wrong min marginal check");
-                }
+#ifndef NDEBUG
+            double controlDelta=r.getOneBaseEdgeMinMarginal(nodeIndicesInSnc[i],&baseCosts,&liftedCosts);
+            if(abs(controlDelta)>eps){
+                std::cout<<"base control value "<<controlDelta<<", original delta: "<<delta<<std::endl;
+                throw std::runtime_error("wrong min marginal check");
+            }
+#endif
             //}
 
             msg[i] -= omega * delta;
         }
         if(containsLiftedEdge){
             delta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge,&baseCosts,&liftedCosts);
+#ifndef NDEBUG
             //if(debug()){
-                liftedCosts[nodeIndexOfLiftedEdge]-=delta;
-                double controlDelta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge,&baseCosts,&liftedCosts);
-                if(abs(controlDelta)>eps){
-                    std::cout<<"lifted control value "<<controlDelta<<", original delta: "<<delta<<std::endl;
-                    throw std::runtime_error("wrong lifted min marginal check");
-                }
+            liftedCosts[nodeIndexOfLiftedEdge]-=delta;
+            double controlDelta=r.getOneLiftedMinMarginal(nodeIndexOfLiftedEdge,&baseCosts,&liftedCosts);
+            if(abs(controlDelta)>eps){
+                std::cout<<"lifted control value "<<controlDelta<<", original delta: "<<delta<<std::endl;
+                throw std::runtime_error("wrong lifted min marginal check");
+            }
             //}
+#endif
             msg[i]-=omega * delta;
 
         }
@@ -294,9 +310,11 @@ public:
                 //std::cout<<"orig edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;;
                 cutGraph.updateForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i],-delta);
                 //std::cout<<"changed edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;
-                if(debug()){
-                    controlDelta=l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex,&cutGraph,&liftedCost);
-                }
+                // if(debug()){
+#ifndef NDEBUG
+                controlDelta=l.getOneEdgeMinMarginal(sncNodeIDindexInCut,otherVertex,&cutGraph,&liftedCost);
+#endif
+                //}
             }
             else{  //just for output nodes now
 
@@ -306,17 +324,20 @@ public:
                 //std::cout<<"orig edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;;
                 cutGraph.updateBackwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i],-delta);
                 //std::cout<<"changed edge cost "<<cutGraph.getForwardEdgeCost(sncNodeIDindexInCut,nodeIndicesInCut[i])<<std::endl;
-                if(debug()){
-                    controlDelta=l.getOneEdgeMinMarginal(otherVertex,sncNodeIDindexInCut,&cutGraph,&liftedCost);
-                }
-            }
-            if(debug()){
+                //if(debug()){
+#ifndef NDEBUG
+                controlDelta=l.getOneEdgeMinMarginal(otherVertex,sncNodeIDindexInCut,&cutGraph,&liftedCost);
                 if(abs(controlDelta)>eps){
                     std::cout<<"control value from cut factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
                     throw std::runtime_error("wrong cut min marginal - check base edge");
                 }
+#endif
+                //}
             }
-           // std::cout<<"delta "<<delta<<", sending "<<(omega*delta)<<std::endl;
+            //if(debug()){
+
+            //}
+            // std::cout<<"delta "<<delta<<", sending "<<(omega*delta)<<std::endl;
 
             msg[i] -= omega * delta;
         }
@@ -325,16 +346,18 @@ public:
 
             // std::cout<<"lifted edge mm, neighbor node "<<l.getLiftedOutputVertex()<<std::endl;
             delta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
-            if(debug()){
+            //if(debug()){
+#ifndef NDEBUG
             //std::cout<<"orig lifted edge cost "<<liftedCost<<std::endl;
-                liftedCost-=delta;
-              //  std::cout<<"new lifted edge cost "<<liftedCost<<std::endl;
-                controlDelta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
-                if(abs(controlDelta)>eps){
-                    std::cout<<"control value from cut factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
-                    throw std::runtime_error("wrong cut min marginal - check lifted edge");
-                }
+            liftedCost-=delta;
+            //  std::cout<<"new lifted edge cost "<<liftedCost<<std::endl;
+            controlDelta=l.getLiftedMinMarginal(&cutGraph,&liftedCost);
+            if(abs(controlDelta)>eps){
+                std::cout<<"control value from cut factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
+                throw std::runtime_error("wrong cut min marginal - check lifted edge");
             }
+            //}
+#endif
             //    std::cout<<"delta "<<delta<<", sending "<<(omega*delta)<<std::endl;
             msg[i]-=omega*delta;
         }
