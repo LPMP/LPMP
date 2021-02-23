@@ -118,6 +118,7 @@ private:
 
     std::array<size_t,2> findBestCut(size_t pathIndex1,size_t pathIndex2);
     void cutToEnableConnections();
+   // void cutToEnableConnectionsNew();
     void initLastVertices();
     void mergePaths();
     void connectTwoPaths(size_t indexFirst,size_t indexLast);
@@ -668,7 +669,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 
 
 
-    double firstCutValue=0;
+    double firstCutValue=0; //keep zeros even if including in/out costs
     double secondCutValue=0;
     size_t shiftsDone=0;
 
@@ -815,6 +816,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 
 }
 
+
 //TODO probably remove this
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
@@ -822,12 +824,18 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
     computeCummulativeCostsGlobal();
     initReverseNeighbors();
 
+    size_t noAssignment=pInstance->getTerminalNode();
+
     size_t originalNumberOfPaths=numberOfPaths;
+    std::vector<size_t> bestNeighbors(numberOfPaths,noAssignment);
+    std::vector<size_t> reverseBest(numberOfPaths,noAssignment);
+    std::vector<double> bestValues(numberOfPaths,0);
+    std::vector<char> validPaths(numberOfPaths,1);
 
     for (size_t i = 0; i < originalNumberOfPaths; ++i) {
         size_t lastVertex=lastVertices[i];
-        size_t bestNeighbor=originalNumberOfPaths;
-        double bestNeighborValue=0;
+        bestNeighbors[i]=noAssignment;
+        bestValues[i]=0;
 
         for (size_t j = 0; j < originalNumberOfPaths; ++j) {
             if(i==j) continue;
@@ -838,16 +846,10 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                     if(it==baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                        if(cummulativeCosts[i][j]<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
-                              bestNeighbor=j;
-                              bestNeighborValue=cummulativeCosts[i][j];
+                        if(cummulativeCosts[i][j]<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+                              bestNeighbors[i]=j;
+                              bestValues[i]=cummulativeCosts[i][j];
 
-//                            if(diagnostics())std::cout<<"finding best cut "<<i<<","<<j<<std::endl;
-//                            std::array<size_t,2> baseEdge=findBestCut(i,j);
-//                            if(baseEdge[0]!=pInstance->getTerminalNode()){
-//                                auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
-//                                assert(itBE!=baseEdges[baseEdge[0]].end());
-//                            }
                         }
 
                     }
@@ -855,9 +857,9 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                         double connectionValue=cummulativeCosts[i][j]+it->second;
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                        if(connectionValue<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
-                            bestNeighbor=j;
-                            bestNeighborValue=connectionValue;
+                        if(connectionValue<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+                            bestNeighbors[i]=j;
+                            bestValues[i]=connectionValue;
                         }
 
                     }
@@ -865,20 +867,63 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
             }
 
         }
-        if(bestNeighbor<originalNumberOfPaths){
-            size_t firstVertex=startingVertices[bestNeighbor];
+        size_t bestNeighbor=bestNeighbors[i];
+        double bestValue=bestValues[i];
+        if(bestNeighbor!=noAssignment){
+            if(reverseBest[bestNeighbor]!=noAssignment){
+                size_t origReverse=reverseBest[bestNeighbor];
+                double origValue=bestValues[origReverse];
+                if(origValue>bestValue){
+                    reverseBest[bestNeighbor]=i;
+                    bestNeighbors[origReverse]=noAssignment;
+                    bestValues[origReverse]=0;
+                }
+                else{
+                    bestNeighbors[i]=noAssignment;
+                    bestValues[i]=0;
+                }
+            }
+            else{
+                reverseBest[bestNeighbor]=i;
+            }
+        }
+
+    }
+
+    std::vector<size_t> oldToNewIndex(numberOfPaths);
+
+    for (size_t i = 0; i < numberOfPaths; ++i) {
+        oldToNewIndex[i]=i;
+    }
+
+    for (size_t i = 0; i < originalNumberOfPaths; ++i) {
+
+        if(bestNeighbors[i]!=noAssignment){
+
+//            size_t neighborIndex=bestNeighbors[i];
+//            bestNeighbors[i]=oldToNewIndex[neighborIndex];
+            size_t firstPathIndex=oldToNewIndex[i];
+            size_t secondPathIndex=bestNeighbors[i];
+            size_t firstVertex=startingVertices[secondPathIndex];
+            size_t lastVertex=lastVertices[firstPathIndex];
             assert(firstVertex!=pInstance->getTerminalNode());
+            assert(oldToNewIndex[secondPathIndex]==secondPathIndex);
             //if(firstVertex>lastVertex){
             auto it=baseEdges[lastVertex].find(firstVertex);
             if(it==baseEdges[lastVertex].end()){
-                double negativeCost=negativeMutualCosts[i][bestNeighbor];
-                double positiveCost=cummulativeCosts[i][bestNeighbor]-negativeMutualCosts[i][bestNeighbor];
-                assert(cummulativeCosts[i][bestNeighbor]<0&&abs(negativeCost)*0.25>=positiveCost);
-                if(diagnostics())std::cout<<"finding best cut "<<i<<","<<bestNeighbor<<std::endl;
-                std::array<size_t,2> baseEdge=findBestCut(i,bestNeighbor);
-                if(baseEdge[0]!=pInstance->getTerminalNode()){
-                    auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
-                    assert(itBE!=baseEdges[baseEdge[0]].end());
+                double negativeCost=negativeMutualCosts[firstPathIndex][secondPathIndex];
+                double positiveCost=cummulativeCosts[firstPathIndex][secondPathIndex]-negativeMutualCosts[firstPathIndex][secondPathIndex];
+               // assert(abs(cummulativeCosts[firstPathIndex][secondPathIndex]-bestValues[i])<eps&&abs(negativeCost)*0.25>=positiveCost);
+                if(abs(negativeCost)*0.25>=positiveCost){
+                    if(diagnostics())std::cout<<"finding best cut "<<firstPathIndex<<","<<secondPathIndex<<std::endl;
+                    std::array<size_t,2> baseEdge=findBestCut(firstPathIndex,secondPathIndex);
+                    if(baseEdge[0]!=pInstance->getTerminalNode()){
+                        size_t newLabel=vertexLabels[baseEdge[1]];
+                        assert(newLabel==numberOfPaths||newLabel==secondPathIndex+1);
+                        oldToNewIndex[secondPathIndex]=newLabel-1;
+                        auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
+                        assert(itBE!=baseEdges[baseEdge[0]].end());
+                    }
                 }
 
             }
@@ -887,6 +932,81 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
 
 
 }
+
+
+
+////TODO probably remove this
+//template<class SNC_FACTOR>
+//void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
+//    initLastVertices();
+//    computeCummulativeCostsGlobal();
+//    initReverseNeighbors();
+
+//    size_t originalNumberOfPaths=numberOfPaths;
+
+//    for (size_t i = 0; i < originalNumberOfPaths; ++i) {
+//        size_t lastVertex=lastVertices[i];
+//        size_t bestNeighbor=originalNumberOfPaths;
+//        double bestNeighborValue=0;
+
+//        for (size_t j = 0; j < originalNumberOfPaths; ++j) {
+//            if(i==j) continue;
+//            size_t firstVertex=startingVertices[j];
+//            if(firstVertex!=pInstance->getTerminalNode()){
+//                //if(firstVertex>lastVertex){
+//                    auto it=baseEdges[lastVertex].find(firstVertex);
+//                    if(it==baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
+//                        double negativeCost=negativeMutualCosts[i][j];
+//                        double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
+//                        if(cummulativeCosts[i][j]<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
+//                              bestNeighbor=j;
+//                              bestNeighborValue=cummulativeCosts[i][j];
+
+////                            if(diagnostics())std::cout<<"finding best cut "<<i<<","<<j<<std::endl;
+////                            std::array<size_t,2> baseEdge=findBestCut(i,j);
+////                            if(baseEdge[0]!=pInstance->getTerminalNode()){
+////                                auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
+////                                assert(itBE!=baseEdges[baseEdge[0]].end());
+////                            }
+//                        }
+
+//                    }
+//                    else if(it!=baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
+//                        double connectionValue=cummulativeCosts[i][j]+it->second;
+//                        double negativeCost=negativeMutualCosts[i][j];
+//                        double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
+//                        if(connectionValue<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
+//                            bestNeighbor=j;
+//                            bestNeighborValue=connectionValue;
+//                        }
+
+//                    }
+//               // }
+//            }
+
+//        }
+//        if(bestNeighbor<originalNumberOfPaths){
+//            size_t firstVertex=startingVertices[bestNeighbor];
+//            assert(firstVertex!=pInstance->getTerminalNode());
+//            //if(firstVertex>lastVertex){
+//            auto it=baseEdges[lastVertex].find(firstVertex);
+//            if(it==baseEdges[lastVertex].end()){
+//                double negativeCost=negativeMutualCosts[i][bestNeighbor];
+//                double positiveCost=cummulativeCosts[i][bestNeighbor]-negativeMutualCosts[i][bestNeighbor];
+//                assert(cummulativeCosts[i][bestNeighbor]<0&&abs(negativeCost)*0.25>=positiveCost);
+//                if(diagnostics())std::cout<<"finding best cut "<<i<<","<<bestNeighbor<<std::endl;
+//                std::array<size_t,2> baseEdge=findBestCut(i,bestNeighbor);
+//                if(baseEdge[0]!=pInstance->getTerminalNode()){
+//                    auto itBE=baseEdges[baseEdge[0]].find(baseEdge[1]);
+//                    assert(itBE!=baseEdges[baseEdge[0]].end());
+//                }
+
+//            }
+//        }
+//    }
+
+
+//}
 
 
 
