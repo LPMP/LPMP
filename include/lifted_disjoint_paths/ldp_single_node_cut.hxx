@@ -791,7 +791,13 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
             const size_t& node=edgeIt->first;
             const double& cost=edgeIt->second;
 
-            baseCosts.push_back((cost)*fractionBase);
+            if(node==ldpInstance.getTerminalNode()){
+                baseCosts.push_back(cost);
+            }
+            else{
+                baseCosts.push_back((cost)*fractionBase);
+            }
+
 
             baseIDs.push_back(node);
             baseIDToIndex[node]=counter;
@@ -808,7 +814,13 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
             const size_t& node=edgeIt->first;
             const double& cost=edgeIt->second;
 
-            baseCosts.push_back((cost)*fractionBase);
+            if(node==ldpInstance.getSourceNode()){
+                 baseCosts.push_back(cost);
+            }
+            else{
+                 baseCosts.push_back((cost)*fractionBase);
+            }
+
             //std::cout<<"snc base in "<<nodeID<<" "<<node<<": "<<cost<<std::endl;
             baseIDs.push_back(node);
             baseIDToIndex[node]=counter;

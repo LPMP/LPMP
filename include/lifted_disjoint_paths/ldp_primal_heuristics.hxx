@@ -1244,7 +1244,7 @@ std::vector<size_t> LdpPrimalHeuristics<SNC_FACTOR>::findCutCandidates(const std
                 size_t nextVertex=neighboringVertices[currentVertex];
                 assert(baseEdges[currentVertex].count(nextVertex)>0);
                 if(nextVertex!=pInstance->getTerminalNode()){
-                    cutValue+=baseEdges[currentVertex][nextVertex]+getInputCost(nextVertex)+getOutputCost(currentVertex);
+                    cutValue+=baseEdges[currentVertex][nextVertex]-getInputCost(nextVertex)-getOutputCost(currentVertex);
 
                     if(cutValue>bestCutValue&&nextVertex!=pInstance->getTerminalNode()){
                         bestCutsInPaths[i]=currentVertex;
@@ -1311,7 +1311,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::improveAllPaths(){
                 size_t cutVertex=cutCandidates[i];
                 double value=cutValues[cutVertex];
                 size_t nextVertex=neighboringVertices[cutVertex];
-                value+=baseEdges[cutVertex][nextVertex];
+                value+=baseEdges[cutVertex][nextVertex]-getInputCost(nextVertex)-getOutputCost(cutVertex);
                 improvement+=value;
                 if(debug())std::cout<<"improvement from path "<<i<<": "<<value<<", cut vertex: "<<cutVertex<<std::endl;
 
@@ -1444,9 +1444,11 @@ void LdpPrimalHeuristics<SNC_FACTOR>::finalizeResults(bool changeSNC){
     size_t counterPaths=0;
     double newPrimalValue=0;
     std::vector<size_t> newStartingVertices;
+    vertexLabels=std::vector<size_t>(pInstance->getNumberOfVertices()-2);
     assert(startingVertices.size()==numberOfPaths);
     for (int i = 0; i < numberOfPaths; ++i) {
         if(startingVertices[i]!=pInstance->getTerminalNode()&&costsOfPaths[i]<=0){
+        //if(startingVertices[i]!=pInstance->getTerminalNode()){
             //newPrimalValue+=pInstance->parameters.getOutputCost();
             newPrimalValue+=getInputCost(startingVertices[i]);
             //newPrimalValue+=pInstance->parameters.getInputCost();
@@ -1480,6 +1482,14 @@ void LdpPrimalHeuristics<SNC_FACTOR>::finalizeResults(bool changeSNC){
             adjustedPaths.push_back(newPath);
             newStartingVertices.push_back(startingVertices[i]);
         }
+//        else if(startingVertices[i]!=pInstance->getTerminalNode()&&costsOfPaths[i]>0){
+//            size_t currentVertex=startingVertices[i];
+//             while(currentVertex!=pInstance->getTerminalNode()){
+//                 size_t newVertex=neighboringVertices[currentVertex];
+//                 neighboringVertices[currentVertex]=pInstance->getTerminalNode();
+//                 currentVertex=newVertex;
+//             }
+//        }
     }
     startingVertices=newStartingVertices;
     assert(counterPaths==startingVertices.size());

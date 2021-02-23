@@ -938,6 +938,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 const auto* sncFactorIn=single_node_cut_factors_[currentNode][0]->get_factor();
                 const auto* sncFactorOut=single_node_cut_factors_[currentNode][1]->get_factor();
                 sncFactorsCost+=sncFactorIn->getPrimalBaseCost();
+               // std::cout<<"node "<<currentNode<<", control "<<pathCost<<", from factors "<<sncFactorsCost<<std::endl;
                 sncFactorsCost+=sncFactorOut->getPrimalBaseCost();
                 factorPathCost+=costsFromOtherFactors[currentNode][currentPrimalDescendants[currentNode]];
 
@@ -1175,6 +1176,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
         if(diagnostics()) std::cout<<"original primal value "<<primalValue<<std::endl;
 
+#ifndef NDEBUG
+        sncDebug();
+#endif
 
 
         if(pInstance->parameters.getPrimalHeuristicIterations()>0){
@@ -1309,10 +1313,9 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     }
 
 
-    if(debug()){
-
-        sncDebug();
-    }
+    #ifndef NDEBUG
+            sncDebug();
+    #endif
 
     if(diagnostics()) std::cout<<"primal value: "<<primalValue<<", clustering value: "<<clusteringValue<<std::endl;
 }
