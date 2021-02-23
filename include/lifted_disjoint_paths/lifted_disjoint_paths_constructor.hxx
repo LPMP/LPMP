@@ -1183,7 +1183,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
             // primalHeuristics.evaluateAll();
 
-            primalHeuristics.cutAllPaths();
+            primalHeuristics.improveAllPaths();
             paths=primalHeuristics.getPaths();
             currentPrimalStartingVertices=primalHeuristics.getStartingVertices();
             currentPrimalLabels=primalHeuristics.getVertexLabels();

@@ -102,7 +102,7 @@ public:
 
     void evaluateAll();
 
-void cutAllPaths();
+void improveAllPaths();
 
 
 private:
@@ -159,6 +159,23 @@ private:
 
      }
 
+    double getInputCost(size_t nodeID){
+        assert(nodeID<pInstance->getNumberOfVertices()-2);
+        const size_t& s=pInstance->getSourceNode();
+        assert(baseEdges.size()>s);
+        assert(baseEdges[s].count(nodeID)>0);
+        return baseEdges[s][nodeID];
+
+    }
+
+    double getOutputCost(size_t nodeID){
+        assert(nodeID<baseEdges.size());
+        const size_t& t=pInstance->getTerminalNode();
+        auto it=baseEdges[nodeID].rbegin();
+        assert(it->first==t);
+        return it->second;
+    }
+
 
 
     size_t maxMoveForEndCut;
@@ -193,6 +210,7 @@ private:
 
     bool useReparametrizedCosts;
     LdpDirectedGraph * pRepamLiftedGraph;
+    std::vector<double> costsOfPaths;
     //LdpDirectedGraph * pRepamBaseGraph;
 
 };
@@ -810,8 +828,9 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 
 
                 if(cutPriceShiftFirst<cutPriceShiftSecond){
+                    double extraInputCost=getInputCost(pointerFirst);
                     pointerFirst=predFirst;
-                    firstCutValue=cutValues[pointerFirst];
+                    firstCutValue=-cutValues[pointerFirst]+extraInputCost;
                     currentMutualCost-=lossOfFirstCost[0];
                     currentNegativeCost-=lossOfFirstCost[1];
                     predFirst=reverseNeighbors[pointerFirst];
@@ -821,7 +840,8 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 
                 }
                 else{
-                    secondCutValue=cutValues[pointerSecond];
+                    double extraOutputCost=getOutputCost(pointerSecond);
+                    secondCutValue=-cutValues[pointerSecond]+extraOutputCost;
                     pointerSecond=descSecond;
 
                     currentMutualCost-=lossOfSecondCost[0];
@@ -837,8 +857,8 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                 lossOfFirstCost=mutualCostToSubtract(pointerFirst,pointerSecond,pathIndex2,true); //TODO take into account what has been removed on the other side
                 lossOfSecondCost=mutualCostToSubtract(pointerSecond,pointerFirst,pathIndex1,false);
 
-                firstCutShifted=-cutValues[predFirst]-lossOfFirstCost[0];
-                secondCutShifted=-cutValues[pointerSecond]-lossOfSecondCost[0];
+                firstCutShifted=-cutValues[predFirst]-lossOfFirstCost[0]+getInputCost(pointerFirst);
+                secondCutShifted=-cutValues[pointerSecond]-lossOfSecondCost[0]+getOutputCost(pointerSecond);
                 shiftsDone++;
 
             }
@@ -1051,7 +1071,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
 
-    cutToEnableConnections();
+
 
     bool tryNext=true;
 
@@ -1077,6 +1097,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
                         auto it=baseEdges[lastVertex].find(firstVertex);
                         if(it!=baseEdges[lastVertex].end()){
                             double cost=it->second;
+                            cost-=getInputCost(j);
+                            cost-=getOutputCost(i);
                             cost+=cummulativeCosts[i][j];
                             costsBetweenPaths[i][j]=cost;
 
@@ -1221,11 +1243,13 @@ std::vector<size_t> LdpPrimalHeuristics<SNC_FACTOR>::findCutCandidates(const std
                 double cutValue=cutValues[currentVertex];
                 size_t nextVertex=neighboringVertices[currentVertex];
                 assert(baseEdges[currentVertex].count(nextVertex)>0);
-                cutValue+=baseEdges[currentVertex][nextVertex];
+                if(nextVertex!=pInstance->getTerminalNode()){
+                    cutValue+=baseEdges[currentVertex][nextVertex]+getInputCost(nextVertex)+getOutputCost(currentVertex);
 
-                if(cutValue>bestCutValue&&nextVertex!=pInstance->getTerminalNode()){
-                    bestCutsInPaths[i]=currentVertex;
-                    bestCutValue=cutValue;
+                    if(cutValue>bestCutValue&&nextVertex!=pInstance->getTerminalNode()){
+                        bestCutsInPaths[i]=currentVertex;
+                        bestCutValue=cutValue;
+                    }
                 }
                 currentVertex=nextVertex;
             }
@@ -1269,7 +1293,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutPaths(const std::vector<size_t>& cutCan
 
 
 template<class SNC_FACTOR>
-void LdpPrimalHeuristics<SNC_FACTOR>::cutAllPaths(){
+void LdpPrimalHeuristics<SNC_FACTOR>::improveAllPaths(){
 
     double primal=currentPrimal();
     //std::cout<<"primal value "<<primal<<std::endl;
@@ -1310,6 +1334,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutAllPaths(){
         }
     }
 
+
+    cutToEnableConnections();
     if(diagnostics()) std::cout<<"call merge paths"<<std::endl;
     mergePaths();
 
@@ -1325,33 +1351,32 @@ template<class SNC_FACTOR>
 double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
     const LdpDirectedGraph& liftedGraph=getLiftedGraph();
     const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
-    std::vector<double> costsOfPaths(numberOfPaths);
+    costsOfPaths=std::vector<double>(numberOfPaths);
 
     size_t counterPaths=0;
     double newPrimalValue=0;
-    std::vector<size_t> newStartingVertices;
+
     assert(startingVertices.size()==numberOfPaths);
     for (int i = 0; i < numberOfPaths; ++i) {
         double pathCost=0;
         if(startingVertices[i]!=pInstance->getTerminalNode()){
-            newPrimalValue+=pInstance->parameters.getOutputCost();
-            newPrimalValue+=pInstance->parameters.getInputCost();
-            pathCost+=pInstance->parameters.getOutputCost();
-            pathCost+=pInstance->parameters.getInputCost();
+
             counterPaths++;
             size_t currentVertex=startingVertices[i];
-            newStartingVertices.push_back(currentVertex);
+            pathCost+=getInputCost(currentVertex);   //output cost is included in the while cycle
+            newPrimalValue+=getInputCost(currentVertex);
+
             std::vector<size_t> newPath;
 
             while(currentVertex!=pInstance->getTerminalNode()){
                // vertexLabels[currentVertex]=counterPaths;
                 newPath.push_back(currentVertex);
                 size_t newVertex=neighboringVertices[currentVertex];
+                double beCost=baseEdges[currentVertex].at(newVertex);
+                newPrimalValue+=beCost;
+                pathCost+=beCost;
                 if(newVertex!=pInstance->getTerminalNode()){
                     assert(vertexLabels[newVertex]==i+1);
-                    double beCost=baseEdges[currentVertex].at(newVertex);
-                    newPrimalValue+=beCost;
-                    pathCost+=beCost;
                 }
                 currentVertex=newVertex;
 
@@ -1360,10 +1385,7 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
         }
         costsOfPaths[i]=pathCost;
     }
-    //startingVertices=newStartingVertices;
-    //assert(counterPaths==startingVertices.size());
-    //assert(adjustedPaths.size()==counterPaths);
-    //numberOfPaths=counterPaths;
+
 
     std::vector<double> costOfPathsBase=costsOfPaths;
     std::vector<double> costOfPathsLifted(numberOfPaths);
@@ -1375,7 +1397,6 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
                 size_t vertex2=iter->first;
 
                 if(vertexLabels[vertex2]==vertexLabels[i]){
-
                     costsOfPaths[vertexLabels[vertex2]-1]+=iter->second;
                     costOfPathsLifted[vertexLabels[vertex2]-1]+=iter->second;
                     newPrimalValue+=iter->second;
@@ -1385,6 +1406,14 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
         }
     }
 
+#ifndef NDEBUG
+    double checkValue=0;
+    for (size_t i = 0; i < numberOfPaths; ++i) {
+        checkValue+=costsOfPaths[i];
+    }
+    assert(abs(checkValue-newPrimalValue)/abs(newPrimalValue)<1e-10);
+
+#endif
 
     assert(!checkImprovement||newPrimalValue<=currentPrimalValue+eps);
     currentPrimalValue=newPrimalValue;
@@ -1399,6 +1428,7 @@ double LdpPrimalHeuristics<SNC_FACTOR>::currentPrimal(bool checkImprovement){
 
 template<class SNC_FACTOR>
 void LdpPrimalHeuristics<SNC_FACTOR>::finalizeResults(bool changeSNC){
+    currentPrimal(true);
     const LdpDirectedGraph& liftedGraph=getLiftedGraph();
     const LdpDirectedGraph& baseGraph=pInstance->getMyGraph();
     std::vector<std::array<SNC_FACTOR*,2>>& single_node_cut_factors_=*pSNCFactors;
@@ -1416,12 +1446,13 @@ void LdpPrimalHeuristics<SNC_FACTOR>::finalizeResults(bool changeSNC){
     std::vector<size_t> newStartingVertices;
     assert(startingVertices.size()==numberOfPaths);
     for (int i = 0; i < numberOfPaths; ++i) {
-        if(startingVertices[i]!=pInstance->getTerminalNode()){
-            newPrimalValue+=pInstance->parameters.getOutputCost();
-            newPrimalValue+=pInstance->parameters.getInputCost();
+        if(startingVertices[i]!=pInstance->getTerminalNode()&&costsOfPaths[i]<=0){
+            //newPrimalValue+=pInstance->parameters.getOutputCost();
+            newPrimalValue+=getInputCost(startingVertices[i]);
+            //newPrimalValue+=pInstance->parameters.getInputCost();
             counterPaths++;
             size_t currentVertex=startingVertices[i];
-            newStartingVertices.push_back(currentVertex);
+            //newStartingVertices.push_back(currentVertex);
             std::vector<size_t> newPath;
             if(changeSNC){
                 auto* pSNC=single_node_cut_factors_[currentVertex][0]->get_factor();
@@ -1441,12 +1472,13 @@ void LdpPrimalHeuristics<SNC_FACTOR>::finalizeResults(bool changeSNC){
                         auto* pSNCIn=single_node_cut_factors_[newVertex][0]->get_factor();
                         pSNCIn->setBaseEdgeActiveWithID(currentVertex);
                     }
-                    newPrimalValue+=getBaseEdgeCost(currentVertex,newVertex);
                 }
+                newPrimalValue+=getBaseEdgeCost(currentVertex,newVertex);
                 currentVertex=newVertex;
 
             }
             adjustedPaths.push_back(newPath);
+            newStartingVertices.push_back(startingVertices[i]);
         }
     }
     startingVertices=newStartingVertices;
