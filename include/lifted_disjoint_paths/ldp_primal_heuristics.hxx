@@ -107,7 +107,7 @@ void cutAllPaths();
 
 private:
 
-    double mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward);
+    std::array<double,2> mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward);
     void finalizeResults(bool changeSNC);
     void evaluateTimeCuts();
     double currentPrimal(bool checkImprovement=true);
@@ -524,7 +524,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::connectToOnePath(size_t indexOfPath, const
 
 
 template<class SNC_FACTOR>
-double LdpPrimalHeuristics<SNC_FACTOR>::mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward){
+std::array<double, 2> LdpPrimalHeuristics<SNC_FACTOR>::mutualCostToSubtract(size_t vertex,size_t otherPathVertex,size_t targetPathIndex, bool useForward){
     const LdpDirectedGraph& liftedGraph=getLiftedGraph();
     const LdpDirectedGraph::edge * beginPointer=nullptr;
     const LdpDirectedGraph::edge * endPointer=nullptr;
@@ -542,6 +542,7 @@ double LdpPrimalHeuristics<SNC_FACTOR>::mutualCostToSubtract(size_t vertex,size_
     }
 
     double valueToSubtract=0;
+    double valueNegativeToSubtract=0;
 
     for (auto iter=beginPointer;iter!=endPointer;iter++) {
         size_t vertex2=iter->first;
@@ -550,15 +551,21 @@ double LdpPrimalHeuristics<SNC_FACTOR>::mutualCostToSubtract(size_t vertex,size_
             if(useForward&&vertex2Time>=timeOfOtherVertex){
               //  std::cout<<vertex<<","<<vertex2<<":"<<iter->second<<std::endl;
                 valueToSubtract+=iter->second;
+                if(iter->second<0){
+                    valueNegativeToSubtract+=iter->second;
+                }
             }
             else if(!useForward&&vertex2Time<=timeOfOtherVertex){
                // std::cout<<vertex<<","<<vertex2<<":"<<iter->second<<std::endl;
                 valueToSubtract+=iter->second;
+                if(iter->second<0){
+                    valueNegativeToSubtract+=iter->second;
+                }
             }
         }
     }
 
-    return valueToSubtract;
+    return {valueToSubtract,valueNegativeToSubtract};
 }
 
 template<class SNC_FACTOR>
@@ -666,6 +673,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
     assert(pointerSecond!=pInstance->getTerminalNode());
 
     double currentMutualCost=cummulativeCosts[pathIndex1][pathIndex2];
+    double currentNegativeCost=negativeMutualCosts[pathIndex1][pathIndex2];
 
 
 
@@ -682,12 +690,13 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
     if(predFirst!=pInstance->getSourceNode()&&descSecond!=pInstance->getTerminalNode()){
         bool proceedSearch=true;
 
-        double lossOfFirstCost=mutualCostToSubtract(pointerFirst,pointerSecond,pathIndex2,true); //TODO take into account what has been removed on the other side
-        double lossOfSecondCost=mutualCostToSubtract(pointerSecond,pointerFirst,pathIndex1,false);
+
+        std::array<double,2> lossOfFirstCost=mutualCostToSubtract(pointerFirst,pointerSecond,pathIndex2,true); //TODO take into account what has been removed on the other side
+        std::array<double,2> lossOfSecondCost=mutualCostToSubtract(pointerSecond,pointerFirst,pathIndex1,false);
 
 
-        double firstCutShifted=-cutValues[predFirst]-lossOfFirstCost;
-        double secondCutShifted=-cutValues[pointerSecond]-lossOfSecondCost;
+        double firstCutShifted=-cutValues[predFirst]-lossOfFirstCost[0];
+        double secondCutShifted=-cutValues[pointerSecond]-lossOfSecondCost[0];
 
 
         //TODO Do some assertions after cuts if the expected costs values correspond. E.g. mutualCost[i][i]-cutValue[i], mutualCost[i][j]==currentMutualCost
@@ -702,15 +711,22 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
             if(firstExists&&!secondExists){  //move the second pointer
                 double cutPrice=itFirst->second+firstCutValue+secondCutShifted;
                 if(cutPrice+currentMutualCost<-eps){//do the cut only if connection has improvement
-                    if(pointerFirst!=lastVertices[pathIndex1]){
-                        cutOnePathWithMutualCostUpdate(pointerFirst);
+                    currentMutualCost-=lossOfSecondCost[0];
+                    currentNegativeCost-=lossOfSecondCost[1];
+                    double positiveMutualCost=currentMutualCost-currentNegativeCost;
+                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
+
+                        if(pointerFirst!=lastVertices[pathIndex1]){
+                            cutOnePathWithMutualCostUpdate(pointerFirst);
+                        }
+                        cutOnePathWithMutualCostUpdate(pointerSecond);
+
+                        size_t newPathIndex2=numberOfPaths-1;
+                        assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                        assert(abs(negativeMutualCosts[pathIndex1][newPathIndex2]-currentNegativeCost)<eps);
+                        baseEdgeVertices={pointerFirst,descSecond};
+                        //cutFound=true;
                     }
-                    cutOnePathWithMutualCostUpdate(pointerSecond);
-                    currentMutualCost-=lossOfSecondCost;
-                    size_t newPathIndex2=numberOfPaths-1;
-                    assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
-                    baseEdgeVertices={pointerFirst,descSecond};
-                    //cutFound=true;
                 }
                 proceedSearch=false;
                 //cut from first and terminate
@@ -719,17 +735,25 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
             else if(secondExists&&!firstExists){  //move the first pointer
                 double cutPrice=itSecond->second+secondCutValue+firstCutShifted;
                 if(cutPrice+currentMutualCost<-eps){
-                    size_t newPathIndex2=pathIndex2;
-                    if(pointerSecond!=startingVertices[pathIndex2]){
-                        cutOnePathWithMutualCostUpdate(reverseNeighbors[pointerSecond]);
-                        newPathIndex2=numberOfPaths-1;
-                    }
-                    cutOnePathWithMutualCostUpdate(predFirst);
+                    currentMutualCost-=lossOfFirstCost[0];
+                    currentNegativeCost-=lossOfFirstCost[1];
 
-                    currentMutualCost-=lossOfFirstCost;
-                    assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
-                    baseEdgeVertices={predFirst,pointerSecond};
-                    //cutFound=true;
+                    double positiveMutualCost=currentMutualCost-currentNegativeCost;
+                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
+
+                        size_t newPathIndex2=pathIndex2;
+                        if(pointerSecond!=startingVertices[pathIndex2]){
+                            cutOnePathWithMutualCostUpdate(reverseNeighbors[pointerSecond]);
+                            newPathIndex2=numberOfPaths-1;
+                        }
+                        cutOnePathWithMutualCostUpdate(predFirst);
+
+
+                        assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                        assert(abs(negativeMutualCosts[pathIndex1][newPathIndex2]-currentNegativeCost)<eps);
+                        baseEdgeVertices={predFirst,pointerSecond};
+                        //cutFound=true;
+                    }
                 }
                 proceedSearch=false;
 
@@ -739,31 +763,42 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                 double cutPriceShiftSecond=itFirst->second+firstCutValue+secondCutShifted;
 
                 if(cutPriceShiftFirst<cutPriceShiftSecond&&cutPriceShiftFirst+currentMutualCost<-eps){   //move first
+                    currentMutualCost-=lossOfFirstCost[0];
+                    currentNegativeCost-=lossOfFirstCost[1];
+                    double positiveMutualCost=currentMutualCost-currentNegativeCost;
+                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
 
-                    size_t newPathIndex2=pathIndex2;
-                    if(pointerSecond!=startingVertices[pathIndex2]){
-                        cutOnePathWithMutualCostUpdate(reverseNeighbors[pointerSecond]);
-                        newPathIndex2=numberOfPaths-1;
+                        size_t newPathIndex2=pathIndex2;
+                        if(pointerSecond!=startingVertices[pathIndex2]){
+                            cutOnePathWithMutualCostUpdate(reverseNeighbors[pointerSecond]);
+                            newPathIndex2=numberOfPaths-1;
+                        }
+                        cutOnePathWithMutualCostUpdate(predFirst);
+
+                        assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                        assert(abs(negativeMutualCosts[pathIndex1][newPathIndex2]-currentNegativeCost)<eps);
+                        baseEdgeVertices={predFirst,pointerSecond};
+                        // cutFound=true;
                     }
-                    cutOnePathWithMutualCostUpdate(predFirst);
-                    currentMutualCost-=lossOfFirstCost;
-                     assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
-                     baseEdgeVertices={predFirst,pointerSecond};
-                   // cutFound=true;
-
 
                 }
                 else if(cutPriceShiftSecond<cutPriceShiftFirst&&cutPriceShiftSecond+currentMutualCost<-eps){       //move second
+                    currentMutualCost-=lossOfSecondCost[0];
+                    currentNegativeCost-=lossOfSecondCost[1];
 
-                    if(pointerFirst!=lastVertices[pathIndex1]){
-                        cutOnePathWithMutualCostUpdate(pointerFirst);
+                    double positiveMutualCost=currentMutualCost-currentNegativeCost;
+                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
+                        if(pointerFirst!=lastVertices[pathIndex1]){
+                            cutOnePathWithMutualCostUpdate(pointerFirst);
+                        }
+                        cutOnePathWithMutualCostUpdate(pointerSecond);
+
+                        size_t newPathIndex2=numberOfPaths-1;
+                        assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
+                        assert(abs(negativeMutualCosts[pathIndex1][newPathIndex2]-currentNegativeCost)<eps);
+                        baseEdgeVertices={pointerFirst,descSecond};
+                        //  cutFound=true;
                     }
-                    cutOnePathWithMutualCostUpdate(pointerSecond);
-                    currentMutualCost-=lossOfSecondCost;
-                    size_t newPathIndex2=numberOfPaths-1;
-                    assert(abs(cummulativeCosts[pathIndex1][newPathIndex2]-currentMutualCost)<eps);
-                     baseEdgeVertices={pointerFirst,descSecond};
-                  //  cutFound=true;
 
                 }
                 proceedSearch=false;
@@ -777,21 +812,20 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                 if(cutPriceShiftFirst<cutPriceShiftSecond){
                     pointerFirst=predFirst;
                     firstCutValue=cutValues[pointerFirst];
-                    currentMutualCost-=lossOfFirstCost;
+                    currentMutualCost-=lossOfFirstCost[0];
+                    currentNegativeCost-=lossOfFirstCost[1];
                     predFirst=reverseNeighbors[pointerFirst];
                     if(predFirst==pInstance->getSourceNode()){
                         break;
                     }
-
-
-
 
                 }
                 else{
                     secondCutValue=cutValues[pointerSecond];
                     pointerSecond=descSecond;
 
-                    currentMutualCost-=lossOfSecondCost;
+                    currentMutualCost-=lossOfSecondCost[0];
+                    currentNegativeCost-=lossOfSecondCost[1];
 
                     descSecond=neighboringVertices[descSecond];
                     if(descSecond==pInstance->getTerminalNode()){
@@ -803,8 +837,8 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                 lossOfFirstCost=mutualCostToSubtract(pointerFirst,pointerSecond,pathIndex2,true); //TODO take into account what has been removed on the other side
                 lossOfSecondCost=mutualCostToSubtract(pointerSecond,pointerFirst,pathIndex1,false);
 
-                firstCutShifted=-cutValues[predFirst]-lossOfFirstCost;
-                secondCutShifted=-cutValues[pointerSecond]-lossOfSecondCost;
+                firstCutShifted=-cutValues[predFirst]-lossOfFirstCost[0];
+                secondCutShifted=-cutValues[pointerSecond]-lossOfSecondCost[0];
                 shiftsDone++;
 
             }
@@ -846,7 +880,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                     if(it==baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                        if(cummulativeCosts[i][j]<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+                        //if(cummulativeCosts[i][j]<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+                        if(cummulativeCosts[i][j]<bestValues[i]){
                               bestNeighbors[i]=j;
                               bestValues[i]=cummulativeCosts[i][j];
 
@@ -857,7 +892,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                         double connectionValue=cummulativeCosts[i][j]+it->second;
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                        if(connectionValue<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+//                        if(connectionValue<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+                        if(connectionValue<bestValues[i]){
                             bestNeighbors[i]=j;
                             bestValues[i]=connectionValue;
                         }
@@ -911,10 +947,11 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
             //if(firstVertex>lastVertex){
             auto it=baseEdges[lastVertex].find(firstVertex);
             if(it==baseEdges[lastVertex].end()){
-                double negativeCost=negativeMutualCosts[firstPathIndex][secondPathIndex];
-                double positiveCost=cummulativeCosts[firstPathIndex][secondPathIndex]-negativeMutualCosts[firstPathIndex][secondPathIndex];
+               // double negativeCost=negativeMutualCosts[firstPathIndex][secondPathIndex];
+               // double positiveCost=cummulativeCosts[firstPathIndex][secondPathIndex]-negativeMutualCosts[firstPathIndex][secondPathIndex];
                // assert(abs(cummulativeCosts[firstPathIndex][secondPathIndex]-bestValues[i])<eps&&abs(negativeCost)*0.25>=positiveCost);
-                if(abs(negativeCost)*0.25>=positiveCost){
+                //if(abs(negativeCost)*0.25>=positiveCost){
+                if(cummulativeCosts[firstPathIndex][secondPathIndex]<0){
                     if(diagnostics())std::cout<<"finding best cut "<<firstPathIndex<<","<<secondPathIndex<<std::endl;
                     std::array<size_t,2> baseEdge=findBestCut(firstPathIndex,secondPathIndex);
                     if(baseEdge[0]!=pInstance->getTerminalNode()){
