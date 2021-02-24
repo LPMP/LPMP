@@ -214,6 +214,9 @@ public:
         return repamCostInHeuristic;
     }
 
+    double getMergeThreshold()const{
+        return mergeThreshold;
+    }
 
 
 
@@ -276,6 +279,8 @@ private:
 
      bool usePreIter;
      bool repamCostInHeuristic;
+
+     double mergeThreshold;
 
 };
 
@@ -593,6 +598,15 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          usePreIter=1;
      }
      controlOutput<<"Using mcf reparametrization in pre-iteration step "<<usePreIter<<std::endl;
+
+
+     if(parameters.count("MERGE_THRESHOLD")>0){
+         mergeThreshold=std::min(std::stod(parameters["MERGE_THRESHOLD"]),1.0);
+     }
+     else{
+         mergeThreshold=0.25;
+     }
+     controlOutput<<"merge threshold "<<mergeThreshold<<std::endl;
 
 
 

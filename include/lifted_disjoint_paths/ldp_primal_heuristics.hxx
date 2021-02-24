@@ -211,6 +211,8 @@ private:
     bool useReparametrizedCosts;
     LdpDirectedGraph * pRepamLiftedGraph;
     std::vector<double> costsOfPaths;
+
+    double mergeThreshold;
     //LdpDirectedGraph * pRepamBaseGraph;
 
 };
@@ -323,6 +325,8 @@ LdpPrimalHeuristics<SNC_FACTOR>::LdpPrimalHeuristics(const std::vector<size_t>& 
 
 
    maxMoveForEndCut=10;
+
+   mergeThreshold=pInstance->parameters.getMergeThreshold();
 
 
 
@@ -733,7 +737,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                     currentMutualCost-=lossOfSecondCost[0];
                     currentNegativeCost-=lossOfSecondCost[1];
                     double positiveMutualCost=currentMutualCost-currentNegativeCost;
-                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
+                    if(positiveMutualCost<=mergeThreshold*abs(currentNegativeCost)){
 
                         if(pointerFirst!=lastVertices[pathIndex1]){
                             expectedPrimal+=getOutputCost(pointerFirst)+getInputCost(neighboringVertices[pointerFirst])-cutValues[pointerFirst]-baseEdges[pointerFirst].at(neighboringVertices[pointerFirst]);
@@ -766,7 +770,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                     currentNegativeCost-=lossOfFirstCost[1];
 
                     double positiveMutualCost=currentMutualCost-currentNegativeCost;
-                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
+                    if(positiveMutualCost<=mergeThreshold*abs(currentNegativeCost)){
 
                         size_t newPathIndex2=pathIndex2;
                         if(pointerSecond!=startingVertices[pathIndex2]){
@@ -801,7 +805,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                     currentMutualCost-=lossOfFirstCost[0];
                     currentNegativeCost-=lossOfFirstCost[1];
                     double positiveMutualCost=currentMutualCost-currentNegativeCost;
-                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
+                    if(positiveMutualCost<=mergeThreshold*abs(currentNegativeCost)){
 
                         size_t newPathIndex2=pathIndex2;
                         if(pointerSecond!=startingVertices[pathIndex2]){
@@ -830,7 +834,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
                     currentNegativeCost-=lossOfSecondCost[1];
 
                     double positiveMutualCost=currentMutualCost-currentNegativeCost;
-                    if(positiveMutualCost<=0.25*abs(currentNegativeCost)){
+                    if(positiveMutualCost<=mergeThreshold*abs(currentNegativeCost)){
                         if(pointerFirst!=lastVertices[pathIndex1]){
 
                             expectedPrimal+=getOutputCost(pointerFirst)+getInputCost(neighboringVertices[pointerFirst])-cutValues[pointerFirst]-baseEdges[pointerFirst].at(neighboringVertices[pointerFirst]);
@@ -938,7 +942,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                     if(it==baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                        //if(cummulativeCosts[i][j]<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+                        //if(cummulativeCosts[i][j]<bestValues[i]&&abs(negativeCost)*mergeThreshold>=positiveCost){
                         if(cummulativeCosts[i][j]<bestValues[i]){
                               bestNeighbors[i]=j;
                               bestValues[i]=cummulativeCosts[i][j];
@@ -950,7 +954,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
                         double connectionValue=cummulativeCosts[i][j]+it->second;
                         double negativeCost=negativeMutualCosts[i][j];
                         double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-//                        if(connectionValue<bestValues[i]&&abs(negativeCost)*0.25>=positiveCost){
+//                        if(connectionValue<bestValues[i]&&abs(negativeCost)*mergeThreshold>=positiveCost){
                         if(connectionValue<bestValues[i]){
                             bestNeighbors[i]=j;
                             bestValues[i]=connectionValue;
@@ -1007,8 +1011,8 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
             if(it==baseEdges[lastVertex].end()){
                // double negativeCost=negativeMutualCosts[firstPathIndex][secondPathIndex];
                // double positiveCost=cummulativeCosts[firstPathIndex][secondPathIndex]-negativeMutualCosts[firstPathIndex][secondPathIndex];
-               // assert(abs(cummulativeCosts[firstPathIndex][secondPathIndex]-bestValues[i])<eps&&abs(negativeCost)*0.25>=positiveCost);
-                //if(abs(negativeCost)*0.25>=positiveCost){
+               // assert(abs(cummulativeCosts[firstPathIndex][secondPathIndex]-bestValues[i])<eps&&abs(negativeCost)*mergeThreshold>=positiveCost);
+                //if(abs(negativeCost)*mergeThreshold>=positiveCost){
                 if(cummulativeCosts[firstPathIndex][secondPathIndex]<0){
                     if(diagnostics())std::cout<<"finding best cut "<<firstPathIndex<<","<<secondPathIndex<<std::endl;
                     std::array<size_t,2> baseEdge=findBestCut(firstPathIndex,secondPathIndex);
@@ -1053,7 +1057,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
 //                    if(it==baseEdges[lastVertex].end()&&cummulativeCosts[i][j]<0){
 //                        double negativeCost=negativeMutualCosts[i][j];
 //                        double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-//                        if(cummulativeCosts[i][j]<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
+//                        if(cummulativeCosts[i][j]<bestNeighborValue&&abs(negativeCost)*mergeThreshold>=positiveCost){
 //                              bestNeighbor=j;
 //                              bestNeighborValue=cummulativeCosts[i][j];
 
@@ -1070,7 +1074,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
 //                        double connectionValue=cummulativeCosts[i][j]+it->second;
 //                        double negativeCost=negativeMutualCosts[i][j];
 //                        double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-//                        if(connectionValue<bestNeighborValue&&abs(negativeCost)*0.25>=positiveCost){
+//                        if(connectionValue<bestNeighborValue&&abs(negativeCost)*mergeThreshold>=positiveCost){
 //                            bestNeighbor=j;
 //                            bestNeighborValue=connectionValue;
 //                        }
@@ -1088,7 +1092,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::cutToEnableConnections(){
 //            if(it==baseEdges[lastVertex].end()){
 //                double negativeCost=negativeMutualCosts[i][bestNeighbor];
 //                double positiveCost=cummulativeCosts[i][bestNeighbor]-negativeMutualCosts[i][bestNeighbor];
-//                assert(cummulativeCosts[i][bestNeighbor]<0&&abs(negativeCost)*0.25>=positiveCost);
+//                assert(cummulativeCosts[i][bestNeighbor]<0&&abs(negativeCost)*mergeThreshold>=positiveCost);
 //                if(diagnostics())std::cout<<"finding best cut "<<i<<","<<bestNeighbor<<std::endl;
 //                std::array<size_t,2> baseEdge=findBestCut(i,bestNeighbor);
 //                if(baseEdge[0]!=pInstance->getTerminalNode()){
@@ -1144,7 +1148,7 @@ void LdpPrimalHeuristics<SNC_FACTOR>::mergePaths(){
 
                                 double negativeCost=negativeMutualCosts[i][j];
                                 double positiveCost=cummulativeCosts[i][j]-negativeMutualCosts[i][j];
-                                if(abs(negativeCost)*0.25>=positiveCost){
+                                if(abs(negativeCost)*mergeThreshold>=positiveCost){
 
                                     bestNeighborValue=cost;
                                     bestNeighbor=j;
