@@ -749,7 +749,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 #ifndef DEBUG
                         currentPrimal(false);
                         assert(abs(currentPrimalValue-expectedPrimal)/abs(currentPrimalValue)<1e-10);
-                        std::cout<<"cuts done "<<std::endl;
+                        if(diagnostics()) std::cout<<"cuts done "<<std::endl;
 #endif
                         //cutFound=true;
                     }
@@ -784,7 +784,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 #ifndef DEBUG
                         currentPrimal(false);
                         assert(abs(currentPrimalValue-expectedPrimal)/abs(currentPrimalValue)<1e-10);
-                        std::cout<<"cuts done "<<std::endl;
+                        if(diagnostics()) std::cout<<"cuts done "<<std::endl;
 #endif
                         //cutFound=true;
                     }
@@ -818,7 +818,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 #ifndef DEBUG
                         currentPrimal(false);
                         assert(abs(currentPrimalValue-expectedPrimal)/abs(currentPrimalValue)<1e-10);
-                        std::cout<<"cuts done "<<std::endl;
+                        if(diagnostics()) std::cout<<"cuts done "<<std::endl;
 #endif
                         // cutFound=true;
                     }
@@ -845,7 +845,7 @@ std::array<size_t,2> LdpPrimalHeuristics<SNC_FACTOR>::findBestCut(size_t pathInd
 #ifndef DEBUG
                         currentPrimal(false);
                         assert(abs(currentPrimalValue-expectedPrimal)/abs(currentPrimalValue)<1e-10);
-                        std::cout<<"cuts done "<<std::endl;
+                        if(diagnostics()) std::cout<<"cuts done "<<std::endl;
 #endif
                         //  cutFound=true;
                     }
