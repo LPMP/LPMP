@@ -905,6 +905,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         double controlPrimalValue=0;
         double controlLiftedValue=0;
         double controlBaseValue=0;
+        double primalBaseComputedFromPaths=0;
         //std::vector<size_t> labels(nr_nodes());
         for (size_t i = 0; i < currentPrimalStartingVertices.size(); ++i) {
             // std::cout<<"path "<<i<<std::endl;
@@ -952,6 +953,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
                 if(!hasPathFactor&&!hasCutFactor) assert(costsFromOtherFactors[currentNode][currentPrimalDescendants[currentNode]]==0);
                 currentNode=currentPrimalDescendants[currentNode];
             }
+            primalBaseComputedFromPaths+=sncFactorsCost+factorPathCost;
             if(std::abs(pathCost-factorPathCost-sncFactorsCost)>eps){
                 std::cout<<"cost mismatch in path "<<i<<", factor complete "<<(factorPathCost+sncFactorsCost)<<", control "<<pathCost<<"has path "<<hasPathFactor<<", cost snc "<<sncFactorsCost<<", other factors: "<<factorPathCost<<", has cut "<<hasCutFactor<<std::endl;
                 currentNode=currentPrimalStartingVertices[i];
@@ -974,6 +976,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             }
 
         }
+        assert(abs(controlPrimalValue-primalBaseComputedFromPaths)/(abs(controlPrimalValue))<1e-10);
         controlBaseValue=controlPrimalValue;
 
         for (int v0 = 0; v0 < nr_nodes(); ++v0) {
