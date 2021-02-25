@@ -876,7 +876,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         double diff=std::abs(primalValue-controlPrimalValue);
         diff/=abs(primalValue);
         double epsilon=1e-13;
-      //  if(diff>=epsilon){
+        if(diff>=epsilon){
             std::cout<<"computed primal value "<<primalValue<<std::endl;
             std::cout<<"control primal value "<<controlPrimalValue<<std::endl;
             std::cout<<"computed base primal value "<<primalBaseValue<<std::endl;
@@ -885,7 +885,7 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
             std::cout<<"control lifted base value "<<controlLiftedValue<<std::endl;
             std::cout<<"difference "<<diff<<std::endl;
 
-        //}
+        }
 
         assert(diff<epsilon);
     }
