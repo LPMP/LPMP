@@ -1337,6 +1337,15 @@ void LdpPrimalHeuristics<SNC_FACTOR>::finalizeResults(bool changeSNC){
             adjustedPaths.push_back(newPath);
             newStartingVertices.push_back(startingVertices[i]);
         }
+        else{
+            size_t currentVertex=startingVertices[i];
+            while(currentVertex!=pInstance->getTerminalNode()){
+                size_t nextVertex=neighboringVertices[currentVertex];
+                neighboringVertices[currentVertex]=pInstance->getTerminalNode();
+                currentVertex=nextVertex;
+            }
+
+        }
 
     }
     startingVertices=newStartingVertices;
