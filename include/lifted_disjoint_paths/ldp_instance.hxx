@@ -83,10 +83,17 @@ public:
     }
 
     void setOutputFileName(const std::string& fileName){
-        size_t lastDot=fileName.find_last_of(".");
-        outputFilePrefix=fileName.substr(0,lastDot);
-        outputFileSuffix=fileName.substr(lastDot,fileName.size());
-        outputFileName=fileName;
+        if(!fileName.empty()){
+            size_t lastDot=std::min(fileName.find_last_of("."),fileName.size());
+            outputFilePrefix=fileName.substr(0,lastDot);
+            outputFileSuffix=fileName.substr(lastDot,fileName.size());
+            outputFileName=fileName;
+        }
+        else{
+            outputFilePrefix="output";
+            outputFileSuffix=".txt";
+            outputFileName="output.txt";
+        }
     }
 
     const std::string& getOutputFilePrefix()const{

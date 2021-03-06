@@ -218,6 +218,10 @@ public:
         return mergeThreshold;
     }
 
+    bool isStoreIntermediate()const{
+        return storeIntermediateSolutions;
+    }
+
 
 
 private:
@@ -281,6 +285,8 @@ private:
      bool repamCostInHeuristic;
 
      double mergeThreshold;
+
+     bool storeIntermediateSolutions;
 
 };
 
@@ -607,6 +613,15 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          mergeThreshold=0.25;
      }
      controlOutput<<"merge threshold "<<mergeThreshold<<std::endl;
+
+
+     if(parameters.count("SAVE_INTERMEDIATE")>0){
+         storeIntermediateSolutions=std::stoi(parameters["SAVE_INTERMEDIATE"]);
+     }
+     else{
+         storeIntermediateSolutions=1;
+     }
+     controlOutput<<"Store intermediate solutions "<<storeIntermediateSolutions<<std::endl;
 
 
 

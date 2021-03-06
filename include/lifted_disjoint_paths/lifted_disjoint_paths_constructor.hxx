@@ -1176,16 +1176,18 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         bestPrimalSolution=paths;
         bestPrimalLabels=currentPrimalLabels;
 
-        std::string fileForSave=pInstance->getOutputFilePrefix()+"-iter-"+std::to_string(iterNumber)+pInstance->getOutputFileSuffix();
-        std::ofstream file;
-        file.open(fileForSave, std::ofstream::out);
-        if(!file.is_open()) {
-            throw std::runtime_error("could not open file " + fileForSave);
-        }
-        std::stringstream solution;
-        WritePrimal(solution);
+        if(pInstance->parameters.isStoreIntermediate()){
+            std::string fileForSave=pInstance->getOutputFilePrefix()+"-iter-"+std::to_string(iterNumber)+pInstance->getOutputFileSuffix();
+            std::ofstream file;
+            file.open(fileForSave, std::ofstream::out);
+            if(!file.is_open()) {
+                throw std::runtime_error("could not open file " + fileForSave);
+            }
+            std::stringstream solution;
+            WritePrimal(solution);
 
-        file << solution.str();
+            file << solution.str();
+        }
 
         clusteringValue=pInstance->evaluateClustering(currentPrimalLabels);
 
