@@ -42,7 +42,9 @@
 namespace LPMP{
 
 template<class SOLVER,class INSTANCE>
-void constructProblemFromSolver(SOLVER& solver,const INSTANCE& instance){
+void constructProblemFromSolver(SOLVER& solver,INSTANCE& instance){
+    std::string outputFileName=solver.getOutputFileName();
+    instance.setOutputFileName(outputFileName);
     solver.GetProblemConstructor().construct(instance);
 }
 

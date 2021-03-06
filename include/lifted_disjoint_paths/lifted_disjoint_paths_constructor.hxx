@@ -30,7 +30,12 @@ public:
     using ldp_path_factor_type = typename PATH_FACTOR::FactorType;
 
     template<typename SOLVER>
-    lifted_disjoint_paths_constructor(SOLVER& solver) : lp_(&solver.GetLP()) {}
+    lifted_disjoint_paths_constructor(SOLVER& solver) : lp_(&solver.GetLP()),
+        iterNumber(solver.getIterationNumber())
+        //outputFileName(solver.getOutputFileName())
+    {
+
+    }
 
     //void construct(const lifted_disjoint_paths_instance& i);
     void construct(const lifted_disjoint_paths::LdpInstance& instance);
@@ -76,6 +81,7 @@ private:
 
     void sncDebug();
 
+  //  const std::string& outputFileName;
     LP<FMC> *lp_;
     using mcf_solver_type = MCF::SSP<long, double>;
     std::unique_ptr<mcf_solver_type> mcf_; // minimum cost flow factor for base edges
@@ -104,6 +110,8 @@ private:
     //std::vector<std::tuple<size_t,size_t,const double*,const double*>> controlMCCosts;
     std::vector<const double*> controlMCCostsIn;
     std::vector<const double*> controlMCCostsOut;
+
+    const size_t& iterNumber;
 
     bool useGAEC=false;
 
@@ -168,6 +176,14 @@ bool lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
 template <class FACTOR_MESSAGE_CONNECTION, class SINGLE_NODE_CUT_FACTOR,class CUT_FACTOR_CONT, class SINGLE_NODE_CUT_LIFTED_MESSAGE,class SNC_CUT_MESSAGE,class PATH_FACTOR,class SNC_PATH_MESSAGE>
 void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CUT_FACTOR, CUT_FACTOR_CONT, SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>::WritePrimal(std::stringstream& strStream) const{
+
+//    for (int i = 0; i < bestPrimalSolution.size(); ++i) {
+//        for (int j = 0; j < bestPrimalSolution[i].size(); ++j) {
+//            strStream<<bestPrimalSolution[i][j]<<" ";
+//        }
+//        strStream<<"\n";
+//    }
+
 
     for (int i = 0; i < nr_nodes(); ++i) {
         size_t vertex=i;
@@ -898,6 +914,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 {
     //If used here, more stable primal solution. However, slower convergence.
     //  if(diagnostics()) std::cout<<"computing primal"<<std::endl;
+ //   std::cout<<"primal in iteration "<<iterNumber<<std::endl;
+   // std::cout<<"output file name "<<outputFileName<<std::endl;
+   // std::string fileForSave=pInstance->getOutputFilePrefix()+"-iter-"+std::to_string(iterNumber)+pInstance->getOutputFileSuffix();
+    //std::cout<<"file name to save "<<fileForSave<<std::endl;
     double lbBefore=0;
     double lbAfter=0;
     if(debug()) lbBefore=controlLowerBound();
@@ -1155,6 +1175,17 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
         bestPrimalValue=primalValue;
         bestPrimalSolution=paths;
         bestPrimalLabels=currentPrimalLabels;
+
+        std::string fileForSave=pInstance->getOutputFilePrefix()+"-iter-"+std::to_string(iterNumber)+pInstance->getOutputFileSuffix();
+        std::ofstream file;
+        file.open(fileForSave, std::ofstream::out);
+        if(!file.is_open()) {
+            throw std::runtime_error("could not open file " + fileForSave);
+        }
+        std::stringstream solution;
+        WritePrimal(solution);
+
+        file << solution.str();
 
         clusteringValue=pInstance->evaluateClustering(currentPrimalLabels);
 

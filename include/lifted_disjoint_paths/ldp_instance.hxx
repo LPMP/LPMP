@@ -82,6 +82,24 @@ public:
         return parameters.getMaxTimeBase();
     }
 
+    void setOutputFileName(const std::string& fileName){
+        size_t lastDot=fileName.find_last_of(".");
+        outputFilePrefix=fileName.substr(0,lastDot);
+        outputFileSuffix=fileName.substr(lastDot,fileName.size());
+        outputFileName=fileName;
+    }
+
+    const std::string& getOutputFilePrefix()const{
+        return outputFilePrefix;
+    }
+
+    const std::string& getOutputFileSuffix()const{
+        return outputFileSuffix;
+    }
+
+    const std::string& getOutputFileName()const{
+        return outputFileName;
+    }
 
     const std::vector<std::unordered_set<size_t>>* getPReachable(){
         return &reachable;
@@ -224,6 +242,10 @@ private:
     double baseThreshold;
     bool keepAllToFirst;
     bool keepAllToLast;
+
+    std::string outputFileName;
+    std::string outputFilePrefix;
+    std::string outputFileSuffix;
 
 
 
