@@ -184,9 +184,86 @@ public:
         // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
         // }
 #endif
-
-
     }
+
+//TODO: Do not delete this! Make it work later!
+//    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
+//    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+//    {
+//         std::vector<double> liftedCosts=r.getLiftedCosts();
+//         const std::vector<double>& baseCosts=r.getBaseCosts();
+
+//         std::vector<double> liftedMM=r.getAllLiftedMinMarginals();
+//         for (size_t i = 0; i < liftedCosts.size(); ++i) {
+//             liftedMM[i]*=0.5;
+//             liftedCosts[i]-=liftedMM[i];
+//         }
+//         std::vector<double> baseMM=r.getAllBaseMinMarginals(&baseCosts, &liftedCosts);
+
+//         std::vector<size_t> scalingLifted(liftedCosts.size());
+//         std::vector<size_t> scalingBase(baseCosts.size());
+
+
+//         for(auto it=msg_begin; it!=msg_end; ++it)
+//         {
+
+//             auto& msg = (*it).GetMessageOp();
+//             if(msg.dimension==0){
+//                 size_t index=msg.vertexIndexInSnc[0];
+//                 if(msg.isLifted.at(0)){
+//                     scalingLifted.at(index)++;
+//                 }
+//                 else{
+//                     scalingBase.at(index)++;
+//                 }
+//             }
+//             else{
+//                 for (size_t j = 0; j < msg.dimension; ++j) {
+//                     size_t index=msg.vertexIndexInSnc.at(j);
+//                     if(msg.isLifted.at(j)){
+//                         scalingLifted.at(index)++;
+//                     }
+//                     else{
+//                         scalingBase.at(index)++;
+//                     }
+//                 }
+//             }
+
+//         }
+
+//         for(auto it=msg_begin; it!=msg_end; ++it)
+//         {
+
+//             auto& msg = (*it).GetMessageOp();
+//             if(msg.dimension==0){
+//                 size_t index=msg.vertexIndexInSnc[0];
+//                 double delta=0;
+//                 if(msg.isLifted.at(0)){
+//                     delta=liftedMM.at(index)/double(scalingLifted.at(index));
+//                 }
+//                 else{
+//                     delta=baseMM.at(index)/double(scalingBase.at(index));
+//                 }
+//                 (*it)[0] -= omega*delta;
+
+//             }
+//             else{
+//                 for (size_t j = 0; j < msg.dimension; ++j) {
+//                     size_t index=msg.vertexIndexInSnc.at(j);
+//                     double delta=0;
+//                     if(msg.isLifted.at(j)){
+//                         delta=liftedMM.at(index)/double(scalingLifted.at(index));
+//                     }
+//                     else{
+//                         delta=baseMM.at(index)/double(scalingBase.at(index));
+//                     }
+//                     (*it)[j] -= omega*delta;
+//                 }
+//             }
+
+//         }
+//    }
+
 
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)

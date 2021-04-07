@@ -927,25 +927,74 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         double bestDescValue=0;
         size_t bestDescVertexID=getVertexToReach();
 
-         //Search for best descendant
-        const LdpDirectedGraph::edge* vertexIt=neighborsBegin(currentNode);
-        const LdpDirectedGraph::edge* end=neighborsEnd(currentNode);
+        //Search for best descendant
+        if(isOutFlow){
+            const LdpDirectedGraph::edge* vertexIt=neighborsBegin(currentNode);
+            const LdpDirectedGraph::edge* end=neighborsEnd(currentNode);
 
 
-        for (;vertexIt!=end;vertexIt++) {
+            for (;vertexIt!=end;vertexIt++) {
 
-            size_t desc=vertexIt->first;
+                size_t desc=vertexIt->first;
 
-            if(desc==vertexIDToIgnore||desc==getVertexToReach()) continue;
+                if(desc==vertexIDToIgnore||desc==getVertexToReach()) continue;
 
-            if(isInGivenInterval(desc,mostDistantNeighborID)){
+                if(isInGivenInterval(desc,mostDistantNeighborID)){
 
-                double value=ldpInstance.sncTDStructure[desc];
-                if(bestDescValue>value){
-                    bestDescValue=value;
-                    bestDescVertexID=desc;
+                    double value=ldpInstance.sncTDStructure[desc];
+                    if(bestDescValue>value){
+                        bestDescValue=value;
+                        bestDescVertexID=desc;
+                    }
+                }
+                else{
+                    break;
                 }
             }
+        }
+        else{
+            const LdpDirectedGraph::edge* vertexIt=neighborsEnd(currentNode);
+
+            const LdpDirectedGraph::edge* begin=neighborsBegin(currentNode);
+            bool doSearch=vertexIt!=begin;
+            if(doSearch) vertexIt--;
+            while(doSearch){
+                size_t desc=vertexIt->first;
+
+                if(desc==vertexIDToIgnore||desc==getVertexToReach()){
+                    if(vertexIt==begin){
+                        doSearch=false;
+                    }
+                    else{
+                        vertexIt--;
+                    }
+                }
+                else{
+
+                    if(isInGivenInterval(desc,mostDistantNeighborID)){
+
+                        double value=ldpInstance.sncTDStructure[desc];
+                        if(bestDescValue>value){
+                            bestDescValue=value;
+                            bestDescVertexID=desc;
+                        }
+
+                        if(vertexIt==begin){
+                            doSearch=false;
+                        }
+                        else{
+                            vertexIt--;
+                        }
+
+                    }
+                    else{
+                        doSearch=false;
+                    }
+                }
+
+
+            }
+
         }
 
 
