@@ -917,6 +917,8 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
 
 
 
+   // double bsfValue=0;
+   // size_t bsfNode=getVertexToReach();
 
     for (size_t i=0; i < traverseOrder.size()-1; ++i) {
 
@@ -945,6 +947,9 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
                     if(bestDescValue>value){
                         bestDescValue=value;
                         bestDescVertexID=desc;
+//                        if(desc==bsfNode){
+//                            break;
+//                        }
                     }
                 }
                 else{
@@ -977,6 +982,9 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
                         if(bestDescValue>value){
                             bestDescValue=value;
                             bestDescVertexID=desc;
+//                            if(desc==bsfNode){
+//                                break;
+//                            }
                         }
 
                         if(vertexIt==begin){
@@ -998,6 +1006,11 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         }
 
 
+//        double value=ldpInstance.sncTDStructure[currentNode]+bestDescValue;
+//        if(value<bsfValue){
+//            bsfValue=value;
+//            bsfNode=currentNode;
+//        }
 
         ldpInstance.sncTDStructure[currentNode]+=bestDescValue;
         ldpInstance.sncNeighborStructure[currentNode]=bestDescVertexID;
