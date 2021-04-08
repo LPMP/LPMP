@@ -247,6 +247,103 @@ public:
 
     }
 
+    template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
+    static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+    {
+         std::vector<double> liftedCosts=r.getLiftedCosts();
+         const std::vector<double>& baseCosts=r.getBaseCosts();
+
+         std::vector<double> liftedMM=r.getAllLiftedMinMarginals();
+         for (size_t i = 0; i < liftedCosts.size(); ++i) {
+             liftedMM[i]*=0.5;
+             liftedCosts[i]-=liftedMM[i];
+         }
+         std::vector<double> baseMM=r.getAllBaseMinMarginals(&baseCosts, &liftedCosts);
+
+         std::vector<size_t> scalingLifted(liftedCosts.size());
+         std::vector<size_t> scalingBase(baseCosts.size());
+
+
+         for(auto it=msg_begin; it!=msg_end; ++it)
+         {
+
+             auto& msg = (*it).GetMessageOp();
+
+             size_t i=0;
+             double delta=0;
+             for (;i<msg.nodeIndicesInSnc.size();i++) {
+                 size_t index=msg.nodeIndicesInSnc[i];
+                 assert(index<scalingBase.size());
+                 scalingBase[index]++;
+
+             }
+             if(msg.containsLiftedEdge){
+                 assert(msg.nodeIndexOfLiftedEdge<scalingLifted.size());
+                 scalingLifted[msg.nodeIndexOfLiftedEdge]++;
+             }
+
+         }
+
+         for(auto it=msg_begin; it!=msg_end; ++it)
+         {
+
+             auto& msg = (*it).GetMessageOp();
+
+             size_t i=0;
+             double delta=0;
+             for (;i<msg.nodeIndicesInSnc.size();i++) {
+                 size_t index=msg.nodeIndicesInSnc[i];
+                 assert(index<scalingBase.size());
+                 double delta=baseMM[index]/double(scalingBase[index]);
+                 (*it)[i]-=omega*delta;
+
+             }
+             if(msg.containsLiftedEdge){
+                 assert(msg.nodeIndexOfLiftedEdge<scalingLifted.size());
+                 size_t index=msg.nodeIndexOfLiftedEdge;
+                 double delta=liftedMM[index]/double(scalingLifted[index]);
+                 (*it)[i]-=omega*delta;
+             }
+
+         }
+    }
+
+    template<typename CUT_FACTOR, typename MSG_ARRAY>
+    static void SendMessagesToRight(const CUT_FACTOR& l, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
+    {
+
+        std::pair<LdpTwoLayerGraph,double> allMM= l.getAllMinMarginals();
+        LdpTwoLayerGraph& baseMM=allMM.first;
+        double liftedMM=allMM.second;
+
+        for(auto it=msg_begin; it!=msg_end; ++it)
+        {
+
+            auto& msg = (*it).GetMessageOp();
+
+            size_t i=0;
+            for (;i<msg.nodeIndicesInCut.size();i++) {
+
+                if(msg.sncIsOut){
+                    double delta=baseMM.getForwardEdgeCost(msg.sncNodeIDindexInCut,msg.nodeIndicesInCut[i]);
+                    delta*=0.5;
+                    (*it)[i]-=omega*delta;
+                }
+                else{
+                    double delta=baseMM.getBackwardEdgeCost(msg.sncNodeIDindexInCut,msg.nodeIndicesInCut[i]);
+                    delta*=0.5;
+                    (*it)[i]-=omega*delta;
+                }
+            }
+            if(msg.containsLiftedEdge){
+                (*it)[i]-=omega*0.5*liftedMM;
+            }
+
+
+        }
+    }
+
+
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
     void send_message_to_left(const SINGLE_NODE_CUT_FACTOR& r, MSG& msg, const double omega = 1.0)
     {
