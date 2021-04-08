@@ -1154,20 +1154,55 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
             bestValue=ldpInstance.sncBUStructure[currentVertex]+nodeCost;
             bestIndex=nodeID;
         }
-        const LdpDirectedGraph::edge* vertexIt=neighborsRevBegin(currentVertex);
-        const LdpDirectedGraph::edge* end=neighborsRevEnd(currentVertex);
-        for (;vertexIt!=end;vertexIt++) {
+        if(!isOutFlow){
+            const LdpDirectedGraph::edge* vertexIt=neighborsRevBegin(currentVertex);
+            const LdpDirectedGraph::edge* end=neighborsRevEnd(currentVertex);
+            for (;vertexIt!=end;vertexIt++) {
 
-            size_t pred=vertexIt->first;
-            assert(pred<ldpInstance.getNumberOfVertices());
+                size_t pred=vertexIt->first;
+                if(pred>nodeID) break;
+                assert(pred<ldpInstance.getNumberOfVertices());
 
-            bool newConstraint=(pred==nodeID||!ldpInstance.sncVerticesInScope[pred]);
-            if(newConstraint) continue;
-            assert(ldpInstance.sncClosedVertices[pred]>0);
-            double value=ldpInstance.sncBUStructure[pred];
-            if(value<bestValue){
-                bestValue=value;
-                bestIndex=pred;  //TODO check
+                bool newConstraint=(pred==nodeID||!ldpInstance.sncVerticesInScope[pred]);
+                if(newConstraint) continue;
+                assert(ldpInstance.sncClosedVertices[pred]>0);
+                double value=ldpInstance.sncBUStructure[pred];
+                if(value<bestValue){
+                    bestValue=value;
+                    bestIndex=pred;  //TODO check
+                }
+
+            }
+        }
+        else{
+            const LdpDirectedGraph::edge* vertexIt=neighborsRevEnd(currentVertex);
+            const LdpDirectedGraph::edge* begin=neighborsRevBegin(currentVertex);
+            if(vertexIt!=begin){
+                vertexIt--;
+                bool doSearch=true;
+                while (doSearch) {
+
+                    size_t pred=vertexIt->first;
+                    if(pred<nodeID) break;
+                    assert(pred<ldpInstance.getNumberOfVertices());
+
+                    bool newConstraint=(pred==nodeID||!ldpInstance.sncVerticesInScope[pred]);
+                    if(!newConstraint){
+                        assert(ldpInstance.sncClosedVertices[pred]>0);
+                        double value=ldpInstance.sncBUStructure[pred];
+                        if(value<bestValue){
+                            bestValue=value;
+                            bestIndex=pred;  //TODO check
+                        }
+                    }
+                    if(vertexIt!=begin){
+                        vertexIt--;
+                    }
+                    else{
+                        doSearch=false;
+                    }
+
+                }
             }
 
         }
