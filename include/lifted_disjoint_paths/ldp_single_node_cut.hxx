@@ -282,6 +282,16 @@ private:
              return ldpInstance.existLiftedEdge(v,nodeID);
          }
      }
+
+     bool orderCompare(const size_t& v0,const size_t& v1)const {
+         if(isOutFlow){
+             return v0>v1;
+         }
+         else{
+             return v0<v1;
+         }
+     }
+
      const bool isOutFlow; //is it outgoing flow
      size_t minVertex;
      size_t maxVertex;
@@ -433,7 +443,18 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
 
     }
 
+    //traverseOrder.pop_back();
+
+    if(isOutFlow){
+        std::sort(traverseOrder.begin(),traverseOrder.end(),lifted_disjoint_paths::reverseOrderCompare<size_t>);
+    }
+    else{
+        std::sort(traverseOrder.begin(),traverseOrder.end());
+    }
+
 }
+
+
 
 template<class LDP_INSTANCE>
 inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedFromIndexStr(const StrForTopDownUpdate& myStr) const{
@@ -896,16 +917,23 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         vertexToIgnoreSet=true;
         lastVertex=vertexIDToIgnore;
         fillWithValue<double>(ldpInstance.sncTDStructure,std::min(nodeID,vertexIDToIgnore),std::max(nodeID,vertexIDToIgnore)+1,0);
+       // fillWithValue<char>(ldpInstance.isBSF,std::min(nodeID,vertexIDToIgnore),std::max(nodeID,vertexIDToIgnore)+1,0);
 
     }
     else{
         for(size_t v:traverseOrder){
             ldpInstance.sncTDStructure[v]=0;
+            //ldpInstance.isBSF[v]=0;
             ldpInstance.sncNeighborStructure[v]=getVertexToReach();
 
         }
     }
 
+     //fillWithValue<char>(ldpInstance.isBSF,std::min(nodeID,mostDistantNeighborID),std::max(nodeID,mostDistantNeighborID)+1,0);
+
+     for (size_t i = 0; i < traverseOrder.size(); ++i) {
+         ldpInstance.isBSF[traverseOrder[i]]=0;
+     }
 
 
     //Store all lifted costs to top down values structure
@@ -915,17 +943,35 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         }
     }
 
+   // std::vector<size_t> bsfVector;
 
 
+    double bsfValue=std::numeric_limits<double>::max();
    // double bsfValue=0;
    // size_t bsfNode=getVertexToReach();
 
-    for (size_t i=0; i < traverseOrder.size()-1; ++i) {
+//    auto begin=traverseOrder.begin();
+//    auto end=traverseOrder.end();
+//    if(isOutFlow){
+//        begin=traverseOrder.rbegin();
+//        end=traverseOrder.rend();
+//    }
 
+    // for(auto it=begin;it!=end;it++){
+    // size_t currentNode=*it;
+    for (size_t i=0; i < traverseOrder.size()-1; ++i) {
+   // for (size_t i=0; i < traverseOrder.size(); ++i) {
         size_t currentNode=traverseOrder[i];
 
         if(currentNode==vertexIDToIgnore) continue;
-        if(!isInGivenInterval(currentNode,lastVertex)) continue;
+        if(!isInGivenInterval(currentNode,lastVertex)){
+            double value=ldpInstance.sncTDStructure[currentNode];
+            if(value<bsfValue){
+                bsfValue=value;
+                ldpInstance.isBSF[currentNode]=true;
+            }
+            continue;
+        }
         double bestDescValue=0;
         size_t bestDescVertexID=getVertexToReach();
 
@@ -947,9 +993,10 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
                     if(bestDescValue>value){
                         bestDescValue=value;
                         bestDescVertexID=desc;
-//                        if(desc==bsfNode){
-//                            break;
-//                        }
+
+                    }
+                    if(ldpInstance.isBSF[desc]){
+                        break;
                     }
                 }
                 else{
@@ -982,9 +1029,10 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
                         if(bestDescValue>value){
                             bestDescValue=value;
                             bestDescVertexID=desc;
-//                            if(desc==bsfNode){
-//                                break;
-//                            }
+
+                        }
+                        if(ldpInstance.isBSF[desc]){
+                            doSearch=false;
                         }
 
                         if(vertexIt==begin){
@@ -1006,16 +1054,21 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         }
 
 
-//        double value=ldpInstance.sncTDStructure[currentNode]+bestDescValue;
-//        if(value<bsfValue){
-//            bsfValue=value;
-//            bsfNode=currentNode;
-//        }
+        double value=ldpInstance.sncTDStructure[currentNode]+bestDescValue;
+        if(value<bsfValue){
+          //  bsfVector.push_back(currentNode);
+            bsfValue=value;
+            ldpInstance.isBSF[currentNode]=true;
+        }
 
         ldpInstance.sncTDStructure[currentNode]+=bestDescValue;
         ldpInstance.sncNeighborStructure[currentNode]=bestDescVertexID;
 
     }
+
+//    for (size_t i = 0; i < bsfVector.size(); ++i) {
+//        ldpInstance.isBSF[bsfVector[i]]=0;
+//    }
 
 
     //all nodes closed, compute solution values
@@ -1143,10 +1196,24 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
         ldpInstance.sncVerticesInScope[traverseOrder[i]]=1;
     }
 
+    for (size_t i = 0; i < traverseOrder.size(); ++i) {
+        ldpInstance.isBSF[traverseOrder[i]]=0;
+    }
+
+    double bsfValue=std::numeric_limits<double>::max();
 
     for(size_t i=traverseOrder.size();i>=1;i--){
         size_t currentVertex=traverseOrder[i-1];
-        if(ldpInstance.sncClosedVertices[currentVertex]) continue;
+
+        if(ldpInstance.sncClosedVertices[currentVertex]){
+            double value=ldpInstance.sncBUStructure[currentVertex];
+            if(bsfValue>value){
+                bsfValue=value;
+                ldpInstance.isBSF[currentVertex]=true;
+            }
+
+            continue;
+        }
         size_t bestIndex=getVertexToReach();
         double bestValue=std::numeric_limits<double>::max();
 
@@ -1171,6 +1238,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
                     bestValue=value;
                     bestIndex=pred;  //TODO check
                 }
+//                if(ldpInstance.isBSF[pred]){
+//                    break;
+//                }
 
             }
         }
@@ -1194,6 +1264,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
                             bestValue=value;
                             bestIndex=pred;  //TODO check
                         }
+//                        if(ldpInstance.isBSF[pred]){
+//                            doSearch=false;
+//                        }
                     }
                     if(vertexIt!=begin){
                         vertexIt--;
@@ -1236,6 +1309,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
             }
         }
 
+        if(bsfValue>bestValue){
+            ldpInstance.isBSF[currentVertex]=true;
+        }
         ldpInstance.sncClosedVertices[currentVertex]=1;
         ldpInstance.sncBUStructure[currentVertex]=bestValue;
 

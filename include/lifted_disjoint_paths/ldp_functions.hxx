@@ -187,10 +187,15 @@ inline bool baseEdgeCompare(const std::tuple<T,size_t,size_t>& t1,const std::tup
     }
  }
 
+
+
+
+template<class T>
+inline bool reverseOrderCompare(const T& t1,const T& t2) {
+    return t2<t1;
+}
+
 }  //end of namespace
-
-
-
 
 template<class T=size_t>
 struct EdgeVector{

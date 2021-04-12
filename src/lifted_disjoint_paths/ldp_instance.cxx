@@ -480,6 +480,7 @@ void LdpInstance::initLiftedStructure(){
     sncClosedVertices=std::vector<char>(n+2);
     sncLiftedMessages=std::vector<double>(n+2);
     sncVerticesInScope=std::vector<char>(n+2);
+    isBSF=std::vector<char>(n+2);
 
     liftedStructure=std::vector<ShiftedVector<char>>(n);
     for (size_t i = 0; i < n; ++i) {
