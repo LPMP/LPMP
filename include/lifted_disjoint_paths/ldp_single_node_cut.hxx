@@ -1238,9 +1238,9 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
                     bestValue=value;
                     bestIndex=pred;  //TODO check
                 }
-//                if(ldpInstance.isBSF[pred]){
-//                    break;
-//                }
+                if(ldpInstance.isBSF[pred]){
+                    break;
+                }
 
             }
         }
@@ -1264,15 +1264,15 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
                             bestValue=value;
                             bestIndex=pred;  //TODO check
                         }
-//                        if(ldpInstance.isBSF[pred]){
-//                            doSearch=false;
-//                        }
+                        if(ldpInstance.isBSF[pred]){
+                            break;
+                        }
                     }
                     if(vertexIt!=begin){
                         vertexIt--;
                     }
                     else{
-                        doSearch=false;
+                       break;
                     }
 
                 }
@@ -1311,6 +1311,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
 
         if(bsfValue>bestValue){
             ldpInstance.isBSF[currentVertex]=true;
+            bsfValue=bestValue;
         }
         ldpInstance.sncClosedVertices[currentVertex]=1;
         ldpInstance.sncBUStructure[currentVertex]=bestValue;
