@@ -916,7 +916,7 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
     if(vertexIDToIgnore!=getVertexToReach()){
         vertexToIgnoreSet=true;
         lastVertex=vertexIDToIgnore;
-        fillWithValue<double>(ldpInstance.sncTDStructure,std::min(nodeID,vertexIDToIgnore),std::max(nodeID,vertexIDToIgnore)+1,0);
+        //fillWithValue<double>(ldpInstance.sncTDStructure,std::min(nodeID,vertexIDToIgnore),std::max(nodeID,vertexIDToIgnore)+1,0);
        // fillWithValue<char>(ldpInstance.isBSF,std::min(nodeID,vertexIDToIgnore),std::max(nodeID,vertexIDToIgnore)+1,0);
 
     }
@@ -925,53 +925,106 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
             ldpInstance.sncTDStructure[v]=0;
             //ldpInstance.isBSF[v]=0;
             ldpInstance.sncNeighborStructure[v]=getVertexToReach();
+            ldpInstance.isBSF[v]=0;
 
+        }
+        for (int i = 0; i < liftedIDs.size(); ++i) {
+            //if(!vertexToIgnoreSet||isInGivenInterval(liftedIDs.at(i),lastVertex)){
+                ldpInstance.sncTDStructure[liftedIDs.at(i)]=myStr.liftedCosts.at(i);
+            //}
         }
     }
 
      //fillWithValue<char>(ldpInstance.isBSF,std::min(nodeID,mostDistantNeighborID),std::max(nodeID,mostDistantNeighborID)+1,0);
 
-     for (size_t i = 0; i < traverseOrder.size(); ++i) {
-         ldpInstance.isBSF[traverseOrder[i]]=0;
-     }
+//     for (size_t i = 0; i < traverseOrder.size(); ++i) {
+
+//     }
 
 
     //Store all lifted costs to top down values structure
-    for (int i = 0; i < liftedIDs.size(); ++i) {
-        if(!vertexToIgnoreSet||isInGivenInterval(liftedIDs.at(i),lastVertex)){
-            ldpInstance.sncTDStructure[liftedIDs.at(i)]=myStr.liftedCosts.at(i);
-        }
-    }
 
-   // std::vector<size_t> bsfVector;
+
 
 
     double bsfValue=std::numeric_limits<double>::max();
-   // double bsfValue=0;
-   // size_t bsfNode=getVertexToReach();
-
-//    auto begin=traverseOrder.begin();
-//    auto end=traverseOrder.end();
-//    if(isOutFlow){
-//        begin=traverseOrder.rbegin();
-//        end=traverseOrder.rend();
-//    }
-
-    // for(auto it=begin;it!=end;it++){
-    // size_t currentNode=*it;
-    for (size_t i=0; i < traverseOrder.size()-1; ++i) {
-   // for (size_t i=0; i < traverseOrder.size(); ++i) {
-        size_t currentNode=traverseOrder[i];
-
-        if(currentNode==vertexIDToIgnore) continue;
-        if(!isInGivenInterval(currentNode,lastVertex)){
+    size_t i=0;
+    if(vertexToIgnoreSet){
+        //bool vertexToIgnoreReached=false;
+        while(true){
+            assert(i<traverseOrder.size());
+            size_t currentNode=traverseOrder[i];
+            if(traverseOrder[i]==vertexIDToIgnore) break;
             double value=ldpInstance.sncTDStructure[currentNode];
             if(value<bsfValue){
                 bsfValue=value;
-                ldpInstance.isBSF[currentNode]=true;
+               // ldpInstance.isBSF[currentNode]=true;
             }
-            continue;
+            i++;
         }
+        assert(traverseOrder[i]==vertexIDToIgnore);
+        size_t j=i;
+
+        while(j<traverseOrder.size()){
+            ldpInstance.sncTDStructure[traverseOrder[j]]=0;
+            ldpInstance.isBSF[traverseOrder[j]]=0;
+            j++;
+        }
+        i++;
+
+        //size_t min=std::min(nodeID,vertexIDToIgnore);
+        //size_t max=std::max(nodeID,vertexIDToIgnore);
+        if(isOutFlow){
+            for (int i = 0; i < liftedIDs.size(); ++i) {
+
+                if(isInGivenInterval(liftedIDs.at(i),lastVertex)){
+                    const size_t& liftedNode=liftedIDs.at(i);
+                //if(liftedNode<=lastVertex){
+                   // const size_t& liftedNode=liftedIDs.at(i);
+                    //if(liftedNode<=lastVertex){
+                        ldpInstance.sncTDStructure[liftedNode]=myStr.liftedCosts.at(i);
+                    //}
+//                    else{
+//                        break;
+//                    }
+                }
+                else break;
+            }
+        }
+        else if(liftedIDs.size()>0){
+            for (int i = liftedIDs.size()-1; i>=0; --i) {
+
+                if(isInGivenInterval(liftedIDs.at(i),lastVertex)){
+                    const size_t& liftedNode=liftedIDs.at(i);
+                //if(liftedNode>=lastVertex){
+                    //size_t liftedNode=liftedIDs.at(i);
+                  //  if(liftedNode>=lastVertex){
+                        ldpInstance.sncTDStructure[liftedNode]=myStr.liftedCosts.at(i);
+                    //}
+//                    else{
+//                        break;
+//                    }
+                }
+                else break;
+            }
+        }
+
+    }
+
+
+    for (; i < traverseOrder.size()-1; ++i) {
+   // for (size_t i=0; i < traverseOrder.size(); ++i) {
+        size_t currentNode=traverseOrder[i];
+
+//        if(currentNode==vertexIDToIgnore) continue;
+//        if(!isInGivenInterval(currentNode,lastVertex)){
+//            double value=ldpInstance.sncTDStructure[currentNode];
+//            if(value<bsfValue){
+//                bsfValue=value;
+//                ldpInstance.isBSF[currentNode]=true;
+//            }
+//            continue;
+//        }
         double bestDescValue=0;
         size_t bestDescVertexID=getVertexToReach();
 
