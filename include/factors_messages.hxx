@@ -2207,6 +2207,21 @@ public:
       return no_calls;
    }
 
+   std::vector<size_t> no_type_specific_send_messages() const final
+   {
+      std::vector<size_t> messageTypes;
+      INDEX no_calls = 0;
+      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&no_calls,&messageTypes](auto l) {
+            constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+            if(l.sends_message_to_adjacent_factor()) {
+               size_t currentValue=std::get<n>(msg_).size();
+               if(currentValue>0) messageTypes.push_back(currentValue);
+               no_calls += currentValue;
+            }
+      } );
+      return messageTypes;
+   }
+
    // as above, but if batch messages sending is enabled, such messages are counted only once.
    INDEX no_send_messages_calls() const 
    {

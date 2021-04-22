@@ -321,6 +321,18 @@ LP<FMC>::get_message_passing_weight(const lp_reparametrization repam)
          receive_mask_valid(backward_update_sorting.begin(), backward_update_sorting.end(), receive_mask_backward);
          message_passing_weight_storage mpw {omega_forward, omega_backward, receive_mask_forward, receive_mask_backward};
          message_passing_weights_.insert( std::make_pair(repam, mpw) ); // TODO: move 
+      }
+      else if(repam.mode == lp_reparametrization_mode::Special){
+          auto omega_forward = compute_isotropic_weights(forward_sorting.begin(), forward_sorting.end(), leave_percentage);
+          omega_valid(forward_update_sorting.begin(), forward_update_sorting.end(), omega_forward);
+          auto omega_backward = compute_isotropic_weights(backward_sorting.begin(), backward_sorting.end(), leave_percentage);
+          omega_valid(backward_update_sorting.begin(), backward_update_sorting.end(), omega_backward);
+          auto receive_mask_forward = compute_full_receive_mask(forward_sorting.begin(), forward_sorting.end());
+          receive_mask_valid(forward_update_sorting.begin(), forward_update_sorting.end(), receive_mask_forward);
+          auto receive_mask_backward = compute_full_receive_mask(backward_sorting.begin(), backward_sorting.end());
+          receive_mask_valid(backward_update_sorting.begin(), backward_update_sorting.end(), receive_mask_backward);
+          message_passing_weight_storage mpw {omega_forward, omega_backward, receive_mask_forward, receive_mask_backward};
+          message_passing_weights_.insert( std::make_pair(repam, mpw) ); // TODO: move
       } else if(repam.mode == lp_reparametrization_mode::Anisotropic2) {
          auto [omega_forward, receive_mask_forward] = compute_anisotropic_weights_2(forward_sorting.begin(), forward_sorting.end(), leave_percentage);
          auto [omega_backward, receive_mask_backward] = compute_anisotropic_weights_2(backward_sorting.begin(), backward_sorting.end(), leave_percentage);

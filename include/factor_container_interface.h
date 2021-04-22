@@ -31,6 +31,7 @@ public:
    virtual std::size_t no_messages() const = 0;
    virtual std::size_t no_send_messages() const = 0;
    virtual std::size_t no_receive_messages() const = 0;
+   virtual std::vector<size_t> no_type_specific_send_messages() const =0;
    virtual REAL LowerBound() const = 0;
    virtual void init_primal() = 0;
    virtual void MaximizePotentialAndComputePrimal() = 0;
