@@ -212,6 +212,7 @@ public:
     template<typename SINGLE_NODE_CUT_FACTOR, typename MSG_ARRAY>
     static void SendMessagesToLeft(const SINGLE_NODE_CUT_FACTOR& r, MSG_ARRAY msg_begin, MSG_ARRAY msg_end, const double omega)
     {
+        //assert(omega>=0.29);
          std::vector<double> liftedCosts=r.getLiftedCosts();
          const std::vector<double>& baseCosts=r.getBaseCosts();
 

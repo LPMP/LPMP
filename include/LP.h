@@ -322,10 +322,10 @@ LP<FMC>::get_message_passing_weight(const lp_reparametrization repam)
          message_passing_weight_storage mpw {omega_forward, omega_backward, receive_mask_forward, receive_mask_backward};
          message_passing_weights_.insert( std::make_pair(repam, mpw) ); // TODO: move 
       }
-      else if(repam.mode == lp_reparametrization_mode::Special){
-          auto omega_forward = compute_special_weights(forward_sorting.begin(), forward_sorting.end(), leave_percentage);
+      else if(repam.mode == lp_reparametrization_mode::TypeDependent){
+          auto omega_forward = compute_type_dependent_weights(forward_sorting.begin(), forward_sorting.end(), leave_percentage);
           omega_valid(forward_update_sorting.begin(), forward_update_sorting.end(), omega_forward);
-          auto omega_backward = compute_special_weights(backward_sorting.begin(), backward_sorting.end(), leave_percentage);
+          auto omega_backward = compute_type_dependent_weights(backward_sorting.begin(), backward_sorting.end(), leave_percentage);
           omega_valid(backward_update_sorting.begin(), backward_update_sorting.end(), omega_backward);
           auto receive_mask_forward = compute_full_receive_mask(forward_sorting.begin(), forward_sorting.end());
           receive_mask_valid(forward_update_sorting.begin(), forward_update_sorting.end(), receive_mask_forward);

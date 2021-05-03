@@ -91,7 +91,7 @@ weight_array compute_isotropic_weights
 
 
 template<typename FACTOR_ITERATOR>
-weight_array compute_special_weights
+weight_array compute_type_dependent_weights
 (
         FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end,
         const double leave_percentage)

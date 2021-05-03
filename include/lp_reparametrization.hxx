@@ -5,7 +5,7 @@
 
 namespace LPMP {
 
-   enum class lp_reparametrization_mode {Anisotropic, Anisotropic2, Uniform, Undefined,Special};
+   enum class lp_reparametrization_mode {Anisotropic, Anisotropic2, Uniform, Undefined,TypeDependent};
 
    struct lp_reparametrization {
       lp_reparametrization() : mode(lp_reparametrization_mode::Undefined), leave_percentage(0.0) {}
@@ -37,8 +37,8 @@ namespace LPMP {
          } else if(s.find("uniform") == 0) {
             return lp_reparametrization_mode::Uniform;
          }
-         else if(s.find("special")==0){
-             return lp_reparametrization_mode::Special;
+         else if(s.find("typeDependent")==0){
+             return lp_reparametrization_mode::TypeDependent;
          } else {
             throw std::runtime_error("reparametrization mode " + s + " unknown");
          }
