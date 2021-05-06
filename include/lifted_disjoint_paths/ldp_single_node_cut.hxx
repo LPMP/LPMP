@@ -196,7 +196,7 @@ private:
     void initTraverseOrder();
 
     //Obtain IDs of vertices of lifted edges that are part of a found optimal solution
-    std::list<size_t> getOptLiftedFromIndexStr(const StrForTopDownUpdate& myStr)const;
+    std::vector<size_t> getOptLiftedFromIndexStr(const StrForTopDownUpdate& myStr)const;
 
 
     //Methods for exploring graph structures
@@ -457,9 +457,12 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
 
 
 template<class LDP_INSTANCE>
-inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedFromIndexStr(const StrForTopDownUpdate& myStr) const{
+inline std::vector<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedFromIndexStr(const StrForTopDownUpdate& myStr) const{
+//    template<class LDP_INSTANCE>
+//    inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedFromIndexStr(const StrForTopDownUpdate& myStr) const{
 
-	std::list<size_t> optLifted;
+    //std::list<size_t> optLifted;
+    std::vector<size_t> optLifted;
     double optValueComputed=0;
     if(myStr.optBaseIndex!=nodeNotActive){
         optValueComputed=myStr.baseCosts.at(myStr.optBaseIndex);
@@ -1134,7 +1137,8 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::getOneLiftedMinMarginal(
     double origOptValue=strForUpdateValues.optValue;
 
 
-    std::list<size_t> optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
+    //std::list<size_t> optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
+    std::vector<size_t> optimalSolutionLifted=getOptLiftedFromIndexStr(strForUpdateValues);
 
 	bool isOptimal=false;
 	for(size_t optVertex:optimalSolutionLifted){
@@ -1365,9 +1369,10 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
 
     //All vertices that are not zero in any optimal solution
-    std::list<size_t> isNotZeroInOpt=getOptLiftedFromIndexStr(myStr);
+    //std::list<size_t> isNotZeroInOpt=getOptLiftedFromIndexStr(myStr);
+    std::vector<size_t> isNotZeroInOpt=getOptLiftedFromIndexStr(myStr);
     //All vertices that are one in at least one of the optimal solutions
-    std::unordered_set<size_t> isOneInOpt(isNotZeroInOpt.begin(),isNotZeroInOpt.end());
+    //std::unordered_set<size_t> isOneInOpt(isNotZeroInOpt.begin(),isNotZeroInOpt.end());
 
 
 
@@ -1383,57 +1388,60 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     }
 
     //Obtaining min marginals for nodes that are active in all optimal solutions
-    while(!isNotZeroInOpt.empty()){
+    //while(!isNotZeroInOpt.empty()){
+    while(listIt!=isNotZeroInOpt.end()){
         size_t vertexToClose=*listIt;
 
 
         //Obtaining best solution while ignoring vertexToClose
         topDownUpdate(myStr,vertexToClose);
         double newOpt=myStr.optValue;
-        std::list<size_t> secondBest=getOptLiftedFromIndexStr(myStr);
+//        std::list<size_t> secondBest=getOptLiftedFromIndexStr(myStr);
 
-        bool isSecondBestActive=myStr.optBaseIndex!=nodeNotActive;
+//        bool isSecondBestActive=myStr.optBaseIndex!=nodeNotActive;
 
-        auto sbIt=secondBest.begin();
-        listIt=isNotZeroInOpt.erase(listIt);
+//        auto sbIt=secondBest.begin();
+//        listIt=isNotZeroInOpt.erase(listIt);
 
-        //Comparing the list of optimal vertices with the second best solution and changing
-        //isNotZeroInOpt and isOneInOpt accordingly
-        while(listIt!=isNotZeroInOpt.end()&&sbIt!=secondBest.end()){
+//        //Comparing the list of optimal vertices with the second best solution and changing
+//        //isNotZeroInOpt and isOneInOpt accordingly
+//        while(listIt!=isNotZeroInOpt.end()&&sbIt!=secondBest.end()){
 
-            if(*sbIt==*listIt){
+//            if(*sbIt==*listIt){
 
-                isOneInOpt.insert(*sbIt);
-                sbIt++;
-                listIt++;
-            }
-            else if(reachable(*sbIt,*listIt)){
+//                isOneInOpt.insert(*sbIt);
+//                sbIt++;
+//                listIt++;
+//            }
+//            else if(reachable(*sbIt,*listIt)){
 
-                isOneInOpt.insert(*sbIt);
-                sbIt++;
-            }
-            else if(reachable(*listIt,*sbIt)){
+//                isOneInOpt.insert(*sbIt);
+//                sbIt++;
+//            }
+//            else if(reachable(*listIt,*sbIt)){
 
-                listIt=isNotZeroInOpt.erase(listIt);
-            }
-            else{
+//                listIt=isNotZeroInOpt.erase(listIt);
+//            }
+//            else{
 
-                listIt=isNotZeroInOpt.erase(listIt);
-                isOneInOpt.insert(*sbIt);
-                sbIt++;
-            }
-
-
-        }
-
-        isNotZeroInOpt.erase(listIt,isNotZeroInOpt.end());
-        while(sbIt!=secondBest.end()){
-            isOneInOpt.insert(*sbIt);
-             sbIt++;
-        }
+//                listIt=isNotZeroInOpt.erase(listIt);
+//                isOneInOpt.insert(*sbIt);
+//                sbIt++;
+//            }
 
 
-        listIt=isNotZeroInOpt.begin();
+//        }
+
+//        isNotZeroInOpt.erase(listIt,isNotZeroInOpt.end());
+//        while(sbIt!=secondBest.end()){
+//            isOneInOpt.insert(*sbIt);
+//             sbIt++;
+//        }
+
+
+//        listIt=isNotZeroInOpt.begin();
+
+        listIt++;
 
         double delta=currentOptValue-newOpt;
 
@@ -1468,7 +1476,8 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
 
     //The bottom up value for optimal vertices is known. It is obtained by subtracting the top down value of their descendants from the currentOptValue
     //Note that vertices closed in this for cycle will not have valid bottomUpVertexIDStructure entries
-    for(size_t optVertex:isOneInOpt){
+    //for(size_t optVertex:isOneInOpt){
+    for(size_t optVertex:isNotZeroInOpt){
         assert(optVertex<ldpInstance.getNumberOfVertices());
         size_t bestDesc=ldpInstance.sncNeighborStructure[optVertex];
         double toSubtract=0;
