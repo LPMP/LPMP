@@ -1533,21 +1533,19 @@ public:
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamLeft(SINGLE_NODE_CUT_FACTOR& l, const double msg, const std::size_t msg_dim) const
 	{
-       // if(debug()) std::cout<<"repam left "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<":"<<msg<<std::endl;
-       // if(debug()) l.LowerBound();
+
 		assert(msg_dim == 0);
         l.updateEdgeCost(msg,right_node,true);
-       // if(debug()) l.LowerBound();
+
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR>
 	void RepamRight(SINGLE_NODE_CUT_FACTOR& r, const double msg, const std::size_t msg_dim) const
 	{
-       // if(debug()) std::cout<<"repam right "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<":"<<msg<<std::endl;
-      // if(debug()) r.LowerBound();
+
         assert(msg_dim == 0);
         r.updateEdgeCost(msg,left_node,true);
-      //  if(debug()) r.LowerBound();
+
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
