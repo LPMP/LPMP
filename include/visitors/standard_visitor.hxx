@@ -303,7 +303,7 @@ namespace LPMP {
             }
             if((this->GetIter() >= tightenIteration_ && 
                      (this->GetIter() >= lastTightenIteration_ + tightenInterval_ || 
-                      (tightenSlopeArg_.isSet() && cur_slope < tightenSlopeArg_.getValue()*tighten_slope_)))) {
+                      (tightenSlopeArg_.isSet() && cur_slope < tightenSlopeArg_.getValue()*tighten_slope_)||(this->GetIter()==tightenIteration_&&lastTightenIteration_==0&&tightenInterval_<std::numeric_limits<INDEX>::max())))) {
                if(verbosity >= 1) { std::cout << "Time to tighten\n"; }
                ret = SetTighten(ret);
                iteration_after_tightening_ = 0;
