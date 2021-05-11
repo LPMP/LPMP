@@ -210,6 +210,35 @@ public:
 
     }
 
+    void increaseLBTime(double time) const{
+        timeInSncLB+=time;
+        callsOfSncLB++;
+    }
+
+    void increaseBaseMMTime(double time) const{
+        timeInSncBaseMM+=time;
+        callsOfSncBaseMM++;
+    }
+
+    void increaseLiftedMMTime(double time) const{
+        timeInSncLiftedMM+=time;
+        callsOfSncLiftedMM++;
+    }
+
+    double getAverageLBTime() const{
+        return timeInSncLB/callsOfSncLB;
+    }
+
+    double getAverageBaseMMTime() const{
+        return timeInSncBaseMM/callsOfSncBaseMM;
+    }
+
+    double getAverageLiftedMMTime() const{
+        return timeInSncLiftedMM/callsOfSncLiftedMM;
+    }
+
+
+
 private:
 
 
@@ -230,7 +259,7 @@ private:
 	size_t t_;
 
 	std::vector<double> vertexScore;
-   std::vector<std::unordered_set<size_t>> reachable;
+    std::vector<std::unordered_set<size_t>> reachable;
 
 
     LdpDirectedGraph myGraph;
@@ -260,6 +289,16 @@ private:
 
     std::vector<ShiftedVector<char>> liftedStructure;
     std::vector<ShiftedVector<char>> canJoinStructure;
+
+    mutable double timeInSncLB;
+    mutable size_t callsOfSncLB;
+
+    mutable double timeInSncBaseMM;
+    mutable size_t callsOfSncBaseMM;
+
+    mutable double timeInSncLiftedMM;
+    mutable size_t callsOfSncLiftedMM;
+
 
 
 };

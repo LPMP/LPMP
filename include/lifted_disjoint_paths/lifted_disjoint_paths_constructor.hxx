@@ -1235,6 +1235,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     #endif
 
     if(diagnostics()) std::cout<<"primal value: "<<primalValue<<", clustering value: "<<clusteringValue<<std::endl;
+
+    if(diagnostics()) std::cout<<"Average time in SNC LB so far "<<pInstance->getAverageLBTime()<<std::endl;
+    if(diagnostics()) std::cout<<"Average time in SNC base MM so far "<<pInstance->getAverageBaseMMTime()<<std::endl;
+    if(diagnostics()) std::cout<<"Average time in SNC lifted MM so far "<<pInstance->getAverageLiftedMMTime()<<std::endl;
 }
 
 

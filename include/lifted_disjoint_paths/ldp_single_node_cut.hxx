@@ -9,6 +9,7 @@
 #include <config.hxx>
 #include "ldp_directed_graph.hxx"
 #include<lifted_disjoint_paths/ldp_functions.hxx>
+#include<chrono>
 
 namespace LPMP {
 
@@ -650,6 +651,7 @@ template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseMinMarginals(const std::vector<double>* pLocalBaseCosts,const std::vector<double>* pLocalLiftedCosts) const{
 
 
+     std::chrono::steady_clock::time_point begin=std::chrono::steady_clock::now();
     StrForTopDownUpdate str(*pLocalBaseCosts,*pLocalLiftedCosts);
     topDownUpdate(str);
 
@@ -675,6 +677,10 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllBaseM
 
         }
     }
+     std::chrono::steady_clock::time_point end=std::chrono::steady_clock::now();
+     double durationMS=std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
+     ldpInstance.increaseBaseMMTime(durationMS);
+
     return minMarginals;
 }
 
@@ -870,7 +876,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 template<class LDP_INSTANCE>
 inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound(bool canChange) const{//TODO store info about how valuesStructures changed. At least max time layer of changed lifted edge
     //if(canChange||optValueUpToDate){
-    if(canChange){
+     std::chrono::steady_clock::time_point begin=std::chrono::steady_clock::now();
+    if(canChange){  //Currently not used
         updateOptimal();
 //        if(debug()){
 //            double controlValue=0;
@@ -882,13 +889,27 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound(bool canChang
 //        }
 
         //std::cout<<"snc lower bound "<<optValue<<std::endl;
+
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        double durationMS=std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
+        ldpInstance.increaseLBTime(durationMS);
         return optValue;
     }
     else{
         StrForTopDownUpdate myStr(baseCosts,liftedCosts);
         topDownUpdate(myStr);
+
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        double durationMS=std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
+        ldpInstance.increaseLBTime(durationMS);
+
         return myStr.optValue;
+
+
     }
+
 
 }
 
@@ -1344,6 +1365,7 @@ template<class LDP_INSTANCE>
 inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLiftedMinMarginals(const std::vector<double>* pLocalBaseCosts, const std::vector<double> *pLocalLiftedCosts) const{
 
 
+      std::chrono::steady_clock::time_point begin=std::chrono::steady_clock::now();
 
     std::vector<double> localLiftedCosts;
     std::vector<double> localBaseCosts;
@@ -1515,6 +1537,10 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     assert(myStr2.optValue+minMarginalsImproving-origOptValue>-eps);
 #endif
     //}
+
+    std::chrono::steady_clock::time_point end=std::chrono::steady_clock::now();
+    double durationMS=std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
+    ldpInstance.increaseLiftedMMTime(durationMS);
 	return messagesToOutput;
 }
 
