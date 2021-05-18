@@ -39,7 +39,7 @@ py::array_t<char> get_edge_mask(const LPMP::multiway_cut_instance& instance, con
 {
     char* edge_mask = new char[instance.nr_edges()];
     for(size_t e=0; e<instance.nr_edges(); ++e)
-        if(labeling[instance.edge_costs.edges()[e][0]] != labeling[instance.edge_costs.edges()[e][0]])
+        if(labeling[instance.edge_costs.edges()[e][0]] != labeling[instance.edge_costs.edges()[e][1]])
             edge_mask[e] = 1;
         else
             edge_mask[e] = 0;
