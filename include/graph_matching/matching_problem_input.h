@@ -311,17 +311,27 @@ struct linear_assignment_problem_input {
    }
 
    template<typename STREAM>
-       void write_linear_objective(STREAM& s) const
+       void write_linear_objective(STREAM& s, const bool no_matching_allowed) const
        {
            for(const auto& a : assignments)
+           {
+               if(!no_matching_allowed)
+                   if(a.left_node == no_assignment || a.right_node == no_assignment)
+                       throw std::runtime_error("empty matching not allowed");
                s << (a.cost < 0.0 ? "-" : "+") << std::abs(a.cost) << " " << linear_identifier(a.left_node, a.right_node) << "\n";
+           }
        }
    template<typename STREAM>
-       void write_linear_constraints(STREAM& s) const
+       void write_linear_constraints(STREAM& s, const bool no_matching_allowed) const
        {
            std::vector<std::vector<std::size_t>> left(no_left_nodes);
            std::vector<std::vector<std::size_t>> right(no_right_nodes);
            for(const auto& a : assignments) {
+               if(!no_matching_allowed && a.right_node == no_assignment)
+                   throw std::runtime_error("empty matching not allowed");
+               if(!no_matching_allowed && a.left_node == no_assignment)
+                   throw std::runtime_error("empty matching not allowed");
+
                left[a.left_node].push_back(a.right_node);
                right[a.right_node].push_back(a.left_node);
            }
@@ -332,8 +342,12 @@ struct linear_assignment_problem_input {
               {
                  for (const std::size_t j : left[i])
                     s << "+ " << linear_identifier(i, j) << " ";
-                 if (left[i].back() != no_assignment)
-                    s << " + " << linear_identifier(i, no_assignment);
+                 if(no_matching_allowed)
+                     if (left[i].back() != no_assignment)
+                         s << " + " << linear_identifier(i, no_assignment);
+                 if(!no_matching_allowed && left[i].back() == no_assignment)
+                     throw std::runtime_error("empty matching not allowed");
+
                  s << " = 1\n"; //"x_" << i << "_no_assignment = 1\n"; 
                }
            }
@@ -344,31 +358,40 @@ struct linear_assignment_problem_input {
               {
                  for (const std::size_t i : right[j])
                     s << "+ " << linear_identifier(i, j) << " ";
-                 if (right[j].back() != no_assignment)
-                    s << " + " << linear_identifier(no_assignment, j);
+                 if(no_matching_allowed)
+                     if (right[j].back() != no_assignment)
+                         s << " + " << linear_identifier(no_assignment, j);
+                 if(!no_matching_allowed && right[j].back() == no_assignment)
+                     throw std::runtime_error("empty matching not allowed");
+
                  s << " = 1\n"; //"x_" << i << "_no_assignment = 1\n";
               }
            }
        }
    template<typename STREAM>
-       void write_linear_variables(STREAM& s) const
+       void write_linear_variables(STREAM& s, const bool no_matching_allowed) const
        {
            for(const auto& a : assignments)
+           {
+               if(no_matching_allowed)
+                   if(a.left_node == no_assignment && a.right_node == no_assignment)
+                         throw std::runtime_error("empty matching not allowed"); 
                s << linear_identifier(a.left_node, a.right_node) << "\n";
+           }
        }
 
    template<typename STREAM>
-       void write_lp(STREAM& s) const
+       void write_lp(STREAM& s, const bool no_matching_allowed = true) const
        {
            s << "Minimize\n";
-           write_linear_objective(s);
+           write_linear_objective(s, no_matching_allowed);
 
            s << "Subject To\n";
-           write_linear_constraints(s);
+           write_linear_constraints(s, no_matching_allowed);
 
            s << "Bounds\n";
            s << "Binaries\n";
-           write_linear_variables(s);
+           write_linear_variables(s, no_matching_allowed);
 
            s << "End\n";
        } 
@@ -454,14 +477,14 @@ struct graph_matching_input : public linear_assignment_problem_input {
     }
 
     template <typename STREAM>
-    void write_quadratic_objective(STREAM &s) const
+    void write_quadratic_objective(STREAM &s, const bool no_matching_allowed) const
     {
        for (const auto &q : quadratic_terms)
           s << (q.cost < 0.0 ? "-" : "+") << std::abs(q.cost) << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
         }
 
     template<typename STREAM>
-        void write_quadratic_constraints(STREAM& s) const
+        void write_quadratic_constraints(STREAM& s, const bool no_matching_allowed) const
         {
            std::unordered_set<std::array<std::size_t,2>> left_pairwise_potentials;
            std::unordered_set<std::array<std::size_t,2>> right_pairwise_potentials;
@@ -473,6 +496,13 @@ struct graph_matching_input : public linear_assignment_problem_input {
                 const std::size_t left_node_2 = this->assignments[a_2].left_node;
                 const std::size_t right_node_1 = this->assignments[a_1].left_node;
                 const std::size_t right_node_2 = this->assignments[a_2].left_node;
+                if(!no_matching_allowed)
+                    if(left_node_1 == graph_matching_input::no_assignment
+                            || left_node_2 == graph_matching_input::no_assignment     
+                            || right_node_1 == graph_matching_input::no_assignment
+                            || right_node_2 == graph_matching_input::no_assignment)
+                        throw std::runtime_error("empty matching not allowed");
+
                 left_pairwise_potentials.insert({std::min(left_node_1, left_node_2), std::max(left_node_1, left_node_2)});
                 right_pairwise_potentials.insert({std::min(right_node_1, right_node_2), std::max(right_node_1, right_node_2)});
            }
@@ -484,17 +514,26 @@ struct graph_matching_input : public linear_assignment_problem_input {
               assert(a.right_node != graph_matching_input::no_assignment);
               left_labels[a.left_node].push_back(a.right_node);
               right_labels[a.right_node].push_back(a.left_node);
+              if(!no_matching_allowed)
+                  if(a.left_node == graph_matching_input::no_assignment || a.right_node == graph_matching_input::no_assignment)
+                      throw std::runtime_error("empty matching not allowed");
            }
 
            for(auto& l : left_labels)
            {
               std::sort(l.begin(), l.end());
-              if(l.size() == 0 || l.back() != graph_matching_input::no_assignment)
-                 l.push_back(graph_matching_input::no_assignment);
+              if(l.back() == graph_matching_input::no_assignment && !no_matching_allowed)
+                  throw std::runtime_error("empty matching not allowed");
+              if(no_matching_allowed)
+                  if(l.size() == 0 || l.back() != graph_matching_input::no_assignment)
+                      l.push_back(graph_matching_input::no_assignment);
            }
            for(auto& r : right_labels)
            {
               std::sort(r.begin(), r.end());
+              if(r.back() == graph_matching_input::no_assignment && !no_matching_allowed)
+                  throw std::runtime_error("empty matching not allowed");
+              if(no_matching_allowed)
               if(r.size() == 0 || r.back() != graph_matching_input::no_assignment)
                  r.push_back(graph_matching_input::no_assignment);
            }
@@ -547,27 +586,27 @@ struct graph_matching_input : public linear_assignment_problem_input {
         }
 
     template<typename STREAM>
-        void write_quadratic_variables(STREAM& s) const
+        void write_quadratic_variables(STREAM& s, const bool no_matching_allowed) const
         {
             for(const auto& q : quadratic_terms)
                 s << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
         }
 
     template<typename STREAM>
-        void write_lp(STREAM& s) const
+        void write_lp(STREAM& s, const bool no_matching_allowed = true) const
         {
             s << "Minimize\n";
-            this->write_linear_objective(s);
-            write_quadratic_objective(s);
+            this->write_linear_objective(s, no_matching_allowed);
+            write_quadratic_objective(s, no_matching_allowed);
 
             s << "Subject To\n";
-            this->write_linear_constraints(s);
-            write_quadratic_constraints(s);
+            this->write_linear_constraints(s, no_matching_allowed);
+            write_quadratic_constraints(s, no_matching_allowed);
 
             s << "Bounds\n";
             s << "Binaries\n";
-            this->write_linear_variables(s);
-            this->write_quadratic_variables(s);
+            this->write_linear_variables(s, no_matching_allowed);
+            this->write_quadratic_variables(s, no_matching_allowed);
 
             s << "End\n";
         }
