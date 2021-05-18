@@ -110,15 +110,15 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', '--build', '.', '--target', ext.name] + build_args, cwd=self.build_temp)
 
 setup(
-    name='lpmp_py',
+    name='ldp_py',
     version='0.0.1',
-    author='Paul Swoboda',
-    author_email='pswoboda@mpi-inf.mpg.de',
-    description='LPMP bindings for python with differentiable torch wrappers',
+    author='Andrea Hornakova',
+    author_email='andrea.hornakova@mpi-inf.mpg.de',
+    description='LPMP lifted disjoint paths bindings for python',
     long_description='',
     ext_package='bindings',
-    packages=find_packages(),
-    ext_modules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')],,
+    packages=['ldp'],
+    ext_modules=[CMakeExtension(name='ldpMessagePassingPy')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
