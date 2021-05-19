@@ -10,6 +10,7 @@ from setuptools.command.build_ext import build_ext
 from pkg_resources import parse_version
 
 
+
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         Extension.__init__(self, name, sources=[])
@@ -30,6 +31,7 @@ class CMakeBuild(build_ext):
                 raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
         for ext in self.extensions:
+            print("extension name: "+ext.name)
             self.build_extension(ext)
 
     def _validate_gcc_version(self, gcc_command):
@@ -109,6 +111,17 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.', '--target', ext.name] + build_args, cwd=self.build_temp)
 
+config_var = os.environ.get("PACKAGES", "GM")
+if config_var.upper() == 'LDP':
+    myExtModules=[CMakeExtension(name='ldpMessagePassingPy')]
+    myPackages=['lpmp_ldp']
+elif config_var.upper() == 'ALL':
+    myExtModules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py'),CMakeExtension(name='ldpMessagePassingPy')]
+    myPackages=['lpmp_ldp','lpmp_py']
+else:
+    myExtModules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')]
+    myPackages=['lpmp_py']
+
 setup(
     name='lpmp_py',
     version='0.0.1',
@@ -117,8 +130,8 @@ setup(
     description='LPMP bindings for python with differentiable torch wrappers',
     long_description='',
     ext_package='bindings',
-    packages=find_packages(),
-    ext_modules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')],
+    packages=myPackages,
+    ext_modules=myExtModules,
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )

@@ -1,6 +1,6 @@
 #from .raw_solvers import gm_solver, mgm_solver
 
-import bindings.ldpMessagePassingPy as lpd
+import bindings.ldpMessagePassingPy as ldp
 
 
 try:
