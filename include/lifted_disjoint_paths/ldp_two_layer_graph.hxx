@@ -73,7 +73,11 @@ public:
         return forwardEdges[vertex][neighborIndex].head;
     }
 
-
+    double getBackwardEdgeCost(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfOutputs);
+        assert(neighborIndex<backwardEdges[vertex].size());
+        return backwardEdges[vertex][neighborIndex].cost;
+    }
 
     size_t getBackwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
         assert(vertex<numberOfOutputs);

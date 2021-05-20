@@ -556,31 +556,67 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
 
     //lp_->add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE,SNC_CUT_MESSAGE,PATH_FACTOR,SNC_PATH_MESSAGE>(left_snc, right_snc, left_node, right_node);
 
-    for (int vertex1 = 0; vertex1 < single_node_cut_factors_.size(); ++vertex1) {
-        auto* left_snc=single_node_cut_factors_[vertex1][1];
-        auto* left_snc_factor=left_snc->get_factor();
-        //	std::cout<<"vertex 1 "<<vertex1<<std::endl;
-        for (int j = 0; j < left_snc_factor->getLiftedIDs().size(); ++j) {
-            size_t vertex2=left_snc_factor->getLiftedIDs().at(j);
-            //std::cout<<"vertex 2 "<<vertex2<<std::endl;
-            assert(instance.getMyGraphLifted().getForwardEdgeVertex(vertex1,j)==vertex2);
-            if(vertex2==this->base_graph_source_node()||vertex2==this->base_graph_source_node()) continue;
-            auto* right_snc=single_node_cut_factors_[vertex2][0];
-            size_t i=right_snc->get_factor()->getLiftedIDToOrder(vertex1);
-            assert((right_snc->get_factor()->getLiftedIDs().size())>i);
-            //if(pInstance->getMyGraphLifted().getForwardEdgeCost(vertex1,j)<100.0){
-            auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
-            snc_lifted_messages_.push_back(message);
 
-            //}
-            const double* pOut=&left_snc_factor->getLiftedCosts().at(j);
-            const double* pIn=&right_snc->get_factor()->getLiftedCosts().at(i);
-            //     controlMCCosts.push_back(std::make_tuple(vertex1,vertex2,pIn,pOut));
-            if(pInstance->getMyGraphLifted().getForwardEdgeCost(vertex1,j)>=100.0){
-                controlMCCostsIn.push_back(pIn);
-                controlMCCostsOut.push_back(pOut);
+    bool useLiftedMessages=true;
+    if(useLiftedMessages){
+        //Original code for lifted messages
+        for (int vertex1 = 0; vertex1 < single_node_cut_factors_.size(); ++vertex1) {
+            auto* left_snc=single_node_cut_factors_[vertex1][1];
+            auto* left_snc_factor=left_snc->get_factor();
+            //	std::cout<<"vertex 1 "<<vertex1<<std::endl;
+            for (int j = 0; j < left_snc_factor->getLiftedIDs().size(); ++j) {
+                size_t vertex2=left_snc_factor->getLiftedIDs().at(j);
+                //std::cout<<"vertex 2 "<<vertex2<<std::endl;
+                assert(instance.getMyGraphLifted().getForwardEdgeVertex(vertex1,j)==vertex2);
+                if(vertex2==this->base_graph_source_node()||vertex2==this->base_graph_source_node()) continue;
+                auto* right_snc=single_node_cut_factors_[vertex2][0];
+                size_t i=right_snc->get_factor()->getLiftedIDToOrder(vertex1);
+                assert((right_snc->get_factor()->getLiftedIDs().size())>i);
+                //if(pInstance->getMyGraphLifted().getForwardEdgeCost(vertex1,j)<100.0){
+                auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+                snc_lifted_messages_.push_back(message);
+
+                //}
+                const double* pOut=&left_snc_factor->getLiftedCosts().at(j);
+                const double* pIn=&right_snc->get_factor()->getLiftedCosts().at(i);
+                //     controlMCCosts.push_back(std::make_tuple(vertex1,vertex2,pIn,pOut));
+                if(pInstance->getMyGraphLifted().getForwardEdgeCost(vertex1,j)>=100.0){
+                    controlMCCostsIn.push_back(pIn);
+                    controlMCCostsOut.push_back(pOut);
+                }
+
             }
 
+        }
+    }
+    else{
+        //New code for base messages
+        for (int vertex1 = 0; vertex1 < single_node_cut_factors_.size(); ++vertex1) {
+            auto* left_snc=single_node_cut_factors_[vertex1][1];
+            auto* left_snc_factor=left_snc->get_factor();
+            //	std::cout<<"vertex 1 "<<vertex1<<std::endl;
+            for (int j = 0; j < left_snc_factor->getBaseIDs().size(); ++j) {
+                size_t vertex2=left_snc_factor->getBaseIDs().at(j);
+                //std::cout<<"vertex 2 "<<vertex2<<std::endl;
+                assert(instance.getMyGraph().getForwardEdgeVertex(vertex1,j)==vertex2);
+                if(vertex2==this->base_graph_source_node()||vertex2==this->base_graph_terminal_node()) continue;
+                auto* right_snc=single_node_cut_factors_[vertex2][0];
+                size_t i=right_snc->get_factor()->getBaseIDToOrder(vertex1);
+                assert((right_snc->get_factor()->getBaseIDs().size())>i);
+                //if(pInstance->getMyGraphLifted().getForwardEdgeCost(vertex1,j)<100.0){
+                auto * message=lp_->template add_message<SINGLE_NODE_CUT_LIFTED_MESSAGE>(left_snc, right_snc, i, j);
+                snc_lifted_messages_.push_back(message);
+
+                //}
+                const double* pOut=&left_snc_factor->getBaseCosts().at(j);
+                const double* pIn=&right_snc->get_factor()->getBaseCosts().at(i);
+                //     controlMCCosts.push_back(std::make_tuple(vertex1,vertex2,pIn,pOut));
+                if(pInstance->getMyGraph().getForwardEdgeCost(vertex1,j)>=100.0){
+                    controlMCCostsIn.push_back(pIn);
+                    controlMCCostsOut.push_back(pOut);
+                }
+
+            }
         }
 
     }
@@ -1199,6 +1235,10 @@ void lifted_disjoint_paths_constructor<FACTOR_MESSAGE_CONNECTION, SINGLE_NODE_CU
     #endif
 
     if(diagnostics()) std::cout<<"primal value: "<<primalValue<<", clustering value: "<<clusteringValue<<std::endl;
+
+    if(diagnostics()) std::cout<<"Average time in SNC LB so far "<<pInstance->getAverageLBTime()<<std::endl;
+    if(diagnostics()) std::cout<<"Average time in SNC base MM so far "<<pInstance->getAverageBaseMMTime()<<std::endl;
+    if(diagnostics()) std::cout<<"Average time in SNC lifted MM so far "<<pInstance->getAverageLiftedMMTime()<<std::endl;
 }
 
 
