@@ -42,6 +42,7 @@
 #include "lifted_disjoint_paths/ldp_vertex_groups.hxx"
 #include "ldp_batch_process.hxx"
 #include <chrono>
+#include "ldp_interval_connection.hxx"
 
 
 namespace py = pybind11;
@@ -57,6 +58,7 @@ public:
 
      LdpInstance(LdpParameters<>& configParameters,CompleteStructure<>& cs);
      LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP);
+     LdpInstance(LdpParameters<>& configParameters,LdpIntervalConnection& IC);
      LdpInstance(LdpParameters<>& configParameters, const py::array_t<size_t>& baseEdges, const py::array_t<size_t>& liftedEdges, const  py::array_t<double>& baseCosts, const  py::array_t<double>& liftedCosts, const py::array_t<double> &verticesCosts, VertexGroups<>& pvg);
 
 	bool isReachable(size_t i,size_t j) const{
@@ -80,6 +82,31 @@ public:
         return parameters.getMaxTimeBase();
     }
 
+    void setOutputFileName(const std::string& fileName){
+        if(!fileName.empty()){
+            size_t lastDot=std::min(fileName.find_last_of("."),fileName.size());
+            outputFilePrefix=fileName.substr(0,lastDot);
+            outputFileSuffix=fileName.substr(lastDot,fileName.size());
+            outputFileName=fileName;
+        }
+        else{
+            outputFilePrefix="output";
+            outputFileSuffix=".txt";
+            outputFileName="output.txt";
+        }
+    }
+
+    const std::string& getOutputFilePrefix()const{
+        return outputFilePrefix;
+    }
+
+    const std::string& getOutputFileSuffix()const{
+        return outputFileSuffix;
+    }
+
+    const std::string& getOutputFileName()const{
+        return outputFileName;
+    }
 
     const std::vector<std::unordered_set<size_t>>* getPReachable(){
         return &reachable;
@@ -220,6 +247,12 @@ private:
     double negativeLiftedThreshold;
     double positiveLiftedThreshold;
     double baseThreshold;
+    bool keepAllToFirst;
+    bool keepAllToLast;
+
+    std::string outputFileName;
+    std::string outputFilePrefix;
+    std::string outputFileSuffix;
 
 
 

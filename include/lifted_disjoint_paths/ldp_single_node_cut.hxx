@@ -58,6 +58,10 @@ public:
 		return baseCosts;
 	}
 
+    const std::vector<size_t>& getTraverseOrder()const{
+        return traverseOrder;
+    }
+
     const double& getNodeCost()const{
         return nodeCost;
     }
@@ -71,6 +75,8 @@ public:
 
 	void setBaseEdgeActive(size_t index);
 	void setNoBaseEdgeActive();
+
+    void setBaseEdgeActiveWithID(size_t vertexID);
 
     void setPrimalLifted(std::vector<size_t> &verticesOfActiveEdges);
 
@@ -87,6 +93,9 @@ public:
 		return primalBase_;
 	}
 
+    const std::unordered_map<size_t,size_t>& getBaseIDsToIndices()const {
+        return baseIDToIndex;
+    }
 
 	size_t getPrimalBaseVertexID() const {
         assert(primalBase_<baseIDs.size());
@@ -201,7 +210,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsBegin(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsBegin(const size_t& nodeIndex)const{
         if(isOutFlow){
             return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
         }
@@ -210,7 +219,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsEnd(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsEnd(const size_t& nodeIndex)const{
         if(isOutFlow){
             return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
         }
@@ -219,7 +228,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsRevBegin(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsRevBegin(const size_t& nodeIndex)const{
         if(!isOutFlow){
             return ldpBaseGraph.forwardNeighborsBegin(nodeIndex);
         }
@@ -228,7 +237,7 @@ private:
         }
     }
 
-    const std::pair<size_t,double>* neighborsRevEnd(const size_t& nodeIndex)const{
+    const LdpDirectedGraph::edge* neighborsRevEnd(const size_t& nodeIndex)const{
         if(!isOutFlow){
             return ldpBaseGraph.forwardNeighborsEnd(nodeIndex);
         }
@@ -392,8 +401,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initTraverseOrder() {
             bool descClosed=true;
              //Traverse all base neighbors in direction out from central node
             //Not closed vertices store to the stack.
-            const std::pair<size_t,double>* vertexIt=neighborsBegin(currentNode);
-            const std::pair<size_t,double>* end=neighborsEnd(currentNode);
+            const LdpDirectedGraph::edge* vertexIt=neighborsBegin(currentNode);
+            const LdpDirectedGraph::edge* end=neighborsEnd(currentNode);
 
 
             for (;vertexIt!=end;vertexIt++) {
@@ -442,17 +451,22 @@ inline std::list<size_t> ldp_single_node_cut_factor<LDP_INSTANCE>::getOptLiftedF
             if(isLiftedVertex(vertexInOptimalPath)){
 
                 optLifted.push_back(vertexInOptimalPath);
-                if(debug()){
-                    double toAdd=myStr.liftedCosts.at(liftedIDToOrder.at(vertexInOptimalPath));
-                    optValueComputed+=toAdd;
-                }
+                //if(debug()){
+#ifndef NDEBUG
+                double toAdd=myStr.liftedCosts.at(liftedIDToOrder.at(vertexInOptimalPath));
+                optValueComputed+=toAdd;
+#endif
+                //}
 
             }
 
             assert(vertexInOptimalPath<ldpInstance.getNumberOfVertices());
             vertexInOptimalPath=ldpInstance.sncNeighborStructure[vertexInOptimalPath];
-		}
-        if(debug()) assert(std::abs(optValueComputed-myStr.optValue)<eps);
+        }
+        //if(debug())
+#ifndef NDEBUG
+        assert(std::abs(optValueComputed-myStr.optValue)<eps);
+#endif
     }
 
     return optLifted;
@@ -501,6 +515,14 @@ template<class LDP_INSTANCE>
 inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeActive(size_t index){
 	assert(index<baseCosts.size());
 	primalBase_=index;
+
+}
+
+template<class LDP_INSTANCE>
+inline void ldp_single_node_cut_factor<LDP_INSTANCE>::setBaseEdgeActiveWithID(size_t vertexID){
+    auto iter=baseIDToIndex.find(vertexID);
+    assert(iter!=baseIDToIndex.end());
+    primalBase_=iter->second;
 
 }
 
@@ -713,7 +735,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
     const LdpDirectedGraph& myLiftedGraph=ldpInstance.getMyGraphLifted();
 
     if(isOutFlow){
-        const std::pair<size_t,double>* edgeIt=myLiftedGraph.forwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myLiftedGraph.forwardNeighborsBegin(nodeID);
 
         size_t counter=0;
         for (;edgeIt!=myLiftedGraph.forwardNeighborsEnd(nodeID);edgeIt++) {
@@ -730,7 +752,7 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initLiftedCosts(double fra
         }
     }
     else{
-        const std::pair<size_t,double>* edgeIt=myLiftedGraph.backwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myLiftedGraph.backwardNeighborsBegin(nodeID);
         size_t counter=0;
         for (;edgeIt!=myLiftedGraph.backwardNeighborsEnd(nodeID);edgeIt++) {
             const size_t& node=edgeIt->first;
@@ -763,13 +785,19 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
 
     if(isOutFlow){
 
-        const std::pair<size_t,double>* edgeIt=myBaseGraph.forwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myBaseGraph.forwardNeighborsBegin(nodeID);
         size_t counter=0;
         for (;edgeIt!=myBaseGraph.forwardNeighborsEnd(nodeID);edgeIt++) {
             const size_t& node=edgeIt->first;
             const double& cost=edgeIt->second;
 
-            baseCosts.push_back((cost)*fractionBase);
+            if(node==ldpInstance.getTerminalNode()){
+                baseCosts.push_back(cost);
+            }
+            else{
+                baseCosts.push_back((cost)*fractionBase);
+            }
+
 
             baseIDs.push_back(node);
             baseIDToIndex[node]=counter;
@@ -780,13 +808,19 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::initBaseCosts(double fract
         }
     }
     else{
-        const std::pair<size_t,double>* edgeIt=myBaseGraph.backwardNeighborsBegin(nodeID);
+        const LdpDirectedGraph::edge* edgeIt=myBaseGraph.backwardNeighborsBegin(nodeID);
         size_t counter=0;
         for (;edgeIt!=myBaseGraph.backwardNeighborsEnd(nodeID); edgeIt++) {
             const size_t& node=edgeIt->first;
             const double& cost=edgeIt->second;
 
-            baseCosts.push_back((cost)*fractionBase);
+            if(node==ldpInstance.getSourceNode()){
+                 baseCosts.push_back(cost);
+            }
+            else{
+                 baseCosts.push_back((cost)*fractionBase);
+            }
+
             //std::cout<<"snc base in "<<nodeID<<" "<<node<<": "<<cost<<std::endl;
             baseIDs.push_back(node);
             baseIDToIndex[node]=counter;
@@ -814,14 +848,14 @@ inline double ldp_single_node_cut_factor<LDP_INSTANCE>::LowerBound(bool canChang
     //if(canChange||optValueUpToDate){
     if(canChange){
         updateOptimal();
-        if(debug()){
-            double controlValue=0;
-            if(optBaseIndex!=nodeNotActive){
-                controlValue+=nodeCost;
-                controlValue+=baseCosts.at(optBaseIndex);
+//        if(debug()){
+//            double controlValue=0;
+//            if(optBaseIndex!=nodeNotActive){
+//                controlValue+=nodeCost;
+//                controlValue+=baseCosts.at(optBaseIndex);
 
-            }
-        }
+//            }
+//        }
 
         //std::cout<<"snc lower bound "<<optValue<<std::endl;
         return optValue;
@@ -894,8 +928,8 @@ void ldp_single_node_cut_factor<LDP_INSTANCE>::topDownUpdate(StrForTopDownUpdate
         size_t bestDescVertexID=getVertexToReach();
 
          //Search for best descendant
-        const std::pair<size_t,double>* vertexIt=neighborsBegin(currentNode);
-        const std::pair<size_t,double>* end=neighborsEnd(currentNode);
+        const LdpDirectedGraph::edge* vertexIt=neighborsBegin(currentNode);
+        const LdpDirectedGraph::edge* end=neighborsEnd(currentNode);
 
 
         for (;vertexIt!=end;vertexIt++) {
@@ -1058,8 +1092,8 @@ inline void ldp_single_node_cut_factor<LDP_INSTANCE>::bottomUpUpdate(const StrFo
             bestValue=ldpInstance.sncBUStructure[currentVertex]+nodeCost;
             bestIndex=nodeID;
         }
-        const std::pair<size_t,double>* vertexIt=neighborsRevBegin(currentVertex);
-        const std::pair<size_t,double>* end=neighborsRevEnd(currentVertex);
+        const LdpDirectedGraph::edge* vertexIt=neighborsRevBegin(currentVertex);
+        const LdpDirectedGraph::edge* end=neighborsRevEnd(currentVertex);
         for (;vertexIt!=end;vertexIt++) {
 
             size_t pred=vertexIt->first;
@@ -1277,14 +1311,16 @@ inline std::vector<double> ldp_single_node_cut_factor<LDP_INSTANCE>::getAllLifte
     std::vector<double> messagesToOutput=std::vector<double>(liftedCosts.size());
 	for (int i = 0; i < messagesToOutput.size(); ++i) {
         messagesToOutput[i]=ldpInstance.sncLiftedMessages[liftedIDs[i]];
-	}
-
-    if(debug()){
-        StrForTopDownUpdate myStr2(localBaseCosts,localLiftedCosts);
-        topDownUpdate(myStr2);
-        assert(std::abs(myStr2.optValue-currentOptValue)<eps);
-        assert(myStr2.optValue+minMarginalsImproving-origOptValue>-eps);
     }
+
+    //if(debug()){
+#ifndef NDEBUG
+    StrForTopDownUpdate myStr2(localBaseCosts,localLiftedCosts);
+    topDownUpdate(myStr2);
+    assert(std::abs(myStr2.optValue-currentOptValue)<eps);
+    assert(myStr2.optValue+minMarginalsImproving-origOptValue>-eps);
+#endif
+    //}
 	return messagesToOutput;
 }
 
@@ -1327,35 +1363,39 @@ public:
         const std::vector<double>& liftedCosts=r.getLiftedCosts();
         //if(debug()) std::cout<<"message to left "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
         const double delta = r.getOneLiftedMinMarginal(left_node,&baseCosts,&liftedCosts);
-        if(debug()){
-            std::vector<double> controlLiftedCosts=liftedCosts;
-            controlLiftedCosts[left_node]-=delta;
-            double controlDelta=r.getOneLiftedMinMarginal(left_node,&baseCosts,&controlLiftedCosts);
-            if(abs(controlDelta)>eps){
-                throw std::runtime_error("different min marginal after lower bound");
-            }
+        //if(debug()){
+#ifndef NDEBUG
+        std::vector<double> controlLiftedCosts=liftedCosts;
+        controlLiftedCosts[left_node]-=delta;
+        double controlDelta=r.getOneLiftedMinMarginal(left_node,&baseCosts,&controlLiftedCosts);
+        if(abs(controlDelta)>eps){
+            throw std::runtime_error("different min marginal after lower bound");
         }
-		msg[0] -= omega * delta;
-    //    if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
+#endif
+        //}
+        msg[0] -= omega * delta;
+        //    if(debug()) std::cout<<"sent "<<r.nodeID<<": "<<r.getLiftedID(left_node)<<std::endl;
 	}
 
 	template<typename SINGLE_NODE_CUT_FACTOR, typename MSG>
 	void send_message_to_right(const SINGLE_NODE_CUT_FACTOR& l, MSG& msg, const double omega)
-	{
+    {
         const std::vector<double>& baseCosts=l.getBaseCosts();
         const std::vector<double>& liftedCosts=l.getLiftedCosts();
-       // if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
+        // if(debug()) std::cout<<"message to right "<<l.nodeID<<": "<<l.getLiftedID(right_node)<<std::endl;
         const double delta = l.getOneLiftedMinMarginal(right_node,&baseCosts,&liftedCosts);
-        if(debug()){
-            std::vector<double> controlLiftedCosts=liftedCosts;
-            controlLiftedCosts[right_node]-=delta;
-            double controlDelta=l.getOneLiftedMinMarginal(right_node,&baseCosts,&controlLiftedCosts);
-            if(abs(controlDelta)>eps){
-                throw std::runtime_error("different min marginal after lower bound");
-            }
+        // if(debug()){
+#ifndef NDEBUG
+        std::vector<double> controlLiftedCosts=liftedCosts;
+        controlLiftedCosts[right_node]-=delta;
+        double controlDelta=l.getOneLiftedMinMarginal(right_node,&baseCosts,&controlLiftedCosts);
+        if(abs(controlDelta)>eps){
+            throw std::runtime_error("different min marginal after lower bound");
         }
-		msg[0] -= omega * delta;
-	}
+#endif
+        //}
+        msg[0] -= omega * delta;
+    }
 
 
 
@@ -1364,26 +1404,28 @@ public:
     {
         const std::vector<double> msg_vec = r.getAllLiftedMinMarginals();
 
-        if(debug()){
-            std::vector<double> liftedCosts=r.getLiftedCosts();
-            std::vector<double> baseCosts=r.getBaseCosts();
+        //if(debug()){
+#ifndef NDEBUG
+        std::vector<double> liftedCosts=r.getLiftedCosts();
+        std::vector<double> baseCosts=r.getBaseCosts();
 
-            for (int i = 0; i < liftedCosts.size(); ++i) {
-                 liftedCosts[i]-=msg_vec[i];
-            }
-
-            const std::vector<double> controlMessages=r.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
-
-            for (int i = 0; i < controlMessages.size(); ++i) {
-
-
-                if(abs(controlMessages.at(i))>eps){
-                    std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
-                    throw std::runtime_error("wrong lifted min marginal in snc lifted message");
-                }
-            }
-
+        for (int i = 0; i < liftedCosts.size(); ++i) {
+            liftedCosts[i]-=msg_vec[i];
         }
+
+        const std::vector<double> controlMessages=r.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
+
+        for (int i = 0; i < controlMessages.size(); ++i) {
+
+
+            if(abs(controlMessages.at(i))>eps){
+                std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
+                throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+            }
+        }
+
+#endif
+        //}
 
         for(auto it=msg_begin; it!=msg_end; ++it)
         {
@@ -1409,27 +1451,28 @@ public:
 
         const std::vector<double> msg_vec = l.getAllLiftedMinMarginals();
 
-        if(debug()){
-            std::vector<double> liftedCosts=l.getLiftedCosts();
-            std::vector<double> baseCosts=l.getBaseCosts();
+        //if(debug()){
+#ifndef NDEBUG
+        std::vector<double> liftedCosts=l.getLiftedCosts();
+        std::vector<double> baseCosts=l.getBaseCosts();
 
-            for (int i = 0; i < liftedCosts.size(); ++i) {
+        for (int i = 0; i < liftedCosts.size(); ++i) {
 
-                 liftedCosts[i]-=msg_vec[i];
-
-             }
-
-            const std::vector<double> controlMessages=l.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
-
-            for (int i = 0; i < controlMessages.size(); ++i) {
-
-                if(abs(controlMessages.at(i))>eps){
-                    std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
-                    throw std::runtime_error("wrong lifted min marginal in snc lifted message");
-                }
-            }
+            liftedCosts[i]-=msg_vec[i];
 
         }
+
+        const std::vector<double> controlMessages=l.getAllLiftedMinMarginals(&baseCosts,&liftedCosts);
+
+        for (int i = 0; i < controlMessages.size(); ++i) {
+
+            if(abs(controlMessages.at(i))>eps){
+                std::cout<<"WRONG control message "<<controlMessages.at(i)<<", orig message "<<msg_vec.at(i)<<std::endl;
+                throw std::runtime_error("wrong lifted min marginal in snc lifted message");
+            }
+        }
+#endif
+        //}
 
 
         for(auto it=msg_begin; it!=msg_end; ++it)

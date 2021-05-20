@@ -50,12 +50,15 @@ int main(int argc, char** argv) {
 
     ProblemConstructorRoundingSolver<Solver<LP<lifted_disjoint_paths_FMC>,StandardTighteningVisitor>> solver(argc,argv);
     std::string inputFileName=solver.get_input_file();
+    std::string outputFileName=solver.getOutputFileName();
+    //std::cout<<"output file name "<<outputFileName<<std::endl;
 
     LPMP::lifted_disjoint_paths::LdpParameters<> configParams(inputFileName);
 
     LPMP::CompleteStructure<> completeStructure(configParams);
 
     LPMP::lifted_disjoint_paths::LdpInstance ldpInstance(configParams,completeStructure);
+    ldpInstance.setOutputFileName(outputFileName);
 
 
     solver.GetProblemConstructor().construct(ldpInstance);

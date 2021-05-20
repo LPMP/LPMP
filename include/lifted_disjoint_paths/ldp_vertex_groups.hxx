@@ -76,7 +76,10 @@ public:
         initFromVector(verticesInFrames,0,0);
     }
 
+    void print()const;
 
+
+  //  std::vector<std::vector<size_t>> extractCorePaths(const std::vector<std::vector<size_t>>& paths, size_t cutoff,bool isFirst,bool isLast,size_t vertexShift) const;
 
 
     size_t getGroupIndex(size_t v) const{
@@ -122,7 +125,7 @@ public:
         return vertexShiftBack;
     }
 
-    size_t getMinVertexInTime(size_t time){
+    size_t getMinVertexInTime(size_t time)const{
         assert(time<=maxTime);
         assert(time>timeShift);
         size_t i=time;
@@ -133,7 +136,7 @@ public:
         else return groups.at(i-timeShift).front();
     }
 
-    size_t getMaxVertexInTime(size_t time){
+    size_t getMaxVertexInTime(size_t time)const {
         assert(time<=maxTime);
         assert(time>timeShift);
         size_t i=time;
@@ -145,7 +148,7 @@ public:
     }
 
 
-    std::vector<std::vector<size_t>> extractInnerPaths(const std::vector<std::vector<size_t> > &paths, const size_t minT,const size_t maxT) const;
+    std::vector<std::vector<size_t>> extractInnerPaths(const std::vector<std::vector<size_t> > &paths, const size_t minT, const size_t maxT, const size_t vShift=0) const;
 
     void testCorrectness(bool printToo)const ;
 
@@ -162,6 +165,19 @@ private:
 
 
 };
+
+template<class T>
+inline void VertexGroups<T>::print() const{
+    for (size_t i = 0; i <= maxTime+1; ++i) {
+        std::cout<<"layer "<<i<<": ";
+        for (int j = 0; j < groups[i].size(); ++j) {
+            std::cout<<groups[i][j]<<",";
+
+        }
+        std::cout<<std::endl;
+    }
+
+}
 
 template<class T>
 inline void VertexGroups<T>::testCorrectness(bool printToo) const{
@@ -381,25 +397,73 @@ inline void VertexGroups<T>::initFromFile(const std::string& fileName, const PAR
         std::clog << er.what() << " (" << er.code() << ")" << std::endl;
 
     }
+    //print();
 
 }
 
+//template<class T>
+//inline std::vector<std::vector<size_t>> VertexGroups<T>::extractCorePaths(const std::vector<std::vector<size_t>>& paths, size_t cutoff,bool isFirst,bool isLast,size_t vertexShift) const{
+//    size_t minT;
+//    size_t maxT;
+//    if(isFirst){
+//        minT=1;
+//    }
+//    else{
+//        minT=cutoff+1;
+//    }
+//    if(isLast){
+//        maxT=maxTime;
+//    }
+//    else{
+//        maxT=maxTime-cutoff;
+//    }
+//    return extractInnerPaths(paths,minT,maxT,vertexShift);
+//}
+
+
+//Vertices in paths are assumed to be numbered from zero, vShift should transform them to globalIDs
 template<class T>
-inline std::vector<std::vector<size_t>> VertexGroups<T>::extractInnerPaths(const std::vector<std::vector<size_t>>& paths, const size_t minT, const size_t maxT) const{
+inline std::vector<std::vector<size_t>> VertexGroups<T>::extractInnerPaths(const std::vector<std::vector<size_t>>& paths, const size_t minT, const size_t maxT,const size_t vShift) const{
     //maxT inclusive
     std::vector<std::vector<size_t>> outputPaths;
     for (int i = 0; i < paths.size(); ++i) {
         const std::vector<size_t>& path=paths[i];
         std::vector<size_t> outputPath;
-        for(size_t vertex: path){
-            size_t time=getGroupIndex(vertex);
-            if(time<=maxT){
-                if(time>=minT){
-                    outputPath.push_back(vertex);
-                }
+        size_t j=0;
+        size_t time=0;
+        while(j<paths[i].size()){
+
+            time=getGroupIndex(paths[i][j]);
+            if(time<minT){
+                j++;
             }
-            else break;
+            else{
+                break;
+            }
         }
+        while(j<paths[i].size()){
+
+            time=getGroupIndex(paths[i][j]);
+            if(time<=maxT){
+                outputPath.push_back(paths[i][j]+vShift);
+                j++;
+            }
+            else{
+                break;
+            }
+        }
+
+//        for(size_t v: path){
+//            assert(v>=vShift);
+//            size_t vertex=v-vShift;
+//            size_t time=getGroupIndex(vertex);
+//            if(time<=maxT){
+//                if(time>=minT){
+//                    outputPath.push_back(vertex);
+//                }
+//            }
+//            else break;
+//        }
         if(outputPath.size()>0){
             outputPaths.push_back(outputPath);
         }

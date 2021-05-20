@@ -119,25 +119,27 @@ public:
         assert(isLifted.size()==dimension);
         assert(edgeIndexInPath.size()==dimension);
 
-        if(debug()){
-            size_t indexInPath=edgeIndexInPath[msg_dim];
-            size_t v0=l.getListOfVertices().at(indexInPath);
-            size_t v1;
-            if(indexInPath==l.getNumberOfEdges()-1){
-                v1=l.getListOfVertices().at(0);
-                lastV1=v1;
-                lastV2=v0;
-                lastValue=msg;
-            }
-            else{
-                v1=l.getListOfVertices().at(indexInPath+1);
-                lastV1=v0;
-                lastV2=v1;
-                lastValue=msg;
-            }
-            assert(isLifted.at(msg_dim)==l.getLiftedInfo().at(indexInPath));
-            //std::cout<<"Update cost of path, vertices "<<v0<<", "<<v1<<", edge index "<<edgeIndexInPath[msg_dim]<<", value "<<msg<<std::endl;
+#ifndef NDEBUG
+        //if(debug()){
+        size_t indexInPath=edgeIndexInPath[msg_dim];
+        size_t v0=l.getListOfVertices().at(indexInPath);
+        size_t v1;
+        if(indexInPath==l.getNumberOfEdges()-1){
+            v1=l.getListOfVertices().at(0);
+            lastV1=v1;
+            lastV2=v0;
+            lastValue=msg;
         }
+        else{
+            v1=l.getListOfVertices().at(indexInPath+1);
+            lastV1=v0;
+            lastV2=v1;
+            lastValue=msg;
+        }
+        assert(isLifted.at(msg_dim)==l.getLiftedInfo().at(indexInPath));
+        //std::cout<<"Update cost of path, vertices "<<v0<<", "<<v1<<", edge index "<<edgeIndexInPath[msg_dim]<<", value "<<msg<<std::endl;
+        // }
+#endif
 
         l.updateEdgeCost(edgeIndexInPath[msg_dim],msg);
 
@@ -155,31 +157,33 @@ public:
         assert(edgeIndexInPath.size()==dimension);
 
         r.updateEdgeCost(msg,vertexIndexInSnc[msg_dim],isLifted[msg_dim]);
-        if(debug()){
-            size_t centralNodeID=r.nodeID;
+#ifndef NDEBUG
+        //if(debug()){
+        size_t centralNodeID=r.nodeID;
 
-            size_t secondVertex;
-            size_t v0;
-            size_t v1;
+        size_t secondVertex;
+        size_t v0;
+        size_t v1;
 
-            if(isLifted.at(msg_dim)){
+        if(isLifted.at(msg_dim)){
 
-                secondVertex=r.getLiftedIDs().at(vertexIndexInSnc[msg_dim]);
+            secondVertex=r.getLiftedIDs().at(vertexIndexInSnc[msg_dim]);
 
-            }
-            else{
-                secondVertex=r.getBaseIDs().at(vertexIndexInSnc[msg_dim]);
-            }
-            v0=std::min(centralNodeID,secondVertex);
-            v1=std::max(centralNodeID,secondVertex);
-            assert(v0==lastV1);
-            assert(v1==lastV2);
-            if(std::abs(msg+lastValue)>=eps){
-                std::cout<<"WRONG update cost "<<v0<<", "<<v1<<", left was "<<lastValue<<", right is "<<msg<<std::endl;
-            }
-            assert(std::abs(msg+lastValue)<eps);
-           // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
         }
+        else{
+            secondVertex=r.getBaseIDs().at(vertexIndexInSnc[msg_dim]);
+        }
+        v0=std::min(centralNodeID,secondVertex);
+        v1=std::max(centralNodeID,secondVertex);
+        assert(v0==lastV1);
+        assert(v1==lastV2);
+        if(std::abs(msg+lastValue)>=eps){
+            std::cout<<"WRONG update cost "<<v0<<", "<<v1<<", left was "<<lastValue<<", right is "<<msg<<std::endl;
+        }
+        assert(std::abs(msg+lastValue)<eps);
+        // std::cout<<"Update cost of SNC, central node "<<centralNodeID<<", second vertex "<< secondVertex<<", value "<<msg<<std::endl;
+        // }
+#endif
 
 
     }
@@ -202,28 +206,31 @@ public:
             if(isLifted.at(0)){
                 delta = r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
 
-                if(debug()){
-                    std::vector<double> controlLiftedCosts=liftedCosts;
-                    controlLiftedCosts[vertexIndexInSnc[0]]-=delta;
-                    controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&controlLiftedCosts);
-                    if(abs(controlDelta)>eps){
-                        throw std::runtime_error("wrong control snc lifted min marginal in path message");
-                    }
-
+#ifndef NDEBUG
+                //if(debug()){
+                std::vector<double> controlLiftedCosts=liftedCosts;
+                controlLiftedCosts[vertexIndexInSnc[0]]-=delta;
+                controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[0],&baseCosts,&controlLiftedCosts);
+                if(abs(controlDelta)>eps){
+                    throw std::runtime_error("wrong control snc lifted min marginal in path message");
                 }
+
+#endif
+                //}
             }
             else{
 
                 delta = r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&baseCosts,&liftedCosts);
-
-                if(debug()){
-                    std::vector<double> controlBaseCosts=baseCosts;
-                    controlBaseCosts[vertexIndexInSnc[0]]-=delta;
-                    controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&controlBaseCosts,&liftedCosts);
-                    if(abs(controlDelta)>eps){
-                        throw std::runtime_error("wrong control snc base min marginal in path message");
-                    }
+#ifndef NDEBUG
+                //if(debug()){
+                std::vector<double> controlBaseCosts=baseCosts;
+                controlBaseCosts[vertexIndexInSnc[0]]-=delta;
+                controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[0],&controlBaseCosts,&liftedCosts);
+                if(abs(controlDelta)>eps){
+                    throw std::runtime_error("wrong control snc base min marginal in path message");
                 }
+                //}
+#endif
             }
 
             msg[0] -= omega * delta;
@@ -233,28 +240,32 @@ public:
             std::vector<double> liftedCosts=r.getLiftedCosts();
             for (size_t i=0;i<dimension;i++) {
                 if(isLifted.at(i)){
-                   // std::cout<<"lifted "<<std::endl;
+                    // std::cout<<"lifted "<<std::endl;
                     delta = r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
                     liftedCosts[vertexIndexInSnc[i]]-=delta;
 
-                    if(debug()){
-                        controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
-                        if(abs(controlDelta)>eps){
-                            throw std::runtime_error("control snc min marginal unequall to zero");
-                        }
+#ifndef NDEBUG
+                    //if(debug()){
+                    controlDelta=r.getOneLiftedMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+                    if(abs(controlDelta)>eps){
+                        throw std::runtime_error("control snc min marginal unequall to zero");
                     }
+                    //}
+#endif
 
                 }
                 else{
                     //std::cout<<"base "<<std::endl;
                     delta = r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
                     baseCosts[vertexIndexInSnc[i]]-=delta;
-                    if(debug()){
-                        controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
-                        if(abs(controlDelta)>eps){
-                            throw std::runtime_error("control snc min marginal unequall to zero");
-                        }
+#ifndef NDEBUG
+                    // if(debug()){
+                    controlDelta=r.getOneBaseEdgeMinMarginal(vertexIndexInSnc[i],&baseCosts,&liftedCosts);
+                    if(abs(controlDelta)>eps){
+                        throw std::runtime_error("control snc min marginal unequall to zero");
                     }
+                    //}
+#endif
 
                 }
                 msg[i] -= omega * delta;
@@ -272,15 +283,17 @@ public:
         if(dimension==1){
             const std::vector<double>& costs=l.getCosts();
             delta=l.getMinMarginal(edgeIndexInPath[0],&costs);
-            if(debug()){
-                std::vector<double> controlCosts=costs;
-                controlCosts.at(edgeIndexInPath[0])-=delta;
-                controlDelta=l.getMinMarginal(edgeIndexInPath[0],&controlCosts);
-                if(abs(controlDelta)>eps){
-                    std::cout<<"control value from path factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
-                    throw std::runtime_error("wrong path min marginal check in path message");
-                }
+#ifndef NDEBUG
+            //if(debug()){
+            std::vector<double> controlCosts=costs;
+            controlCosts.at(edgeIndexInPath[0])-=delta;
+            controlDelta=l.getMinMarginal(edgeIndexInPath[0],&controlCosts);
+            if(abs(controlDelta)>eps){
+                std::cout<<"control value from path factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
+                throw std::runtime_error("wrong path min marginal check in path message");
             }
+            //}
+#endif
             msg[0] -= omega * delta;
         }
         else{
@@ -288,16 +301,18 @@ public:
 
             for (size_t i=0;i<dimension;i++) {
                 delta=l.getMinMarginal(edgeIndexInPath[i],&localCosts);
-              //  std::cout<<"sending "<<delta<<std::endl;
+                //  std::cout<<"sending "<<delta<<std::endl;
                 assert(edgeIndexInPath[i]<localCosts.size());
                 localCosts[edgeIndexInPath[i]]-=delta;
-                if(debug()){
-                    controlDelta=l.getMinMarginal(edgeIndexInPath[i],&localCosts);
-                    if(abs(controlDelta)>eps){
-                        std::cout<<"control value from path factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
-                        throw std::runtime_error("wrong path min marginal check in path message");
-                    }
+#ifndef NDEBUG
+                //if(debug()){
+                controlDelta=l.getMinMarginal(edgeIndexInPath[i],&localCosts);
+                if(abs(controlDelta)>eps){
+                    std::cout<<"control value from path factor"<<controlDelta<<", original delta: "<<delta<<std::endl;
+                    throw std::runtime_error("wrong path min marginal check in path message");
                 }
+                //}
+#endif
                 msg[i] -= omega * delta;
             }
         }

@@ -202,6 +202,28 @@ public:
     }
 
 
+    size_t getPrimalHeuristicIterations()const{
+        return primalHeuristicIterations;
+    }
+
+    bool isUsePreIter()const{
+        return usePreIter;
+    }
+
+    bool isRepamCostInPrimalHeuristic()const{
+        return repamCostInHeuristic;
+    }
+
+    double getMergeThreshold()const{
+        return mergeThreshold;
+    }
+
+    bool isStoreIntermediate()const{
+        return storeIntermediateSolutions;
+    }
+
+
+
 private:
     LdpParameters<T>(const LdpParameters<T>&);
     LdpParameters();
@@ -256,6 +278,15 @@ private:
 
      bool missingAsMustCut;
      double mustCutPenalty;
+
+     size_t primalHeuristicIterations;
+
+     bool usePreIter;
+     bool repamCostInHeuristic;
+
+     double mergeThreshold;
+
+     bool storeIntermediateSolutions;
 
 };
 
@@ -547,6 +578,51 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          mustCutPenalty=100.0;
      }
      controlOutput<<"must cut penalty "<<mustCutPenalty<<std::endl;
+
+
+
+     if(parameters.count("PRIMAL_HEURISTIC_ITERATIONS")>0){
+         primalHeuristicIterations=std::stoul(parameters["PRIMAL_HEURISTIC_ITERATIONS"]);
+     }
+     else{
+         primalHeuristicIterations=10;
+     }
+     controlOutput<<"primal heuristic iterations "<<primalHeuristicIterations<<std::endl;
+
+     if(parameters.count("REPAM_COST_IN_HEURISTIC")>0){
+         repamCostInHeuristic=std::stoi(parameters["REPAM_COST_IN_HEURISTIC"]);
+     }
+     else{
+         repamCostInHeuristic=0;
+     }
+     controlOutput<<"Use reparametrized cost in primal heuristic "<<repamCostInHeuristic<<std::endl;
+
+     if(parameters.count("USE_PRE_ITERATE")>0){
+         usePreIter=std::stoi(parameters["USE_PRE_ITERATE"]);
+     }
+     else{
+         usePreIter=1;
+     }
+     controlOutput<<"Using mcf reparametrization in pre-iteration step "<<usePreIter<<std::endl;
+
+
+     if(parameters.count("MERGE_THRESHOLD")>0){
+         mergeThreshold=std::min(std::stod(parameters["MERGE_THRESHOLD"]),1.0);
+     }
+     else{
+         mergeThreshold=0.25;
+     }
+     controlOutput<<"merge threshold "<<mergeThreshold<<std::endl;
+
+
+     if(parameters.count("SAVE_INTERMEDIATE")>0){
+         storeIntermediateSolutions=std::stoi(parameters["SAVE_INTERMEDIATE"]);
+     }
+     else{
+         storeIntermediateSolutions=1;
+     }
+     controlOutput<<"Store intermediate solutions "<<storeIntermediateSolutions<<std::endl;
+
 
 
      writeControlOutput();

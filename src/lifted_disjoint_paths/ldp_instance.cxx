@@ -13,7 +13,9 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
     parameters(configParameters)
 {
 
-
+    keepAllToFirst=false;
+    keepAllToLast=false;
+   // std::cout<<"constructor instance"<<std::endl;
 
 
     pCompleteGraph=&cs.myCompleteGraph;
@@ -26,12 +28,16 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
         initCanJoinStructure(cs.myCompleteGraph);
     }
 
+   // std::cout<<"after can join"<<std::endl;
+
     s_=myGraphLifted.getNumberOfVertices();
     t_=s_+1;
     myGraph=LdpDirectedGraph(cs.myCompleteGraph,parameters.getInputCost(),parameters.getOutputCost());
     vertexScore=cs.verticesScore;
 
 
+   // std::cout<<"before thresholds"<<std::endl;
+    //vertexGroups.print();
 
     if(parameters.isUseAdaptiveThreshold()){
         if(diagnostics()) std::cout<<"using adaptive"<<std::endl;
@@ -46,6 +52,7 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
 
     numberOfVertices=myGraph.getNumberOfVertices();
 
+    //std::cout<<"before init"<<std::endl;
     init();
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -62,6 +69,56 @@ LdpInstance::LdpInstance(LdpParameters<> &configParameters, CompleteStructure<>&
 
 }
 
+LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpIntervalConnection& IC):
+    parameters(configParameters){
+    pCompleteGraph=&IC.getCompleteGraph();
+
+    keepAllToFirst=true;
+    keepAllToLast=true;
+
+    parameters.getControlOutput()<< "Vertices in the complete graph "<<pCompleteGraph->getNumberOfVertices()<< std::endl;
+    parameters.writeControlOutput();
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    vertexScore=IC.getScoreOfVertices();
+
+    vertexGroups=IC.getVertexGroups();
+
+    myGraphLifted=IC.getCompleteGraph();
+    s_=myGraphLifted.getNumberOfVertices();
+    t_=s_+1;
+    myGraph=LdpDirectedGraph(IC.getCompleteGraph(),parameters.getInputCost(),parameters.getOutputCost());
+
+    if(parameters.isMustCutMissing()){
+        initCanJoinStructure(myGraphLifted);
+    }
+
+    if(parameters.isUseAdaptiveThreshold()){
+        if(diagnostics()) std::cout<<"using adaptive"<<std::endl;
+
+       initAdaptiveThresholds(&myGraph,&myGraphLifted);
+    }
+    else{
+        baseThreshold=parameters.getBaseUpperThreshold();
+        positiveLiftedThreshold=parameters.getPositiveThresholdLifted();
+        negativeLiftedThreshold=parameters.getNegativeThresholdLifted();
+    }
+    numberOfVertices=myGraph.getNumberOfVertices();
+
+    init();
+
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+     parameters.getControlOutput() << "Time of instance constructor = " << std::chrono::duration_cast<std::chrono::seconds> (end - begin).count() << " seconds" << std::endl;
+    const std::chrono::steady_clock::time_point& bpBegin=IC.getContructorBegin();
+    parameters.getControlOutput() << "Time of instance constructor and batch process = " << std::chrono::duration_cast<std::chrono::seconds> (end - bpBegin).count() << " seconds" << std::endl;
+    parameters.writeControlOutput();
+
+
+}
+
 LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
     parameters(configParameters){
 
@@ -69,6 +126,8 @@ LdpInstance::LdpInstance(LdpParameters<>& configParameters,LdpBatchProcess& BP):
     parameters.getControlOutput()<< "Vertices in the complete graph "<<pCompleteGraph->getNumberOfVertices()<< std::endl;
     parameters.writeControlOutput();
 
+    keepAllToFirst=true;
+    keepAllToLast=false;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     vertexScore=BP.getVerticesScore();
@@ -183,7 +242,7 @@ void LdpInstance::initAdaptiveThresholds(const LdpDirectedGraph* pBaseGraph,cons
                 }
                 else{
                     auto iter2=positiveCosts.end();
-                    iter--;
+                    iter2--;
                     if(*iter2>cost){
                         positiveCosts.erase(iter2);
                         positiveCosts.insert(cost);
@@ -603,7 +662,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                         if(!parameters.isAllBaseZero()){
                             if(isSame&&(parameters.getDenseTimeLifted()>=1||parameters.getLongerIntervalLifted()==1)){
                                 iterBase->second+=cost;
-                                std::pair<size_t,double>*baseIt=myGraph.backwardNeighborsBegin(w);
+                                LdpDirectedGraph::edge *baseIt=myGraph.backwardNeighborsBegin(w);
                                 while(baseIt->first!=i){
                                     baseIt++;
                                     assert(baseIt!=myGraph.forwardNeighborsEnd(w));
@@ -630,6 +689,12 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                                 useEdge=((l1-l0)<=parameters.getMaxTimeLifted()&&(timeGapDiff%parameters.getLongerIntervalLifted())==0);
                             }
                         }
+                        if(!useEdge){
+                            if((keepAllToFirst&&l0==1)||(keepAllToLast&&l1==vertexGroups.getMaxTime())){
+                                useEdge=true;
+                            }
+                        }
+
                         if(useEdge){
                             //if(w>=1356) std::cout<<"lifted edge "<<i<<" "<<w<<": "<<cost<<std::endl;
                             edges.push_back({i,w});
@@ -647,7 +712,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
                             }
                             else{  //add base cost
                                 iterBase->second+=cost;
-                                std::pair<size_t,double>*baseIt=myGraph.backwardNeighborsBegin(w);
+                                LdpDirectedGraph::edge *baseIt=myGraph.backwardNeighborsBegin(w);
                                 while(baseIt->first!=i){
                                     baseIt++;
                                     assert(baseIt!=myGraph.forwardNeighborsEnd(w));
@@ -674,6 +739,7 @@ void LdpInstance::sparsifyLiftedGraphNew(const LdpDirectedGraph& inputLiftedGrap
 
     size_t reachableMustCut=0;
     maxTimeGapInGraph=std::min(maxTimeGapInGraph,parameters.getMaxTimeLifted());
+   // std::cout<<"max time gap in graph"<<maxTimeGapInGraph<<std::endl;
 
     if(parameters.isMustCutMissing()){
         for (size_t i = 0; i < inputLiftedGraph.getNumberOfVertices(); ++i) {
@@ -744,6 +810,7 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
 
             double cost=iter->second;
 
+            size_t l1=vertexGroups.getGroupIndex(v1);
             if(v0==s_||v1==t_){
 
                 edgesToUse.push_back({v0,v1});
@@ -751,8 +818,27 @@ void LdpInstance::sparsifyBaseGraphNew(const LdpDirectedGraph& inputGraph, bool 
 
                 costsToUse.push_back(cost);
             }
+            else if((keepAllToFirst&&l0==1)||(keepAllToLast&&l1==vertexGroups.getMaxTime())){
+                edgesToUse.push_back({v0,v1});
+
+                costsToUse.push_back(cost);
+
+            }
             else{
-                size_t l1=vertexGroups.getGroupIndex(v1);
+
+                if(l1<=l0){
+//                    std::cout<<"l0: "<<l0<<", l1: "<<l1<<", v0: "<<v0<<", v1: "<<v1<<std::endl;
+//                    vertexGroups.print();
+//                    for (size_t v0 = 0; v0 < inputGraph.getNumberOfVertices(); ++v0) {
+//                        auto iter2=inputGraph.forwardNeighborsBegin(v0);
+//                        std::cout<<"neighbors of "<<v0<<":";
+//                        for (; iter2!=inputGraph.forwardNeighborsEnd(v0); iter2++) {
+//                            std::cout<<iter2->first<<",";
+//                        }
+//                        std::cout<<std::endl;
+//                    }
+
+                }
                 assert(l1>l0);
                 size_t gap=l1-l0; //map to vector index
                 //assert(gap<=parameters.getMaxTimeBase());
