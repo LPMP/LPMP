@@ -111,16 +111,17 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.', '--target', ext.name] + build_args, cwd=self.build_temp)
 
-config_var = os.environ.get("PACKAGES", "GM")
+config_var = os.environ.get("PACKAGES", "ALL")
 if config_var.upper() == 'LDP':
     myExtModules=[CMakeExtension(name='ldpMessagePassingPy')]
     myPackages=['lpmp_ldp']
-elif config_var.upper() == 'ALL':
-    myExtModules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py'),CMakeExtension(name='ldpMessagePassingPy')]
-    myPackages=['lpmp_ldp','lpmp_py']
-else:
+elif config_var.upper() == 'GM':
     myExtModules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')]
     myPackages=['lpmp_py']
+else:
+    myExtModules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py'),CMakeExtension(name='ldpMessagePassingPy')]
+    myPackages=['lpmp_ldp','lpmp_py']
+    
 
 setup(
     name='lpmp_py',
