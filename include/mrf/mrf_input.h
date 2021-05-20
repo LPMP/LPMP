@@ -1,8 +1,10 @@
 #pragma once
 
 #include <vector>
+#include <cmath>
 #include "two_dimensional_variable_array.hxx"
 #include "three_dimensional_variable_array.hxx"
+#include <iostream>
 
 namespace LPMP {
 
@@ -34,7 +36,8 @@ namespace LPMP {
 
        std::string unary_variable_identifier(const std::size_t i, const std::size_t l) const;
        std::string pairwise_variable_identifier(const std::array<std::size_t,2> vars, const std::array<std::size_t,2> labels) const;
-       std::string Potts_pairwise_variable_identifier(const std::size_t i, const std::size_t j) const;
+       std::string Potts_pairwise_variable_identifier(const std::size_t i, const std::size_t j, const size_t label) const;
+       std::string truncated_L1_pairwise_variable_identifier(const std::size_t i, const std::size_t j, const size_t label) const;
 
        bool unary_variable_active(const std::size_t i, const std::size_t j) const;
        bool unary_variable_active(const std::size_t i) const;
@@ -46,6 +49,15 @@ namespace LPMP {
 
        bool is_Potts(const std::size_t pairwise_idx) const;
        double Potts_strength(const std::size_t pairwise_index) const;
+
+       bool is_truncated_L1(const size_t pairwise_idx) const;
+       struct truncated_L1_potential_param {
+           double slope;
+           int cutoff; 
+       };
+       truncated_L1_potential_param compute_truncated_L1_param(const size_t pairwise_idx) const;
+
+       // TODO: add truncated quadratic
    };
 
    inline std::string mrf_input::unary_variable_identifier(const std::size_t i, const std::size_t l) const
@@ -111,11 +123,19 @@ namespace LPMP {
        return unary_variable_active(i) && unary_variable_active(j);
    }
 
-   inline std::string mrf_input::Potts_pairwise_variable_identifier(const std::size_t i, const std::size_t j) const
+   inline std::string mrf_input::Potts_pairwise_variable_identifier(const std::size_t i, const std::size_t j, const size_t label) const
    {
        assert(i < no_variables());
        assert(j < no_variables());
-       return "y_" + std::to_string(i) + "_" + std::to_string(j);
+       assert(label < cardinality(i));
+       return "y_" + std::to_string(i) + "_" + std::to_string(j) + "(" + std::to_string(label) + ")";
+   }
+
+   inline std::string mrf_input::truncated_L1_pairwise_variable_identifier(const std::size_t i, const std::size_t j, const size_t label) const
+   {
+       assert(i < no_variables());
+       assert(j < no_variables());
+       return "y_" + std::to_string(i) + "_" + std::to_string(j) + "_" + std::to_string(label);
    }
 
    inline void mrf_input::propagate()
@@ -166,29 +186,102 @@ namespace LPMP {
 
        if (cardinality(i) != cardinality(j))
            return false;
+
        auto pot = get_pairwise_potential(pairwise_idx);
-       assert(cardinality(i) > 1);
+       assert(cardinality(i) > 1); 
        const double diagonal = pot(0, 0);
-       if(diagonal != 0.0)
-           return false;
        const double off_diagonal = pot(0, 1);
-       if(off_diagonal < 0.0)
+
+       if(off_diagonal < diagonal)
+       {
+           std::cout << "off diagonal " << off_diagonal << " < diagonal " << diagonal << "\n";
            return false;
+       }
+
        for (std::size_t l_i = 0; l_i < cardinality(i); ++l_i)
            for (std::size_t l_j = 0; l_j < cardinality(j); ++l_j)
                if (l_i != l_j && pot(l_i, l_j) != off_diagonal)
+               {
+                   std::cout << "off diagonal varies\n";
                    return false;
+               }
+
        for (std::size_t l = 0; l < cardinality(i); ++l)
            if (pot(l, l) != diagonal)
+           {
+               std::cout << "diagonal varies\n";
                return false;
+           }
+
        return true;
    }
 
    inline double mrf_input::Potts_strength(const std::size_t pairwise_idx) const
    {
        assert(is_Potts(pairwise_idx));
-       auto pot = get_pairwise_potential(pairwise_idx);
-       return pot(0,1);
+       auto& pot = get_pairwise_potential(pairwise_idx);
+       return pot(0,1) - pot(0,0);
+   }
+
+   inline bool mrf_input::is_truncated_L1(const size_t pairwise_idx) const
+   {
+       const auto [i, j] = get_pairwise_variables(pairwise_idx);
+
+       for(std::size_t l=0; l<cardinality(i); ++l)
+           if (!unary_variable_active(i, l))
+               return false;
+
+       for(std::size_t l=0; l<cardinality(j); ++l)
+           if (!unary_variable_active(j, l))
+               return false;
+
+       if (cardinality(i) != cardinality(j))
+           return false;
+
+       auto& pot = get_pairwise_potential(pairwise_idx);
+       assert(cardinality(i) > 1);
+       for(size_t l=0; l<cardinality(i); ++l)
+           if(pot(l,l) != 0.0)
+               return false;
+
+       const double slope = pot(1,0);
+       int cutoff = cardinality(i)-1;
+       for(size_t l=1; l<cardinality(i); ++l)
+       {
+           if(pot(l,0) == pot(l-1,0))
+           {
+               cutoff = l-1;
+               break;
+           }
+       }
+
+       for(int l_i=0; l_i<cardinality(i); ++l_i)
+           for(int l_j=0; l_j<cardinality(j); ++l_j)
+               if(pot(l_i,l_j) != slope * std::min(cutoff, std::abs(l_i-l_j)))
+                   return false;
+
+       return true; 
+   }
+
+   inline mrf_input::truncated_L1_potential_param mrf_input::compute_truncated_L1_param(const size_t pairwise_idx) const
+   {
+       assert(is_truncated_L1(pairwise_idx));
+       auto& pot = get_pairwise_potential(pairwise_idx);
+       const auto [i, j] = get_pairwise_variables(pairwise_idx);
+
+       const double slope = pot(1,0);
+
+       int cutoff = cardinality(i);
+       for(size_t l=1; l<cardinality(i); ++l)
+       {
+           if(pot(l,0) == pot(l-1,0))
+           {
+               cutoff = l-1;
+               break;
+           }
+       }
+
+       return {slope,cutoff}; 
    }
 
    template <typename STREAM>
@@ -208,7 +301,14 @@ namespace LPMP {
                continue;
            if (is_Potts(pairwise_idx))
            {
-               s << " + " << Potts_strength(pairwise_idx) << " " << Potts_pairwise_variable_identifier(i, j) << "\n";
+               for(size_t l=0; l<cardinality(i); ++l)
+                   s << " + " << Potts_strength(pairwise_idx) << " " << Potts_pairwise_variable_identifier(i, j, l) << "\n";
+           }
+           else if(is_truncated_L1(pairwise_idx))
+           {
+               const truncated_L1_potential_param param = compute_truncated_L1_param(pairwise_idx);
+               for(size_t d=1; d<=param.cutoff; ++d)
+                   s << " + " << param.slope << " " << truncated_L1_pairwise_variable_identifier(i,j,d) << "\n";
            }
            else
            {
@@ -262,6 +362,13 @@ namespace LPMP {
            {
                // no constraints since only single variable is here. Difference constraints are below
            }
+           else if(is_truncated_L1(pairwise_idx))
+           {
+               // TODO: check if constraints help
+               const truncated_L1_potential_param param = compute_truncated_L1_param(pairwise_idx);
+               //for(size_t d=1; d<=param.cutoff; ++d)
+               //    s << truncated_L1_pairwise_variable_identifier(i,j,d) << " - " << truncated_L1_pairwise_variable_identifier(i,j,d)  << " >= 0\n";
+           }
            else
            {
                bool variable_printed = false;
@@ -292,10 +399,38 @@ namespace LPMP {
            assert(i < j);
            if(is_Potts(pairwise_idx))
            {
-               for (std::size_t l = 0; l < unaries[i].size(); ++l)
+               for (size_t l = 0; l < cardinality(i); ++l)
                {
-                   s << Potts_pairwise_variable_identifier(i, j) << " - " << unary_variable_identifier(i, l) << " + " << unary_variable_identifier(j, l) << " >= 0\n";
-                   s << Potts_pairwise_variable_identifier(i, j) << " - " << unary_variable_identifier(j, l) << " + " << unary_variable_identifier(i, l) << " >= 0\n";
+                   // \mu_{ij} >= \mu_i(l) - \mu_j(l)
+                   s << Potts_pairwise_variable_identifier(i, j, l) << " - " << unary_variable_identifier(i, l) << " + " << unary_variable_identifier(j, l) << " >= 0\n";
+                   // \mu_{ij} >= \mu_j(l) - \mu_i(l)
+                   s << Potts_pairwise_variable_identifier(i, j, l) << " - " << unary_variable_identifier(j, l) << " + " << unary_variable_identifier(i, l) << " >= 0\n";
+               }
+           }
+           else if(is_truncated_L1(pairwise_idx))
+           {
+               // \nu_{ij}(1) >= \mu_i(l) - \mu_j(l)
+               // \nu_{ij}(1) >= \mu_j(l) - \mu_i(l)
+               // \nu_{ij}(2) >= \mu_i(l) - \mu_j(l+1) - \mu_j(l) - \mu_j(l-1)
+               // \nu_{ij}(2) >= \mu_j(l) - \mu_i(l+1) - \mu_i(l) - \mu_i(l-1)
+               // ...
+               const truncated_L1_potential_param param = compute_truncated_L1_param(pairwise_idx);
+               for(int d=1; d<=param.cutoff; ++d)
+               {
+                   for (int l = 0; l < unaries[i].size(); ++l)
+                   {
+                       s << truncated_L1_pairwise_variable_identifier(i,j,d) << " - " << unary_variable_identifier(i, l);
+                       for(int l_j=std::max(l-(d-1), 0); l_j<=std::min(l+(d-1),int(cardinality(j))-1); ++l_j)
+                           s << " + " << unary_variable_identifier(j, l_j);
+                       s << " >= 0\n";
+                   } 
+                   for (int l = 0; l < unaries[i].size(); ++l)
+                   {
+                       s << truncated_L1_pairwise_variable_identifier(i,j,d) << " - " << unary_variable_identifier(j, l);
+                       for(int l_i=std::max(l-(d-1), 0); l_i<=std::min(l+(d-1),int(cardinality(i))-1); ++l_i)
+                           s << " + " << unary_variable_identifier(i, l_i);
+                       s << " >= 0\n";
+                   } 
                }
            }
            else
@@ -346,7 +481,16 @@ namespace LPMP {
            assert(pairwise_values.dim3(pairwise_idx) == unaries[j].size());
            if(is_Potts(pairwise_idx))
            {
-               s << Potts_pairwise_variable_identifier(i, j) << "\n";
+               for(size_t l=0; l<cardinality(i); ++l)
+                   s << Potts_pairwise_variable_identifier(i, j, l) << "\n";
+           }
+           else if(is_truncated_L1(pairwise_idx))
+           {
+               const truncated_L1_potential_param param = compute_truncated_L1_param(pairwise_idx);
+               for(int d=1; d<=param.cutoff; ++d)
+               {
+                   s << truncated_L1_pairwise_variable_identifier(i,j,d) << "\n";
+               }
            }
            else
            {
@@ -370,6 +514,8 @@ namespace LPMP {
 
        s << "Bounds\nBinaries\n";
        write_to_lp_variables(s);
+
+       // TODO:  collect constraints groups for BDD construction
 
        s << "End\n";
    }
