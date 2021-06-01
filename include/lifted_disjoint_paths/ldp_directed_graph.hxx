@@ -118,6 +118,16 @@ public:
         return forwardEdges[i].end();
     }
 
+    auto forwardNeighborsRBegin(size_t i)const {
+         assert(i<numberOfVertices);
+        return forwardEdges[i].rbegin();
+    }
+
+    auto forwardNeighborsREnd(size_t i)const {
+         assert(i<numberOfVertices);
+        return forwardEdges[i].rend();
+    }
+
     const edge * backwardNeighborsBegin(size_t i)const {
          assert(i<numberOfVertices);
         return backwardEdges[i].begin();

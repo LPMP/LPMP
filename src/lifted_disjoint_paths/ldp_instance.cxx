@@ -413,6 +413,15 @@ void LdpInstance::init(){
     numberOfEdges=myGraph.getNumberOfEdges();
     numberOfLiftedEdges=myGraphLifted.getNumberOfEdges();
 
+    timeInSncLB=0.0;
+    callsOfSncLB=0;
+
+    timeInSncBaseMM=0.0;
+    callsOfSncBaseMM=0;
+
+    timeInSncLiftedMM=0.0;
+    callsOfSncLiftedMM=0;
+
 }
 
 
@@ -480,6 +489,7 @@ void LdpInstance::initLiftedStructure(){
     sncClosedVertices=std::vector<char>(n+2);
     sncLiftedMessages=std::vector<double>(n+2);
     sncVerticesInScope=std::vector<char>(n+2);
+    isBSF=std::vector<char>(n+2);
 
     liftedStructure=std::vector<ShiftedVector<char>>(n);
     for (size_t i = 0; i < n; ++i) {
