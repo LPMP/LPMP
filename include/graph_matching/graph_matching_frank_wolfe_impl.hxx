@@ -4,6 +4,8 @@
 #include <Eigen/Eigen>
 #include <array>
 #include "MCF-SSP/mcf_ssp.hxx"
+#include <chrono>
+#include <iostream>
 
 namespace LPMP {
 
@@ -32,6 +34,8 @@ namespace LPMP {
             bool perform_fw_step(const std::size_t iter);
             //Eigen::SparseVector<double> round();
             void round(Eigen::SparseVector<double>& sol);
+            template<typename MATRIX_TYPE>
+                graph_matching_input::labeling get_solution(const MATRIX_TYPE& sol_matrix);
             graph_matching_input::labeling get_solution();
             void solve();
 
@@ -442,6 +446,9 @@ namespace LPMP {
         M += (gamma * d).eval(); // TODO: needed?
         assert(feasible(M));
 
+        if(gamma < 1e-3)
+            return false;
+
         //if(iter%20 == 0)
         //    std::cout << "iteration = " << iter << ", optimal step size = " << gamma << ", quadratic term = " << quadratic_term << ", linear term = " << linear_term << "\n";
 
@@ -457,10 +464,9 @@ namespace LPMP {
     }
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
-        graph_matching_input::labeling graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::get_solution()
+    template<typename MATRIX_TYPE>
+        graph_matching_input::labeling graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::get_solution(const MATRIX_TYPE& sol_matrix)
         {
-            Eigen::SparseVector<double> sol_matrix;
-            round(sol_matrix);
             //const Eigen::SparseVector<double> sol_matrix = round();
             assert(sol_matrix.size() == (no_left_nodes()+1)*(no_right_nodes()+1));
             graph_matching_input::labeling sol(no_left_nodes(), graph_matching_input::no_assignment);
@@ -479,11 +485,29 @@ namespace LPMP {
         }
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+        graph_matching_input::labeling graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::get_solution()
+        {
+            Eigen::SparseVector<double> sol_matrix;
+            round(sol_matrix);
+            return get_solution(sol_matrix);
+        }
+
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
     void graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::solve()
     {
-        for(std::size_t iter=0; iter<options.max_iter; ++iter) {
+        auto begin_time = std::chrono::system_clock::now();
+        for(size_t iter=0; iter<options.max_iter; ++iter) {
             if(!perform_fw_step(iter))
                 break;
+            const auto current_time = std::chrono::system_clock::now();
+            const auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - begin_time);
+            Eigen::SparseVector<double> M_temp;
+            round(M_temp);
+            graph_matching_input::labeling l = get_solution(M_temp);
+            const auto M = construct_matching_matrix(l); 
+            const double energy = evaluate(M);
+            const double fw_energy = evaluate();
+            std::cout << "iteration " << iter << ", elapsed time = " << double(elapsed_time.count())/1000.0 << " seconds, energy of rounded solution = " << energy << ", objective = " << fw_energy << "\n";
             //if(iter%20 == 0)
             //    std::cout << "objective = " << evaluate() << "\n";
         }
