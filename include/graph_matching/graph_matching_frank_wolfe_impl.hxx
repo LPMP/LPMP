@@ -58,6 +58,8 @@ namespace LPMP {
             MCF::SSP<int, double> mcf;
             double constant_ = 0.0;
             graph_matching_frank_wolfe_options options;
+
+            void print_solution(const Eigen::SparseVector<double>& sol) const;
     };
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
@@ -508,6 +510,7 @@ namespace LPMP {
             const double energy = evaluate(M);
             const double fw_energy = evaluate();
             std::cout << "iteration " << iter << ", elapsed time = " << double(elapsed_time.count())/1000.0 << " seconds, energy of rounded solution = " << energy << ", objective = " << fw_energy << "\n";
+            l.WritePrimal(std::cout);
             //if(iter%20 == 0)
             //    std::cout << "objective = " << evaluate() << "\n";
         }
@@ -539,6 +542,19 @@ namespace LPMP {
         const std::size_t jj = j < no_right_nodes() ? j : graph_matching_input::no_assignment;
         assert(x == linear_coeff(ii,jj));
         return {ii, jj};
+    }
+
+    template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
+    void graph_matching_frank_wolfe_impl<ASSIGNMENT_VECTOR_TYPE, QUADRATIC_COST_TYPE>::print_solution(const Eigen::SparseVector<double>& sol) const
+    {
+        for (Eigen::SparseVector<double>::InnerIterator it(sol); it; ++it) 
+        {
+            const int coeff = it.index();
+            const auto [i,j] = matrix_coeffs(coeff);
+            const double val = it.value();
+            if(std::abs(val - 1.0) <= 1e-6)
+                std::cout << i << " -> " << j << "\n";
+        }
     }
 
     struct graph_matching_frank_wolfe_dense : public graph_matching_frank_wolfe_impl<Eigen::VectorXd, Eigen::MatrixXd> 
