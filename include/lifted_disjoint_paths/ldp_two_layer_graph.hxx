@@ -20,7 +20,13 @@ public:
         //todo asserts
         assert(vertex<numberOfInputs);
         assert(neighborIndex<forwardEdges[vertex].size());
-        forwardEdges[vertex][neighborIndex].cost = value;
+        //forwardEdges[vertex][neighborIndex].cost = value;
+        edge& e=forwardEdges[vertex][neighborIndex];
+        e.cost=value;
+        assert(e.head<numberOfOutputs);
+        assert(e.reverse_neighbor_index<backwardEdges[e.head].size());
+        backwardEdges[e.head][e.reverse_neighbor_index].cost=value;
+        assert(backwardEdges[e.head][e.reverse_neighbor_index].head==vertex);
     }
 
     void updateForwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
@@ -28,7 +34,31 @@ public:
         assert(neighborIndex<forwardEdges[vertex].size());
         edge& e=forwardEdges[vertex][neighborIndex];
         e.cost += value;
+        assert(e.head<numberOfOutputs);
+        assert(e.reverse_neighbor_index<backwardEdges[e.head].size());
         backwardEdges[e.head][e.reverse_neighbor_index].cost+=value;
+        assert(backwardEdges[e.head][e.reverse_neighbor_index].head==vertex);
+    }
+
+    void setBackwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+        //todo asserts
+        assert(vertex<numberOfOutputs);
+        assert(neighborIndex<backwardEdges[vertex].size());
+        edge& e=backwardEdges[vertex][neighborIndex];
+        e.cost=value;
+        assert(e.head<numberOfInputs);
+        assert(e.reverse_neighbor_index<forwardEdges[e.head].size());
+        forwardEdges[e.head][e.reverse_neighbor_index].cost=value;
+        assert(forwardEdges[e.head][e.reverse_neighbor_index].head==vertex);
+    }
+
+    void updateBackwardEdgeCost(size_t vertex,size_t neighborIndex,double value) {
+        assert(vertex<numberOfOutputs);
+        assert(neighborIndex<backwardEdges[vertex].size());
+        edge& e=backwardEdges[vertex][neighborIndex];
+        e.cost += value;
+        forwardEdges[e.head][e.reverse_neighbor_index].cost+=value;
+        assert(forwardEdges[e.head][e.reverse_neighbor_index].head==vertex);
     }
 
     double getForwardEdgeCost(size_t vertex,size_t neighborIndex) const{
@@ -43,6 +73,17 @@ public:
         return forwardEdges[vertex][neighborIndex].head;
     }
 
+    double getBackwardEdgeCost(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfOutputs);
+        assert(neighborIndex<backwardEdges[vertex].size());
+        return backwardEdges[vertex][neighborIndex].cost;
+    }
+
+    size_t getBackwardEdgeVertex(size_t vertex,size_t neighborIndex) const{
+        assert(vertex<numberOfOutputs);
+        assert(neighborIndex<backwardEdges[vertex].size());
+        return backwardEdges[vertex][neighborIndex].head;
+    }
 
 
     const edge* forwardNeighborsBegin(size_t i)const {
@@ -70,6 +111,35 @@ public:
 
     const size_t & getNumberOfInputs()const{
         return numberOfInputs;
+    }
+
+
+
+    const edge* backwardNeighborsBegin(size_t i)const {
+        assert(i<numberOfOutputs);
+        return backwardEdges[i].begin();
+    }
+
+    const edge* backwardNeighborsEnd(size_t i)const {
+        assert(i<numberOfOutputs);
+        return backwardEdges[i].end();
+    }
+
+
+
+    edge* backwardNeighborsBegin(size_t i){
+        assert(i<numberOfOutputs);
+        return backwardEdges[i].begin();
+    }
+
+    edge* backwardNeighborsEnd(size_t i){
+        assert(i<numberOfOutputs);
+        return backwardEdges[i].end();
+    }
+
+
+    const size_t & getNumberOfOutputs()const{
+        return numberOfOutputs;
     }
 
 

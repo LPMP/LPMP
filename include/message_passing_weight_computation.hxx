@@ -89,6 +89,50 @@ weight_array compute_isotropic_weights
    return omega;
 }
 
+
+template<typename FACTOR_ITERATOR>
+weight_array compute_type_dependent_weights
+(
+        FACTOR_ITERATOR factor_begin, FACTOR_ITERATOR factor_end,
+        const double leave_percentage)
+{
+    assert(leave_percentage >= 0.0 && leave_percentage < 1.0);
+
+    auto omega = allocate_omega(factor_begin, factor_end);
+
+    std::size_t c=0;
+    for(auto factor_it=factor_begin; factor_it != factor_end; ++factor_it) {
+        if((*factor_it)->FactorUpdated()) {
+            std::size_t k=0;
+            auto msgs = (*factor_it)->get_messages();
+
+            std::vector<size_t> type_specific= (*factor_it)->no_type_specific_send_messages();
+
+            size_t counter=0;
+            size_t index=0;
+            double firstWeight=(1.0-leave_percentage)/(std::max(double(type_specific.size()),1.0));
+            //  const auto weight = (1.0-leave_percentage)/double((*factor_it)->no_send_messages());
+            for(auto msg : msgs) {
+                if(message_passing_schedule_factor_view::sends_message_to_adjacent_factor(msg.mps)) {
+                    assert(index<type_specific.size());
+                    double weight=firstWeight/(double(type_specific[index]));
+                    omega[c][k++] = weight;
+                    if(counter+1<type_specific[index]) counter++;
+                    else{
+                        counter=0;
+                        index++;
+                    }
+                }
+            }
+            assert(k == omega[c].size());
+            c++;
+        }
+    }
+    assert(c == omega.size());
+
+    return omega;
+}
+
 template<typename FACTOR_ITERATOR>
 tsl::robin_map<FactorTypeAdapter*, std::size_t> get_factor_indices(FACTOR_ITERATOR f_begin, FACTOR_ITERATOR f_end)
 {

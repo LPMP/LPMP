@@ -53,6 +53,7 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
         auto * pFactor=pathFactors[i]->get_factor();
         std::vector<double> minMarginals=pFactor->getAllMinMarginals();
         const auto& pathVertices=pFactor->getListOfVertices();
+        assert(pathVertices.size()==minMarginals.size());
         for (int j = 0; j < pathVertices.size()-1; ++j) {
             size_t v1=pathVertices[j];
             size_t v2=pathVertices[j+1];
@@ -66,12 +67,22 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
             if(doCostUpdate){
                 pFactor->updateEdgeCost(j,-minMarginals[j]);
             }
-
         }
+
+
         liftedEdgesWithCosts[pathVertices.front()][pathVertices.back()]+=minMarginals.back();
         if(doCostUpdate){
             pFactor->updateEdgeCost(pathVertices.size()-1,-minMarginals.back());
         }
+
+#ifndef NDEBUG
+        if(doCostUpdate){
+            std::vector<double> minMarginalsControl=pFactor->getAllMinMarginals();
+            for (int i = 0; i < pathVertices.size()-1; ++i) {
+                assert(abs(minMarginalsControl[i])<eps);
+            }
+        }
+#endif
     }
 
    // std::cout<<"path factors processed"<<std::endl;
@@ -79,9 +90,13 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
 
 
     for (int i = 0; i < cutFactors.size(); ++i) {
+//        if(i==26){
+//            std::cout<<i<<std::endl;
+//        }
         auto * cFactor=cutFactors[i]->get_factor();
-        auto minMarginals=cFactor->getAllMinMarginals().first;
-        auto liftedMinMarginal=cFactor->getAllMinMarginals().second;
+        auto allMinMarginals=cFactor->getAllMinMarginals();
+        auto minMarginals=allMinMarginals.first;
+        auto liftedMinMarginal=allMinMarginals.second;
 
         const auto & inputs=cFactor->getInputVertices();
         const auto & outputs=cFactor->getOutputVertices();
@@ -96,15 +111,36 @@ inline void LdpSpecialMinMarginalsExtractor<CUT_FACTOR_CONT,PATH_FACTOR_CONT>::i
                 double delta=iter->cost;
                 baseEdgesWithCosts[v1][v2]+=delta;
                 if(doCostUpdate){
-                    cFactor->updateCostBase(j,outputCounter,-delta);
+                    cFactor->updateCostBaseForward(j,outputCounter,-delta);
                 }
                 outputCounter++;
             }
         }
+
+
         liftedEdgesWithCosts[cFactor->getLiftedInputVertex()][cFactor->getLiftedOutputVertex()]+=liftedMinMarginal;
         if(doCostUpdate){
             cFactor->updateCostLifted(-liftedMinMarginal);
         }
+
+#ifndef NDEBUG
+        // if(debug()){
+        auto minMarginalsControl=cFactor->getAllMinMarginals().first;
+        auto liftedMinMarginalControl=cFactor->getAllMinMarginals().second;
+        assert(abs(liftedMinMarginalControl)<eps);
+        for (int j = 0; j < inputs.size(); ++j) {
+            size_t v1=inputs[j];
+            const auto * iter=minMarginalsControl.forwardNeighborsBegin(j);
+            const auto * end=minMarginalsControl.forwardNeighborsEnd(j);
+            size_t outputCounter=0;
+            for (;iter!=end;iter++) {
+                double delta=iter->cost;
+                assert(abs(delta)<eps);
+                outputCounter++;
+            }
+        }
+        //}
+#endif
 
     }
     //std::cout<<"cut factors processed"<<std::endl;

@@ -78,18 +78,18 @@ std::pair<LdpTwoLayerGraph, double> ldp_cut_factor::getAllMinMarginals()const{
         auto *end=localCutGraph.forwardNeighborsEnd(i);
         size_t counter=0;
         for (;iter!=end;iter++) {
-            if(counter==optLabeling[i]){
+            if(iter->head==optLabeling[i]){
                 double restrictZero=advancedMinimizer(i,iter->head,false,addLiftedCost,&localCutGraph,&liftedCost);
                 double delta=currentOpt-restrictZero;
                 currentOpt=restrictZero;
-                iter->cost-=delta;
+                localCutGraph.updateForwardEdgeCost(i,counter,-delta);
                 minMarginals.setForwardEdgeCost(i,counter,delta);
 
             }
             else{
                 double restrictOne=advancedMinimizer(i,iter->head,true,addLiftedCost,&localCutGraph,&liftedCost);
                 double delta=restrictOne-currentOpt;
-                iter->cost-=delta;
+                localCutGraph.updateForwardEdgeCost(i,counter,-delta);
                 minMarginals.setForwardEdgeCost(i,counter,delta);
             }
             counter++;
@@ -190,11 +190,20 @@ void ldp_cut_factor::updateCostLifted(const double& value){
 
 
 
-void ldp_cut_factor::updateCostBase(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
+void ldp_cut_factor::updateCostBaseForward(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
     //double oldValue=cutGraph.getForwardEdgeCost(inputVertexIndex,neighborIndex);
     assert(inputVertexIndex<inputVertices.size());
     cutGraph.updateForwardEdgeCost(inputVertexIndex,neighborIndex,value);
 }
+
+
+void ldp_cut_factor::updateCostBaseBackward(const size_t& inputVertexIndex, const size_t& neighborIndex,const double& value){
+    //double oldValue=cutGraph.getForwardEdgeCost(inputVertexIndex,neighborIndex);
+    assert(inputVertexIndex<outputVertices.size());
+    cutGraph.updateBackwardEdgeCost(inputVertexIndex,neighborIndex,value);
+}
+
+
 
 
 
@@ -311,12 +320,12 @@ double ldp_cut_factor::advancedMinimizer(const size_t& index1, const size_t& ind
         minValue+=mcf.solve();
 
 
-        for (int i = 0; i < mcf.no_edges(); ++i) {
+        for (size_t i = 0; i < mcf.no_edges(); ++i) {
             if(mcf.flow(i)>0.99){
                 // int label=mcf.head(i)-numberOfInput;
                 assert(lapInput.no_left_nodes==numberOfInput);
-                int label=mcf.head(i)-numberOfInput;
-                int vertex=mcf.tail(i);
+                size_t label=mcf.head(i)-numberOfInput;
+                size_t vertex=mcf.tail(i);
                 if(vertex<numberOfInput&&label<numberOfOutput){
                     //  std::cout<<"vertex "<<vertex<<", label "<<label<<std::endl;
                     storeLabeling[vertex]=label;

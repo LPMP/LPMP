@@ -141,6 +141,9 @@ public:
     }
 
 
+    const double& getMustCutPenalty()const{
+        return mustCutPenalty;
+    }
 
 
 //	void setMaxTimeLifted(size_t maxTimeLifted) {
@@ -149,7 +152,7 @@ public:
 
 
 	size_t getMaxTimeGapComplete() const {
-		return maxTimeGapComplete;
+        return maxTimeGapComplete;
 	}
 
 
@@ -190,9 +193,35 @@ public:
         return allBaseToZero;
     }
 
-    bool isKeepRedundantLifted()const{
-        return keepRedundantLifted;
+    bool isBaseCoverdWithLifted()const{
+        return coverBaseWithLifted;
     }
+
+    bool isMustCutMissing()const{
+        return missingAsMustCut;
+    }
+
+
+    size_t getPrimalHeuristicIterations()const{
+        return primalHeuristicIterations;
+    }
+
+    bool isUsePreIter()const{
+        return usePreIter;
+    }
+
+    bool isRepamCostInPrimalHeuristic()const{
+        return repamCostInHeuristic;
+    }
+
+    double getMergeThreshold()const{
+        return mergeThreshold;
+    }
+
+    bool isStoreIntermediate()const{
+        return storeIntermediateSolutions;
+    }
+
 
 
 private:
@@ -245,8 +274,19 @@ private:
 
 
      bool allBaseToZero;
-     bool keepRedundantLifted;
+     bool coverBaseWithLifted;
 
+     bool missingAsMustCut;
+     double mustCutPenalty;
+
+     size_t primalHeuristicIterations;
+
+     bool usePreIter;
+     bool repamCostInHeuristic;
+
+     double mergeThreshold;
+
+     bool storeIntermediateSolutions;
 
 };
 
@@ -335,14 +375,16 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
     writeControlOutput();
 
 
+
     //Not used
     if(parameters.count("KEEP_REDUNDANT_LIFTED")>0){
         keepRedundantLifted=std::stoi(parameters["KEEP_REDUNDANT_LIFTED"]);
+
     }
     else{
-        keepRedundantLifted=1;
+        coverBaseWithLifted=1;
     }
-    controlOutput<<"keep redundant lifted "<<keepRedundantLifted<<std::endl;
+    controlOutput<<"cover base with lifted "<<coverBaseWithLifted<<std::endl;
     writeControlOutput();
 
 
@@ -376,7 +418,7 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
 
         minTimeFrame=1;
     }
-    controlOutput<<"min time frame "<<maxTimeFrame<<std::endl;
+    controlOutput<<"min time frame "<<minTimeFrame<<std::endl;
     writeControlOutput();
 
 
@@ -486,12 +528,15 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
 
 
 
+    maxTimeGapComplete=0;
     if(parameters.count("MAX_TIMEGAP_COMPLETE")>0){
         maxTimeGapComplete=std::stoul(parameters["MAX_TIMEGAP_COMPLETE"]);
     }
-    else{
-        maxTimeGapComplete=maxTimeFrame;
-    }
+    maxTimeGapComplete=std::max(maxTimeGapComplete,maxTimeLifted);
+    maxTimeGapComplete=std::max(maxTimeGapComplete,maxTimeBase);
+//    else{
+//        maxTimeGapComplete=maxTimeFrame;
+//    }
     controlOutput<<"max time gap complete "<<maxTimeGapComplete<<std::endl;
 
     if(parameters.count("USE_ADAPTIVE_THRESHOLDS")){
@@ -520,7 +565,70 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
      }
      controlOutput<<"maximal edge usage for tightening "<<tighteningMaxEdgeUsage<<std::endl;
 
-    writeControlOutput();
+     if(parameters.count("MISSING_AS_MUST_CUT")>0){
+         missingAsMustCut=std::stoi(parameters["MISSING_AS_MUST_CUT"]);
+     }
+     else{
+         missingAsMustCut=0;
+     }
+     controlOutput<<"missing edges as must cut "<<missingAsMustCut<<std::endl;
+
+
+     if(parameters.count("MUST_CUT_PENALTY")>0){
+         mustCutPenalty=std::stod(parameters["MUST_CUT_PENALTY"]);
+     }
+     else{
+         mustCutPenalty=100.0;
+     }
+     controlOutput<<"must cut penalty "<<mustCutPenalty<<std::endl;
+
+
+
+     if(parameters.count("PRIMAL_HEURISTIC_ITERATIONS")>0){
+         primalHeuristicIterations=std::stoul(parameters["PRIMAL_HEURISTIC_ITERATIONS"]);
+     }
+     else{
+         primalHeuristicIterations=10;
+     }
+     controlOutput<<"primal heuristic iterations "<<primalHeuristicIterations<<std::endl;
+
+     if(parameters.count("REPAM_COST_IN_HEURISTIC")>0){
+         repamCostInHeuristic=std::stoi(parameters["REPAM_COST_IN_HEURISTIC"]);
+     }
+     else{
+         repamCostInHeuristic=0;
+     }
+     controlOutput<<"Use reparametrized cost in primal heuristic "<<repamCostInHeuristic<<std::endl;
+
+     if(parameters.count("USE_PRE_ITERATE")>0){
+         usePreIter=std::stoi(parameters["USE_PRE_ITERATE"]);
+     }
+     else{
+         usePreIter=1;
+     }
+     controlOutput<<"Using mcf reparametrization in pre-iteration step "<<usePreIter<<std::endl;
+
+
+     if(parameters.count("MERGE_THRESHOLD")>0){
+         mergeThreshold=std::min(std::stod(parameters["MERGE_THRESHOLD"]),1.0);
+     }
+     else{
+         mergeThreshold=0.25;
+     }
+     controlOutput<<"merge threshold "<<mergeThreshold<<std::endl;
+
+
+     if(parameters.count("SAVE_INTERMEDIATE")>0){
+         storeIntermediateSolutions=std::stoi(parameters["SAVE_INTERMEDIATE"]);
+     }
+     else{
+         storeIntermediateSolutions=1;
+     }
+     controlOutput<<"Store intermediate solutions "<<storeIntermediateSolutions<<std::endl;
+
+
+
+     writeControlOutput();
 
 
 }

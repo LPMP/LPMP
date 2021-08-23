@@ -136,6 +136,14 @@ namespace LPMP {
                 double lower_bound() const { return lowerBound_; }
                 double primal_cost() const { return bestPrimalCost_; }
 
+                const std::string& getOutputFileName()const{
+                    return outputFile_;
+                }
+
+                const size_t& getIterationNumber()const {
+                    return iter;
+                }
+
             protected:
                 TCLAP::CmdLine cmd_;
                 LP_TYPE lp_;

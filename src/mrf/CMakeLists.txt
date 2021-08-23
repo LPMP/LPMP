@@ -18,6 +18,9 @@ target_link_libraries(convert_dimacs_graph_cut_max_flow_to_mrf_uai LPMP dimacs_m
 add_executable(convert_opengm_mrf_to_lp convert_opengm_mrf_to_lp.cpp)
 target_link_libraries(convert_opengm_mrf_to_lp LPMP mrf_opengm_input)
 
+add_executable(convert_uai_mrf_to_lp convert_uai_mrf_to_lp.cpp)
+target_link_libraries(convert_uai_mrf_to_lp LPMP mrf_uai_input)
+
 add_library(mrf_uai_input mrf_uai_input.cpp)
 target_link_libraries(mrf_uai_input LPMP) 
 
