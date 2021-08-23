@@ -335,6 +335,7 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
     writeControlOutput();
 
 
+    //Not used
     if(parameters.count("KEEP_REDUNDANT_LIFTED")>0){
         keepRedundantLifted=std::stoi(parameters["KEEP_REDUNDANT_LIFTED"]);
     }

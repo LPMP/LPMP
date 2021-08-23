@@ -10,7 +10,7 @@ After running `cmake` for the whole LPMP project, go to your build directory, th
 Now, you can either run the solver from the command line and use input from specific input files 
 ```
 ./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt 
-``` 
+```
 
 Another possibility is to use python script for running the solver on an example instance. Here, no input files are needed. The whole problem instance is specified directly in the python script. It is possible to use one graph structure as an input. The solver will extract the base graph and the lifted graph from it. You can run the respective example script by running
 ```
@@ -39,24 +39,27 @@ Example input files can be downloaded [here](https://github.com/AndreaHor/LifT_S
 
 ### Parameters
 Parameters of the problem instance are either passed to the solver in the file `params_sequence.ini` in case of running from the command line or are specified in a python dictionary in case of running from python (see `solveFromVectors.py` for an example). Do not forget the keyword `[SOLVER]` in your file `params_sequence.ini`.
-   
+
   - `SPARSIFY = 1`  
     Expects value 0/1. If set to 0, no sparsification is done, so parameters related to sparsificatioin are not needed. If set to 1, sparsification is done. Default and recommended value is 1.
-    
   - `MAX_TIMEGAP = 900`  
     Expects a positive integer. Maximum number of time frames to be used  for the input. Only frames 1,2,...,`MAX\_TIMEGAP` are used for the computation. If you want to use all time frames, either leave this parameter out or set it to zero or to a sufficiently large value.
-    
+  - `MIN_TIMEFRAME = 1`  
+    Expects a positive integer. The index of the first time frame to be used for the input. Only frames `MIN_TIMEFRAME`,...,`MAX\_TIMEGAP` are used for the computation. Note that the frames are numbered from 1. If you want to use all time frames from the first one, either leave this parameter out or set it to 1. The default value is 1.
   - `INPUT_COST = 0.0`  
     Expects a real value. Cost of starting a track. Default value is 0.
-
   - `OUTPUT_COST =0.0`  
     Expects a real value. Cost of terminating a track. Default value is 0.
-    
   - `MAX_TIMEGAP_COMPLETE = 60`  
-  Expects a positive integer. Influences the second step of the two-step procedure. If `COMPLETE_GAP_IN_TRACKLET` is set to one, this value is used for selection of base and lifted edges in creating the tracklet graph. Its default value is the maximum from `MAX_TIMEGAP_BASE` and `MAX_TIMEGAP_LIFTED`.
-    
- 
-**Base graph sparsificatioin parameters**
+    Expects a positive integer. Influences the second step of the two-step procedure. If `COMPLETE_GAP_IN_TRACKLET` is set to one, this value is used for selection of base and lifted edges in creating the tracklet graph. Its default value is the maximum from `MAX_TIMEGAP_BASE` and `MAX_TIMEGAP_LIFTED`.
+  - `USE_ADAPTIVE_THRESHOLDS=1`
+    Expects value 0/1. If set to 1, three specific parameters expecting thresholds on edge cost will expect real values within the interval [0,...,1) denoting the rate of edges to keep instead of exact threshold values. If set to 0, the three parameters expect exact threshold values. These parameters are `BASE_THRESHOLD, NEGATIVE_THRESHOLD_LIFTED, POSITIVE_THRESHOLD_LIFTED`. Default value is 0.   
+  - `TIGHT_MAX_EDGE_USAGE=4`
+    Expects a positive integer. The maximal number of newly added path or cut subproblems that can share one edge. Default value is 4.
+  - `TIGHT_MIN_IMPROVEMENT=0.0001`
+    Expects a positive real number. A new path or a new cut subproblem is added to the optimization only if the expected lower bound improvement is higher or equal to this threshold. The lower bound improvement is considered before rescaling for compensation of edge sharing among multiple new subproblems. The default value is 0.00001.
+
+**Base graph sparsificatioin and cost adjustment parameters**
 
   - `MAX_TIMEGAP_BASE = 50`  
     Expects a positive integer. Maximal time gap for the base edges (amount of time frames).
@@ -70,24 +73,31 @@ Parameters of the problem instance are either passed to the solver in the file `
   - `BASE_THRESHOLD = 0.0`  
     Expects a real value. Upper threshold for cost of base edges with a bigger time gap than `KNN_GAP`. Edges longer than `KNN_GAP` have to have cost lower than this threshold in order to be used. Default value is 0.
     
+  - `ALL_BASE_TO_ZERO = 1`  
+    Expects value 0/1. If set to 1 (default value),  the costs of base edges between non-consecutive frames are set to zero after the base graph sparsification. The purpose is to not duplicate the cost contribution if a base edge overlaps with a lifted edge. On the other hand, some lifted edges are removed during lifted graph sparsification and we want to ensure that the activation of each base edge contributes to the objective value. Parameter `COVER_BASE_WITH_LIFTED` offers two possibilities for dealing with such cases. If `ALL_BASE_TO_ZERO = 0`, the costs of base edges do not change after the base graph sparsification.
     
+  - `COVER_BASE_WITH_LIFTED=1`
 
-**Lifted graph sparsification parameters**
+    Expects value 0/1. This parameter applies only if `ALL_BASE_TO_ZERO=1`. It ensures that an activation of each base edge contributes to the objective value. If set to 1, each zero-valued base edge is covered by a lifted edge. That is, if the cost of a base edge is set to zero, the lifted edge overlapping with this base edge is never removed during lifted graph sparsification. If set to 0, some of the zero-valued base edges get back their non-zero cost. That is, if the cost of a base edge is set to zero and the overlapping lifted edge is removed, the base edge gets its cost back. Default value is 1.
+
+**Lifted graph sparsification and graph adjustment parameters**
 
   - `MAX_TIMEGAP_LIFTED = 60`  
     Expects a non-negative integer. Maximal time gap for the lifted edges.
-    
   - `DENSE_TIMEGAP_LIFTED =4`  
     Expects a non-negative integer. Every lifted edge with time gap lower or equal to this value will be added if it satisfies the constraints on its cost value given by `NEGATIVE_THRESHOLD_LIFTED` and `POSITIVE_THRESHOLD_LIFTED`.
-    
   - `NEGATIVE_THRESHOLD_LIFTED = -1.0`  
     Expects a non-positive real value. Lifted edges with negative cost will only be added if their cost value is lower or equal to this number.
-    
   - `POSITIVE_THRESHOLD_LIFTED = 1.0`  
     Expects a non-negative real value. Lifted edges with positive cost will only be added if their cost value is higher or equal to this number.
-    
   - `LONGER_LIFTED_INTERVAL = 4`  
     Expects a positive integer. Influences lifted edges with time gap between `DENSE_TIMEGAP_LIFTED` and `MAX_TIMEGAP_LIFTED`. If set to value \(n\), only every \(n\)-th time gap will be used for adding lifted edges.
-    
+  - `MISSING_AS_MUST_CUT`
+  - `MUST_CUT_PENALTY`
+  - `PRIMAL_HEURISTIC_ITERATIONS`
+  - `REPAM_COST_IN_HEURISTIC`
+  - `USE_PRE_ITERATE`
+  - `MERGE_THRESHOLD`
+  - 
 ### References
 [1]: `A. Hornakova, R. Henschel, B. Rosenhahn, P. Swoboda. Lifted Disjoint Paths with Application in Multiple Object Tracking, ICML 2020`
