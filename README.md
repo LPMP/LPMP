@@ -13,7 +13,8 @@ We provide a range of solvers for various discrete optimization problems, includ
 * **[Max-cut](/include/max_cut)**, 
 * **[Graph matching](include/graph_matching)**, [4]
 * **[Multi-graph matching](/include/multigraph_matching)**, [5]
-* **[Discrete graphical models with bottleneck terms](/include/horizon_tracking)** [6]
+* **[Discrete graphical models with bottleneck terms](/include/horizon_tracking)**, [6]
+* **[Lifted disjoint paths](include/lifted_disjoint_paths)**.
 
 Benchmark problems for various solvers above can be found in [datasets](/datasets).
 
