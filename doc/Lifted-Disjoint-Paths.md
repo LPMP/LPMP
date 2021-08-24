@@ -9,7 +9,7 @@ Lifted Disjoint Paths problem was introduced in [1]. Its original implementation
 After running `cmake` for the whole LPMP project, go to your build directory, than to `src/lifted-disjoint-paths` and run `make` here.  
 Now, you can either run the solver from the command line and use input from specific input files 
 ```
-./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt 
+./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt -o /path/to/your/output/outputFile.txt
 ```
 
 Another possibility is to use python script for running the solver on an example instance. Here, no input files are needed. The whole problem instance is specified directly in the python script. It is possible to use one graph structure as an input. The solver will extract the base graph and the lifted graph from it. You can run the respective example script by running
@@ -56,8 +56,25 @@ Parameters of the problem instance are either passed to the solver in the file `
     Expects value 0/1. If set to 1, three specific parameters expecting thresholds on edge cost will expect real values within the interval [0,...,1) denoting the rate of edges to keep instead of exact threshold values. If set to 0, the three parameters expect exact threshold values. These parameters are `BASE_THRESHOLD, NEGATIVE_THRESHOLD_LIFTED, POSITIVE_THRESHOLD_LIFTED`. Default value is 0.   
   - `TIGHT_MAX_EDGE_USAGE=4`
     Expects a positive integer. The maximal number of newly added path or cut subproblems that can share one edge. Default value is 4.
-  - `TIGHT_MIN_IMPROVEMENT=0.0001`
+  - `TIGHT_MIN_IMPROVEMENT=0.00001`
     Expects a positive real number. A new path or a new cut subproblem is added to the optimization only if the expected lower bound improvement is higher or equal to this threshold. The lower bound improvement is considered before rescaling for compensation of edge sharing among multiple new subproblems. The default value is 0.00001.
+    
+  - `PRIMAL_HEURISTIC_ITERATIONS=1`
+    Expects value 0/1. If set to 1, local search heuristic is applied after the MCF heuristic for finding primal solutions. It is recommended because the local search improves the primal solution significantly. Default value is 1. 
+
+  - `REPAM_COST_IN_HEURISTIC=0`
+    Expects value 0/1. If set to 1, reparametrized cost is used in the local search heuristic instead of the original cost. Default value is 0.
+
+  - `USE_PRE_ITERATE=0`
+    Expects value 0/1. If set to 1, an extra MCF subproblem is created and an extra message passing step is used before every MP iteration where messages are exchanged between the MCF subproblem and the inflow and outflow subproblems. However, it does not seem to improve neither the lower bound, nor the upper bound. Therefore, its default value is 1. 
+
+  - `MERGE_THRESHOLD=0.25`
+    Expects a real value in the interval [0,...1). Applies in the local search heuristic for deciding if two paths can be merged. Two paths are merged only if the sum of positive edges cost between the two paths is lower or equal than the sum of absolute values of the negative edges cost between the paths multiplied by the ``MERGE_THRESHOLD``. Default value is 0.25.
+
+  - `SAVE_INTERMEDIATE`
+    Expects value 0/1. If set to 1, the solver stores intermediate primal solutions. That is, each primal solution having better cost than the previously found primal solutions is saved. The location for saving is derived from the command line parameter ``-o`` of the solver and the iteration number when the solution was obtained.  For instance, if the solver is run with the following command
+    ``./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt -o /path/to/your/output/outputFile.txt``
+    and an intermediate primal solution is found in iteration 11, it is stored in file ``/path/to/your/output/outputFile-iter-11.txt``. Default value is 1. 
 
 **Base graph sparsificatioin and cost adjustment parameters**
 
@@ -84,20 +101,25 @@ Parameters of the problem instance are either passed to the solver in the file `
 
   - `MAX_TIMEGAP_LIFTED = 60`  
     Expects a non-negative integer. Maximal time gap for the lifted edges.
+    
   - `DENSE_TIMEGAP_LIFTED =4`  
     Expects a non-negative integer. Every lifted edge with time gap lower or equal to this value will be added if it satisfies the constraints on its cost value given by `NEGATIVE_THRESHOLD_LIFTED` and `POSITIVE_THRESHOLD_LIFTED`.
+    
   - `NEGATIVE_THRESHOLD_LIFTED = -1.0`  
     Expects a non-positive real value. Lifted edges with negative cost will only be added if their cost value is lower or equal to this number.
+    
   - `POSITIVE_THRESHOLD_LIFTED = 1.0`  
     Expects a non-negative real value. Lifted edges with positive cost will only be added if their cost value is higher or equal to this number.
+    
   - `LONGER_LIFTED_INTERVAL = 4`  
     Expects a positive integer. Influences lifted edges with time gap between `DENSE_TIMEGAP_LIFTED` and `MAX_TIMEGAP_LIFTED`. If set to value \(n\), only every \(n\)-th time gap will be used for adding lifted edges.
-  - `MISSING_AS_MUST_CUT`
-  - `MUST_CUT_PENALTY`
-  - `PRIMAL_HEURISTIC_ITERATIONS`
-  - `REPAM_COST_IN_HEURISTIC`
-  - `USE_PRE_ITERATE`
-  - `MERGE_THRESHOLD`
-  - 
+    
+  - `MISSING_AS_MUST_CUT=0` 
+
+    Expects value 0/1. If set to `MISSING_AS_MUST_CUT=1`, it enables to save the input data size by omitting pairs of detections that are obviously non-matching. If the cost between a pair of detections within the maximal time distance is not provided in the input data, the cost of the lifted edge connecting the two detections is automatically set to a high positive value given by the parameter `MUST_CUT_PENALTY`. Like other lifted edges, these special lifted edges are added only between detections that are reachable in the base graph and undergo further sparsifcation.  The maximal time distance for which these lifted edges are created is determined by the minimum of the two values (i) `MAX_TIMEGAP_LIFTED` and (ii) the maximal time gap between two detections in the input data. If `MISSING_AS_MUST_CUT=0`, missing values in the input data for a pair of vertices means that no edge (neither base, nor lifted) is created between them.   
+
+  - `MUST_CUT_PENALTY=10.0`
+    Expects a real value. This parameter applies only if `MISSING_AS_MUST_CUT=1`. It gives the cost value of the extra added lifted edges. Default value is 10.
+
 ### References
 [1]: `A. Hornakova, R. Henschel, B. Rosenhahn, P. Swoboda. Lifted Disjoint Paths with Application in Multiple Object Tracking, ICML 2020`

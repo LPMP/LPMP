@@ -578,7 +578,7 @@ inline void LdpParameters<T>::init(std::map<std::string,std::string>& parameters
          mustCutPenalty=std::stod(parameters["MUST_CUT_PENALTY"]);
      }
      else{
-         mustCutPenalty=100.0;
+         mustCutPenalty=10.0;
      }
      controlOutput<<"must cut penalty "<<mustCutPenalty<<std::endl;
 
