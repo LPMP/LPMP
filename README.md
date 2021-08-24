@@ -30,15 +30,15 @@ The solvers can be wrapped as differentiable PyTorch modules using the technique
 
 All these can be `pip` installed with
 
-```python3 -m pip install git+https://github.com/lpmp/LPMP.git```
+```python3 -m pip install git+https://github.com/LPMP/LPMP.git```
 
 In order to install only graph matching and multigraph matching solvers, type
 
-`PACKAGES="gm" python3 -m pip install git+https://github.com/lpmp/LPMP.git`
+`PACKAGES="gm" python3 -m pip install git+https://github.com/LPMP/LPMP.git`
 
 In order to install only the lifted disjoint paths solver, type
 
-`PACKAGES="ldp" python3 -m pip install git+https://github.com/lpmp/LPMP.git`
+`PACKAGES="ldp" python3 -m pip install git+https://github.com/LPMP/LPMP.git`
 
 In order to get the precise version of graph matching as used in [8], type
 
