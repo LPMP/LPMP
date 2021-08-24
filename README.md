@@ -34,11 +34,11 @@ All these can be `pip` installed with
 
 In order to install only graph matching and multigraph matching solvers, type
 
-`PACKAGES="gm" python3 -m pip install git+https://github.com/AndreaHor/LPMP.git`
+`PACKAGES="gm" python3 -m pip install git+https://github.com/lpmp/LPMP.git`
 
 In order to install only the lifted disjoint paths solver, type
 
-`PACKAGES="ldp" python3 -m pip install git+https://github.com/AndreaHor/LPMP.git`
+`PACKAGES="ldp" python3 -m pip install git+https://github.com/lpmp/LPMP.git`
 
 In order to get the precise version of graph matching as used in [8], type
 
@@ -47,7 +47,7 @@ In order to get the precise version of graph matching as used in [8], type
 NOTE:
 If you already installed with one of the above options and would like to change the option or if you have an older version installed, you must add `--upgrade` argument to `pip`. So, you type for instance
 
-`PACKAGES="ldp" python3 -m pip install git+https://github.com/AndreaHor/LPMP.git --upgrade`
+`PACKAGES="ldp" python3 -m pip install git+https://github.com/lpmp/LPMP.git --upgrade`
 
 ## Installation
 Type `git clone https://github.com/LPMP/LPMP.git` for downloading, then `cd LPMP` and `git submodule update --init --remote --recursive` for downloading dependencies and finally `cmake .` for building.
