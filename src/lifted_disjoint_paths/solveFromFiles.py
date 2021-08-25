@@ -6,44 +6,41 @@ Created on Fri Jul 10 11:37:09 2020
 @author: fuksova
 """
 
-import ldpMessagePassingPy as ldpMP
+import lpmp_ldp
 
-
-#pathToFiles="/home/fuksova/codes/higher-order-disjoint-paths/data/newSolverInput/"
-pathToFiles="/BS/Hornakova/nobackup/newSolverInput/"
+pathToFiles="./input_files/"
 
 #Command line parameters of the solver
-solverParameters=["solveFromFiles","-o",pathToFiles+"myOutputPython.txt","--maxIter","50"]
+solverParameters=["solveFromFiles","-o","myOutputPython.txt","--maxIter","50"]
 
-solver=ldpMP.Solver(solverParameters)
+solver=lpmp_ldp.ldp.Solver(solverParameters)
 
 #Create a parser for parameters
-paramsParser=ldpMP.ParametersParser()
+paramsParser=lpmp_ldp.ldp.ParametersParser()
 
 #Parses parameters from file
-#paramsParser.init_from_file(pathToFiles+"params_sequence.ini")
-paramsParser.init_from_file(pathToFiles+"paramsToCompareOld.txt")
+paramsParser.init_from_file(pathToFiles+"params_sequence.ini")
 
 #Initializes structure for holding solver parameters. It expects a string to string map (dictionary) as an input. ParametersParser.get_parsed_params() can be used for providing such map.
-params=ldpMP.LdpParams(paramsParser.get_parsed_params())
+params=lpmp_ldp.ldp.LdpParams(paramsParser.get_parsed_params())
 print("params read")
 
 #Constructor of structure for holding the mapping between time frames and graph vertices
-timeFrames=ldpMP.TimeFramesToVertices()
+timeFrames=lpmp_ldp.ldp.TimeFramesToVertices()
 
 #Initalizing the structure from a file
 timeFrames.init_from_file(pathToFiles+"problemDesc_frames",params)
 
 #Initializing the graph structure from timeFrames. For now, no edges are present. 
-completeGraphStructure=ldpMP.GraphStructure(timeFrames)
+completeGraphStructure=lpmp_ldp.ldp.GraphStructure(timeFrames)
 
 #Adding edges to graph structure from a file.
-completeGraphStructure.add_edges_from_file(pathToFiles+"problemDesc",params)
+completeGraphStructure.add_edges_from_file(pathToFiles+"problemDesc",params,0)
 
-instance=ldpMP.LdpInstance(params,completeGraphStructure)
+instance=lpmp_ldp.ldp.LdpInstance(params,completeGraphStructure)
 
 
 
-ldpMP.construct(solver,instance)
+lpmp_ldp.ldp.construct(solver,instance)
 
 solver.solve()

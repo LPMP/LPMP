@@ -11,7 +11,8 @@ In order to run the solver from the command line, follow these steps.
    ``` 
    git clone https://github.com/LPMP/LPMP.git
    cd LPMP
-   git submodule update --init --remote --recursive```
+   git submodule update --init --remote --recursive
+   ```
 2. If you have not done it yet, create a build directory and run cmake
    ```
    mkdir LPMP-build
@@ -59,18 +60,30 @@ If you want to use the solver from python, you have two options:
 
 You can test if the python installation was successful by running an example python script
  ```python3 LPMP/src/lifted-disjoint-paths/solveFromVectors.py```
-No other input files are needed. The whole problem instance is specified directly in the python script. python3 solveFromVectors.py
+No other input files are needed. The whole problem instance is specified directly in the python script.
+
+### Input data format
+There are two basic options how the input problem instance can be provided to the solver: text files and python variables.
+
+The command line solver needs text files as input. The python solver can either use text files (see example script `solveFromFiles.py`) or python variables (see example script `solveFromVectors.py`) or a combination of both.
+
+The example input text files are located in `LPMP/src/lifted_disjoint_paths/input_files/`. The example python scripts are located in `LPMP/src/lifted_disjoint_paths`.
+
+#### Graph File
+An example file with definition of graph edges is `LPMP/src/lifted_disjoint_paths/input_files/problemDesc`.
+  - First line contains one number: number of vertices (without counting \(s\) and \(t\)).
+  - Second line must be empty\!
+  - Further lines contain definitions of edges.
+  - Each edge is defined on a separate line. Each line must contain three comma separated values: Index of the first vertex, index of the second vertex, edge cost.
+
+Note that two special vertices \(s\) and \(t\) are added automatically. Vertices are numbered from zero. If the given number of vertices is \(n\), then vertex \(s\) has index \(n\) and vertex \(t\) has index \(n+1\). Edges from \(s\) to all vertices are automatically added to graph \(G\). Edges from all vertices to \(t\) are automatically added to \(G\) too. The file has to contain just edges between vertices \(0,\dots, n-1\).
+
+#### File with Time Frames
+An example file with defining which vertices belong to which time frames is `LPMP/src/lifted_disjoint_paths/input_files/problemDesc_frames`.
+This file must provide the list of vertices that belong to each time frame. Every vertex must be on a separate line. Every line must contain two comma separated values. The first value is the index of a graph vertex (numbered from zero), the second is the index of its time frame (numbered from one). The vertices must be stated in ascending order. That is, first line contains vertex 0, second line contains vertex 1, etc.
 
 
-
-
-In case of running the solver from python, you provide the parameters and their values in an array of strings. See `solveFromVectors.py` for an example.
-
-### Input files format
-In case of running from command line, you have to provide several input files. 
-Example input files can be downloaded [here](https://github.com/AndreaHor/LifT_Solver/tree/master/data/exampleSolverILP). Most of the parameters listed in `params_sequence.ini` are not applicable for this solver. The list of relevant parameters is written below. Detailed description of the format of the other two files can be found [here](https://github.com/AndreaHor/LifT_Solver/tree/master/solverILP) in sections "Graph File" and "File with Time Frames".
-
-### Parameters
+#### Parameters
 Parameters of the problem instance are either passed to the solver in the file `params_sequence.ini` in case of running from the command line or are specified in a python dictionary in case of running from python (see `solveFromVectors.py` for an example). Do not forget the keyword `[SOLVER]` in your file `params_sequence.ini`.
 
   - `SPARSIFY = 1`  
