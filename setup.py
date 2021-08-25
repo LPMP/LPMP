@@ -1,4 +1,3 @@
-import glob
 import os
 import re
 import sys
@@ -117,10 +116,18 @@ if config_var.upper() == 'LDP':
     myPackages=['lpmp_ldp']
 elif config_var.upper() == 'GM':
     myExtModules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py')]
-    myPackages=['lpmp_py']
+    myPackages=['lpmp_gm']
+elif config_var.upper() == 'MC':
+    myExtModules=[CMakeExtension(name='asymmetric_multiway_cut_py'), CMakeExtension(name='multiway_cut_py'), CMakeExtension(name='multicut_py')]
+    myPackages=['lpmp_mc']
 else:
-    myExtModules=[CMakeExtension(name='graph_matching_py'), CMakeExtension(name='multigraph_matching_py'),CMakeExtension(name='ldpMessagePassingPy')]
-    myPackages=['lpmp_ldp','lpmp_py']
+    myExtModules=[CMakeExtension(name='ldpMessagePassingPy'), 
+                    CMakeExtension(name='graph_matching_py'), 
+                    CMakeExtension(name='multigraph_matching_py'),
+                    CMakeExtension(name='asymmetric_multiway_cut_py'),
+                    CMakeExtension(name='multiway_cut_py'),
+                    CMakeExtension(name='multicut_py')]
+    myPackages=['lpmp_ldp','lpmp_gm','lpmp_mc']
     
 
 setup(

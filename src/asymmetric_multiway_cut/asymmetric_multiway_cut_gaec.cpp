@@ -95,8 +95,8 @@ namespace LPMP {
         double max_join_cost = -std::numeric_limits<double>::infinity();
         for(const auto& e : instance.edge_costs.edges())
         {
-            //const auto [join_cost, join_label] = compute_edge_cost(e.cost, e[0], e[1]);
-            const auto [join_cost, join_label] = compute_balanced_edge_cost(e.cost, e[0], e[1]);
+            const auto [join_cost, join_label] = compute_edge_cost(e.cost, e[0], e[1]);
+            //const auto [join_cost, join_label] = compute_balanced_edge_cost(e.cost, e[0], e[1]);
             min_join_cost = std::min(min_join_cost, join_cost);
             max_join_cost = std::max(max_join_cost, join_cost);
             assert(partition.find(e[0]) == e[0]);
@@ -105,9 +105,9 @@ namespace LPMP {
                 Q.push(edge_type_q{e[0], e[1], join_cost, join_label, 0});
         }
 
-        std::cout << "min join cost initial = " << min_join_cost << "\n";
-        std::cout << "max join cost initial = " << max_join_cost << "\n";
-        std::cout << "size of Q = " << Q.size() << "\n";
+        // std::cout << "min join cost initial = " << min_join_cost << "\n";
+        // std::cout << "max join cost initial = " << max_join_cost << "\n";
+        // std::cout << "size of Q = " << Q.size() << "\n";
 
         while(!Q.empty()) {
             const edge_type_q e_q = Q.top();
@@ -150,15 +150,15 @@ namespace LPMP {
                     pp.cost += p.cost;
                     pp.stamp++;
 
-                    //const auto [join_cost, join_label] = compute_edge_cost(pp.cost, stable_node, head);
-                    const auto [join_cost, join_label] = compute_balanced_edge_cost(pp.cost, stable_node, head);
+                    const auto [join_cost, join_label] = compute_edge_cost(pp.cost, stable_node, head);
+                    // const auto [join_cost, join_label] = compute_balanced_edge_cost(pp.cost, stable_node, head);
                     if(join_cost <= 0.0)
                     {
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, pp.stamp});
                     }
                 } else {
-                    //const auto [join_cost, join_label] = compute_edge_cost(p.cost, stable_node, head);
-                    const auto [join_cost, join_label] = compute_balanced_edge_cost(p.cost, stable_node, head);
+                    const auto [join_cost, join_label] = compute_edge_cost(p.cost, stable_node, head);
+                    // const auto [join_cost, join_label] = compute_balanced_edge_cost(p.cost, stable_node, head);
                     if(join_cost <= 0.0)
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, 0});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
@@ -168,6 +168,20 @@ namespace LPMP {
             for(const auto& e : insert_candidates)
                 g.insert_edge(e.first[0], e.first[1], e.second);
             insert_candidates.clear();
+        }
+
+        // Merge non-partitionable classes:
+        for(size_t e=0; e<nr_edges; ++e)
+        {
+            const size_t i = instance.edge_costs.edges()[e][0];
+            const size_t j = instance.edge_costs.edges()[e][1];
+            const size_t c_i = partition.find(i);
+            const size_t c_j = partition.find(j);
+            const size_t l_i = node_labels[c_i];
+            const size_t l_j = node_labels[c_j];
+
+            if(l_i == l_j && !instance.node_costs.partitionable(l_i) && !partition.connected(i,j))
+                partition.merge(i, j);
         }
 
         // construct labeling
@@ -188,6 +202,7 @@ namespace LPMP {
             const size_t c = partition.find(i);
             assert(node_labels[c] < nr_labels);
             labeling.node_labels.push_back(node_labels[c]);
+            labeling.node_connected_components_ids.push_back(c);
         }
 
         assert(instance.feasible(labeling));
