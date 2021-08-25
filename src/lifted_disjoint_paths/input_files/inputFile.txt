@@ -1,0 +1,4 @@
+INPUT_GRAPH=../../../LPMP/src/lifted_disjoint_paths/input_files/problemDesc
+INPUT_FRAMES=../../../LPMP/src/lifted_disjoint_paths/input_files/problemDesc_frames
+INPUT_PARAMS=../../../LPMP/src/lifted_disjoint_paths/input_files/params_sequence.ini
+

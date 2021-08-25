@@ -1,9 +1,7 @@
 ## Lifted Disjoint Paths
 
 ### Problem
-Lifted Disjoint Paths problem was introduced in [1]. Its original implementation including example input files is available here [LifT_Solver](https://github.com/AndreaHor/LifT_Solver).
-
-
+Lifted Disjoint Paths problem was introduced in [1]. Its original implementation including example input files is available here [LifT_Solver](https://github.com/AndreaHor/LifT_Solver). Here, we provide an new approximate solver introduced in [2].
 
 ### Compilation and Running
 
@@ -26,11 +24,25 @@ In order to run the solver from the command line, follow these steps.
    make   
    ```
 
-4. Run the solver from command line
+4. Finally, run the solver from command line. Replace `some/path/output.txt` with a desired output path. 
 
    ```
-   ./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt -o /path/to/your/output/outputFile.txt
+   ./lifted_disjoint_paths_text_input -i ../../../LPMP/src/lifted_disjoint_paths/input_files/inputFile.txt -o some/path/output.txt
    ```
+   - This path to the example input file assumes that your build directory `LPMP-build` is in the same directory as `LPMP`. If this is not the case, you need to modify the path here and the content of `inputFile.txt` accordingly.
+   
+   - The main input file `inputFile.txt` passed to the solver as the command line argument has the following structure:
+   
+     ```
+     INPUT_GRAPH=/path/to/your/input/problemDesc
+     INPUT_FRAMES=/path/to/your/input/problemDesc_frames
+     INPUT_PARAMS=/path/to/your/input/params_sequence.ini
+     ```
+   - You can use other command line parameters that are applicable for other problems in LPMP. You can display their full list by running 
+   
+     ```
+     ./lifted_disjoint_paths_text_input --help
+     ```
 
 #### For usage from python
 If you want to use the solver from python, you have two options:
@@ -45,32 +57,17 @@ If you want to use the solver from python, you have two options:
    ```
    If you want to use the ldp solver together with other packages from this repository, follow the python installation instructions on the [`front page`](https://github.com/LPMP/LPMP).
 
-You can test if the python installation was successfull by runnig an example python script
-      ```python3 LPMP/src/lifted-disjoint-paths/solveFromVectors.py```
+You can test if the python installation was successful by running an example python script
+ ```python3 LPMP/src/lifted-disjoint-paths/solveFromVectors.py```
+No other input files are needed. The whole problem instance is specified directly in the python script. python3 solveFromVectors.py
 
-Another possibility is to use python script for running the solver on an example instance. Here, no input files are needed. The whole problem instance is specified directly in the python script. It is possible to use one graph structure as an input. The solver will extract the base graph and the lifted graph from it. You can run the respective example script by running
- ```
-python3 solveFromVectors.py
- ```
-Alternatively, you can directly specify the base graph and the lifted graph separately. You can run the respective example script by running
-```
-python3 solveFromVectorsTwoGraphs.py
-```
 
-You can use other command line parameters that are applicable for other problems in LPMP. You can display their full list by running 
-```
-./lifted_disjoint_paths_text_input --help
-```
+
+
 In case of running the solver from python, you provide the parameters and their values in an array of strings. See `solveFromVectors.py` for an example.
 
-### File format
-In case of running from command line, you have to provide several input files. The main input file `inputFile.txt` passed to the solver as the command line argument has the following structure:
-
-```
-INPUT_GRAPH=/path/to/your/input/problemDesc
-INPUT_FRAMES=/path/to/your/input/problemDesc_frames
-INPUT_PARAMS=/path/to/your/input/params_sequence.ini
-```
+### Input files format
+In case of running from command line, you have to provide several input files. 
 Example input files can be downloaded [here](https://github.com/AndreaHor/LifT_Solver/tree/master/data/exampleSolverILP). Most of the parameters listed in `params_sequence.ini` are not applicable for this solver. The list of relevant parameters is written below. Detailed description of the format of the other two files can be found [here](https://github.com/AndreaHor/LifT_Solver/tree/master/solverILP) in sections "Graph File" and "File with Time Frames".
 
 ### Parameters
