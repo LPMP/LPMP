@@ -83,20 +83,11 @@ namespace LPMP {
             return {join_cost - sep_cost, min_label};
         };
 
-        // Divide by size of component to obtain more balanced partitions during optimization
-        auto compute_balanced_edge_cost = [&](const double mc_edge_cost, const size_t i, const size_t j) -> std::tuple<double,size_t> {
-            const auto c = compute_edge_cost(mc_edge_cost, i, j);
-            const size_t i_size = partition.no_elements(partition.find(i));
-            const size_t j_size = partition.no_elements(partition.find(j));
-            return {std::get<0>(c)/double(i_size+j_size), std::get<1>(c)};
-        };
-
         double min_join_cost = std::numeric_limits<double>::infinity();
         double max_join_cost = -std::numeric_limits<double>::infinity();
         for(const auto& e : instance.edge_costs.edges())
         {
             const auto [join_cost, join_label] = compute_edge_cost(e.cost, e[0], e[1]);
-            //const auto [join_cost, join_label] = compute_balanced_edge_cost(e.cost, e[0], e[1]);
             min_join_cost = std::min(min_join_cost, join_cost);
             max_join_cost = std::max(max_join_cost, join_cost);
             assert(partition.find(e[0]) == e[0]);
@@ -105,16 +96,11 @@ namespace LPMP {
                 Q.push(edge_type_q{e[0], e[1], join_cost, join_label, 0});
         }
 
-        // std::cout << "min join cost initial = " << min_join_cost << "\n";
-        // std::cout << "max join cost initial = " << max_join_cost << "\n";
-        // std::cout << "size of Q = " << Q.size() << "\n";
-
         while(!Q.empty()) {
             const edge_type_q e_q = Q.top();
             Q.pop();
             const size_t i = e_q[0];
             const size_t j = e_q[1];
-            //std::cout << "join " << i << " and " << j << ", cost = " << e_q.cost << "\n";
 
             if(!g.edge_present(i,j))
                 continue;
@@ -151,14 +137,12 @@ namespace LPMP {
                     pp.stamp++;
 
                     const auto [join_cost, join_label] = compute_edge_cost(pp.cost, stable_node, head);
-                    // const auto [join_cost, join_label] = compute_balanced_edge_cost(pp.cost, stable_node, head);
                     if(join_cost <= 0.0)
                     {
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, pp.stamp});
                     }
                 } else {
                     const auto [join_cost, join_label] = compute_edge_cost(p.cost, stable_node, head);
-                    // const auto [join_cost, join_label] = compute_balanced_edge_cost(p.cost, stable_node, head);
                     if(join_cost <= 0.0)
                         Q.push(edge_type_q{stable_node, head, join_cost, join_label, 0});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});

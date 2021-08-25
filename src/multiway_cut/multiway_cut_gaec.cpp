@@ -99,7 +99,6 @@ namespace LPMP {
             Q.pop();
             const size_t i = e_q[0];
             const size_t j = e_q[1];
-            //std::cout << "join " << i << " and " << j << ", cost = " << e_q.cost << "\n";
 
             if(!g.edge_present(i,j))
                 continue;
@@ -112,7 +111,7 @@ namespace LPMP {
             const size_t c_j = partition.find(j);
             const size_t j_label = node_labels[c_j];
 
-            assert(e_q.cost <= 0.0 || node_labels[i_label] == node_labels[j_label]); // Second part of assertion?
+            assert(e_q.cost <= 0.0);
 
             if(e_q.cost >= 0.0)
             {
@@ -153,8 +152,6 @@ namespace LPMP {
             }();
 
             const size_t stable_label = node_labels[partition.find(stable_node)];
-            const size_t merge_label = node_labels[partition.find(merge_node)]; // TODO: remove?
-            assert(stable_label == merge_label);
 
             for(size_t edge_index=g.first_outgoing_edge_index(merge_node); edge_index!=decltype(g)::no_next_edge; edge_index=g.next_outgoing_edge_index(edge_index)) {
                 const size_t head  = g.head(edge_index);
