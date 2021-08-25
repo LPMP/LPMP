@@ -7,8 +7,10 @@ Lifted Disjoint Paths problem was introduced in [1]. Its original implementation
 
 ### Compilation and Running
 
+#### For usage from the command line
+In order to run the solver from the command line, follow these steps.
 1. If you have not done it yet, clone the LPMP project and get its submodules:
-   ```
+   ``` 
    git clone https://github.com/LPMP/LPMP.git
    cd LPMP
    git submodule update --init --remote --recursive```
@@ -16,7 +18,7 @@ Lifted Disjoint Paths problem was introduced in [1]. Its original implementation
    ```
    mkdir LPMP-build
    cd LPMP-build
-   cmake -D CMAKE_BUILD_TYPE=Release ../LPMP
+   cmake -D CMAKE_BUILD_TYPE=Release path/to/LPMP
    ```
 3. Run make for the lifted disjoint paths project
    ```
@@ -29,13 +31,22 @@ Lifted Disjoint Paths problem was introduced in [1]. Its original implementation
    ```
    ./lifted_disjoint_paths_text_input -i /path/to/your/input/inputFile.txt -o /path/to/your/output/outputFile.txt
    ```
-5. *Alternatively*, you can skip steps 2.-4. and directly run `pip install` in order to use the solver from python 
-   
-   ```
+
+#### For usage from python
+If you want to use the solver from python, you have two options:
+1. Either: Download the source code with `git clone` (see Step 1 in the previous section) and run `pip install` on the `LPMP` directory. 
+   ```    
     PACKAGES="ldp" python3 -m pip install path/to/LPMP
    ```
-   You can test if the python installation was successfull by runnig an example python script
-   ```python3 LPMP/src/lifted-disjoint-paths/solveFromVectors.py```.
+   
+2. OR: Install the solver directly from the repository without downloading the source code.
+   ```
+   PACKAGES="ldp" python3 -m pip install git+https://github.com/LPMP/LPMP.git
+   ```
+   If you want to use the ldp solver together with other packages from this repository, follow the python installation instructions on the [`front page`](https://github.com/LPMP/LPMP).
+
+You can test if the python installation was successfull by runnig an example python script
+      ```python3 LPMP/src/lifted-disjoint-paths/solveFromVectors.py```
 
 Another possibility is to use python script for running the solver on an example instance. Here, no input files are needed. The whole problem instance is specified directly in the python script. It is possible to use one graph structure as an input. The solver will extract the base graph and the lifted graph from it. You can run the respective example script by running
  ```
@@ -148,4 +159,5 @@ Parameters of the problem instance are either passed to the solver in the file `
 
 ### References
 * [1]: [`A. Hornakova, R. Henschel,  B. Rosenhahn,  P. Swoboda. Lifted Disjoint Paths with Application in Multiple Object Tracking, ICML 2020`](http://proceedings.mlr.press/v119/hornakova20a.html)
-* [2]: [`A. Hornakova, T. Kaiser, P. Swoboda,  M. Rolinek,  B. Rosenhahn, R. Henschel. Making Higher Order MOT Scalable: An Efficient Approximate Solver for Lifted Disjoint Paths, ICCV 2021`]
+* [2]: [`A. Hornakova, T. Kaiser, P. Swoboda,  M. Rolinek,  B. Rosenhahn, R. Henschel. Making Higher Order MOT Scalable: An Efficient Approximate Solver for Lifted Disjoint Paths, ICCV 2021`](https://arxiv.org/abs/2108.10606)
+
