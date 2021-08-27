@@ -98,8 +98,8 @@ Parameters of the problem instance are either passed to the solver in the file `
     Expects a real value. Cost of terminating a track. Default value is 0.
   - `MAX_TIMEGAP_COMPLETE = 60`  
     Expects a positive integer. Influences the second step of the two-step procedure. If `COMPLETE_GAP_IN_TRACKLET` is set to one, this value is used for selection of base and lifted edges in creating the tracklet graph. Its default value is the maximum from `MAX_TIMEGAP_BASE` and `MAX_TIMEGAP_LIFTED`.
-  - `USE_ADAPTIVE_THRESHOLDS=1`
-    Expects value 0/1. If set to 1, three specific parameters expecting thresholds on edge cost will expect real values within the interval [0,...,1) denoting the rate of edges to keep instead of exact threshold values. If set to 0, the three parameters expect exact threshold values. These parameters are `BASE_THRESHOLD, NEGATIVE_THRESHOLD_LIFTED, POSITIVE_THRESHOLD_LIFTED`. Default value is 0.   
+  - `USE_ADAPTIVE_THRESHOLDS=0`
+    !Option 1 does not work now! Expects value 0/1. If set to 1, three specific parameters expecting thresholds on edge cost will expect real values within the interval [0,...,1) denoting the rate of edges to keep instead of exact threshold values. If set to 0, the three parameters expect exact threshold values. These parameters are `BASE_THRESHOLD, NEGATIVE_THRESHOLD_LIFTED, POSITIVE_THRESHOLD_LIFTED`. Default value is 0.   
   - `TIGHT_MAX_EDGE_USAGE=4`
     Expects a positive integer. The maximal number of newly added path or cut subproblems that can share one edge. Default value is 4.
   - `TIGHT_MIN_IMPROVEMENT=0.00001`
