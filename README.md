@@ -61,6 +61,7 @@ Prerequisites:
 ## Documentation
 
 A tutorial on writing a new solver from scratch can be found [here](/doc/Getting-Started.md).
+The documentation for using all the existing solvers is in the directory [doc](/doc).
 
 ## References
 * [1]: [`P. Swoboda, J. Kuske and B. Savchynskyy. A Dual Ascent Framework for Lagrangean Decomposition of Combinatorial Problems. In CVPR 2017.`](http://openaccess.thecvf.com/content_cvpr_2017/html/Swoboda_A_Dual_Ascent_CVPR_2017_paper.html)
