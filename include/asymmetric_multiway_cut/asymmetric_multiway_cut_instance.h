@@ -9,7 +9,7 @@ namespace LPMP {
         private:
             size_t nr_labels_ = 0;
             std::vector<double> costs;
-            std::vector<char> partitionable_class;
+            std::vector<bool> partitionable_class;
 
         public:
             size_t nr_labels() const { return nr_labels_; }
@@ -43,6 +43,7 @@ namespace LPMP {
     class asymmetric_multiway_cut_labeling {
         public:
             std::vector<size_t> node_labels;
+            std::vector<size_t> node_connected_components_ids;
             multicut_edge_labeling edge_labels; 
     };
 
@@ -81,7 +82,7 @@ namespace LPMP {
         {
             assert(nr_labels_ == 0 || std::distance(partitionable_begin, partitionable_end) == nr_labels_);
             nr_labels_ = std::distance(partitionable_begin, partitionable_end);
-            partitionable_class = std::vector<char>(partitionable_begin, partitionable_end); 
+            partitionable_class = std::vector<bool>(partitionable_begin, partitionable_end); 
         }
 
     template<typename STREAM>

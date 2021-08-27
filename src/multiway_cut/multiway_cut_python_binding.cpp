@@ -5,18 +5,18 @@
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <pybind11/numpy.h>
+#include <pybind11/eigen.h>
 
 namespace py = pybind11;
 
-void construct_instance(LPMP::multiway_cut_instance& instance, const std::vector<std::tuple<size_t,size_t,double>>& edge_costs, const py::array_t<double> node_costs)
+void construct_instance(LPMP::multiway_cut_instance& instance, const Eigen::Array<size_t, Eigen::Dynamic, 2>& edge_indices, const Eigen::Array<double, Eigen::Dynamic, 1>& edge_costs, const py::array_t<double> node_costs)
 {
 
-    for(size_t e=0; e<edge_costs.size(); ++e)
+    for(size_t e=0; e<edge_costs.rows(); ++e)
     {
-        const auto ec =  edge_costs[e];
-        const size_t i = std::get<0>(ec);
-        const size_t j = std::get<1>(ec);
-        const double w = std::get<2>(ec);
+        const size_t i = edge_indices(e, 0);
+        const size_t j = edge_indices(e, 1);
+        const double w = edge_costs(e);
         instance.edge_costs.add_edge(i, j, w);
     }
 
@@ -72,9 +72,9 @@ PYBIND11_MODULE(multiway_cut_py, m) {
 
     py::class_<LPMP::multiway_cut_instance>(m, "multiway_cut_instance")
         .def(py::init<>())
-        .def(py::init([](const std::vector<std::tuple<size_t,size_t,double>>& edge_costs, const py::array_t<double> node_costs) {
+        .def(py::init([](const Eigen::Array<size_t, Eigen::Dynamic, 2>& edge_indices, const Eigen::Array<double, Eigen::Dynamic, 1>& edge_costs, const py::array_t<double> node_costs) {
                     LPMP::multiway_cut_instance instance;
-                    construct_instance(instance, edge_costs, node_costs);
+                    construct_instance(instance, edge_indices, edge_costs, node_costs);
                     return instance;
                     }))
         .def("evaluate", &LPMP::multiway_cut_instance::evaluate)
@@ -101,4 +101,3 @@ PYBIND11_MODULE(multiway_cut_py, m) {
                 return LPMP::multiway_cut_gaec(instance);
                 });
 }
-

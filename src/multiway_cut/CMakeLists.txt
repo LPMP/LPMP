@@ -5,7 +5,7 @@ target_link_libraries(multiway_cut_instance LPMP)
 #target_link_libraries(multiway_cut_parser multiway_cut_instance LPMP)
 
 add_library(multiway_cut_gaec multiway_cut_gaec.cpp)
-target_link_libraries(multiway_cut_gaec multiway_cut_instance multiway_cut_gaec LPMP)
+target_link_libraries(multiway_cut_gaec multiway_cut_instance LPMP)
 
 #add_executable(multiway_cut_gaec_text_input multiway_cut_gaec_text_input.cpp)
 #target_link_libraries(multiway_cut_gaec_text_input multiway_cut_instance multiway_cut_parser multiway_cut_gaec)

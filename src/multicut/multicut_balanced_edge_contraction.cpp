@@ -2,21 +2,20 @@
 #include <queue>
 #include <cassert>
 #include <functional>
-#include "multicut/multicut_greedy_additive_edge_contraction.h"
+#include "multicut/multicut_balanced_edge_contraction.h"
 #include "union_find.hxx"
 #include "dynamic_graph.hxx"
 
 namespace LPMP {
-
-    multicut_edge_labeling greedy_additive_edge_contraction(const multicut_instance& instance)
+    multicut_edge_labeling multicut_balanced_edge_contraction(const multicut_instance& instance)
     {
         multicut_edge_labeling sol;
         std::vector<int> node_labels;
-        std::tie(sol, node_labels) = greedy_additive_edge_contraction_impl(instance);
+        std::tie(sol, node_labels) = multicut_balanced_edge_contraction_impl(instance);
         return sol;
     }
 
-    std::tuple<multicut_edge_labeling, std::vector<int>> greedy_additive_edge_contraction_impl(const multicut_instance& instance)
+    std::tuple<multicut_edge_labeling, std::vector<int>> multicut_balanced_edge_contraction_impl(const multicut_instance& instance)
     {
         struct edge_type {
             double cost;
@@ -28,17 +27,24 @@ namespace LPMP {
 
         struct edge_type_q : public std::array<std::size_t,2> {
             double cost;
+            double balanced_cost;
             std::size_t stamp;
         };
 
-        auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.cost < e2.cost; };
+        auto pq_cmp = [](const edge_type_q& e1, const edge_type_q& e2) { return e1.balanced_cost < e2.balanced_cost; };
         std::priority_queue<edge_type_q, std::vector<edge_type_q>, decltype(pq_cmp)> Q(pq_cmp);
+
+        auto compute_balanced_edge_cost = [&](const double mc_edge_cost, const size_t i, const size_t j) -> double {
+            const size_t i_size = partition.no_elements(partition.find(i));
+            const size_t j_size = partition.no_elements(partition.find(j));
+            return mc_edge_cost / double(i_size + j_size);
+        };
 
         std::vector<std::pair<std::array<std::size_t,2>, edge_type>> insert_candidates; // vector stores elements to be added later. if we first remove a node and then add edges, we will reuse the space of the deleted edges. This gives a slight, but real performance improvement.
 
         for(const auto& e : instance.edges())
             if(e.cost >= 0.0)
-                Q.push(edge_type_q{e[0], e[1], e.cost, 0});
+                Q.push(edge_type_q{e[0], e[1], e.cost, compute_balanced_edge_cost(e.cost, e[0], e[1]), 0});
 
         while(!Q.empty()) {
             const edge_type_q e_q = Q.top();
@@ -74,10 +80,10 @@ namespace LPMP {
                     pp.stamp++;
 
                     if(pp.cost >= 0.0)
-                        Q.push(edge_type_q{stable_node, head, pp.cost, pp.stamp});
+                        Q.push(edge_type_q{stable_node, head, pp.cost, compute_balanced_edge_cost(pp.cost, stable_node, head), pp.stamp});
                 } else {
                     if(p.cost >= 0.0)
-                        Q.push(edge_type_q{stable_node, head, p.cost, 0});
+                        Q.push(edge_type_q{stable_node, head, p.cost, compute_balanced_edge_cost(p.cost, stable_node, head), 0});
                     insert_candidates.push_back({{stable_node, head}, {p.cost, 0}});
                 } 
             }

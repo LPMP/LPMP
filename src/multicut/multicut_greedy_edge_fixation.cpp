@@ -7,8 +7,15 @@
 #include <vector>
 
 namespace LPMP {
-
     multicut_edge_labeling multicut_greedy_edge_fixation(const multicut_instance& instance)
+    {
+        multicut_edge_labeling sol;
+        std::vector<int> node_labels;
+        std::tie(sol, node_labels) = multicut_greedy_edge_fixation_impl(instance);
+        return sol;
+    }
+
+    std::tuple<multicut_edge_labeling, std::vector<int>>  multicut_greedy_edge_fixation_impl(const multicut_instance& instance)
     {
         struct edge_type {
             double cost;
@@ -86,8 +93,13 @@ namespace LPMP {
             } 
         }
 
-        multicut_edge_labeling l(instance, partition);
-        return l;
+        std::vector<int> node_connected_components_ids(instance.no_nodes());
+        for(size_t i=0; i<instance.no_nodes(); ++i)
+        {
+            const size_t c = partition.find(i);
+            node_connected_components_ids[i] = c;
+        }
+        return {multicut_edge_labeling(instance, partition), node_connected_components_ids}; 
     }
 
 } // namespace LPMP

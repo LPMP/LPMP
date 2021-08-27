@@ -40,6 +40,10 @@ In order to install only the lifted disjoint paths solver, type
 
 `PACKAGES="ldp" python3 -m pip install git+https://github.com/LPMP/LPMP.git`
 
+In order to install only the all variants of multicut solvers (multicut, asymmetric multiway cut [9], multiway cut [9]), type
+
+`PACKAGES="mc" python3 -m pip install git+https://github.com/LPMP/LPMP.git`
+
 In order to get the precise version of graph matching as used in [8], type
 
 ```python3 -m pip install git+https://github.com/lpmp/LPMP.git@keypiont_submission```
@@ -72,3 +76,4 @@ The documentation for using all the existing solvers is in the directory [doc](/
 * [6]: [`A. Abbas, P. Swoboda. Bottleneck Potentials in Markov Random Fields. In ICCV 2019.`](http://openaccess.thecvf.com/content_ICCV_2019/html/Abbas_Bottleneck_Potentials_in_Markov_Random_Fields_ICCV_2019_paper.html)
 * [7]: [`M. Vlastelica, A. Paulus, V. Musil, G. Martius, M. Rolínek. Differentiation of Blackbox Combinatorial Solvers. In ICLR 2020.`](https://openreview.net/forum?id=BkevoJSYPB)
 * [8]: [`M. Rolínek, P. Swoboda, D. Zietlow, A. Paulus, V. Musil, G. Martius. Deep Graph Matching via Blackbox Differentiation of Combinatorial Solvers.`](https://arxiv.org/abs/2003.11657)
+* [9]: [`A. Abbas, P. Swoboda. Combinatorial Optimization for Panoptic Segmentation: An End-to-End Trainable Approach.`](https://arxiv.org/abs/2106.03188)

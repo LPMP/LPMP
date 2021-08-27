@@ -2,7 +2,6 @@ import numpy as np
 import bindings.graph_matching_py as gm
 import bindings.multigraph_matching_py as mgm
 
-
 def gm_solver(costs, quadratic_costs, edges_left, edges_right, solver_params, verbose=False):
     """
     A thin python wrapper of the solver Graph Matching solver. Computes min-cost matching between two directed graphs
