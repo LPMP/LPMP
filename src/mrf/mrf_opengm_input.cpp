@@ -69,6 +69,7 @@ namespace mrf_opengm_input {
        for(std::size_t f=0; f<gm.numberOfFactors(); ++f){
 
            if(gm[f].numberOfVariables()==0){
+               throw std::runtime_error("constants not supported");
                // ignore for now
            }
            else if(gm[f].numberOfVariables()==1){

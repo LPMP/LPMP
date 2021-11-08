@@ -6,7 +6,7 @@ using namespace LPMP;
 
 int main(int argc, char** argv)
 {
-    if(argc <= 3)
+    if(argc < 3)
         throw std::runtime_error("Two arguments expected: input and output");
     bool no_matching_allowed = true;
     if(argc == 4)

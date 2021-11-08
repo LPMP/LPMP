@@ -134,7 +134,7 @@ namespace LPMP {
        assert(i < no_variables());
        assert(j < no_variables());
        assert(label < cardinality(i));
-       return "y_" + std::to_string(i) + "_" + std::to_string(j) + "(" + std::to_string(label) + ")";
+       return "y_" + std::to_string(i) + "_" + std::to_string(j);// + "(" + std::to_string(label) + ")";
    }
 
    inline std::string mrf_input::truncated_L1_pairwise_variable_identifier(const std::size_t i, const std::size_t j, const size_t label) const
@@ -226,7 +226,7 @@ namespace LPMP {
 
        if(off_diagonal < diagonal)
        {
-           std::cout << "off diagonal " << off_diagonal << " < diagonal " << diagonal << "\n";
+           //std::cout << "off diagonal " << off_diagonal << " < diagonal " << diagonal << "\n";
            return false;
        }
 
@@ -234,14 +234,14 @@ namespace LPMP {
            for (std::size_t l_j = 0; l_j < cardinality(j); ++l_j)
                if (l_i != l_j && pot(l_i, l_j) != off_diagonal)
                {
-                   std::cout << "off diagonal varies\n";
+                   //std::cout << "off diagonal varies\n";
                    return false;
                }
 
        for (std::size_t l = 0; l < cardinality(i); ++l)
            if (pot(l, l) != diagonal)
            {
-               std::cout << "diagonal varies\n";
+               //std::cout << "diagonal varies\n";
                return false;
            }
 
@@ -333,8 +333,8 @@ namespace LPMP {
                continue;
            if (is_Potts(pairwise_idx))
            {
-               for(size_t l=0; l<cardinality(i); ++l)
-                   s << " + " << Potts_strength(pairwise_idx) << " " << Potts_pairwise_variable_identifier(i, j, l) << "\n";
+               //for(size_t l=0; l<cardinality(i); ++l)
+                   s << " + " << Potts_strength(pairwise_idx) << " " << Potts_pairwise_variable_identifier(i, j, 0) << "\n";
            }
            else if(is_truncated_L1(pairwise_idx))
            {
@@ -521,8 +521,8 @@ namespace LPMP {
            assert(pairwise_values.dim3(pairwise_idx) == unaries[j].size());
            if(is_Potts(pairwise_idx))
            {
-               for(size_t l=0; l<cardinality(i); ++l)
-                   s << Potts_pairwise_variable_identifier(i, j, l) << "\n";
+               //for(size_t l=0; l<cardinality(i); ++l)
+                   s << Potts_pairwise_variable_identifier(i, j, 0) << "\n";
            }
            else if(is_truncated_L1(pairwise_idx))
            {

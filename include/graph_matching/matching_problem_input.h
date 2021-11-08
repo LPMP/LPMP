@@ -315,13 +315,13 @@ struct linear_assignment_problem_input {
        assert(side == "left" || side == "right");
        if(side == "left")
        {
-           assert(i < nr_left_nodes);
-           return "SIMPLEX_LEFT_" << std::to_string(i);
+           assert(i < no_left_nodes);
+           return "SIMPLEX_LEFT_" + std::to_string(i);
        }
        else
        {
-           assert(i < nr_right_nodes);
-           return "SIMPLEX_RIGHT_" << std::to_string(i);
+           assert(i < no_right_nodes);
+           return "SIMPLEX_RIGHT_" + std::to_string(i);
        }
    }
 
@@ -334,6 +334,13 @@ struct linear_assignment_problem_input {
                    if(a.left_node == no_assignment || a.right_node == no_assignment)
                        throw std::runtime_error("empty matching not allowed");
                s << (a.cost < 0.0 ? "-" : "+") << std::abs(a.cost) << " " << linear_identifier(a.left_node, a.right_node) << "\n";
+           }
+           if(no_matching_allowed) // TODO: this is quick hack, not good if assignments contains costs for no matching variables
+           {
+               for(size_t i=0; i<no_left_nodes; ++i)
+                   s << "+ 0.0 " << linear_identifier(i, no_assignment) << "\n";
+               for(size_t i=0; i<no_right_nodes; ++i)
+                   s << "+ 0.0 " << linear_identifier(no_assignment, i) << "\n";
            }
        }
    template<typename STREAM>
@@ -372,7 +379,7 @@ struct linear_assignment_problem_input {
               std::sort(right[j].begin(), right[j].end());
               if (right[j].size() > 0)
               {
-                  s << unary_simplex_identifier(i, "right") << ": ";
+                  s << unary_simplex_identifier(j, "right") << ": ";
                  for (const std::size_t i : right[j])
                     s << "+ " << linear_identifier(i, j) << " ";
                  if(no_matching_allowed)
@@ -494,7 +501,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
        return quadratic_identifier({l1, l2}, {r1, r2});
     }
 
-    std::string marginalization_constraint_identifier(const size_t i, const size_t j, const std::string& side, const size_t left_point, const size_t right_point)
+    std::string marginalization_constraint_identifier(const size_t i, const size_t j, const std::string& side, const size_t left_point, const size_t right_point) const
     {
         assert(side == "left" || side == "right");
         assert(i < j);
@@ -508,7 +515,8 @@ struct graph_matching_input : public linear_assignment_problem_input {
         {
             assert(j < this->no_right_nodes);
             assert(right_point == i || right_point == j);
-            return "MARGINALIZATION_LEFT_" + std::to_string(i) + "_" + std::to_string(j) + "_" + std::to_string(left_point) + "_" + std::to_string(right_point);
+            return "MARGINALIZATION_RIGHT_" + std::to_string(i) + "_" + std::to_string(j) + "_" + std::to_string(left_point) + "_" + std::to_string(right_point);
+        }
     }
 
     template <typename STREAM>
@@ -518,7 +526,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
           s << (q.cost < 0.0 ? "-" : "+") << std::abs(q.cost) << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
         }
 
-    std::array<std::unordered_set<std::array<std::size_t,2>> left_pairwise_potentials,2> export_pairwise_potentials(const bool no_matching_allowed) const
+    std::array<std::unordered_set<std::array<std::size_t,2>>, 2> export_pairwise_potentials(const bool no_matching_allowed) const
     {
         std::unordered_set<std::array<std::size_t,2>> left_pairwise_potentials;
         std::unordered_set<std::array<std::size_t,2>> right_pairwise_potentials;
@@ -544,7 +552,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
         return {left_pairwise_potentials, right_pairwise_potentials};
     }
 
-    std::array<std::vector<std::vector<size_t>> export_labels(const bool no_matching_allowed) const
+    std::array<std::vector<std::vector<size_t>>, 2> export_labels(const bool no_matching_allowed) const
     {
         std::vector<std::vector<std::size_t>> left_labels(this->no_left_nodes);
         std::vector<std::vector<std::size_t>> right_labels(this->no_right_nodes);
@@ -591,7 +599,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
               assert(l_1 != l_2);
               for (const auto r_1 : left_labels[l_1])
               {
-                  s << marginalization_constraint_identifier(l_1, l_2, "left", l_1, r_1);
+                  s << marginalization_constraint_identifier(l_1, l_2, "left", l_1, r_1) << ": ";
                  for (const auto r_2 : left_labels[l_2])
                  {
                     if (r_1 != r_2 || r_1 == graph_matching_input::no_assignment)
@@ -601,7 +609,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
                }
 
                for(const auto r_2 : left_labels[l_2]) {
-                  s << marginalization_constraint_identifier(l_1, l_2, "left", l_2, r_2);
+                  s << marginalization_constraint_identifier(l_1, l_2, "left", l_2, r_2) << ": ";
                    for(const auto r_1 : left_labels[l_1]) {
                       if (r_1 != r_2 || r_1 == graph_matching_input::no_assignment)
                          s << " - " << quadratic_identifier({l_1, l_2}, {r_1, r_2});
@@ -615,7 +623,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
               assert(r_1 != r_2);
               for (const auto l_1 : right_labels[r_1])
               {
-                  s << marginalization_constraint_identifier(r_1, r_2, "right", l_1, r_1);
+                  s << marginalization_constraint_identifier(r_1, r_2, "right", l_1, r_1) << ": ";
                  for (const auto l_2 : right_labels[r_2])
                  {
                     if (l_1 != l_2 || l_1 == graph_matching_input::no_assignment)
@@ -626,7 +634,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
 
                for (const auto l_2 : right_labels[r_2])
                {
-                  s << marginalization_constraint_identifier(r_1, r_2, "right", l_2, r_2);
+                  s << marginalization_constraint_identifier(r_1, r_2, "right", l_2, r_2) << ": ";
                   for (const auto l_1 : right_labels[r_1])
                   {
                      if (l_1 != l_2 || l_1 == graph_matching_input::no_assignment)
@@ -640,6 +648,13 @@ struct graph_matching_input : public linear_assignment_problem_input {
     template<typename STREAM>
         void write_quadratic_variables(STREAM& s, const bool no_matching_allowed) const
         {
+            for(const auto& q : quadratic_terms)
+                 s << " " << quadratic_identifier(q.assignment_1, q.assignment_2) << "\n";
+        }
+
+    template<typename STREAM>
+        void write_constraint_groups(STREAM& s, const bool no_matching_allowed) const
+        {
             const auto [left_pairwise_potentials, right_pairwise_potentials] = export_pairwise_potentials(no_matching_allowed);
             const auto [left_labels, right_labels] = export_labels(no_matching_allowed);
 
@@ -648,9 +663,9 @@ struct graph_matching_input : public linear_assignment_problem_input {
             {
                 s << this->unary_simplex_identifier(l_1, "left") << " " << this->unary_simplex_identifier(l_2, "left") << " ";
                 for (const auto r_1 : left_labels[l_1])
-                    s << marginalization_constraint_identifier(l_1, l_2, "left", l_1, r_1);
+                    s << marginalization_constraint_identifier(l_1, l_2, "left", l_1, r_1) << " ";
                 for (const auto r_2 : left_labels[l_2])
-                    s << marginalization_constraint_identifier(l_1, l_2, "left", l_2, r_2);
+                    s << marginalization_constraint_identifier(l_1, l_2, "left", l_2, r_2) << " ";
                 s << "\n";
             }
 
@@ -658,17 +673,11 @@ struct graph_matching_input : public linear_assignment_problem_input {
             {
                 s << this->unary_simplex_identifier(r_1, "right") << " " << this->unary_simplex_identifier(r_2, "right") << " ";
                 for (const auto l_1 : right_labels[r_1])
-                    s << marginalization_constraint_identifier(r_1, r_2, "right", l_1, r_1);
+                    s << marginalization_constraint_identifier(r_1, r_2, "right", l_1, r_1) << " ";
                 for (const auto l_2 : right_labels[r_2])
-                    s << marginalization_constraint_identifier(r_1, r_2, "right", l_2, r_2);
+                    s << marginalization_constraint_identifier(r_1, r_2, "right", l_2, r_2) << " ";
                 s << "\n";
             }
-        }
-
-    template<typename STREAM>
-        void write_constraint_sets(STREAM& s, const bool no_matching_allowed = true) const
-        {
-            for(
         }
 
     template<typename STREAM>
@@ -682,7 +691,7 @@ struct graph_matching_input : public linear_assignment_problem_input {
             this->write_linear_constraints(s, no_matching_allowed);
             write_quadratic_constraints(s, no_matching_allowed);
 
-            write_constraint_sets(s, no_matching_allowed);
+            write_constraint_groups(s, no_matching_allowed);
 
             s << "Bounds\n";
             s << "Binaries\n";
