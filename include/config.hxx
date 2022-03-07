@@ -10,9 +10,6 @@
 #include "lp_reparametrization.hxx"
 #include "hash_helper.hxx"
 
-#define SIMDPP_ARCH_X86_AVX2
-#include "simdpp/simd.h"
-
 // type definitions for LPMP
 
 namespace LPMP {
@@ -20,12 +17,8 @@ namespace LPMP {
    // data types for all floating point/integer operations 
    // float is inaccurate for large problems and I observed oscillation. Possibly, some sort of numerical stabilization needs to be employed
    //using REAL = float;
-   //constexpr std::size_t REAL_ALIGNMENT = 8;
-   //using REAL_VECTOR = simdpp::float32<REAL_ALIGNMENT>;
 
    using REAL = double;
-   constexpr std::size_t REAL_ALIGNMENT = 4;
-   using REAL_VECTOR = simdpp::float64<REAL_ALIGNMENT>;
 
    using INDEX = std::size_t;
    using UNSIGNED_INDEX = INDEX;

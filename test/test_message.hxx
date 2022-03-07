@@ -115,7 +115,8 @@ namespace LPMP {
 
       const double prev_lb = l.LowerBound() + r.LowerBound();
 
-      std::fill(msg_vec.begin(), msg_vec.end(), 0.0);
+      for(size_t i=0; i<msg_vec.size(); ++i)
+          msg_vec[i] = 0.0;
       if constexpr(C == Chirality::left) {
          m.send_message_to_left(r, msg_vec, 1.0);
          reparametrize(m, -msg_vec, l, r);

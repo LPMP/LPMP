@@ -44,7 +44,7 @@ py::array_t<char> get_edge_mask(const LPMP::multiway_cut_instance& instance, con
         else
             edge_mask[e] = 0;
 
-    return py::array({instance.nr_edges()}, edge_mask); 
+    return py::array({pybind11::ssize_t(instance.nr_edges())}, edge_mask); 
 } 
 
 py::array_t<char> get_label_mask(const LPMP::multiway_cut_instance& instance, const LPMP::multiway_cut_labeling& labeling)
@@ -60,7 +60,7 @@ py::array_t<char> get_label_mask(const LPMP::multiway_cut_instance& instance, co
         }
     }
 
-    return py::array({instance.nr_nodes(), instance.nr_labels()}, label_mask); 
+    return py::array({pybind11::ssize_t(instance.nr_nodes()), pybind11::ssize_t(instance.nr_labels())}, label_mask); 
 } 
 
 

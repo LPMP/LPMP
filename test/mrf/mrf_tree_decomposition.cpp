@@ -1,6 +1,5 @@
 #include "test_mrf.hxx"
 #include "LP_FWMAP.hxx"
-#include "LP_conic_bundle.hxx"
 
 using namespace LPMP;
 
@@ -48,21 +47,6 @@ int main()
         s.Solve(); 
 
         test(std::abs(s.GetLP().decomposition_lower_bound() - 1.0) < LPMP::eps);
-    }
-
-    // conic bundle
-    {
-        using SolverType = Solver<LP_conic_bundle<FMC>,VisitorType>;
-
-        SolverType s(solver_options);
-        construct_problem(s);
-        auto& mrf = s.GetProblemConstructor();
-        auto trees = mrf.compute_forest_cover();
-        for(auto& tree : trees) { s.GetLP().add_tree(tree); }
-
-        s.Solve();
-
-        test(std::abs(s.GetLP().decomposition_lower_bound() - 1.0) < 1e-6); // conic bundle exits earlier tbefore reaching eps accuracy
     }
 
     // subgradient ascent

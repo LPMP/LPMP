@@ -31,7 +31,7 @@ py::array_t<char> get_edge_mask(const LPMP::multicut_instance& instance, const L
     for(size_t e=0; e<instance.no_edges(); ++e)
         edge_mask[e] = edge_labels[e];
 
-    return py::array({instance.no_edges()}, edge_mask); 
+    return py::array({pybind11::ssize_t(instance.no_edges())}, edge_mask); 
 }
 
 py::array_t<int> get_cc_ids_mask(const LPMP::multicut_instance& instance, const std::vector<int>& node_labeling)
@@ -43,7 +43,7 @@ py::array_t<int> get_cc_ids_mask(const LPMP::multicut_instance& instance, const 
         cc_mask[i] = node_labeling[i];
     }
 
-    return py::array({instance.no_nodes()}, cc_mask); 
+    return py::array({pybind11::ssize_t(instance.no_nodes())}, cc_mask); 
 } 
 
 PYBIND11_MODULE(multicut_py, m) {

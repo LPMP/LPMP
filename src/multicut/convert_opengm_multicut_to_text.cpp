@@ -63,7 +63,9 @@ int main(int argc, char** argv)
      const std::size_t j = gm.variableOfFactor(e,1);
      assert(i < j);
 
-     const double cost = gm[e](std::array<std::size_t,2>({1,0}).begin()) - gm[e](std::array<std::size_t,2>({0,0}).begin());
+     std::size_t l1[2] = {1,0};
+     std::size_t l0[2] = {0,0};
+     const double cost = gm[e](l1) - gm[e](l0);
 
      file_stream << i << " " << j << " " << cost << "\n";
    }

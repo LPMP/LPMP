@@ -9,9 +9,13 @@ PairwiseSimplexFactor::PairwiseSimplexFactor(const std::size_t _dim1, const std:
    left_msg_(_dim1),
    right_msg_(_dim2)
 {
-   std::fill(pairwise_.begin(), pairwise_.end(), 0.0);
-   std::fill(left_msg_.begin(), left_msg_.end(), 0.0);
-   std::fill(right_msg_.begin(), right_msg_.end(), 0.0);
+    for(size_t i=0; i<dim1(); ++i)
+        for(size_t j=0; j<dim2(); ++j)
+            pairwise_(i,j) = 0.0;
+    for(size_t i=0; i<dim1(); ++i)
+        left_msg_[i] = 0.0;
+    for(size_t j=0; j<dim2(); ++j)
+        right_msg_[j] = 0.0;
 }
 
 PairwiseSimplexFactor::PairwiseSimplexFactor(const PairwiseSimplexFactor& o) 

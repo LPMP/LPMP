@@ -1,4 +1,5 @@
 #include <fstream>
+#include <array>
 #include "hdf5.h"
 #include <opengm/opengm.hxx>
 #include <opengm/graphicalmodel/graphicalmodel.hxx>
@@ -76,7 +77,9 @@ int main(int argc, char** argv)
        const std::size_t i = gm.variableOfFactor(f,0);
        uai << gm.numberOfLabels(i) << "\n";
        for(std::size_t l=0; l<gm[f].numberOfLabels(0); ++l){
-         uai << -gm[f](std::array<std::size_t,1>({l}).begin()) << " ";
+           {
+               uai << -gm[f](&l) << " ";
+           }
        } 
        uai << "\n\n";
      }

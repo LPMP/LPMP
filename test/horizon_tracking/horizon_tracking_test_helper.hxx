@@ -5,7 +5,6 @@
 #include "horizon_tracking/horizon_tracking.h"
 #include "solver.hxx"
 #include "LP_FWMAP.hxx"
-#include "LP_conic_bundle.hxx"
 #include <type_traits>
 #include "horizon_tracking/horizon_tracking_primal_rounding.hxx"
 

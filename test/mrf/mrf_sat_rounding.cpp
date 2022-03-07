@@ -1,6 +1,5 @@
 #include "test_mrf.hxx"
 #include "LP_external_interface.hxx"
-#include "sat_solver.hxx"
 
 using namespace LPMP;
 

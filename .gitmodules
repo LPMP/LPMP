@@ -8,9 +8,6 @@
 [submodule "external/maxflow"]
 	path = external/maxflow
 	url = https://github.com/DerThorsten/maxflow.git
-[submodule "external/libsimdpp"]
-	path = external/libsimdpp
-	url = https://github.com/p12tic/libsimdpp.git
 [submodule "external/meta"]
 	path = external/meta
 	url = https://github.com/ericniebler/meta.git
@@ -23,9 +20,6 @@
 [submodule "external/DD_ILP"]
 	path = external/DD_ILP
 	url = https://github.com/pawelswoboda/DD_ILP.git
-[submodule "external/ConicBundle"]
-	path = external/ConicBundle
-	url = https://github.com/pawelswoboda/ConicBundle.git
 [submodule "external/arboricity"]
 	path = external/arboricity
 	url = https://github.com/pawelswoboda/arboricity.git

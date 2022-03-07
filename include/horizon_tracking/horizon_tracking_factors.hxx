@@ -9,7 +9,9 @@
 #include "three_dimensional_variable_array.hxx"
 #include <unordered_set>
 #include <cmath>
+#ifdef _OPENMP
 #include "omp.h"
+#endif
 #include <chrono>
 
 namespace LPMP {

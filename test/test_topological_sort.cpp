@@ -1,6 +1,7 @@
 #include "test.h"
 #include "topological_sort.hxx"
 #include <random>
+#include <algorithm>
 
 using namespace LPMP;
 
@@ -9,10 +10,10 @@ void test_topological_sort(const std::size_t n, const std::size_t m, std::random
    // generate random permutation of [1,n]
    std::vector<std::size_t> permutation(n);
    std::iota(permutation.begin(), permutation.end(), 0);
-   std::random_shuffle(permutation.begin(), permutation.end());
+   std::mt19937 gen(rd());
+   std::shuffle(permutation.begin(), permutation.end(), gen);
 
    // sample randomly m pairs of indices in permutation and add to topological sorting graph
-   std::mt19937 gen{rd()};
    std::bernoulli_distribution dist{double(m)/double(0.5*(n*(n-1)))};
    Topological_Sort::Graph tsg(n);
    std::vector<std::array<std::size_t,2>> precedence_relations; 

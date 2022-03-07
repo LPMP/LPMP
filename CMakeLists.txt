@@ -4,15 +4,6 @@ cmake_minimum_required(VERSION 2.8.12)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# information for e.g. YouCompleteMe
-SET( CMAKE_EXPORT_COMPILE_COMMANDS ON )
-IF( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-    EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-        ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
-        )
-ENDIF()
-
 add_library(LPMP INTERFACE)
 target_include_directories(LPMP INTERFACE external)
 target_include_directories(LPMP INTERFACE external/qpbo/include)
@@ -23,7 +14,6 @@ target_include_directories(LPMP INTERFACE external/TCLAP/include)
 target_include_directories(LPMP INTERFACE external/libsimdpp)
 target_include_directories(LPMP INTERFACE external/meta/include)
 target_include_directories(LPMP INTERFACE external/BCFW-Bundle/include)
-target_include_directories(LPMP INTERFACE external/ConicBundle/include)
 target_include_directories(LPMP INTERFACE external/arboricity)
 target_include_directories(LPMP INTERFACE external/MCF-SSP)
 target_include_directories(LPMP INTERFACE external/andres-graph/include)
@@ -68,7 +58,7 @@ target_include_directories(LPMP INTERFACE external/pybind11)
 
 
 target_compile_features(LPMP INTERFACE cxx_std_17)
-target_compile_options(LPMP INTERFACE -march=native)
+#target_compile_options(LPMP INTERFACE -march=native)
 
 target_include_directories(LPMP INTERFACE external/cudd/cudd)
 target_include_directories(LPMP INTERFACE external/cudd/cplusplus) 
@@ -82,8 +72,8 @@ if (OPENMP_FOUND)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+    target_link_libraries(LPMP INTERFACE OpenMP::OpenMP_CXX)
 endif()
-target_link_libraries(LPMP INTERFACE OpenMP::OpenMP_CXX)
 
 find_package(HDF5 REQUIRED CXX)
 add_library(HDF5 INTERFACE)
@@ -100,7 +90,6 @@ enable_testing()
 add_subdirectory(external/qpbo)
 add_subdirectory(external/BCFW-Bundle) 
 add_subdirectory(external/DD_ILP)
-add_subdirectory(external/ConicBundle)
 add_subdirectory(external/arboricity)
 set(PYBIND11_CPP_STANDARD -std=c++17)
 set(PYBIND11_INSTALL ON CACHE BOOL "enable pybind11 bindings.")

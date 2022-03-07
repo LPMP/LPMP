@@ -39,16 +39,12 @@ target_link_libraries( serialization LPMP m stdc++ pthread )
 add_test( serialization serialization )
 
 add_executable(test_model test_model.cpp)
-target_link_libraries(test_model LPMP DD_ILP lingeling)
+target_link_libraries(test_model LPMP DD_ILP)
 add_test( test_model test_model )
 
 add_executable(test_FWMAP test_FWMAP.cpp)
-target_link_libraries(test_FWMAP LPMP FW-MAP lingeling)
+target_link_libraries(test_FWMAP LPMP FW-MAP)
 add_test(test_FWMAP test_FWMAP)
-
-add_executable(test_conic_bundle test_conic_bundle.cpp)
-target_link_libraries(test_conic_bundle cb LPMP lingeling)
-add_test(test_conic_bundle test_conic_bundle)
 
 add_executable(graph_test graph_test.cpp)
 target_link_libraries(graph_test LPMP)

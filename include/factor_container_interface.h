@@ -72,10 +72,6 @@ public:
    virtual void load_costs(DD_ILP::external_solver_interface<DD_ILP::problem_export>& solver) = 0; 
    virtual void convert_primal(DD_ILP::external_solver_interface<DD_ILP::problem_export>& solver) = 0;
 
-   virtual void construct_constraints(DD_ILP::external_solver_interface<DD_ILP::sat_solver>& solver) = 0;
-   virtual void load_costs(DD_ILP::external_solver_interface<DD_ILP::sat_solver>& solver) = 0;
-   virtual void convert_primal(DD_ILP::external_solver_interface<DD_ILP::sat_solver>& solver) = 0; 
-
 #ifdef DD_ILP_WITH_GUROBI
    virtual void construct_constraints(DD_ILP::external_solver_interface<DD_ILP::gurobi_interface>& solver) = 0;
    virtual void load_costs(DD_ILP::external_solver_interface<DD_ILP::gurobi_interface>& solver) = 0;

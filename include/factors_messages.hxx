@@ -1303,12 +1303,6 @@ public:
    }
 
    virtual void construct_constraints(
-       DD_ILP::external_solver_interface<DD_ILP::sat_solver>& s, 
-       const typename DD_ILP::variable_counters& left_variable_counters,
-       const typename DD_ILP::variable_counters& right_variable_counters 
-       ) 
-   { construct_constraints_impl(s, left_variable_counters, right_variable_counters); }
-   virtual void construct_constraints(
        DD_ILP::external_solver_interface<DD_ILP::problem_export>& s, 
        const typename DD_ILP::variable_counters& left_variable_counters,
        const typename DD_ILP::variable_counters& right_variable_counters 
@@ -1583,7 +1577,7 @@ private:
 
 
 // hold up to N messages
-template<typename MESSAGE_CONTAINER_TYPE, std::size_t N>
+template<typename MESSAGE_CONTAINER_TYPE, std::ptrdiff_t N>
 class up_to_message_container_storage : public message_container_storage_array<MESSAGE_CONTAINER_TYPE,N> {
 public:
     up_to_message_container_storage()
@@ -2052,7 +2046,7 @@ public:
    void receive_all_messages()
    {
        meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this](auto l) {
-               constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+               constexpr std::size_t n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                auto msg_begin = std::get<n>(msg_).begin();
                auto msg_end = std::get<n>(msg_).end();
                for(auto it = msg_begin; it != msg_end; ++it) {
@@ -2095,7 +2089,7 @@ public:
            const auto orig_vars = factor_.export_variables();
            FactorType tmp_factor(factor_);
            meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&no_msgs,&tmp_factor](auto l) {
-                   constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+                   constexpr std::size_t n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                    using msg_container_type = typename decltype(l)::message_container_type;
                    if constexpr(meta::count<messages_list, msg_container_type>::value) {
                    //std::cout << "send message\n";
@@ -2112,7 +2106,7 @@ public:
    {
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this](auto l) {
             if constexpr(l.receives_message_from_adjacent_factor()) {
-                constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+                constexpr std::size_t n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                 auto msg_begin = std::get<n>(msg_).begin();
                 auto msg_end = std::get<n>(msg_).end();
                 for(auto it = msg_begin; it != msg_end; ++it) {
@@ -2133,7 +2127,7 @@ public:
 
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&receive_it](auto l) {
             if constexpr(l.receives_message_from_adjacent_factor()) {
-                constexpr INDEX n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+                constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                 auto msg_begin = std::get<n>(msg_).begin();
                 auto msg_end = std::get<n>(msg_).end();
                   for(auto it = msg_begin; it != msg_end; ++it, ++receive_it) {
@@ -2162,7 +2156,7 @@ public:
 
       meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [this,&receive_it](auto l) {
             if constexpr(l.can_call_receive_restricted_message()) {
-                constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+                constexpr std::size_t n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
                 auto msg_begin = std::get<n>(msg_).begin();
                 auto msg_end = std::get<n>(msg_).end();
                   for(auto it = msg_begin; it != msg_end; ++it, ++receive_it) {
@@ -2354,7 +2348,7 @@ public:
      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
          // check whether the message supports batch updates. If so, call batch update, else call individual send message
          if constexpr(l.sends_message_to_adjacent_factor()) {
-           constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+           constexpr std::size_t n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
            auto msg_begin = std::get<n>(msg_).begin();
            auto msg_end = std::get<n>(msg_).end();
 
@@ -2384,7 +2378,7 @@ public:
      meta::for_each(MESSAGE_DISPATCHER_TYPELIST{}, [&](auto l) {
          // check whether the message supports batch updates. If so, call batch update, else call individual send message
          if constexpr(l.sends_message_to_adjacent_factor()) {
-           constexpr std::size_t n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+           constexpr std::size_t n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
            auto msg_begin = std::get<n>(msg_).begin();
            auto msg_end = std::get<n>(msg_).end();
 
@@ -2509,7 +2503,7 @@ public:
          // check whether the message supports batch updates. If so, call batch update.
          // If not, check whether individual updates are supported. If yes, call individual updates. If no, do nothing
          if constexpr(l.sends_message_to_adjacent_factor()) {
-           constexpr INDEX n = this->FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
+           constexpr INDEX n = FactorContainerType::FindMessageDispatcherTypeIndex<decltype(l)>();
            if(!std::get<n>(msg_).empty()) {
              auto& msgs = std::get<n>(msg_);
 
@@ -3171,10 +3165,6 @@ public:
 
        return can_convert_primal_impl<solver_type, external_vars_types>(I);
    }
-
-   virtual void construct_constraints(DD_ILP::external_solver_interface<DD_ILP::sat_solver>& s) final { construct_constraints_impl(s); }
-   virtual void load_costs(DD_ILP::external_solver_interface<DD_ILP::sat_solver>& s) final {  }
-   virtual void convert_primal(DD_ILP::external_solver_interface<DD_ILP::sat_solver>& solver) { convert_primal_impl(solver); }
 
    virtual void construct_constraints(DD_ILP::external_solver_interface<DD_ILP::problem_export>& s) final { construct_constraints_impl(s); }
    virtual void load_costs(DD_ILP::external_solver_interface<DD_ILP::problem_export>& s) final { load_costs_impl(s); } 

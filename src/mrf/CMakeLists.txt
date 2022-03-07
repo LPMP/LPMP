@@ -58,11 +58,5 @@ target_link_libraries(FWMAP_uai LPMP MRF_factors FW-MAP arboricity mrf_uai_input
 add_executable(FWMAP_opengm FWMAP_opengm.cpp)
 target_link_libraries(FWMAP_opengm HDF5 LPMP MRF_factors FW-MAP arboricity mrf_opengm_input) 
 
-add_executable(conic_bundle_uai conic_bundle_uai.cpp)
-target_link_libraries(conic_bundle_uai LPMP MRF_factors cb arboricity mrf_uai_input)
-
-add_executable(conic_bundle_opengm conic_bundle_opengm.cpp)
-target_link_libraries(conic_bundle_opengm HDF5 LPMP MRF_factors cb arboricity mrf_opengm_input)
-
 add_executable(qpbo_dimacs qpbo_dimacs.cpp)
 target_link_libraries(qpbo_dimacs LPMP dimacs_max_flow_input)

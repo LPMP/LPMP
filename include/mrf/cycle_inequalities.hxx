@@ -5,6 +5,7 @@
 #ifndef LPMP_CYCLE_INEQUALITIES_HXX
 #define LPMP_CYCLE_INEQUALITIES_HXX
 
+#include <limits>
 #include <stdlib.h>
 #include <vector>
 #include <algorithm>
@@ -242,7 +243,8 @@ template<typename PAIRWISE_REPAM>
 matrix<double> k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::column_minima(const PAIRWISE_REPAM& f)
 {
    matrix<double> _column_minima(f.dim2(),2);
-   std::fill(_column_minima.begin(), _column_minima.end(), std::numeric_limits<double>::infinity());
+   for(size_t i=0; i<_column_minima.size(); ++i)
+       _column_minima[i] = std::numeric_limits<double>::infinity();
    for(std::size_t x1=0; x1<f.dim1(); ++x1) {
       for(std::size_t x2=0; x2<f.dim2(); ++x2) {
          const double val = f(x1,x2);

@@ -7,7 +7,9 @@
 #include <variant>
 #include "LP.h"
 #include "config.hxx"
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <atomic>
 #include <future>
 #include "multicut/multicut_instance.h"
@@ -264,7 +266,9 @@ public:
         primal_rounding_algorithms_arg_("", "multigraphMatchingRoundingMethod", "correlation clustering algorithms that are used for rounding a solution", false, "gaec_KL", "{gaec_KL|KL|MCF_KL|MCF_PS|FW_PS}", s.get_cmd())
         
         {
+#ifdef _OPENMP
            omp_set_nested(0); // there is parallelism in the graph matching constructors, which we suppress hereby. TODO: should be better set somewhere else
+#endif
         }
 
     void order_factors()
@@ -610,12 +614,22 @@ public:
           return 0;
         // iterate over all triplets of graphs and enumerate all possible triplet consistency factors that can be added. 
         // Record guaranteed dual increase of adding the triplet consistency factor
-        std::vector< std::vector<std::pair<triplet_consistency_factor, double>> > triplet_consistency_candidates_local(omp_get_max_threads());
+#ifdef _OPENMP
+       const size_t nr_threads = omp_get_max_threads();
+#else
+       const size_t nr_threads = 1;
+#endif
+       std::vector< std::vector<std::pair<triplet_consistency_factor, double>> > triplet_consistency_candidates_local(nr_threads);
 
         auto compute_dual_increase = [&](const triplet_consistency_factor& t, const graph_matching_triplet& gm_t) {
            const double guaranteed_dual_increase = this->triplet_consistency_dual_increase(t, gm_t); 
            if(guaranteed_dual_increase >= eps) {
-              triplet_consistency_candidates_local[omp_get_thread_num()].push_back( std::make_pair(t, guaranteed_dual_increase) );
+#ifdef _OPENMP
+               const size_t thread_nr = omp_get_thread_num();
+#else
+               const size_t thread_nr = 0;
+#endif
+              triplet_consistency_candidates_local[thread_nr].push_back( std::make_pair(t, guaranteed_dual_increase) );
            } 
         };
         for_each_triplet_consistency_factor(compute_dual_increase);

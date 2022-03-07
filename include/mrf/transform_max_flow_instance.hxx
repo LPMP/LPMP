@@ -3,6 +3,7 @@
 
 #include "max_flow_instance.hxx"
 #include "binary_MRF_instance.hxx"
+#include <stdexcept>
 
 namespace LPMP {
 

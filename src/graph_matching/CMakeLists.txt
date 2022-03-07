@@ -49,10 +49,6 @@ foreach( source_file ${PROXIMAL_BUNDLE_SOLVERS} )
     target_link_libraries( ${executable_file} LPMP MRF_factors graph_matching_input graph_matching_frank_wolfe FW-MAP arboricity)
 endforeach( source_file ${SOURCE_FILES} )
 
-# with conic bundle
-#add_executable(graph_matching_mcf_conic_bundle graph_matching_mcf_conic_bundle.cpp ${headers} ${sources})
-#target_link_libraries( graph_matching_mcf_conic_bundle m stdc++ pthread lgl SVM arboricity cb)
-
 if(WITH_GUROBI)
    SET(GUROBI_FILES
       # lp solver

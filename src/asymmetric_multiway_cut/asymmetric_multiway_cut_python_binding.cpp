@@ -53,7 +53,7 @@ py::array_t<char> get_edge_mask(const LPMP::asymmetric_multiway_cut_instance& in
     for(size_t e=0; e<instance.nr_edges(); ++e)
         edge_mask[e] = labeling.edge_labels[e];
 
-    return py::array({instance.nr_edges()}, edge_mask); 
+    return py::array({pybind11::ssize_t(instance.nr_edges())}, edge_mask); 
 } 
 
 py::array_t<char> get_label_mask(const LPMP::asymmetric_multiway_cut_instance& instance, const LPMP::asymmetric_multiway_cut_labeling& labeling)
@@ -69,7 +69,7 @@ py::array_t<char> get_label_mask(const LPMP::asymmetric_multiway_cut_instance& i
         }
     }
 
-    return py::array({instance.nr_nodes(), instance.nr_labels()}, label_mask); 
+    return py::array({pybind11::ssize_t(instance.nr_nodes()), pybind11::ssize_t(instance.nr_labels())}, label_mask); 
 } 
 
 py::array_t<int> get_cc_ids_mask(const LPMP::asymmetric_multiway_cut_instance& instance, const LPMP::asymmetric_multiway_cut_labeling& labeling)
@@ -81,7 +81,7 @@ py::array_t<int> get_cc_ids_mask(const LPMP::asymmetric_multiway_cut_instance& i
         cc_mask[i] = labeling.node_connected_components_ids[i];
     }
 
-    return py::array({instance.nr_nodes()}, cc_mask); 
+    return py::array({pybind11::ssize_t(instance.nr_nodes())}, cc_mask); 
 } 
 
 

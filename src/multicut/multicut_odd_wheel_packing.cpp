@@ -28,10 +28,13 @@ double compute_triangle_th(const std::size_t center_node_index, const multicut_t
 {
    assert(center_node_index <= 2);
 
-   const auto [first_incident_edge, second_incident_edge] = incident_edges_indices(center_node_index);
+   size_t first_incident_edge, second_incident_edge;
+   const auto edges = incident_edges_indices(center_node_index);
+   std::tie(first_incident_edge, second_incident_edge) = std::make_tuple(edges[0], edges[1]);
+   //const auto [first_incident_edge, second_incident_edge] = incident_edges_indices(center_node_index);
    double min_exactly_one_incident_cut = std::numeric_limits<double>::infinity();
    double min_other_cases = 0.0;
-   auto update_costs = [&](const std::bitset<3> labeling, const double cost) {
+   auto update_costs = [first_incident_edge, second_incident_edge, &min_exactly_one_incident_cut, &min_other_cases](const std::bitset<3> labeling, const double cost) {
       if(std::size_t(labeling[first_incident_edge]) + std::size_t(labeling[second_incident_edge]) == 1)
          min_exactly_one_incident_cut = std::min(cost, min_exactly_one_incident_cut);
       else
@@ -46,7 +49,10 @@ void reparametrize_triplet(multicut_triplet_factor& t, const std::size_t center_
    assert(center_node_index <= 2);
    assert(weight >= 0.0);
 
-   const auto [first_incident_edge, second_incident_edge] = incident_edges_indices(center_node_index);
+   size_t first_incident_edge, second_incident_edge;
+   const auto edges = incident_edges_indices(center_node_index);
+   std::tie(first_incident_edge, second_incident_edge) = std::make_tuple(edges[0], edges[1]);
+   //const auto [first_incident_edge, second_incident_edge] = incident_edges_indices(center_node_index);
    auto update_costs = [&](const std::bitset<3> labeling, double& cost) {
       if(std::size_t(labeling[first_incident_edge]) + std::size_t(labeling[second_incident_edge]) == 1)
          cost -= weight;

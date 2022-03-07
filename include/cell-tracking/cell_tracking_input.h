@@ -5,6 +5,7 @@
 #include <utility>
 #include <string>
 #include <numeric>
+#include <limits>
 
 namespace LPMP {
 

@@ -1,6 +1,7 @@
 #include  "multigraph_matching/multigraph_matching_instance.h"
 #include "union_find.hxx"
 #include <unordered_set>
+#include <stdexcept>
 
 namespace LPMP {
 

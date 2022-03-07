@@ -7,6 +7,7 @@
 #include <queue>
 #include <tuple>
 #include <algorithm>
+#include <stdexcept>
 
 namespace LPMP {
 

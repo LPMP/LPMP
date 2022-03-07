@@ -8,6 +8,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <algorithm>
+#include <random>
 #include <cassert>
 
 namespace LPMP {
@@ -59,7 +60,9 @@ cycle_packing multicut_cycle_packing_impl(const multicut_instance& input, const 
       //compute_connectivity();
 
       // shuffling can give great speed-up if edges with similar indices are spatially close in the graph
-      std::random_shuffle(repulsive_edges.begin(), repulsive_edges.end());
+      std::random_device rd;
+      std::mt19937 g(rd());
+      std::shuffle(repulsive_edges.begin(), repulsive_edges.end(), g);
 
       std::size_t progress = 0;
 

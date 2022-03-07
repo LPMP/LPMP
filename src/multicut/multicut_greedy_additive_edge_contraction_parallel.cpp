@@ -2,6 +2,7 @@
 #include <queue>
 #include <cassert>
 #include <functional>
+#include <algorithm>
 #include <chrono>
 #include "union_find.hxx"
 #include "dynamic_graph_thread_safe.hxx"
@@ -91,7 +92,12 @@ namespace LPMP {
 
 
     tf::Task distribute_edges_round_robin(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
-        if (SHUFFLE) std::random_shuffle(positive_edges.begin(), positive_edges.end());
+        if (SHUFFLE) 
+        {
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(positive_edges.begin(), positive_edges.end(), g);
+        }
         auto Q = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t e = thread_no;
             while(e < positive_edges.size()) {
@@ -104,7 +110,12 @@ namespace LPMP {
     }
 
     tf::Task distribute_edges_in_chunks(tf::Taskflow& taskflow, std::vector<edge_type_q>& positive_edges, tf::Task prev, std::vector<pq_t>& queues, const int& nr_threads) {
-        if (SHUFFLE) std::random_shuffle(positive_edges.begin(), positive_edges.end());
+        if (SHUFFLE) 
+        {
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(positive_edges.begin(), positive_edges.end(), g);
+        }
         auto Q = taskflow.for_each_index(0,nr_threads,1, [&](const std::size_t thread_no) {
             std::size_t positive_edges_batch_size = positive_edges.size()/nr_threads + 1;
             const std::size_t first_edge = thread_no*positive_edges_batch_size;

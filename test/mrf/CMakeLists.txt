@@ -31,7 +31,7 @@ target_link_libraries(cycle_inequalities LPMP MRF_factors)
 add_test(cycle_inequalities cycle_inequalities)
 
 add_executable(mrf_tree_decomposition mrf_tree_decomposition.cpp)
-target_link_libraries(mrf_tree_decomposition LPMP FW-MAP arboricity cb MRF_factors)
+target_link_libraries(mrf_tree_decomposition LPMP FW-MAP arboricity MRF_factors)
 add_test(mrf_tree_decomposition mrf_tree_decomposition)
 
 add_executable(mrf_tree mrf_tree.cpp)
@@ -41,10 +41,6 @@ add_test(mrf_tree mrf_tree)
 add_executable(mrf_read_uai_file mrf_read_uai_file.cpp)
 target_link_libraries(mrf_read_uai_file LPMP mrf_uai_input MRF_factors)
 add_test(mrf_read_uai_file mrf_read_uai_file)
-
-add_executable(mrf_sat_rounding mrf_sat_rounding.cpp)
-target_link_libraries(mrf_sat_rounding LPMP)
-add_test(mrf_sat_rounding mrf_sat_rounding)
 
 add_executable(mrf_tightening mrf_tightening.cpp)
 target_link_libraries(mrf_tightening LPMP MRF_factors)
@@ -60,10 +56,10 @@ add_test(test_transform_binary_MRF_to_Potts test_transform_binary_MRF_to_Potts)
 
 if(WITH_GUROBI)
   add_executable(combiLP combiLP.cpp)
-  target_link_libraries(combiLP LPMP  stdc++ pthread GUROBI HDF5 lingeling) #somehow currently needs to be linked against. Remove this!
+  target_link_libraries(combiLP LPMP  stdc++ pthread GUROBI HDF5) #somehow currently needs to be linked against. Remove this!
   add_test(combiLP combiLP)
 
   add_executable(dd_ilp_gurobi dd_ilp_gurobi.cpp)
-  target_link_libraries(dd_ilp_gurobi LPMP GUROBI HDF5 lingeling) 
+  target_link_libraries(dd_ilp_gurobi LPMP GUROBI HDF5) 
   add_test(dd_ilp_gurobi dd_ilp_gurobi)
 endif()

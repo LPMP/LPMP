@@ -1,6 +1,7 @@
 #include "graph_matching/graph_matching_instance.h"
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 
 namespace LPMP {
 

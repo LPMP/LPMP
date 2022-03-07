@@ -91,7 +91,7 @@ namespace LPMP {
                 void write_primal_clustering(STREAM& s) const
                 {
                     graph_size nm(*this);
-                    union_find uf(nm.no_nodes());
+                    union_find uf(nm.total_no_nodes());
 
                     s << "# ${graph_no}, ${node_no}, ${cluster_id}\n";
                     for(const auto& gm : *this)
