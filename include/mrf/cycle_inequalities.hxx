@@ -69,7 +69,7 @@ public:
       }
 
       // Sort the adjacency list, for fast intersections later
-#pragma omp parallel for schedule(guided)
+//#pragma omp parallel for schedule(guided)
       for(std::size_t i=0; i < adjacency_list.size(); i++) {
          std::sort(adjacency_list[i].begin(), adjacency_list[i].end());
       }
@@ -77,11 +77,11 @@ public:
       std::vector<triplet_candidate> triplet_candidates;
 
       // Iterate over all of the edge intersection sets
-#pragma omp parallel 
+//#pragma omp parallel 
       {
          std::vector<std::size_t> commonNodes(gm_.get_number_of_variables()-1);
          std::vector<triplet_candidate> triplet_candidates_local;
-#pragma omp for schedule(guided)
+//#pragma omp for schedule(guided)
          for(size_t factorId=0; factorId<gm_.get_number_of_pairwise_factors(); factorId++) {
             auto vars = gm_.get_pairwise_variables(factorId);
             const std::size_t i=std::get<0>(vars);
@@ -113,7 +113,7 @@ public:
                }
             }
          }
-#pragma omp critical
+//#pragma omp critical
          {
             triplet_candidates.insert(triplet_candidates.end(), triplet_candidates_local.begin(), triplet_candidates_local.end());
          }
