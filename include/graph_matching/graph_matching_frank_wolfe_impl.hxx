@@ -517,9 +517,10 @@ namespace LPMP {
 
         Eigen::SparseVector<double> M_temp;
         round(M_temp);
-        M = ASSIGNMENT_VECTOR_TYPE(M_temp);
-        //M = round();
-        //std::cout << "Rounded solution cost = " << evaluate() << "\n";
+        const graph_matching_input::labeling l = get_solution(M_temp);
+        const auto M = construct_matching_matrix(l); 
+        std::cout << "Final rounded solution cost = " << evaluate(M) << "\n";
+        l.WritePrimal(std::cout);
     }
 
     template<typename ASSIGNMENT_VECTOR_TYPE, typename QUADRATIC_COST_TYPE>
