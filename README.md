@@ -53,6 +53,13 @@ If you already installed with one of the above options and would like to change 
 
 `PACKAGES="ldp" python3 -m pip install git+https://github.com/lpmp/LPMP.git --upgrade`
 
+In case the above commands give error then first try cloning the repo and then installing by (replace PACKAGES="mc" similar to above as per usecase):
+```bash
+https://github.com/LPMP/LPMP.git
+cd LPMP
+git submodule update --init --remote --recursive
+PACKAGES="mc" python setup.py install
+```
 ## Installation
 Type `git clone https://github.com/LPMP/LPMP.git` for downloading, then `cd LPMP` and `git submodule update --init --remote --recursive` for downloading dependencies and finally `cmake .` for building.
 
