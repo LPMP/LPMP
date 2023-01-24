@@ -55,7 +55,7 @@ If you already installed with one of the above options and would like to change 
 
 In case the above commands give error then first try cloning the repo and then installing by (replace PACKAGES="mc" similar to above as per usecase):
 ```bash
-https://github.com/LPMP/LPMP.git
+git clone https://github.com/LPMP/LPMP.git
 cd LPMP
 git submodule update --init --remote --recursive
 PACKAGES="mc" python setup.py install
